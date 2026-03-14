@@ -635,31 +635,20 @@ async function onBuscar() {
     setBtnLoading(btn, true);
     setStatus('Buscando saldos…', 'muted', 'spinner fa-spin');
 
-    // Busca o bolão
-    const query = sb
+    let query = sb
       .from('boloes')
-      .select('id, qtd_cotas_total, enc_fisico, enc_virtual, custo_jogo, status')
+      .select('id, valor_cota, qtd_cotas_total, enc_fisico, enc_virtual, custo_jogo, status')
       .eq('loteria_id', loteriaAtiva.loteria_id)
       .eq('modalidade', modal)
       .eq('concurso', concurso)
       .eq('valor_cota', cota)
       .neq('status', 'CANCELADO');
 
-    let query = sb
-  .from('boloes')
-  .select('id, valor_cota, qtd_cotas_total, enc_fisico, enc_virtual, custo_jogo, status')
-  .eq('loteria_id', loteriaAtiva.loteria_id)
-  .eq('modalidade', modal)
-  .eq('concurso', concurso)
-  .eq('valor_cota', cota)
-  .neq('status', 'CANCELADO');
+    if (jogos > 0)   query = query.eq('qtd_jogos', jogos);
+    if (dezenas > 0) query = query.eq('qtd_dezenas', dezenas);
 
-if (jogos > 0)   query = query.eq('qtd_jogos', jogos);
-if (dezenas > 0) query = query.eq('qtd_dezenas', dezenas);
+    const { data: bolao } = await query.maybeSingle();
 
-const { data: bolao } = await query.maybeSingle();
-
-const { data: bolao } = await query.maybeSingle();
     if (!bolao) {
       showModal('Não encontrado', [
         '❌ Bolão não encontrado', '',
@@ -672,7 +661,6 @@ const { data: bolao } = await query.maybeSingle();
       return;
     }
 
-    // Busca posição por destino
     const { data: destinos } = await sb
       .from('view_posicao_destinos')
       .select('*')
