@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>SISLOT — Movimentar Cotas</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue-deep:   #0a1628;
+      --blue-mid:    #0f2244;
+      --blue-panel:  #132952;
+      --blue-border: #1e3a6e;
+      --accent:      #00c896;
+      --text-bright: #e8eef8;
+      --text-mid:    #8fa3c8;
+      --text-dim:    #4a6491;
+      --error:       #ff5252;
+      --amber:       #f5a623;
+      --input-bg:    #0d1e3a;
+      --input-border:#1e3a6e;
+    }
+
+    body {
+      background: var(--blue-deep);
+      font-family: 'IBM Plex Sans', sans-serif;
+      color: var(--text-bright);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      background-image:
+        radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,200,150,0.08) 0%, transparent 60%),
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(30,58,110,0.3) 39px, rgba(30,58,110,0.3) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(30,58,110,0.15) 39px, rgba(30,58,110,0.15) 40px);
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px; height: 56px;
+      background: rgba(15,34,68,0.95); border-bottom: 1px solid var(--blue-border);
+      backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 32px; height: 32px; background: var(--accent); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; color: var(--blue-deep);
+    }
+    .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+    .brand-sub  { font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .clock { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-mid); }
+
+    .btn-topbar {
+      display: flex; align-items: center; gap: 6px;
+      background: transparent; border: 1px solid var(--blue-border);
+      border-radius: 6px; padding: 6px 12px;
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; color: var(--text-mid); white-space: nowrap;
+    }
+    .btn-topbar svg { width: 13px; height: 13px; }
+    .btn-topbar:hover { color: var(--accent); border-color: rgba(0,200,150,0.4); background: rgba(0,200,150,0.05); }
+    .btn-topbar-sair:hover { color: var(--error); border-color: rgba(255,82,82,0.4); background: rgba(255,82,82,0.05); }
+
+    /* ── Layout ── */
+    .main {
+      flex: 1; max-width: 1100px; width: 100%;
+      margin: 0 auto; padding: 32px 32px 60px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      margin-bottom: 28px; padding-bottom: 20px;
+      border-bottom: 1px solid var(--blue-border);
+      animation: fadeIn 0.4s ease both;
+    }
+    .page-title    { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+    .page-subtitle { font-size: 13px; color: var(--text-mid); margin-top: 4px; font-weight: 300; }
+
+    /* ── Date stepper ── */
+    .date-bar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px;
+      animation: fadeIn 0.4s 0.05s ease both;
+    }
+    .date-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim);
+    }
+    .date-stepper {
+      display: flex; align-items: center;
+      background: var(--blue-panel); border: 1px solid var(--blue-border);
+      border-radius: 8px; overflow: hidden;
+    }
+    .btn-date {
+      width: 36px; height: 36px; background: transparent; border: none;
+      color: var(--text-mid); cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all 0.15s; font-size: 14px;
+    }
+    .btn-date:hover { background: rgba(0,200,150,0.08); color: var(--accent); }
+    .btn-date svg { width: 14px; height: 14px; }
+    .date-display {
+      font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600;
+      color: var(--text-bright); padding: 0 16px; border-left: 1px solid var(--blue-border);
+      border-right: 1px solid var(--blue-border); height: 36px;
+      display: flex; align-items: center; white-space: nowrap; min-width: 130px; justify-content: center;
+    }
+    .btn-hoje {
+      background: transparent; border: 1px solid rgba(0,200,150,0.25);
+      border-radius: 6px; padding: 6px 12px; cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
+      transition: all 0.2s;
+    }
+    .btn-hoje:hover { background: rgba(0,200,150,0.08); border-color: var(--accent); }
+
+    .boloes-count {
+      margin-left: auto;
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim);
+    }
+    .boloes-count span { color: var(--accent); font-weight: 600; }
+
+    /* ── States ── */
+    .state-box {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; padding: 56px 24px; text-align: center;
+      background: var(--blue-panel); border: 1px dashed var(--blue-border); border-radius: 10px;
+    }
+    .state-box svg { width: 36px; height: 36px; opacity: 0.3; }
+    .state-title { font-size: 14px; font-weight: 600; color: var(--text-mid); }
+    .state-sub   { font-size: 12px; color: var(--text-dim); max-width: 340px; }
+    .spinner {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 3px solid rgba(0,200,150,0.15); border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Section sep ── */
+    .section-sep {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+    }
+    .section-sep-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); white-space: nowrap;
+    }
+    .section-sep-line { flex: 1; height: 1px; background: var(--blue-border); }
+    .section-sep-count {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      color: var(--accent); background: rgba(0,200,150,0.08);
+      border: 1px solid rgba(0,200,150,0.2); border-radius: 4px; padding: 2px 8px;
+    }
+
+    /* ── Bolao cards ── */
+    .boloes-grid {
+      display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;
+    }
+
+    .bolao-card {
+      background: var(--blue-panel); border: 1px solid var(--blue-border);
+      border-radius: 8px; padding: 12px 14px;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 12px; align-items: center;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      animation: cardIn 0.3s ease both;
+      border-left: 3px solid transparent;
+    }
+    .bolao-card:hover { border-color: rgba(0,200,150,0.35); background: rgba(0,200,150,0.02); }
+    .bolao-card.selected {
+      border-color: var(--accent) !important;
+      background: rgba(0,200,150,0.05) !important;
+      border-left-color: var(--accent) !important;
+    }
+
+    .bolao-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .bolao-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .bolao-modal {
+      font-size: 13px; font-weight: 600; color: var(--text-bright);
+    }
+    .bolao-concurso {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+      color: var(--accent); background: rgba(0,200,150,0.08);
+      border: 1px solid rgba(0,200,150,0.2); border-radius: 4px; padding: 1px 7px;
+    }
+    .bolao-origem {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      color: var(--amber); background: rgba(245,166,35,0.08);
+      border: 1px solid rgba(245,166,35,0.2); border-radius: 4px; padding: 1px 7px;
+    }
+
+    .bolao-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btag {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      padding: 2px 7px; border-radius: 4px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--blue-border);
+      color: var(--text-mid); white-space: nowrap;
+    }
+
+    /* Saldos mini */
+    .bolao-saldos {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;
+    }
+    .saldo-pill {
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+      padding: 2px 7px; border-radius: 4px;
+      background: rgba(30,58,110,0.6); border: 1px solid var(--blue-border);
+      color: var(--text-dim); white-space: nowrap;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .saldo-pill .sp-loja { color: var(--text-mid); }
+    .saldo-pill .sp-val  { color: var(--text-bright); font-weight: 600; }
+
+    /* Select indicator */
+    .bolao-select-ind {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--blue-border);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .bolao-card.selected .bolao-select-ind {
+      background: var(--accent); border-color: var(--accent);
+    }
+    .bolao-select-ind svg { display: none; width: 10px; height: 10px; stroke: var(--blue-deep); }
+    .bolao-card.selected .bolao-select-ind svg { display: block; }
+
+    /* ── Panel inferior (fixo no bottom) ── */
+    .mov-panel {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(10,22,40,0.97); border-top: 1px solid var(--blue-border);
+      backdrop-filter: blur(12px); z-index: 200;
+      transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      max-height: 70vh; overflow-y: auto;
+    }
+    .mov-panel.open { transform: translateY(0); }
+
+    .mov-panel-inner {
+      max-width: 1100px; margin: 0 auto; padding: 20px 32px 28px;
+    }
+
+    .mov-panel-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 18px; gap: 16px;
+    }
+
+    .mov-resumo { display: flex; flex-direction: column; gap: 6px; }
+    .mov-resumo-title {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim);
+    }
+    .mov-resumo-nome { font-size: 15px; font-weight: 600; color: var(--text-bright); }
+    .mov-resumo-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rtag {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+      padding: 3px 9px; border-radius: 5px;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--blue-border);
+      color: var(--text-mid);
+    }
+    .rtag-green { color: var(--accent); background: rgba(0,200,150,0.08); border-color: rgba(0,200,150,0.2); }
+    .rtag-amber { color: var(--amber); background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.2); }
+
+    .btn-fechar-panel {
+      background: transparent; border: 1px solid var(--blue-border);
+      border-radius: 6px; padding: 6px 10px; cursor: pointer;
+      color: var(--text-dim); font-size: 18px; line-height: 1;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .btn-fechar-panel:hover { border-color: var(--error); color: var(--error); }
+
+    /* Saldo atual no panel */
+    .mov-saldo-atual {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px;
+      padding: 12px 14px;
+      background: rgba(30,58,110,0.4); border: 1px solid var(--blue-border);
+      border-radius: 8px;
+    }
+    .msa-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim);
+      width: 100%; margin-bottom: 4px;
+    }
+    .msa-item {
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--blue-panel); border: 1px solid var(--blue-border);
+      border-radius: 6px; padding: 8px 14px; gap: 2px; min-width: 90px;
+    }
+    .msa-loja { font-size: 11px; font-weight: 500; color: var(--text-mid); }
+    .msa-val  {
+      font-family: 'IBM Plex Mono', monospace; font-size: 15px;
+      font-weight: 600; color: var(--text-bright);
+    }
+    .msa-item.origem { border-color: rgba(245,166,35,0.3); background: rgba(245,166,35,0.04); }
+    .msa-item.origem .msa-loja { color: var(--amber); }
+    .msa-item.origem .msa-val  { color: var(--amber); }
+
+    /* Destinos inputs */
+    .mov-destinos-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--text-dim); margin-bottom: 12px;
+    }
+
+    .destinos-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px; margin-bottom: 18px;
+    }
+
+    .destino-field { display: flex; flex-direction: column; gap: 6px; }
+    .destino-label {
+      font-size: 11px; font-weight: 500; color: var(--text-mid);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .destino-label img {
+      width: 18px; height: 18px; border-radius: 3px; object-fit: contain;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--blue-border);
+    }
+
+    .destino-input-wrap { position: relative; display: flex; align-items: center; }
+    .destino-input {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: 6px; padding: 10px 14px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600;
+      color: var(--text-bright); outline: none; text-align: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -moz-appearance: textfield;
+    }
+    .destino-input::-webkit-outer-spin-button,
+    .destino-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .destino-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,200,150,0.1); }
+    .destino-input.filled { border-color: rgba(0,200,150,0.4); color: var(--accent); }
+    .destino-input:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .destino-sub {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      color: var(--text-dim); text-align: center; min-height: 14px;
+      transition: color 0.2s;
+    }
+    .destino-sub.on { color: var(--accent); }
+
+    /* Historico chips no campo destino */
+    .destino-hist {
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+      color: var(--text-dim); text-align: center; min-height: 12px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Actions */
+    .mov-actions {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 16px; border-top: 1px solid var(--blue-border); gap: 12px;
+    }
+    .mov-total {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-dim);
+    }
+    .mov-total span { color: var(--accent); font-size: 16px; font-weight: 600; }
+
+    .btn-zerar {
+      background: transparent; border: 1px solid var(--blue-border);
+      border-radius: 8px; padding: 10px 18px; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500;
+      color: var(--text-mid); transition: all 0.2s;
+    }
+    .btn-zerar:hover { border-color: var(--text-mid); color: var(--text-bright); }
+
+    .btn-movimentar {
+      background: var(--accent); color: var(--blue-deep); border: none;
+      border-radius: 8px; padding: 11px 28px; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-movimentar:hover { background: #00e8ad; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,200,150,0.25); }
+    .btn-movimentar:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-movimentar svg { width: 16px; height: 16px; }
+
+    /* Status */
+    .status-bar {
+      padding: 10px 14px; border-radius: 8px; font-size: 13px;
+      line-height: 1.4; display: none; margin-top: 10px;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    .status-bar.show { display: block; }
+    .status-bar.ok   { background: rgba(0,200,150,0.08); border: 1px solid rgba(0,200,150,0.2); color: #a7f3d0; }
+    .status-bar.err  { background: rgba(255,82,82,0.08); border: 1px solid rgba(255,82,82,0.2); color: #ffb3b3; }
+    .status-bar.info { background: rgba(30,58,110,0.5); border: 1px solid var(--blue-border); color: var(--text-mid); }
+
+    /* Modal confirmação */
+    .confirm-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(10,22,40,0.88); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+    }
+    .confirm-overlay.show { display: flex; }
+    .confirm-box {
+      background: var(--blue-panel); border: 1px solid var(--blue-border);
+      border-radius: 14px; padding: 28px 32px; width: min(92vw, 420px); text-align: center;
+    }
+    .confirm-icon  { font-size: 32px; margin-bottom: 12px; }
+    .confirm-title { font-size: 15px; font-weight: 600; color: var(--text-bright); margin-bottom: 8px; }
+    .confirm-body  {
+      font-size: 13px; color: var(--text-mid); line-height: 1.6;
+      margin-bottom: 22px; white-space: pre-line; text-align: left;
+      background: var(--blue-mid); border: 1px solid var(--blue-border);
+      border-radius: 8px; padding: 12px 14px; max-height: 200px; overflow-y: auto;
+    }
+    .confirm-btns { display: flex; gap: 10px; justify-content: center; }
+    .confirm-btn-cancel {
+      background: transparent; border: 1px solid var(--blue-border);
+      color: var(--text-mid); border-radius: 8px; padding: 10px 20px;
+      font-size: 13px; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; transition: all 0.2s;
+    }
+    .confirm-btn-cancel:hover { border-color: var(--text-mid); color: var(--text-bright); }
+    .confirm-btn-ok {
+      background: var(--accent); color: var(--blue-deep); border: none;
+      border-radius: 8px; padding: 10px 24px; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; transition: all 0.2s;
+    }
+    .confirm-btn-ok:hover { background: #00e8ad; }
+
+    /* Padding bottom para o panel fixo */
+    .list-area { padding-bottom: 20px; }
+    body.panel-open .list-area { padding-bottom: 420px; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 600px) {
+      .main { padding: 20px 16px 40px; }
+      .topbar { padding: 0 16px; }
+      .clock  { display: none; }
+      .destinos-grid { grid-template-columns: repeat(2, 1fr); }
+      .mov-panel-inner { padding: 16px 16px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">SL</div>
+    <div>
+      <div class="brand-name">SISLOT</div>
+      <div class="brand-sub">Movimentação de Cotas</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="clock" id="relogio">--:--:--</div>
+    <button class="btn-topbar" onclick="location.href='./menu.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      Menu
+    </button>
+    <button class="btn-topbar btn-topbar-sair" id="btnLogout">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Sair
+    </button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Movimentar Cotas</div>
+      <div class="page-subtitle">Selecione um bolão vigente e distribua as cotas entre as lojas</div>
+    </div>
+  </div>
+
+  <!-- Date stepper -->
+  <div class="date-bar">
+    <div class="date-label">Data de referência</div>
+    <div class="date-stepper">
+      <button class="btn-date" id="btnDtPrev" title="Dia anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="date-display" id="dateDisplay">—</div>
+      <button class="btn-date" id="btnDtNext" title="Próximo dia">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <button class="btn-hoje" id="btnHoje">Hoje</button>
+    <div class="boloes-count" id="boloesCount"></div>
+  </div>
+
+  <!-- List area -->
+  <div class="list-area" id="listArea">
+    <div id="stLoading" class="state-box">
+      <div class="spinner"></div>
+      <div class="state-title">Buscando bolões vigentes…</div>
+      <div class="state-sub">Aguarde enquanto consultamos o banco de dados.</div>
+    </div>
+    <div id="stVazio" class="state-box" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+      </svg>
+      <div class="state-title">Nenhum bolão vigente</div>
+      <div class="state-sub" id="stVazioSub">Não há bolões ativos para a data selecionada.</div>
+    </div>
+    <div id="stLista" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- Panel inferior -->
+<div class="mov-panel" id="movPanel">
+  <div class="mov-panel-inner">
+
+    <div class="mov-panel-header">
+      <div class="mov-resumo">
+        <div class="mov-resumo-title">Bolão Selecionado</div>
+        <div class="mov-resumo-nome" id="panelNome">—</div>
+        <div class="mov-resumo-tags" id="panelTags"></div>
+      </div>
+      <button class="btn-fechar-panel" id="btnFecharPanel">×</button>
+    </div>
+
+    <!-- Saldo atual -->
+    <div class="mov-saldo-atual" id="movSaldoAtual">
+      <div class="msa-label">Saldo atual por loja</div>
+    </div>
+
+    <!-- Destinos -->
+    <div class="mov-destinos-label">Cotas a distribuir</div>
+    <div class="destinos-grid" id="destinosGrid"></div>
+
+    <div class="status-bar" id="statusBar"></div>
+
+    <div class="mov-actions">
+      <div class="mov-total">
+        Total: <span id="movTotal">0 cotas</span>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-zerar" id="btnZerarMov">Limpar</button>
+        <button class="btn-movimentar" id="btnMovimentar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+          Movimentar
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal confirmação -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon">⇄</div>
+    <div class="confirm-title">Confirmar Movimentação</div>
+    <div class="confirm-body" id="confirmBody"></div>
+    <div class="confirm-btns">
+      <button class="confirm-btn-cancel" id="confirmCancel">Cancelar</button>
+      <button class="confirm-btn-ok" id="confirmOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="./sislot-config.js"></script>
+<script>
+const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
+
+// ── Config lojas ─────────────────────────────────────────────────
+const LOJAS = [
+  { slug: 'boulevard',    nome: 'Boulevard',    logo: './Icons/boulevard.png'    },
+  { slug: 'centro',       nome: 'Centro',       logo: './Icons/loterpraca.png'   },
+  { slug: 'lotobel',      nome: 'Lotobel',      logo: './Icons/lotobel.png'      },
+  { slug: 'santa-tereza', nome: 'Santa Tereza', logo: './Icons/santa-tereza.png' },
+  { slug: 'via-brasil',   nome: 'Via Brasil',   logo: './Icons/via-brasil.png'   },
+];
+
+// ── Estado ───────────────────────────────────────────────────────
+let usuario        = null;
+let lojaIdPorSlug  = {};
+let lojaSlugPorId  = {};
+let lojaNomePorId  = {};
+let dataAtual      = new Date();
+let bolaoSelecionado = null;   // objeto bolão completo
+let saldosPorLoja  = {};       // { loteriaId: qtdLiquida }
+let historicoPorLoja = {};     // { loteriaId: [qtds] }
+
+// ── Helpers ──────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function fmtData(dt) {
+  return dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function isoDate(dt) {
+  return dt.toISOString().slice(0, 10);
+}
+
+function fmtBRL(v) {
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function setStatus(msg, tipo = 'info') {
+  const el = $('statusBar');
+  el.textContent = msg;
+  el.className = 'status-bar show ' + tipo;
+}
+
+function clearStatus() {
+  $('statusBar').className = 'status-bar';
+}
+
+// Relógio
+function updateClock() {
+  const now = new Date();
+  $('relogio').textContent = now.toLocaleTimeString('pt-BR') + ' — ' +
+    now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── Init ─────────────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = './login.html'; return; }
+
+  const { data: usr } = await sb
+    .from('usuarios')
+    .select('id, nome, perfil, ativo, pode_logar')
+    .eq('auth_user_id', session.user.id)
+    .eq('ativo', true).eq('pode_logar', true)
+    .maybeSingle();
+
+  if (!usr) { location.href = './login.html'; return; }
+  usuario = usr;
+
+  // Carrega lojas
+  const { data: lojas } = await sb
+    .from('loterias').select('id, nome, slug').eq('ativo', true).order('nome');
+
+  if (lojas) {
+    lojas.forEach(l => {
+      lojaIdPorSlug[l.slug] = l.id;
+      lojaSlugPorId[l.id]   = l.slug;
+      lojaNomePorId[l.id]   = l.nome;
+    });
+  }
+
+  $('btnLogout').onclick = async () => {
+    await sb.auth.signOut(); location.href = './login.html';
+  };
+
+  // Data inicial = hoje
+  dataAtual = new Date();
+  atualizarDateDisplay();
+  await buscarBoloes();
+}
+
+// ── Date stepper ─────────────────────────────────────────────────
+function atualizarDateDisplay() {
+  $('dateDisplay').textContent = fmtData(dataAtual);
+}
+
+async function mudarData(delta) {
+  dataAtual.setDate(dataAtual.getDate() + delta);
+  atualizarDateDisplay();
+  fecharPanel();
+  await buscarBoloes();
+}
+
+// ── Buscar bolões ─────────────────────────────────────────────────
+async function buscarBoloes() {
+  $('stLoading').style.display = 'flex';
+  $('stVazio').style.display   = 'none';
+  $('stLista').style.display   = 'none';
+  $('boloesCount').innerHTML   = '';
+
+  const iso = isoDate(dataAtual);
+
+  const { data: boloes, error } = await sb
+    .from('boloes')
+    .select(`
+      id, modalidade, concurso, valor_cota, qtd_jogos, qtd_dezenas,
+      qtd_cotas_total, dt_inicial, dt_concurso, status,
+      loteria_id,
+      loterias(id, nome, slug)
+    `)
+    .eq('status', 'ATIVO')
+    .lte('dt_inicial', iso)
+    .gte('dt_concurso', iso)
+    .order('modalidade')
+    .order('loteria_id');
+
+  $('stLoading').style.display = 'none';
+
+  if (error || !boloes || boloes.length === 0) {
+    $('stVazioSub').textContent = `Nenhum bolão ativo para ${fmtData(dataAtual)}.`;
+    $('stVazio').style.display  = 'flex';
+    return;
+  }
+
+  // Busca saldos via view_posicao_destinos para todos os bolões
+  const ids = boloes.map(b => b.id);
+  const { data: posicoes } = await sb
+    .from('view_posicao_destinos')
+    .select('*')
+    .in('bolao_id', ids);
+
+  // Busca histórico de movimentações
+  const { data: movs } = await sb
+    .from('movimentacoes_cotas')
+    .select('bolao_id, loteria_origem, loteria_destino, qtd_cotas')
+    .in('bolao_id', ids)
+    .eq('status', 'ATIVO');
+
+  renderBoloes(boloes, posicoes || [], movs || []);
+}
+
+// ── Render lista ─────────────────────────────────────────────────
+function renderBoloes(boloes, posicoes, movs) {
+  const lista = $('stLista');
+  lista.innerHTML = '';
+
+  // Agrupa por modalidade
+  const grupos = {};
+  boloes.forEach(b => {
+    const mod = b.modalidade;
+    if (!grupos[mod]) grupos[mod] = [];
+    grupos[mod].push(b);
+  });
+
+  // Ordena modalidades alfabeticamente
+  const mods = Object.keys(grupos).sort();
+
+  let totalCards = 0;
+
+  mods.forEach(mod => {
+    // Ordena por nome da loja depois por valor da cota
+    const lista_mod = grupos[mod].sort((a, b) => {
+      const nA = a.loterias?.nome || '';
+      const nB = b.loterias?.nome || '';
+      if (nA !== nB) return nA < nB ? -1 : 1;
+      return (a.valor_cota || 0) - (b.valor_cota || 0);
+    });
+
+    // Cabeçalho da modalidade
+    const sep = document.createElement('div');
+    sep.className = 'section-sep';
+    sep.style.marginTop = totalCards > 0 ? '20px' : '0';
+    sep.innerHTML = `
+      <div class="section-sep-label">${mod}</div>
+      <div class="section-sep-line"></div>
+      <div class="section-sep-count">${lista_mod.length}</div>
+    `;
+    lista.appendChild(sep);
+
+    const grid = document.createElement('div');
+    grid.className = 'boloes-grid';
+
+    lista_mod.forEach((b, i) => {
+      // Saldos desse bolão
+      const pos = posicoes.filter(p => p.bolao_id === b.id);
+
+      // Monta pills de saldo
+      let saldoPills = '';
+      if (pos.length) {
+        pos.forEach(p => {
+          const qtd = p.qtd_cotas_liquidas || 0;
+          if (qtd > 0) {
+            saldoPills += `<div class="saldo-pill">
+              <span class="sp-loja">${p.loteria_nome || '—'}</span>
+              <span class="sp-val">${qtd}</span>
+            </div>`;
+          }
+        });
+      }
+      if (!saldoPills) {
+        saldoPills = '<div class="saldo-pill"><span class="sp-loja">Sem distribuição</span></div>';
+      }
+
+      const card = document.createElement('div');
+      card.className = 'bolao-card';
+      card.dataset.id = b.id;
+      card.style.animationDelay = (i * 0.04) + 's';
+      card.innerHTML = `
+        <div class="bolao-main">
+          <div class="bolao-header">
+            <span class="bolao-modal">${b.modalidade}</span>
+            <span class="bolao-concurso">#${b.concurso}</span>
+            <span class="bolao-origem">${b.loterias?.nome || '—'}</span>
+          </div>
+          <div class="bolao-tags">
+            <span class="btag">${b.qtd_jogos} jogos</span>
+            <span class="btag">${b.qtd_dezenas} dez.</span>
+            <span class="btag">${b.qtd_cotas_total} cotas</span>
+            <span class="btag">${fmtBRL(b.valor_cota)}/cota</span>
+          </div>
+          <div class="bolao-saldos">${saldoPills}</div>
+        </div>
+        <div class="bolao-select-ind">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="2 6 5 9 10 3"/>
+          </svg>
+        </div>
+      `;
+      card.addEventListener('click', () => selecionarBolao(b, pos, movs));
+      grid.appendChild(card);
+      totalCards++;
+    });
+
+    lista.appendChild(grid);
+  });
+
+  $('stLista').style.display   = 'block';
+  $('boloesCount').innerHTML   = `<span>${totalCards}</span> bolões vigentes`;
+}
+
+// ── Selecionar bolão ──────────────────────────────────────────────
+async function selecionarBolao(b, posicoes, movs) {
+  // Deseleciona anterior
+  document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.bolao-card[data-id="${b.id}"]`)?.classList.add('selected');
+
+  bolaoSelecionado = b;
+
+  // Monta saldos por loja
+  saldosPorLoja = {};
+  historicoPorLoja = {};
+
+  posicoes.forEach(p => {
+    saldosPorLoja[p.loteria_id] = p.qtd_cotas_liquidas || 0;
+  });
+
+  // Histórico de movimentações desse bolão
+  const movsBolao = movs.filter(m => m.bolao_id === b.id);
+  movsBolao.forEach(m => {
+    const origemId = m.loteria_origem;
+    const destId   = m.loteria_destino;
+
+    if (origemId === b.loteria_id) {
+      if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
+      historicoPorLoja[destId].push(m.qtd_cotas);
+    }
+    if (destId === b.loteria_id) {
+      if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
+      historicoPorLoja[origemId].push(-m.qtd_cotas);
+    }
+  });
+
+  abrirPanel(b, posicoes);
+}
+
+// ── Abrir panel ───────────────────────────────────────────────────
+function abrirPanel(b, posicoes) {
+  clearStatus();
+
+  // Resumo
+  $('panelNome').textContent = `${b.modalidade} — Concurso ${b.concurso}`;
+  $('panelTags').innerHTML = `
+    <span class="rtag-amber rtag">${b.loterias?.nome || '—'} (origem)</span>
+    <span class="rtag rtag-green">${fmtBRL(b.valor_cota)}/cota</span>
+    <span class="rtag">${b.qtd_jogos} jogos · ${b.qtd_dezenas} dez.</span>
+    <span class="rtag">${b.qtd_cotas_total} cotas total</span>
+  `;
+
+  // Saldo atual por loja
+  const saldoWrap = $('movSaldoAtual');
+  saldoWrap.innerHTML = '<div class="msa-label">Saldo atual por loja</div>';
+
+  LOJAS.forEach(loja => {
+    const id  = lojaIdPorSlug[loja.slug];
+    const qtd = saldosPorLoja[id] || 0;
+    if (qtd === 0 && id !== b.loteria_id) return; // só mostra quem tem saldo ou é origem
+    const item = document.createElement('div');
+    item.className = 'msa-item' + (id === b.loteria_id ? ' origem' : '');
+    item.innerHTML = `<div class="msa-loja">${loja.nome}</div><div class="msa-val">${qtd}</div>`;
+    saldoWrap.appendChild(item);
+  });
+
+  // Destinos
+  const grid = $('destinosGrid');
+  grid.innerHTML = '';
+
+  LOJAS.forEach(loja => {
+    const id         = lojaIdPorSlug[loja.slug];
+    const ehOrigem   = id === b.loteria_id;
+    const hist       = historicoPorLoja[id] || [];
+    const histStr    = hist.length
+      ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ')
+      : '—';
+
+    const field = document.createElement('div');
+    field.className = 'destino-field';
+    field.innerHTML = `
+      <div class="destino-label">
+        <img src="${loja.logo}" alt="${loja.nome}"/>
+        ${loja.nome}${ehOrigem ? ' ★' : ''}
+      </div>
+      <div class="destino-input-wrap">
+        <input type="number" class="destino-input" id="dest-${loja.slug}"
+          placeholder="0" min="-999" step="1"
+          ${ehOrigem ? 'disabled' : ''}
+          oninput="onDestInput('${loja.slug}')"/>
+      </div>
+      <div class="destino-hist" id="hist-${loja.slug}" title="Histórico">${ehOrigem ? '(origem)' : histStr}</div>
+      <div class="destino-sub" id="sub-${loja.slug}">—</div>
+    `;
+    grid.appendChild(field);
+  });
+
+  calcTotal();
+
+  $('movPanel').classList.add('open');
+  document.body.classList.add('panel-open');
+}
+
+function fecharPanel() {
+  $('movPanel').classList.remove('open');
+  document.body.classList.remove('panel-open');
+  document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
+  bolaoSelecionado = null;
+}
+
+// ── Inputs destino ────────────────────────────────────────────────
+function onDestInput(slug) {
+  const inp  = $(`dest-${slug}`);
+  const sub  = $(`sub-${slug}`);
+  const qtd  = parseInt(inp.value) || 0;
+  const cota = bolaoSelecionado?.valor_cota || 0;
+
+  if (qtd !== 0) {
+    sub.textContent = fmtBRL(Math.abs(qtd) * cota);
+    sub.className   = 'destino-sub on';
+    inp.classList.add('filled');
+  } else {
+    sub.textContent = '—';
+    sub.className   = 'destino-sub';
+    inp.classList.remove('filled');
+  }
+  calcTotal();
+}
+
+function calcTotal() {
+  let total = 0;
+  LOJAS.forEach(l => {
+    const inp = $(`dest-${l.slug}`);
+    if (inp && !inp.disabled) total += Math.abs(parseInt(inp.value) || 0);
+  });
+  $('movTotal').textContent = total + ' cotas';
+}
+
+function zerarMov() {
+  LOJAS.forEach(l => {
+    const inp = $(`dest-${l.slug}`);
+    if (inp && !inp.disabled) {
+      inp.value = '';
+      inp.classList.remove('filled');
+      $(`sub-${l.slug}`).textContent = '—';
+      $(`sub-${l.slug}`).className   = 'destino-sub';
+    }
+  });
+  calcTotal();
+  clearStatus();
+}
+
+// ── Movimentar ────────────────────────────────────────────────────
+function onMovimentar() {
+  if (!bolaoSelecionado) return;
+
+  const b = bolaoSelecionado;
+  const deltas = {};
+  let temDelta = false;
+
+  LOJAS.forEach(l => {
+    const id  = lojaIdPorSlug[l.slug];
+    const inp = $(`dest-${l.slug}`);
+    if (!inp || inp.disabled) return;
+    const qtd = parseInt(inp.value) || 0;
+    if (qtd !== 0) { deltas[l.slug] = qtd; temDelta = true; }
+  });
+
+  if (!temDelta) {
+    setStatus('Informe ao menos um valor de destino.', 'err');
+    return;
+  }
+
+  // Monta texto de confirmação
+  const linhas = [
+    `📍 Origem: ${b.loterias?.nome || '—'}`,
+    `🎯 ${b.modalidade} — Concurso ${b.concurso}`,
+    `💰 Cota: ${fmtBRL(b.valor_cota)}`,
+    '',
+    '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:',
+    '(Histórico [Mov] → Final)',
+  ];
+
+  LOJAS.forEach(l => {
+    const id     = lojaIdPorSlug[l.slug];
+    const delta  = deltas[l.slug] || 0;
+    const hist   = historicoPorLoja[id] || [];
+    const saldo  = saldosPorLoja[id] || 0;
+    const final  = saldo + delta;
+
+    if (delta === 0 && hist.length === 0) return;
+
+    const histStr  = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
+    const deltaStr = delta > 0 ? `[+${delta}]` : delta < 0 ? `[${delta}]` : '';
+
+    if (delta !== 0) {
+      linhas.push(`${l.nome}: ${histStr} ${deltaStr} → ${final}`);
+    } else {
+      linhas.push(`${l.nome}: ${histStr} → ${saldo} (sem alteração)`);
+    }
+  });
+
+  linhas.push('', '⚠️ Confirma a movimentação?');
+
+  $('confirmBody').textContent = linhas.join('\n');
+
+  const overlay = $('confirmOverlay');
+  overlay.classList.add('show');
+
+  $('confirmCancel').onclick = () => overlay.classList.remove('show');
+  overlay.onclick = e => { if (e.target === overlay) overlay.classList.remove('show'); };
+
+  $('confirmOk').onclick = async () => {
+    overlay.classList.remove('show');
+    await doMovimentar(b, deltas);
+  };
+}
+
+async function doMovimentar(b, deltas) {
+  const btn = $('btnMovimentar');
+  btn.disabled = true;
+  btn.textContent = 'Registrando…';
+  setStatus('Registrando movimentação…', 'info');
+
+  try {
+    const inserts = [];
+    for (const [slug, qtd] of Object.entries(deltas)) {
+      if (qtd === 0) continue;
+      const destId = lojaIdPorSlug[slug];
+      if (!destId) throw new Error(`Loja não encontrada: ${slug}`);
+      inserts.push({
+        bolao_id:        b.id,
+        loteria_origem:  b.loteria_id,
+        loteria_destino: destId,
+        qtd_cotas:       qtd,
+        valor_unitario:  b.valor_cota,
+        status:          'ATIVO',
+        criado_por:      usuario.id,
+      });
+    }
+
+    if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
+
+    const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
+    if (error) throw new Error(error.message);
+
+    setStatus('✓ Movimentação registrada com sucesso!', 'ok');
+    zerarMov();
+
+    // Recarrega bolões para atualizar saldos
+    await buscarBoloes();
+
+  } catch (e) {
+    setStatus(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+        <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+      Movimentar`;
+  }
+}
+
+// ── Bindings ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  $('btnDtPrev').addEventListener('click', () => mudarData(-1));
+  $('btnDtNext').addEventListener('click', () => mudarData(+1));
+  $('btnHoje').addEventListener('click', async () => {
+    dataAtual = new Date();
+    atualizarDateDisplay();
+    fecharPanel();
+    await buscarBoloes();
+  });
+  $('btnFecharPanel').addEventListener('click', fecharPanel);
+  $('btnZerarMov').addEventListener('click', zerarMov);
+  $('btnMovimentar').addEventListener('click', onMovimentar);
+  init();
+});
+</script>
+</body>
+</html>
