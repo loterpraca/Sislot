@@ -699,8 +699,6 @@ async function onMovimentar() {
     const modal    = $('modalidade').value.trim();
     const concurso = $('concurso').value.trim();
     const cota     = parseCota($('valorCota').value);
-    const jogos    = parseInt($('qtdJogos').value) || 0;
-    const dezenas  = parseInt($('qtdDezenas').value) || 0;
 
     if (!modal || !concurso || !cota)
       throw new Error('Preencha modalidade, concurso e valor da cota.');
@@ -729,22 +727,90 @@ async function onMovimentar() {
 
     if (!bolao) throw new Error('Bolão não encontrado. Cadastre antes de movimentar.');
 
+    // Busca histórico de movimentações por destino
+    const { data: movs } = await sb
+      .from('movimentacoes_cotas')
+      .select('loteria_destino, loteria_origem, qtd_cotas')
+      .eq('bolao_id', bolao.id)
+      .eq('status', 'ATIVO');
+
+    // Monta saldo atual por loja destino
+    // qtd_cotas positivo = envio da origem para destino
+    // se loteria_origem = destino = devolução (subtrai)
+    const saldoPorId = {};
+    const historicoDetalhePorId = {};
+
+    if (movs) {
+      movs.forEach(m => {
+        const destId   = m.loteria_destino;
+        const origemId = m.loteria_origem;
+
+        // Movimento de envio: origem → destino
+        if (origemId === loteriaAtiva.loteria_id) {
+          if (!saldoPorId[destId])           saldoPorId[destId] = 0;
+          if (!historicoDetalhePorId[destId]) historicoDetalhePorId[destId] = [];
+          saldoPorId[destId]              += m.qtd_cotas;
+          historicoDetalhePorId[destId].push(m.qtd_cotas);
+        }
+
+        // Devolução: destino → origem (subtrai do saldo do destino)
+        if (destId === loteriaAtiva.loteria_id) {
+          if (!saldoPorId[origemId])           saldoPorId[origemId] = 0;
+          if (!historicoDetalhePorId[origemId]) historicoDetalhePorId[origemId] = [];
+          saldoPorId[origemId]              -= m.qtd_cotas;
+          historicoDetalhePorId[origemId].push(-m.qtd_cotas);
+        }
+      });
+    }
+
     // Monta confirmação
     const linhas = [
       `📍 Origem: ${loteriaAtiva.loteria_nome}`,
       `🎯 ${modal} — Concurso ${concurso}`,
-      `💰 Cota: ${fmtBRL(cota)}`, '',
-      '📊 DESTINOS:'
+      `🎫 Cota: ${fmtBRL(cota)}`, '',
+      '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:',
+      '(Histórico [Mov] → Final)',
     ];
-    Object.entries(mapaDeltas).forEach(([slug, v]) => {
-      if (v !== 0 && slug !== loteriaAtiva.loteria_slug) {
-        const nome = LOJA_CONFIG[slug]?.nome || slug;
-        linhas.push(`  ${nome}: ${v > 0 ? '+' : ''}${v} cotas`);
-      }
-    });
-    linhas.push('', 'Confirma?');
 
-    showModal('Confirmar movimentação', linhas.join('\n'), async () => {
+    const slugsDestino = ['boulevard', 'centro', 'lotobel', 'santa-tereza', 'via-brasil'];
+    const icones = {
+      'boulevard':    '🏢',
+      'centro':       '🏙️',
+      'lotobel':      '🏛️',
+      'santa-tereza': '⛪',
+      'via-brasil':   '🛣️',
+    };
+
+    slugsDestino.forEach(slug => {
+      const delta  = mapaDeltas[slug] || 0;
+      const destId = lojaIdPorSlug[slug];
+      const nome   = LOJA_CONFIG[slug]?.nome || slug;
+      const icone  = icones[slug] || '📍';
+      const hist   = historicoDetalhePorId[destId] || [];
+      const saldo  = saldoPorId[destId] || 0;
+      const final  = saldo + delta;
+
+      if (delta === 0 && hist.length === 0) {
+        linhas.push(`${icone} ${nome}: 0 (sem alteração)`);
+        return;
+      }
+
+      if (delta === 0) {
+        const histStr = hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ');
+        linhas.push(`${icone} ${nome}: ${histStr} → ${saldo} (sem alteração)`);
+        return;
+      }
+
+      const histStr  = hist.length
+        ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ')
+        : '0';
+      const deltaStr = delta > 0 ? `[+${delta}]` : `[${delta}]`;
+      linhas.push(`${icone} ${nome}: ${histStr} ${deltaStr} → ${final}`);
+    });
+
+    linhas.push('', '⚠️ Confirma a atualização desses valores?');
+
+    showModal('Confirmar Movimentação', linhas.join('\n'), async () => {
       setBtnLoading(btn, true);
       setStatus('Registrando…', 'muted', 'spinner fa-spin');
       try {
@@ -762,6 +828,13 @@ async function onMovimentar() {
     setStatus(e.message, 'err', 'exclamation-circle');
   }
 }
+```
+
+O formato no modal ficará assim:
+```
+🏢 Boulevard: 10 + 5 [-3] [+10] → 22
+🏙️ Centro: 0 (sem alteração)
+🏛️ Lotobel: 5 [+5] → 10
 
 async function doMovimentar(bolao, mapaDeltas) {
   const inserts = [];
