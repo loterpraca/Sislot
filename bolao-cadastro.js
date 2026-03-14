@@ -776,7 +776,6 @@ async function doMovimentar(bolao, mapaDeltas) {
       loteria_destino: destId,
       qtd_cotas:       qtd,                          // pode ser negativo (redistribuição)
       valor_unitario:  bolao.valor_cota,
-      valor_total:     Math.abs(qtd) * bolao.valor_cota,
       status:          'ATIVO',
       criado_por:      usuario.id,
     });
