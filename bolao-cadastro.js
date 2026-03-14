@@ -69,16 +69,14 @@ async function init() {
   if (errUsr || !usr) { location.href = './login.html'; return; }
 
   // 3. Verifica perfil — operador não acessa essa tela
-  if (usr.perfil === 'OPERADOR') {
-    alert('Sem permissão para acessar esta tela.');
-    location.href = './login.html';
-    return;
-  }
 
   usuario = usr;
 
   // 4. Carrega lojas e modelos em paralelo
-  await Promise.all([carregarLojas(), carregarTodasLojas()]);
+ await Promise.all([carregarLojas(), carregarTodasLojas()]);
+await carregarModelos(); // ← sobe para cá, antes do renderQuickbar
+// ...
+renderQuickbar();
 
   if (todasLojas.length === 0) {
     alert('Nenhuma loja vinculada a este usuário.');
@@ -205,17 +203,9 @@ function atualizarCamposMov() {
  * TROCA DE LOJA (sócio com múltiplas lojas)
  ************************************************************/
 function trocarLoja(slug) {
-  // Só troca se o usuário tiver acesso à loja
   const loja = todasLojas.find(l => l.loteria_slug === slug);
-  if (!loja && usuario.perfil !== 'ADMIN') return;
-
-  if (loja) {
-    loteriaAtiva = loja;
-  } else {
-    // ADMIN pode trocar para qualquer loja
-    loteriaAtiva = { loteria_slug: slug, loteria_nome: LOJA_CONFIG[slug]?.nome || slug };
-  }
-
+  if (!loja) return;
+  loteriaAtiva = loja;
   aplicarTema(slug);
   atualizarOrigemUI();
   atualizarCamposMov();
@@ -654,8 +644,19 @@ async function onBuscar() {
     if (jogos > 0)   query.eq('qtd_jogos', jogos);
     if (dezenas > 0) query.eq('qtd_dezenas', dezenas);
 
-    const { data: bolao } = await query.maybeSingle();
+   let query = sb
+  .from('boloes')
+  .select('id, valor_cota, qtd_cotas_total, enc_fisico, enc_virtual, custo_jogo, status')
+  .eq('loteria_id', loteriaAtiva.loteria_id)
+  .eq('modalidade', modal)
+  .eq('concurso', concurso)
+  .eq('valor_cota', cota)
+  .neq('status', 'CANCELADO');
 
+if (jogos > 0)   query = query.eq('qtd_jogos', jogos);
+if (dezenas > 0) query = query.eq('qtd_dezenas', dezenas);
+
+const { data: bolao } = await query.maybeSingle();
     if (!bolao) {
       showModal('Não encontrado', [
         '❌ Bolão não encontrado', '',
