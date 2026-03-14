@@ -556,7 +556,6 @@ async function doCadastrar(b, custo, somarCotas = false) {
     qtd_dezenas:     b.qtdDezenas,
     valor_cota:      b.valorCota,
     qtd_cotas_total: b.cotas,
-    custo_jogo:      custo,
     status:          'ATIVO',
   });
   if (error) throw new Error(error.message);
