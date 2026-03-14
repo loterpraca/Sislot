@@ -150,9 +150,14 @@ async function carregarModelos() {
   SHORTCUTS = {};
   if (!data) return;
 
+  // Monta mapa inverso: id -> slug
+  const idParaSlug = {};
+  Object.entries(lojaIdPorSlug).forEach(([slug, id]) => {
+    idParaSlug[id] = slug;
+  });
+
   data.forEach(m => {
-    const loja = todasLojas.find(l => l.loteria_id === m.loteria_id);
-    const slug = loja?.loteria_slug;
+    const slug = idParaSlug[m.loteria_id];
     if (!slug) return;
     if (!SHORTCUTS[slug]) SHORTCUTS[slug] = {};
     if (!SHORTCUTS[slug][m.modalidade]) SHORTCUTS[slug][m.modalidade] = [];
