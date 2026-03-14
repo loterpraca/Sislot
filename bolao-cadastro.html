@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>SISLOT — Bolões</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <style>
+    :root{--primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#818cf8;--secondary:#f59e0b;--bg:#f8fafc;--card:#fff;--txt:#0f172a;--muted:#64748b;--label:#334155;--line:#e2e8f0;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--shadow:0 10px 25px rgba(0,0,0,.08);--shadow-lg:0 20px 50px rgba(0,0,0,.12);--radius:16px;--radius-sm:12px;--pad:7px;--font:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;--transition:all .25s cubic-bezier(.4,0,.2,1);}
+    [data-theme="boulevard"]{--primary:#4682B4;--primary-dark:#2563eb;--primary-light:#60a5fa;--secondary:#f97316}
+    [data-theme="centro"]{--primary:#2E8B57;--primary-dark:#16a34a;--primary-light:#4ade80;--secondary:#eab308}
+    [data-theme="lotobel"]{--primary:#CD5C5C;--primary-dark:#b91c1c;--primary-light:#ef4444;--secondary:#d97706}
+    [data-theme="santa-tereza"]{--primary:#483D8B;--primary-dark:#7e22ce;--primary-light:#a855f7;--secondary:#f59e0b}
+    [data-theme="via-brasil"]{--primary:#0ea5e9;--primary-dark:#0284c7;--primary-light:#38bdf8;--secondary:#22c55e}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--font);color:var(--txt);background:var(--bg);min-height:100vh;transition:var(--transition)}
+    .header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:10px 12px;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+    .header-content{max-width:920px;margin:0 auto;display:flex;align-items:center;gap:12px}
+    .logo-container{width:58px;height:58px;background:#fff;border-radius:50%;box-shadow:0 6px 16px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto}
+    .logo-container img{width:122%;height:122%;object-fit:cover;object-position:center}
+    .header-title{flex:1;min-width:0}
+    .header-title h1{font-size:17px;font-weight:900;line-height:1.05;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .header-title p{font-size:12px;opacity:.9;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .brand-logos{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex:0 0 auto}
+    .brand-logos button{border:0;background:rgba(255,255,255,.14);width:34px;height:34px;border-radius:12px;display:grid;place-items:center;cursor:pointer;transition:var(--transition);padding:0}
+    .brand-logos button:hover{transform:translateY(-1px);background:rgba(255,255,255,.22)}
+    .brand-logos button.active{outline:2px solid rgba(255,255,255,.55);background:rgba(255,255,255,.24)}
+    .brand-logos img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))}
+    .wrap{max-width:920px;margin:0 auto;padding:0 12px 30px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--pad);margin:8px 0;transition:var(--transition)}
+    .card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+    .section-header{display:flex;align-items:center;gap:10px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--primary)}
+    .section-icon{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;flex:0 0 auto}
+    .section-title{font-size:14px;font-weight:800;color:var(--txt);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .grid-1{display:grid;grid-template-columns:1fr;gap:10px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .force-2{grid-template-columns:1fr 1fr!important}
+    .field label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--label);font-weight:800;margin:0 0 5px 2px}
+    .field label i{color:var(--primary);font-size:12px}
+    .label-row{display:flex;align-items:center;justify-content:space-between;gap:4px}
+    .day-stepper{display:inline-flex;align-items:center;gap:3px}
+    .day-btn{width:22px!important;height:22px!important;min-height:22px!important;padding:0!important;border-radius:8px!important;border:2px solid var(--line)!important;background:#fff!important;color:var(--primary)!important;cursor:pointer;transition:var(--transition);display:grid!important;place-items:center!important;gap:0!important}
+    .day-btn:hover{border-color:var(--primary)!important;transform:translateY(-1px)}
+    .day-btn i{font-size:10px!important}
+    .field input,.field select{width:100%;font-size:13px;padding:6px 7px;border-radius:var(--radius-sm);border:2px solid var(--line);outline:none;background:#fff;transition:var(--transition);font-family:var(--font)}
+    .field input:focus,.field select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.10);transform:translateY(-1px)}
+    .field input:disabled,.field select:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;opacity:.75}
+    .origem-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.06);color:var(--txt);font-size:12px;font-weight:900;border:1px solid var(--line)}
+    .origem-chip i{color:var(--primary)}
+    .actions-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{border:0;border-radius:var(--radius-sm);padding:6px 10px;font-size:13px;font-weight:900;cursor:pointer;min-height:34px;transition:var(--transition);font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 4px 12px rgba(99,102,241,.25)}
+    .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.32)}
+    .btn-dark{background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;box-shadow:0 4px 12px rgba(15,23,42,.25)}
+    .btn-dark:hover:not(:disabled){transform:translateY(-1px)}
+    .btn-danger{background:linear-gradient(135deg,var(--danger),#dc2626);color:#fff}
+    .btn-danger:hover:not(:disabled){transform:translateY(-1px)}
+    .btn-ghost{background:#fff;border:2px solid var(--line);color:var(--txt)}
+    .btn-ghost:hover:not(:disabled){border-color:var(--primary);color:var(--primary);transform:translateY(-1px)}
+    .btn-loading{pointer-events:none;opacity:.75}
+    .btn-loading::after{content:"";position:absolute;width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .status{margin-top:10px;padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}
+    .status i{font-size:15px;margin-top:1px}
+    .status.muted{background:#f1f5f9;border:2px solid #e2e8f0;color:var(--muted)}
+    .status.ok{background:#dcfce7;border:2px solid #86efac;color:#15803d}
+    .status.ok i{color:var(--success)}
+    .status.err{background:#fee2e2;border:2px solid #fca5a5;color:#991b1b}
+    .status.err i{color:var(--danger)}
+    .quickbar{padding:4px;margin:4px 0}
+    .quickbar-grid{display:flex;gap:7px;align-items:stretch;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+    .quickbar-grid::-webkit-scrollbar{display:none}
+    .qmod{position:relative;height:40px;width:57px;min-width:57px;flex:0 0 57px;border:2px solid var(--line);border-radius:14px;background:#fff;padding:0;overflow:hidden;cursor:pointer;transition:var(--transition);display:block}
+    .qmod:hover{transform:translateY(-1px)}
+    .qmod.active{border-color:var(--primary);box-shadow:0 8px 18px rgba(0,0,0,.10)}
+    .qmod img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:0;transform:scale(1.22);transform-origin:center;display:block;pointer-events:none}
+    @media(min-width:760px){.qmod{height:49px;width:69px;min-width:69px;flex-basis:69px}}
+    .quickchips{display:none;margin-top:4px}
+    .quickchips.active{display:block}
+    .chips-row{display:flex;gap:6px;align-items:stretch;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+    .chips-row::-webkit-scrollbar{display:none}
+    .chip-tile{all:unset;box-sizing:border-box;position:relative;height:31px;width:45px;min-width:45px;flex:0 0 45px;border:2px solid var(--line);border-radius:11px;background:#fff;overflow:hidden;cursor:pointer;transition:var(--transition);display:block}
+    .chip-tile:hover{transform:translateY(-1px);border-color:rgba(99,102,241,.45)}
+    .chip-tile.active{border-color:var(--primary);box-shadow:0 4px 10px rgba(0,0,0,.08)}
+    .chip-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:2px;transform:scale(1.15);transform-origin:center;display:block;pointer-events:none;z-index:1}
+    .chip-badge{position:absolute;left:3px;bottom:3px;padding:2px 5px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);font-size:9px;font-weight:900;line-height:1;color:var(--txt);pointer-events:none;z-index:2}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.66);display:none;align-items:center;justify-content:center;z-index:1000}
+    .modal-overlay.active{display:flex}
+    .modal{background:#fff;border-radius:var(--radius);padding:20px;max-width:520px;width:92%;box-shadow:0 25px 50px rgba(0,0,0,.3)}
+    .modal-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .modal-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:linear-gradient(135deg,var(--warning),#f59e0b);color:#fff;flex:0 0 auto}
+    .modal-title{font-size:18px;font-weight:900;color:var(--txt)}
+    .modal-body{color:var(--muted);line-height:1.55;margin-bottom:16px;white-space:pre-line;font-size:14px}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-content">
+    <div class="logo-container"><img src="./icons/loterpraca.png" alt="Logo" id="logoImg"/></div>
+    <div class="header-title">
+      <h1 id="headerTitle">Bolões</h1>
+      <p id="headerSub">Cadastro e movimentação</p>
+    </div>
+    <div class="brand-logos">
+      <button type="button" class="brand-btn" data-slug="boulevard"    title="Boulevard">   <img src="./icons/boulevard.png"    alt="Boulevard"/></button>
+      <button type="button" class="brand-btn" data-slug="centro"       title="Centro">      <img src="./icons/loterpraca.png"   alt="Centro"/></button>
+      <button type="button" class="brand-btn" data-slug="lotobel"      title="Lotobel">     <img src="./icons/lotobel.png"      alt="Lotobel"/></button>
+      <button type="button" class="brand-btn" data-slug="santa-tereza" title="Santa Tereza"><img src="./icons/santa-tereza.png" alt="Santa Tereza"/></button>
+      <button type="button" class="brand-btn" data-slug="via-brasil"   title="Via Brasil">  <img src="./icons/via-brasil.png"   alt="Via Brasil"/></button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="quickbar" id="quickZone">
+    <div class="quickbar-grid" id="modGrid"></div>
+    <div class="quickchips" id="chipsWrap"><div class="chips-row" id="chipsRow"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-header">
+      <div class="section-icon"><i class="fas fa-ticket-alt"></i></div>
+      <h2 class="section-title">Dados do bolão</h2>
+    </div>
+    <div class="grid-1">
+      <div class="field">
+        <label><i class="fas fa-store"></i> Loja de origem</label>
+        <div class="origem-chip" id="origemChip"><i class="fas fa-store"></i> <span id="origemNome">—</span></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label><i class="fas fa-clover"></i> Modalidade</label>
+        <select id="modalidade">
+          <option value="">Selecione…</option>
+          <option>Mega Sena</option><option>Lotofácil</option><option>Quina</option>
+          <option>Dupla Sena</option><option>Dia de Sorte</option><option>Supersete</option>
+          <option>Milionária</option><option>Timemania</option><option>Loteca</option>
+          <option>Páscoa</option><option>São João</option><option>Independência</option><option>Virada</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><i class="fas fa-hashtag"></i> Concurso</label>
+        <input id="concurso" inputmode="numeric" placeholder="Ex: 2940"/>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="label-row">
+          <span><i class="fas fa-calendar-day"></i> Data inicial</span>
+          <span class="day-stepper">
+            <button type="button" class="day-btn" id="btnDiPrev"><i class="fas fa-chevron-left"></i></button>
+            <button type="button" class="day-btn" id="btnDiNext"><i class="fas fa-chevron-right"></i></button>
+          </span>
+        </label>
+        <input id="dataInicial" type="date"/>
+      </div>
+      <div class="field">
+        <label class="label-row">
+          <span><i class="fas fa-calendar-check"></i> Data concurso</span>
+          <span class="day-stepper">
+            <button type="button" class="day-btn" id="btnDcPrev"><i class="fas fa-chevron-left"></i></button>
+            <button type="button" class="day-btn" id="btnDcNext"><i class="fas fa-chevron-right"></i></button>
+          </span>
+        </label>
+        <input id="dataConcurso" type="date"/>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label><i class="fas fa-list-ol"></i> Qtd jogos</label><input id="qtdJogos" inputmode="numeric" placeholder="Ex: 10"/></div>
+      <div class="field"><label><i class="fas fa-dice"></i> Dezenas</label><input id="qtdDezenas" inputmode="numeric" placeholder="Ex: 8"/></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label><i class="fas fa-money-bill-wave"></i> Valor da cota (R$)</label><input id="valorCota" inputmode="decimal" placeholder="Ex: 22,68"/></div>
+      <div class="field"><label><i class="fas fa-users"></i> Qtd cotas</label><input id="cotas" inputmode="numeric" placeholder="Ex: 100"/></div>
+    </div>
+    <div class="actions-3">
+      <button class="btn-primary" id="btnCadastrar"><i class="fas fa-check"></i> Cadastrar</button>
+      <button class="btn-ghost"   id="btnLimpar"   ><i class="fas fa-eraser"></i> Limpar</button>
+      <button class="btn-danger"  id="btnDeletar"  ><i class="fas fa-ban"></i> Cancelar</button>
+    </div>
+    <div id="status" class="status muted"><i class="fas fa-info-circle"></i><span>Pronto.</span></div>
+  </div>
+
+  <div class="card">
+    <div class="section-header">
+      <div class="section-icon"><i class="fas fa-exchange-alt"></i></div>
+      <h2 class="section-title">
+        Movimentar
+        <span class="origem-chip" id="movOrigemChip" style="margin-left:8px">
+          <i class="fas fa-store"></i> <span id="movOrigemNome">—</span>
+        </span>
+        <button type="button" class="btn-ghost" id="btnBuscar" style="padding:3px 9px;font-size:12px;margin-left:4px">
+          <i class="fas fa-search"></i> Buscar
+        </button>
+      </h2>
+    </div>
+    <div class="grid-2 force-2">
+      <div class="field"><label><i class="fas fa-building"></i> Boulevard</label><input id="deltaBoulevard" inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><label><i class="fas fa-city"></i> Centro</label><input id="deltaCentro" inputmode="numeric" placeholder="0"/></div>
+    </div>
+    <div class="grid-2 force-2">
+      <div class="field"><label><i class="fas fa-landmark"></i> Lotobel</label><input id="deltaLotobel" inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><label><i class="fas fa-church"></i> Santa Tereza</label><input id="deltaSantaTereza" inputmode="numeric" placeholder="0"/></div>
+    </div>
+    <div class="grid-2 force-2">
+      <div class="field"><label><i class="fas fa-road"></i> Via Brasil</label><input id="deltaViaBrasil" inputmode="numeric" placeholder="0"/></div>
+      <div class="field"></div>
+    </div>
+    <div class="actions">
+      <button class="btn-dark"  id="btnMovimentar"><i class="fas fa-arrows-alt-h"></i> Movimentar</button>
+      <button class="btn-ghost" id="btnZerarMov"  ><i class="fas fa-undo"></i> Limpar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-icon"><i class="fas fa-question-circle"></i></div>
+      <h3 class="modal-title" id="modalTitle">Confirmação</h3>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost"   id="modalCancel" ><i class="fas fa-times"></i> Cancelar</button>
+      <button class="btn-primary" id="modalConfirm"><i class="fas fa-check"></i> Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="./sislot-config.js"></script>
+<script src="./bolao-cadastro.js"></script>
+</body>
+</html>
