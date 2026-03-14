@@ -828,13 +828,6 @@ async function onMovimentar() {
     setStatus(e.message, 'err', 'exclamation-circle');
   }
 }
-```
-
-O formato no modal ficará assim:
-```
-🏢 Boulevard: 10 + 5 [-3] [+10] → 22
-🏙️ Centro: 0 (sem alteração)
-🏛️ Lotobel: 5 [+5] → 10
 
 async function doMovimentar(bolao, mapaDeltas) {
   const inserts = [];
