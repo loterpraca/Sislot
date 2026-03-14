@@ -477,7 +477,6 @@ async function onCadastrar() {
       `🗓️ ${fmtData(b.dataInicial)} → ${fmtData(b.dataConcurso)}`,
       `🎮 ${b.qtdJogos} jogos de ${b.qtdDezenas} dezenas`,
       `💰 Cota: ${fmtBRL(b.valorCota)} | ${b.cotas} cotas`,
-      `🏷️ Custo do jogo: ${fmtBRL(custo)}`, '',
       'Confirma o cadastro?'
     ].join('\n');
 
@@ -485,7 +484,7 @@ async function onCadastrar() {
       setBtnLoading(btn, true);
       setStatus('Salvando bolão…', 'muted', 'spinner fa-spin');
       try {
-        await doCadastrar(b, custo);
+        await doCadastrar(b);
       } catch (e) {
         setStatus(e.message, 'err', 'exclamation-circle');
       } finally {
@@ -497,10 +496,9 @@ async function onCadastrar() {
   }
 }
 
-async function doCadastrar(b, custo, somarCotas = false) {
+async function doCadastrar(b, somarCotas = false) {
   const loteriaId = loteriaAtiva.loteria_id;
 
-  // Busca duplicata (todos os 6 campos)
   const { data: existe } = await sb
     .from('boloes')
     .select('id, qtd_cotas_total')
@@ -524,7 +522,7 @@ async function doCadastrar(b, custo, somarCotas = false) {
     ].join('\n');
 
     showModal('Bolão já existe', corpo, async () => {
-      try { await doCadastrar(b, custo, true); }
+      try { await doCadastrar(b, true); }
       catch (e) { setStatus(e.message, 'err', 'exclamation-circle'); }
     });
     setStatus('Aguardando confirmação…', 'muted', 'clock');
@@ -533,10 +531,9 @@ async function doCadastrar(b, custo, somarCotas = false) {
 
   if (existe && somarCotas) {
     const novoTotal = existe.qtd_cotas_total + b.cotas;
-    const novoCusto = parseFloat(((b.valorCota * novoTotal) / 1.35).toFixed(2));
     const { error } = await sb
       .from('boloes')
-      .update({ qtd_cotas_total: novoTotal, custo_jogo: novoCusto, updated_at: new Date().toISOString() })
+      .update({ qtd_cotas_total: novoTotal, updated_at: new Date().toISOString() })
       .eq('id', existe.id);
     if (error) throw new Error(error.message);
     setStatus(`✓ Cotas somadas! Novo total: ${novoTotal}`, 'ok', 'check-circle');
