@@ -204,15 +204,23 @@ function atualizarCamposMov() {
  ************************************************************/
 function trocarLoja(slug) {
   const loja = todasLojas.find(l => l.loteria_slug === slug);
-  if (!loja) return;
-  loteriaAtiva = loja;
+  if (loja) {
+    loteriaAtiva = loja;
+  } else {
+    const id = lojaIdPorSlug[slug];
+    if (!id) return;
+    loteriaAtiva = {
+      loteria_id:   id,
+      loteria_slug: slug,
+      loteria_nome: LOJA_CONFIG[slug]?.nome || slug,
+    };
+  }
   aplicarTema(slug);
   atualizarOrigemUI();
   atualizarCamposMov();
   renderChips(localStorage.getItem('sl_active_mod') || '');
   saveDraft();
 }
-
 /************************************************************
  * QUICKBAR
  ************************************************************/
