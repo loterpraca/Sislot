@@ -378,10 +378,14 @@ function setStatus(msg, tipo = 'muted', icone = 'info-circle') {
 }
 
 function setBtnLoading(btn, on) {
-  on ? (btn.classList.add('btn-loading'); btn.disabled = true)
-     : (btn.classList.remove('btn-loading'); btn.disabled = false);
+  if (on) {
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+  } else {
+    btn.classList.remove('btn-loading');
+    btn.disabled = false;
+  }
 }
-
 /************************************************************
  * MODAL
  ************************************************************/
