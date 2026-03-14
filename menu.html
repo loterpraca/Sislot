@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>SISLOT — Menu Principal</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue-deep:   #0a1628;
+      --blue-mid:    #0f2244;
+      --blue-panel:  #132952;
+      --blue-border: #1e3a6e;
+      --accent:      #00c896;
+      --text-bright: #e8eef8;
+      --text-mid:    #8fa3c8;
+      --text-dim:    #4a6491;
+      --error:       #ff5252;
+      --amber:       #f5a623;
+    }
+
+    body {
+      background: var(--blue-deep);
+      font-family: 'IBM Plex Sans', sans-serif;
+      color: var(--text-bright);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,200,150,0.10) 0%, transparent 65%),
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(30,58,110,0.3) 39px, rgba(30,58,110,0.3) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(30,58,110,0.15) 39px, rgba(30,58,110,0.15) 40px);
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px; height: 56px;
+      background: rgba(15,34,68,0.95);
+      border-bottom: 1px solid var(--blue-border);
+      backdrop-filter: blur(8px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 32px; height: 32px; background: var(--accent); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+      font-weight: 600; color: var(--blue-deep);
+    }
+    .brand-name { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-bright); }
+    .brand-sub  { font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+    .clock {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+      color: var(--text-mid); letter-spacing: 0.05em;
+    }
+    .user-pill {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--blue-border);
+      border-radius: 6px; padding: 5px 12px 5px 6px;
+    }
+    .user-avatar {
+      width: 24px; height: 24px; border-radius: 4px;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      font-weight: 600; color: var(--blue-deep); flex-shrink: 0;
+    }
+    .user-name { font-size: 12px; font-weight: 500; color: var(--text-bright); }
+    .user-role { font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; text-transform: uppercase; }
+
+    .btn-logout {
+      background: transparent; border: 1px solid rgba(255,82,82,0.2);
+      border-radius: 5px; padding: 5px 10px; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;
+      font-weight: 500; color: rgba(255,82,82,0.6);
+      display: flex; align-items: center; gap: 5px; transition: all 0.2s;
+    }
+    .btn-logout:hover { background: rgba(255,82,82,0.08); border-color: var(--error); color: var(--error); }
+    .btn-logout svg { width: 12px; height: 12px; }
+
+    /* ── Main ── */
+    .main {
+      flex: 1; max-width: 900px; width: 100%;
+      margin: 0 auto; padding: 40px 32px 48px;
+    }
+
+    /* ── Hero ── */
+    .hero { margin-bottom: 36px; animation: fadeIn 0.45s ease both; }
+
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--accent); background: rgba(0,200,150,0.08);
+      border: 1px solid rgba(0,200,150,0.2); border-radius: 4px;
+      padding: 4px 10px; margin-bottom: 16px;
+    }
+    .hero-tag-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); animation: blink 1.5s ease infinite;
+    }
+
+    .hero-title {
+      font-size: clamp(22px, 4vw, 34px); font-weight: 600;
+      color: var(--text-bright); letter-spacing: -0.02em;
+      line-height: 1.15; margin-bottom: 8px;
+    }
+    .hero-title span { color: var(--accent); }
+    .hero-sub { font-size: 14px; color: var(--text-mid); font-weight: 300; }
+
+    /* ── Stats ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-bottom: 32px;
+      animation: fadeIn 0.45s 0.08s ease both;
+    }
+    .stat-card {
+      background: var(--blue-panel); border: 1px solid var(--blue-border);
+      border-radius: 8px; padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: rgba(0,200,150,0.3); }
+    .stat-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .si-green  { background: rgba(0,200,150,0.1);  border: 1px solid rgba(0,200,150,0.2);  }
+    .si-amber  { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.2); }
+    .si-blue   { background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); }
+    .si-green svg { stroke: var(--accent); }
+    .si-amber svg { stroke: var(--amber); }
+    .si-blue  svg { stroke: #38bdf8; }
+    .stat-info { display: flex; flex-direction: column; }
+    .stat-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-dim); margin-bottom: 4px;
+    }
+    .stat-value {
+      font-family: 'IBM Plex Mono', monospace; font-size: 20px;
+      font-weight: 600; color: var(--text-bright);
+    }
+
+    /* ── Section sep ── */
+    .section-sep {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+    }
+    .section-sep-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--text-dim); white-space: nowrap;
+    }
+    .section-sep-line { flex: 1; height: 1px; background: var(--blue-border); }
+
+    /* ── Menu cards ── */
+    .menu-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 14px; margin-bottom: 32px;
+    }
+    @media (min-width: 680px) {
+      .menu-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .menu-card {
+      background: var(--blue-panel); border: 1px solid var(--blue-border);
+      border-radius: 10px; padding: 22px 18px 20px;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 16px;
+      text-decoration: none; color: inherit; position: relative; overflow: hidden;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    }
+    .menu-card::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      background: var(--card-color, var(--accent)); opacity: 0; transition: opacity 0.2s;
+    }
+    .menu-card:hover {
+      border-color: var(--card-color, var(--accent));
+      background: rgba(255,255,255,0.025);
+      transform: translateY(-2px);
+    }
+    .menu-card:hover::after { opacity: 1; }
+    .menu-card:active { transform: translateY(0); }
+
+    .menu-card.featured {
+      border-color: rgba(0,200,150,0.3);
+      background: linear-gradient(145deg, rgba(0,200,150,0.07) 0%, var(--blue-panel) 60%);
+    }
+
+    .card-arrow {
+      position: absolute; top: 16px; right: 16px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+      color: var(--text-dim); opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.2s, transform 0.2s, color 0.2s;
+    }
+    .menu-card:hover .card-arrow {
+      opacity: 1; transform: translateX(0);
+      color: var(--card-color, var(--accent));
+    }
+
+    .card-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: transform 0.2s;
+    }
+    .menu-card:hover .card-icon { transform: scale(1.08); }
+
+    .ci-green  { background: rgba(0,200,150,0.1);  border: 1px solid rgba(0,200,150,0.2);  --card-color: var(--accent); }
+    .ci-blue   { background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); --card-color: #38bdf8; }
+    .ci-amber  { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.2); --card-color: var(--amber); }
+    .ci-purple { background: rgba(167,139,250,0.1);border: 1px solid rgba(167,139,250,0.2);--card-color: #a78bfa; }
+    .ci-green  svg { stroke: var(--accent); }
+    .ci-blue   svg { stroke: #38bdf8; }
+    .ci-amber  svg { stroke: var(--amber); }
+    .ci-purple svg { stroke: #a78bfa; }
+
+    .card-title { font-size: 14px; font-weight: 600; color: var(--text-bright); line-height: 1.2; }
+    .card-desc  { font-size: 11px; color: var(--text-dim); font-weight: 300; line-height: 1.5; margin-top: 4px; }
+
+    /* ── Lojas ── */
+    .lojas-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .loja-chip {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--blue-panel); border: 1px solid var(--blue-border);
+      border-radius: 6px; padding: 6px 14px 6px 6px;
+      font-size: 12px; font-weight: 500; color: var(--text-mid);
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .loja-chip:hover { border-color: rgba(0,200,150,0.3); color: var(--text-bright); }
+    .loja-logo {
+      width: 26px; height: 26px; border-radius: 4px; overflow: hidden;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--blue-border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .loja-logo img { width: 100%; height: 100%; object-fit: contain; }
+
+    /* ── Footer ── */
+    footer {
+      padding: 18px 32px; text-align: center;
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      color: var(--text-dim); letter-spacing: 0.08em;
+      border-top: 1px solid var(--blue-border);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+
+    .funcs-wrap { animation: fadeIn 0.45s 0.16s ease both; }
+    .lojas-wrap { animation: fadeIn 0.45s 0.26s ease both; }
+
+    .menu-card:nth-child(1) { animation: fadeIn 0.38s 0.17s ease both; }
+    .menu-card:nth-child(2) { animation: fadeIn 0.38s 0.22s ease both; }
+    .menu-card:nth-child(3) { animation: fadeIn 0.38s 0.27s ease both; }
+    .menu-card:nth-child(4) { animation: fadeIn 0.38s 0.32s ease both; }
+
+    @media (max-width: 600px) {
+      .main { padding: 24px 16px 40px; }
+      .topbar { padding: 0 16px; }
+      .clock { display: none; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .stats-row .stat-card:last-child { grid-column: span 2; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">SL</div>
+    <div>
+      <div class="brand-name">SISLOT</div>
+      <div class="brand-sub">Sistema de Lotéricas</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="clock" id="relogio">--:--:--</div>
+    <div class="user-pill">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div>
+        <div class="user-name" id="userName">Carregando…</div>
+        <div class="user-role" id="userRole">—</div>
+      </div>
+    </div>
+    <button class="btn-logout" id="btnLogout">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Sair
+    </button>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="hero">
+    <div class="hero-tag">
+      <div class="hero-tag-dot"></div>
+      Menu Principal
+    </div>
+    <h1 class="hero-title">Olá, <span id="heroNome">bem-vindo</span>.</h1>
+    <p class="hero-sub">Selecione uma funcionalidade para começar.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon si-green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
+          <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+          <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Bolões Ativos</div>
+        <div class="stat-value" id="statBoloes">—</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-amber">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="17 1 21 5 17 9"/>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+          <polyline points="7 23 3 19 7 15"/>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Movimentações Hoje</div>
+        <div class="stat-value" id="statMovs">—</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon si-blue">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Lojas Ativas</div>
+        <div class="stat-value" id="statLojas">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="funcs-wrap">
+    <div class="section-sep" style="margin-bottom:16px;">
+      <div class="section-sep-label">Funcionalidades</div>
+      <div class="section-sep-line"></div>
+    </div>
+
+    <div class="menu-grid">
+      <a class="menu-card featured" href="./bolao-cadastro.html">
+        <div class="card-arrow">→</div>
+        <div class="card-icon ci-green">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
+            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="card-title">Cadastrar</div>
+          <div class="card-desc">Criar e gerenciar bolões por loja e modalidade</div>
+        </div>
+      </a>
+
+      <a class="menu-card" href="./bolao-cadastro.html#movimentar" style="--card-color:#38bdf8">
+        <div class="card-arrow">→</div>
+        <div class="card-icon ci-blue">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="card-title">Movimentar</div>
+          <div class="card-desc">Distribuir e redistribuir cotas entre lojas</div>
+        </div>
+      </a>
+
+      <a class="menu-card" href="./busca.html" style="--card-color:var(--amber)">
+        <div class="card-arrow">→</div>
+        <div class="card-icon ci-amber">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <div>
+          <div class="card-title">Buscar</div>
+          <div class="card-desc">Consultar posição e saldo de bolões</div>
+        </div>
+      </a>
+
+      <a class="menu-card" href="./fechamento-tela1.html" style="--card-color:#a78bfa">
+        <div class="card-arrow">→</div>
+        <div class="card-icon ci-purple">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <div>
+          <div class="card-title">Fechamento</div>
+          <div class="card-desc">Fechar caixa e apurar resultados do dia</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="lojas-wrap">
+    <div class="section-sep" style="margin-bottom:14px;">
+      <div class="section-sep-label">Lojas do Grupo</div>
+      <div class="section-sep-line"></div>
+    </div>
+    <div class="lojas-row">
+      <div class="loja-chip">
+        <div class="loja-logo"><img src="./Icons/boulevard.png" alt="Boulevard"/></div>
+        Boulevard
+      </div>
+      <div class="loja-chip">
+        <div class="loja-logo"><img src="./Icons/loterpraca.png" alt="Centro"/></div>
+        Centro
+      </div>
+      <div class="loja-chip">
+        <div class="loja-logo"><img src="./Icons/lotobel.png" alt="Lotobel"/></div>
+        Lotobel
+      </div>
+      <div class="loja-chip">
+        <div class="loja-logo"><img src="./Icons/santa-tereza.png" alt="Santa Tereza"/></div>
+        Santa Tereza
+      </div>
+      <div class="loja-chip">
+        <div class="loja-logo"><img src="./Icons/via-brasil.png" alt="Via Brasil"/></div>
+        Via Brasil
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>SISLOT v2.0 · Sistema de Gestão de Bolões · Supabase Auth</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="./sislot-config.js"></script>
+<script>
+  const sb = supabase.createClient(
+    window.SISLOT_CONFIG.url,
+    window.SISLOT_CONFIG.anonKey
+  );
+
+  const PERFIL_LABEL = {
+    'ADMIN':   'Administrador',
+    'SOCIO':   'Sócio',
+    'GERENTE': 'Gerente',
+  };
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('relogio').textContent =
+      now.toLocaleTimeString('pt-BR') + ' — ' +
+      now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { location.href = './login.html'; return; }
+
+    const { data: usr } = await sb
+      .from('usuarios')
+      .select('id, nome, perfil, ativo, pode_logar')
+      .eq('auth_user_id', session.user.id)
+      .eq('ativo', true)
+      .eq('pode_logar', true)
+      .maybeSingle();
+
+    if (!usr) { location.href = './login.html'; return; }
+
+    if (!['SOCIO', 'ADMIN', 'GERENTE'].includes(usr.perfil)) {
+      alert('Sem permissão para acessar o sistema.');
+      await sb.auth.signOut();
+      location.href = './login.html';
+      return;
+    }
+
+    const primeiroNome = usr.nome?.split(' ')[0] || 'Usuário';
+    const iniciais = usr.nome?.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
+
+    document.getElementById('heroNome').textContent   = primeiroNome;
+    document.getElementById('userName').textContent   = usr.nome;
+    document.getElementById('userRole').textContent   = PERFIL_LABEL[usr.perfil] || usr.perfil;
+    document.getElementById('userAvatar').textContent = iniciais;
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const [{ count: totalBoloes }, { count: totalMovs }, { count: totalLojas }] = await Promise.all([
+      sb.from('boloes').select('*', { count: 'exact', head: true }).eq('status', 'ATIVO'),
+      sb.from('movimentacoes_cotas').select('*', { count: 'exact', head: true }).gte('created_at', hoje),
+      sb.from('loterias').select('*', { count: 'exact', head: true }).eq('ativo', true),
+    ]);
+
+    document.getElementById('statBoloes').textContent = totalBoloes ?? '—';
+    document.getElementById('statMovs').textContent   = totalMovs   ?? '—';
+    document.getElementById('statLojas').textContent  = totalLojas  ?? '—';
+
+    document.getElementById('btnLogout').onclick = async () => {
+      await sb.auth.signOut();
+      location.href = './login.html';
+    };
+  }
+
+  init();
+</script>
+</body>
+</html>
