@@ -645,10 +645,7 @@ async function onBuscar() {
       .eq('valor_cota', cota)
       .neq('status', 'CANCELADO');
 
-    if (jogos > 0)   query.eq('qtd_jogos', jogos);
-    if (dezenas > 0) query.eq('qtd_dezenas', dezenas);
-
-   let query = sb
+    let query = sb
   .from('boloes')
   .select('id, valor_cota, qtd_cotas_total, enc_fisico, enc_virtual, custo_jogo, status')
   .eq('loteria_id', loteriaAtiva.loteria_id)
@@ -659,6 +656,8 @@ async function onBuscar() {
 
 if (jogos > 0)   query = query.eq('qtd_jogos', jogos);
 if (dezenas > 0) query = query.eq('qtd_dezenas', dezenas);
+
+const { data: bolao } = await query.maybeSingle();
 
 const { data: bolao } = await query.maybeSingle();
     if (!bolao) {
