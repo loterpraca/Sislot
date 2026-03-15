@@ -650,8 +650,8 @@
       { count: totalMkt },
     ] = await Promise.all([
       sb.from('movimentacoes_cotas').select('*', { count: 'exact', head: true }).gte('created_at', hoje),
-      sb.from('vendas_whatsapp').select('*', { count: 'exact', head: true }).eq('canal', 'WHATSAPP').gte('created_at', hoje),
-      sb.from('vendas_whatsapp').select('*', { count: 'exact', head: true }).in('canal', ['MARKETPLACE', 'CAIXA']).gte('created_at', hoje),
+      sb.from('boloes_vendas').select('*', { count: 'exact', head: true }).eq('canal', 'WHATSAPP').gte('created_at', hoje),
+      sb.from('boloes_vendas').select('*', { count: 'exact', head: true }).in('canal', ['MARKETPLACE', 'BALCAO']).gte('created_at', hoje),
     ]);
 
     document.getElementById('statVendasWpp').textContent   = totalWpp  ?? '—';
