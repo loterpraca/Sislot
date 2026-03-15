@@ -5,117 +5,346 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>SISLOT — Bolões</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <style>
-    :root{--primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#818cf8;--secondary:#f59e0b;--bg:#f8fafc;--card:#fff;--txt:#0f172a;--muted:#64748b;--label:#334155;--line:#e2e8f0;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--shadow:0 10px 25px rgba(0,0,0,.08);--shadow-lg:0 20px 50px rgba(0,0,0,.12);--radius:16px;--radius-sm:12px;--pad:7px;--font:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;--transition:all .25s cubic-bezier(.4,0,.2,1);}
-    [data-theme="boulevard"]{--primary:#4682B4;--primary-dark:#2563eb;--primary-light:#60a5fa;--secondary:#f97316}
-    [data-theme="centro"]{--primary:#2E8B57;--primary-dark:#16a34a;--primary-light:#4ade80;--secondary:#eab308}
-    [data-theme="lotobel"]{--primary:#CD5C5C;--primary-dark:#b91c1c;--primary-light:#ef4444;--secondary:#d97706}
-    [data-theme="santa-tereza"]{--primary:#483D8B;--primary-dark:#7e22ce;--primary-light:#a855f7;--secondary:#f59e0b}
-    [data-theme="via-brasil"]{--primary:#0ea5e9;--primary-dark:#0284c7;--primary-light:#38bdf8;--secondary:#22c55e}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:var(--font);color:var(--txt);background:var(--bg);min-height:100vh;transition:var(--transition)}
-    .header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:10px 12px;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
-    .header-content{max-width:920px;margin:0 auto;display:flex;align-items:center;gap:12px}
-    .logo-container{width:58px;height:58px;background:#fff;border-radius:50%;box-shadow:0 6px 16px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto}
-    .logo-container img{width:122%;height:122%;object-fit:cover;object-position:center}
-    .header-title{flex:1;min-width:0}
-    .header-title h1{font-size:17px;font-weight:900;line-height:1.05;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .header-title p{font-size:12px;opacity:.9;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .brand-logos{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex:0 0 auto}
-    .brand-logos button{border:0;background:rgba(255,255,255,.14);width:34px;height:34px;border-radius:12px;display:grid;place-items:center;cursor:pointer;transition:var(--transition);padding:0}
-    .brand-logos button:hover{transform:translateY(-1px);background:rgba(255,255,255,.22)}
-    .brand-logos button.active{outline:2px solid rgba(255,255,255,.55);background:rgba(255,255,255,.24)}
-    .brand-logos img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))}
-    .wrap{max-width:920px;margin:0 auto;padding:0 12px 30px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--pad);margin:8px 0;transition:var(--transition)}
-    .card:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
-    .section-header{display:flex;align-items:center;gap:10px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--primary)}
-    .section-icon{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;flex:0 0 auto}
-    .section-title{font-size:14px;font-weight:800;color:var(--txt);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#070d1a;--bg2:#0c1528;--panel:#101f38;--panel2:#132240;
+      --border:#1a3060;--border2:#243d70;
+      --text:#dde8f8;--text2:#7a95c4;--text3:#3d5a8a;
+      --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+      --input-bg:#0a1628;--error:#ff4f4f;--success:#00d4a0;
+      --t1:#22c55e;--t2:#16a34a;--t3:rgba(34,197,94,0.12);--t4:rgba(34,197,94,0.28);--t5:rgba(34,197,94,0.05);
+      --tr:0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    [data-loja="boulevard"]   {--t1:#3b82f6;--t2:#1d4ed8;--t3:rgba(59,130,246,0.12);--t4:rgba(59,130,246,0.28);--t5:rgba(59,130,246,0.05)}
+    [data-loja="lotobel"]     {--t1:#ef4444;--t2:#b91c1c;--t3:rgba(239,68,68,0.12); --t4:rgba(239,68,68,0.28); --t5:rgba(239,68,68,0.05)}
+    [data-loja="santa-tereza"]{--t1:#a855f7;--t2:#7e22ce;--t3:rgba(168,85,247,0.12);--t4:rgba(168,85,247,0.28);--t5:rgba(168,85,247,0.05)}
+    [data-loja="via-brasil"]  {--t1:#eab308;--t2:#a16207;--t3:rgba(234,179,8,0.12); --t4:rgba(234,179,8,0.28); --t5:rgba(234,179,8,0.05)}
+
+    body{font-family:var(--sans);color:var(--text);background:var(--bg);min-height:100vh;display:flex;flex-direction:column;
+      background-image:radial-gradient(ellipse 100% 50% at 50% -10%,var(--t3) 0%,transparent 65%),
+        repeating-linear-gradient(0deg,transparent,transparent 47px,rgba(26,48,96,0.18) 47px,rgba(26,48,96,0.18) 48px),
+        repeating-linear-gradient(90deg,transparent,transparent 47px,rgba(26,48,96,0.1) 47px,rgba(26,48,96,0.1) 48px);
+      transition:background-image var(--tr)}
+
+    /* HEADER */
+    .header{position:sticky;top:0;z-index:200;background:rgba(7,13,26,0.93);
+      border-bottom:1px solid var(--border);backdrop-filter:blur(14px);
+      padding:0 18px;height:62px;display:flex;align-items:center;transition:border-color var(--tr)}
+    .header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+      background:linear-gradient(90deg,transparent 0%,var(--t1) 50%,transparent 100%);opacity:.4}
+    .header-inner{max-width:940px;width:100%;margin:0 auto;display:flex;align-items:center;gap:12px}
+
+    .loja-tree{width:48px;height:48px;flex:0 0 48px;display:flex;align-items:center;justify-content:center;
+      background:rgba(255,255,255,0.08);border-radius:50%;border:1px solid var(--t4);
+      overflow:hidden;transition:var(--tr);box-shadow:0 0 12px var(--t3)}
+    .loja-tree img{width:110%;height:110%;object-fit:cover;object-position:center;transition:var(--tr)}
+
+    .header-info{flex:1;min-width:0}
+    .header-nome{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text);line-height:1;margin-bottom:3px;transition:color var(--tr)}
+    .header-sub{font-family:var(--mono);font-size:9px;font-weight:400;letter-spacing:.18em;text-transform:uppercase;color:var(--text3)}
+
+    .loja-btns{display:flex;gap:5px;align-items:center}
+    .loja-btn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--panel);
+      cursor:pointer;transition:var(--tr);display:flex;align-items:center;justify-content:center;padding:3px}
+    .loja-btn img{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
+    .loja-btn svg{width:24px;height:24px}
+    .loja-btn:hover{border-color:var(--border2);background:var(--panel2);transform:translateY(-1px)}
+    .loja-btn.active{border-color:var(--t4);background:var(--t3);box-shadow:0 0 0 2px var(--t4)}
+
+    .btn-menu{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);
+      border-radius:8px;padding:7px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:500;
+      letter-spacing:.1em;text-transform:uppercase;color:var(--text2);transition:var(--tr);flex:0 0 auto}
+    .btn-menu:hover{border-color:var(--t4);color:var(--t1);background:var(--t5)}
+    .btn-menu i{font-size:11px}
+
+    /* WRAP */
+    .wrap{max-width:940px;width:100%;margin:0 auto;padding:14px 18px 48px;flex:1}
+
+    /* QUICKBAR */
+    .quickbar{padding:10px 0 6px}
+    .quickbar-grid{display:flex;gap:6px;align-items:stretch;overflow-x:auto;overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+    .quickbar-grid::-webkit-scrollbar{display:none}
+    .qmod{position:relative;height:44px;width:60px;min-width:60px;flex:0 0 60px;
+      border:1px solid var(--border);border-radius:12px;background:var(--panel);
+      padding:0;overflow:hidden;cursor:pointer;transition:var(--tr);display:block}
+    .qmod::before{content:'';position:absolute;inset:0;border-radius:12px;background:var(--t3);opacity:0;transition:opacity .2s}
+    .qmod:hover{border-color:var(--border2);transform:translateY(-2px)}
+    .qmod:hover::before{opacity:.6}
+    .qmod.active{border-color:var(--t1);box-shadow:0 0 0 2px var(--t4),0 4px 12px var(--t3)}
+    .qmod.active::before{opacity:1}
+    .qmod img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+      transform:scale(1.18);transform-origin:center;display:block;pointer-events:none}
+    @media(min-width:760px){.qmod{height:52px;width:70px;min-width:70px;flex-basis:70px}}
+
+    .quickchips{display:none;margin-top:8px}
+    .quickchips.active{display:block}
+    .chips-row{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+    .chips-row::-webkit-scrollbar{display:none}
+    .chip-tile{all:unset;box-sizing:border-box;position:relative;height:34px;width:48px;min-width:48px;flex:0 0 48px;
+      border:1px solid var(--border);border-radius:10px;background:var(--panel);
+      overflow:hidden;cursor:pointer;transition:var(--tr);display:block}
+    .chip-tile::before{content:'';position:absolute;inset:0;border-radius:10px;background:var(--t3);opacity:0;transition:opacity .2s}
+    .chip-tile:hover{border-color:var(--t4);transform:translateY(-1px)}
+    .chip-tile:hover::before{opacity:1}
+    .chip-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:3px;
+      transform:scale(1.12);transform-origin:center;display:block;pointer-events:none;z-index:1}
+    .chip-badge{position:absolute;left:3px;bottom:3px;padding:1px 4px;border-radius:999px;
+      background:rgba(7,13,26,.85);border:1px solid var(--border2);
+      font-family:var(--mono);font-size:8px;font-weight:600;color:var(--text2);
+      pointer-events:none;z-index:2;line-height:1.3}
+
+    /* CARDS */
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+      padding:16px;margin:8px 0;position:relative;overflow:hidden;transition:border-color var(--tr)}
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,var(--t1),var(--t2));opacity:.45}
+
+    .section-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;
+      padding-bottom:12px;border-bottom:1px solid var(--border)}
+    .section-icon{width:30px;height:30px;border-radius:8px;background:var(--t3);border:1px solid var(--t4);
+      display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--t1);
+      flex:0 0 auto;transition:var(--tr)}
+    .section-title{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;
+      text-transform:uppercase;color:var(--text);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+    .origem-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+      background:var(--t3);border:1px solid var(--t4);color:var(--t1);
+      font-size:11px;font-weight:500;font-family:var(--mono);letter-spacing:.06em;transition:var(--tr)}
+
     .grid-1{display:grid;grid-template-columns:1fr;gap:10px}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     .force-2{grid-template-columns:1fr 1fr!important}
-    .field label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--label);font-weight:800;margin:0 0 5px 2px}
-    .field label i{color:var(--primary);font-size:12px}
+
+    .field label{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;
+      font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin:0 0 5px 1px}
+    .field label i{color:var(--t1);font-size:10px}
     .label-row{display:flex;align-items:center;justify-content:space-between;gap:4px}
     .day-stepper{display:inline-flex;align-items:center;gap:3px}
-    .day-btn{width:22px!important;height:22px!important;min-height:22px!important;padding:0!important;border-radius:8px!important;border:2px solid var(--line)!important;background:#fff!important;color:var(--primary)!important;cursor:pointer;transition:var(--transition);display:grid!important;place-items:center!important;gap:0!important}
-    .day-btn:hover{border-color:var(--primary)!important;transform:translateY(-1px)}
-    .day-btn i{font-size:10px!important}
-    .field input,.field select{width:100%;font-size:13px;padding:6px 7px;border-radius:var(--radius-sm);border:2px solid var(--line);outline:none;background:#fff;transition:var(--transition);font-family:var(--font)}
-    .field input:focus,.field select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(99,102,241,.10);transform:translateY(-1px)}
-    .field input:disabled,.field select:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;opacity:.75}
-    .origem-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.06);color:var(--txt);font-size:12px;font-weight:900;border:1px solid var(--line)}
-    .origem-chip i{color:var(--primary)}
-    .actions-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    button{border:0;border-radius:var(--radius-sm);padding:6px 10px;font-size:13px;font-weight:900;cursor:pointer;min-height:34px;transition:var(--transition);font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden}
-    button:disabled{opacity:.55;cursor:not-allowed}
-    .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 4px 12px rgba(99,102,241,.25)}
-    .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.32)}
-    .btn-dark{background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;box-shadow:0 4px 12px rgba(15,23,42,.25)}
-    .btn-dark:hover:not(:disabled){transform:translateY(-1px)}
-    .btn-danger{background:linear-gradient(135deg,var(--danger),#dc2626);color:#fff}
-    .btn-danger:hover:not(:disabled){transform:translateY(-1px)}
-    .btn-ghost{background:#fff;border:2px solid var(--line);color:var(--txt)}
-    .btn-ghost:hover:not(:disabled){border-color:var(--primary);color:var(--primary);transform:translateY(-1px)}
-    .btn-loading{pointer-events:none;opacity:.75}
-    .btn-loading::after{content:"";position:absolute;width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .status{margin-top:10px;padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}
-    .status i{font-size:15px;margin-top:1px}
-    .status.muted{background:#f1f5f9;border:2px solid #e2e8f0;color:var(--muted)}
-    .status.ok{background:#dcfce7;border:2px solid #86efac;color:#15803d}
-    .status.ok i{color:var(--success)}
-    .status.err{background:#fee2e2;border:2px solid #fca5a5;color:#991b1b}
-    .status.err i{color:var(--danger)}
-    .quickbar{padding:4px;margin:4px 0}
-    .quickbar-grid{display:flex;gap:7px;align-items:stretch;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-    .quickbar-grid::-webkit-scrollbar{display:none}
-    .qmod{position:relative;height:40px;width:57px;min-width:57px;flex:0 0 57px;border:2px solid var(--line);border-radius:14px;background:#fff;padding:0;overflow:hidden;cursor:pointer;transition:var(--transition);display:block}
-    .qmod:hover{transform:translateY(-1px)}
-    .qmod.active{border-color:var(--primary);box-shadow:0 8px 18px rgba(0,0,0,.10)}
-    .qmod img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:0;transform:scale(1.22);transform-origin:center;display:block;pointer-events:none}
-    @media(min-width:760px){.qmod{height:49px;width:69px;min-width:69px;flex-basis:69px}}
-    .quickchips{display:none;margin-top:4px}
-    .quickchips.active{display:block}
-    .chips-row{display:flex;gap:6px;align-items:stretch;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-    .chips-row::-webkit-scrollbar{display:none}
-    .chip-tile{all:unset;box-sizing:border-box;position:relative;height:31px;width:45px;min-width:45px;flex:0 0 45px;border:2px solid var(--line);border-radius:11px;background:#fff;overflow:hidden;cursor:pointer;transition:var(--transition);display:block}
-    .chip-tile:hover{transform:translateY(-1px);border-color:rgba(99,102,241,.45)}
-    .chip-tile.active{border-color:var(--primary);box-shadow:0 4px 10px rgba(0,0,0,.08)}
-    .chip-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:2px;transform:scale(1.15);transform-origin:center;display:block;pointer-events:none;z-index:1}
-    .chip-badge{position:absolute;left:3px;bottom:3px;padding:2px 5px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);font-size:9px;font-weight:900;line-height:1;color:var(--txt);pointer-events:none;z-index:2}
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.66);display:none;align-items:center;justify-content:center;z-index:1000}
+    .day-btn{width:22px!important;height:22px!important;min-height:22px!important;
+      padding:0!important;border-radius:6px!important;border:1px solid var(--border)!important;
+      background:var(--input-bg)!important;color:var(--t1)!important;cursor:pointer;
+      transition:var(--tr);display:grid!important;place-items:center!important;font-size:0!important}
+    .day-btn:hover{border-color:var(--t4)!important;background:var(--t3)!important}
+    .day-btn i{font-size:9px!important}
+
+    .field input,.field select{width:100%;font-size:13px;padding:9px 12px;border-radius:8px;
+      border:1px solid var(--border);outline:none;background:var(--input-bg);color:var(--text);
+      font-family:var(--sans);transition:border-color .2s,box-shadow .2s;
+      -webkit-appearance:none;appearance:none}
+    .field input:focus,.field select:focus{border-color:var(--t1);box-shadow:0 0 0 3px var(--t3)}
+    .field input::placeholder{color:var(--text3)}
+    .field input:disabled,.field select:disabled{opacity:.35;cursor:not-allowed}
+    .field select option{background:var(--bg2);color:var(--text)}
+
+    button{border:none;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;
+      min-height:38px;font-family:var(--sans);display:flex;align-items:center;justify-content:center;
+      gap:7px;position:relative;overflow:hidden;transition:var(--tr)}
+    button:disabled{opacity:.4;cursor:not-allowed}
+    .btn-primary{background:var(--t1);color:var(--bg);font-weight:600}
+    .btn-primary:hover:not(:disabled){filter:brightness(1.12);transform:translateY(-1px);box-shadow:0 4px 18px var(--t4)}
+    .btn-dark{background:var(--panel2);color:var(--text2);border:1px solid var(--border)}
+    .btn-dark:hover:not(:disabled){border-color:var(--border2);color:var(--text)}
+    .btn-danger{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+    .btn-danger:hover:not(:disabled){background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.4)}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2)}
+    .btn-ghost:hover:not(:disabled){border-color:var(--border2);color:var(--text)}
+    .btn-loading{pointer-events:none;opacity:.7}
+    .btn-loading::after{content:"";position:absolute;width:15px;height:15px;
+      border:2px solid rgba(255,255,255,.2);border-top-color:currentColor;
+      border-radius:50%;animation:spin .6s linear infinite}
+
+    .actions-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+    .status{margin-top:14px;padding:10px 14px;border-radius:9px;font-size:13px;line-height:1.5;
+      display:flex;align-items:flex-start;gap:10px}
+    .status i{font-size:14px;margin-top:1px;flex-shrink:0}
+    .status.muted{background:rgba(26,48,96,.35);border:1px solid var(--border);color:var(--text2)}
+    .status.ok{background:rgba(0,212,160,.08);border:1px solid rgba(0,212,160,.2);color:#6ee7c8}
+    .status.ok i{color:#00d4a0}
+    .status.err{background:rgba(255,79,79,.08);border:1px solid rgba(255,79,79,.2);color:#fca5a5}
+    .status.err i{color:#ff4f4f}
+
+    .modal-overlay{position:fixed;inset:0;background:rgba(4,8,18,.92);backdrop-filter:blur(8px);
+      display:none;align-items:center;justify-content:center;z-index:1000}
     .modal-overlay.active{display:flex}
-    .modal{background:#fff;border-radius:var(--radius);padding:20px;max-width:520px;width:92%;box-shadow:0 25px 50px rgba(0,0,0,.3)}
-    .modal-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-    .modal-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:linear-gradient(135deg,var(--warning),#f59e0b);color:#fff;flex:0 0 auto}
-    .modal-title{font-size:18px;font-weight:900;color:var(--txt)}
-    .modal-body{color:var(--muted);line-height:1.55;margin-bottom:16px;white-space:pre-line;font-size:14px}
+    .modal{background:var(--panel2);border:1px solid var(--border);border-radius:16px;padding:24px 26px;
+      max-width:520px;width:92%;box-shadow:0 32px 64px rgba(0,0,0,.6);position:relative;overflow:hidden}
+    .modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,var(--t1),var(--t2));opacity:.6}
+    .modal-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    .modal-icon{width:40px;height:40px;border-radius:10px;flex:0 0 auto;
+      background:var(--t3);border:1px solid var(--t4);display:flex;align-items:center;justify-content:center;
+      font-size:18px;color:var(--t1)}
+    .modal-title{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text)}
+    .modal-body{color:var(--text2);line-height:1.6;margin-bottom:18px;white-space:pre-line;
+      font-size:13px;font-family:var(--mono);background:var(--bg2);border:1px solid var(--border);
+      border-radius:8px;padding:12px 14px;max-height:240px;overflow-y:auto}
     .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:600px){.wrap{padding:8px 12px 32px}.header{padding:0 12px}.btn-menu span{display:none}}
   </style>
 </head>
-<body>
+<body data-loja="centro">
 
+<!-- SVG árvores (hidden) -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="tree-centro" viewBox="0 0 80 88">
+    <path d="M36 88Q37 70 36 60L44 60Q43 70 44 88Z" fill="#5a3a1a"/>
+    <path d="M36 72Q28 68 22 74" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M44 68Q52 64 56 70" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="22" cy="52" rx="10" ry="14" fill="#166534" transform="rotate(-30 22 52)"/>
+    <ellipse cx="14" cy="36" rx="9" ry="13" fill="#166534" transform="rotate(-20 14 36)"/>
+    <ellipse cx="26" cy="22" rx="9" ry="13" fill="#166534" transform="rotate(10 26 22)"/>
+    <ellipse cx="44" cy="16" rx="9" ry="13" fill="#166534" transform="rotate(-5 44 16)"/>
+    <ellipse cx="58" cy="24" rx="9" ry="13" fill="#166534" transform="rotate(20 58 24)"/>
+    <ellipse cx="64" cy="40" rx="9" ry="13" fill="#166534" transform="rotate(30 64 40)"/>
+    <ellipse cx="56" cy="54" rx="10" ry="14" fill="#166534" transform="rotate(20 56 54)"/>
+    <ellipse cx="30" cy="38" rx="9" ry="13" fill="#16a34a" transform="rotate(-15 30 38)"/>
+    <ellipse cx="40" cy="28" rx="8" ry="12" fill="#22c55e" transform="rotate(5 40 28)"/>
+    <ellipse cx="52" cy="38" rx="9" ry="13" fill="#16a34a" transform="rotate(15 52 38)"/>
+    <ellipse cx="18" cy="50" rx="7" ry="10" fill="#4ade80" transform="rotate(-10 18 50)"/>
+    <ellipse cx="60" cy="48" rx="7" ry="10" fill="#4ade80" transform="rotate(10 60 48)"/>
+    <text x="22" y="56" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="14" y="39" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="30" y="41" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="44" y="19" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="58" y="27" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="52" y="42" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="64" y="43" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+  </symbol>
+
+  <symbol id="tree-boulevard" viewBox="0 0 80 88">
+    <path d="M36 88Q37 70 36 60L44 60Q43 70 44 88Z" fill="#5a3a1a"/>
+    <path d="M36 72Q28 68 22 74" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M44 68Q52 64 56 70" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="22" cy="52" rx="10" ry="14" fill="#1e3a8a" transform="rotate(-30 22 52)"/>
+    <ellipse cx="14" cy="36" rx="9" ry="13" fill="#1e3a8a" transform="rotate(-20 14 36)"/>
+    <ellipse cx="26" cy="22" rx="9" ry="13" fill="#1d4ed8" transform="rotate(10 26 22)"/>
+    <ellipse cx="44" cy="16" rx="9" ry="13" fill="#1e3a8a" transform="rotate(-5 44 16)"/>
+    <ellipse cx="58" cy="24" rx="9" ry="13" fill="#1d4ed8" transform="rotate(20 58 24)"/>
+    <ellipse cx="64" cy="40" rx="9" ry="13" fill="#1e3a8a" transform="rotate(30 64 40)"/>
+    <ellipse cx="56" cy="54" rx="10" ry="14" fill="#1d4ed8" transform="rotate(20 56 54)"/>
+    <ellipse cx="30" cy="38" rx="9" ry="13" fill="#c2410c" transform="rotate(-15 30 38)"/>
+    <ellipse cx="40" cy="28" rx="8" ry="12" fill="#f97316" transform="rotate(5 40 28)"/>
+    <ellipse cx="52" cy="38" rx="9" ry="13" fill="#c2410c" transform="rotate(15 52 38)"/>
+    <ellipse cx="18" cy="50" rx="7" ry="10" fill="#fb923c" transform="rotate(-10 18 50)"/>
+    <ellipse cx="60" cy="48" rx="7" ry="10" fill="#fb923c" transform="rotate(10 60 48)"/>
+    <text x="22" y="56" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="14" y="39" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="30" y="41" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="44" y="19" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="58" y="27" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="52" y="42" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="64" y="43" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+  </symbol>
+
+  <symbol id="tree-lotobel" viewBox="0 0 80 88">
+    <path d="M36 88Q37 70 36 60L44 60Q43 70 44 88Z" fill="#5a3a1a"/>
+    <path d="M36 72Q28 68 22 74" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M44 68Q52 64 56 70" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="22" cy="52" rx="10" ry="14" fill="#7f1d1d" transform="rotate(-30 22 52)"/>
+    <ellipse cx="14" cy="36" rx="9" ry="13" fill="#991b1b" transform="rotate(-20 14 36)"/>
+    <ellipse cx="26" cy="22" rx="9" ry="13" fill="#b91c1c" transform="rotate(10 26 22)"/>
+    <ellipse cx="44" cy="16" rx="9" ry="13" fill="#7f1d1d" transform="rotate(-5 44 16)"/>
+    <ellipse cx="58" cy="24" rx="9" ry="13" fill="#b91c1c" transform="rotate(20 58 24)"/>
+    <ellipse cx="64" cy="40" rx="9" ry="13" fill="#991b1b" transform="rotate(30 64 40)"/>
+    <ellipse cx="56" cy="54" rx="10" ry="14" fill="#b91c1c" transform="rotate(20 56 54)"/>
+    <ellipse cx="30" cy="38" rx="9" ry="13" fill="#92400e" transform="rotate(-15 30 38)"/>
+    <ellipse cx="40" cy="28" rx="8" ry="12" fill="#d97706" transform="rotate(5 40 28)"/>
+    <ellipse cx="52" cy="38" rx="9" ry="13" fill="#b45309" transform="rotate(15 52 38)"/>
+    <ellipse cx="18" cy="50" rx="7" ry="10" fill="#fbbf24" transform="rotate(-10 18 50)"/>
+    <ellipse cx="60" cy="48" rx="7" ry="10" fill="#fcd34d" transform="rotate(10 60 48)"/>
+    <text x="22" y="56" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="14" y="39" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="30" y="41" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="44" y="19" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="58" y="27" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="52" y="42" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="64" y="43" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+  </symbol>
+
+  <symbol id="tree-santa-tereza" viewBox="0 0 80 88">
+    <path d="M36 88Q37 70 36 60L44 60Q43 70 44 88Z" fill="#5a3a1a"/>
+    <path d="M36 72Q28 68 22 74" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M44 68Q52 64 56 70" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="22" cy="52" rx="10" ry="14" fill="#581c87" transform="rotate(-30 22 52)"/>
+    <ellipse cx="14" cy="36" rx="9" ry="13" fill="#6b21a8" transform="rotate(-20 14 36)"/>
+    <ellipse cx="26" cy="22" rx="9" ry="13" fill="#7e22ce" transform="rotate(10 26 22)"/>
+    <ellipse cx="44" cy="16" rx="9" ry="13" fill="#581c87" transform="rotate(-5 44 16)"/>
+    <ellipse cx="58" cy="24" rx="9" ry="13" fill="#7e22ce" transform="rotate(20 58 24)"/>
+    <ellipse cx="64" cy="40" rx="9" ry="13" fill="#6b21a8" transform="rotate(30 64 40)"/>
+    <ellipse cx="56" cy="54" rx="10" ry="14" fill="#7e22ce" transform="rotate(20 56 54)"/>
+    <ellipse cx="30" cy="38" rx="9" ry="13" fill="#c2410c" transform="rotate(-15 30 38)"/>
+    <ellipse cx="40" cy="28" rx="8" ry="12" fill="#f97316" transform="rotate(5 40 28)"/>
+    <ellipse cx="52" cy="38" rx="9" ry="13" fill="#ea580c" transform="rotate(15 52 38)"/>
+    <ellipse cx="18" cy="50" rx="7" ry="10" fill="#fb923c" transform="rotate(-10 18 50)"/>
+    <ellipse cx="60" cy="48" rx="7" ry="10" fill="#fdba74" transform="rotate(10 60 48)"/>
+    <text x="22" y="56" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="14" y="39" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="30" y="41" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="44" y="19" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="58" y="27" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="52" y="42" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="64" y="43" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+  </symbol>
+
+  <symbol id="tree-via-brasil" viewBox="0 0 80 88">
+    <path d="M36 88Q37 70 36 60L44 60Q43 70 44 88Z" fill="#5a3a1a"/>
+    <path d="M36 72Q28 68 22 74" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M44 68Q52 64 56 70" stroke="#5a3a1a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="22" cy="52" rx="10" ry="14" fill="#713f12" transform="rotate(-30 22 52)"/>
+    <ellipse cx="14" cy="36" rx="9" ry="13" fill="#92400e" transform="rotate(-20 14 36)"/>
+    <ellipse cx="26" cy="22" rx="9" ry="13" fill="#a16207" transform="rotate(10 26 22)"/>
+    <ellipse cx="44" cy="16" rx="9" ry="13" fill="#ca8a04" transform="rotate(-5 44 16)"/>
+    <ellipse cx="58" cy="24" rx="9" ry="13" fill="#eab308" transform="rotate(20 58 24)"/>
+    <ellipse cx="64" cy="40" rx="9" ry="13" fill="#a16207" transform="rotate(30 64 40)"/>
+    <ellipse cx="56" cy="54" rx="10" ry="14" fill="#eab308" transform="rotate(20 56 54)"/>
+    <ellipse cx="30" cy="38" rx="9" ry="13" fill="#475569" transform="rotate(-15 30 38)"/>
+    <ellipse cx="40" cy="28" rx="8" ry="12" fill="#94a3b8" transform="rotate(5 40 28)"/>
+    <ellipse cx="52" cy="38" rx="9" ry="13" fill="#64748b" transform="rotate(15 52 38)"/>
+    <ellipse cx="18" cy="50" rx="7" ry="10" fill="#cbd5e1" transform="rotate(-10 18 50)"/>
+    <ellipse cx="60" cy="48" rx="7" ry="10" fill="#e2e8f0" transform="rotate(10 60 48)"/>
+    <text x="22" y="56" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="14" y="39" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="30" y="41" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="44" y="19" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="58" y="27" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="52" y="42" text-anchor="middle" font-family="sans-serif" font-size="8" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+    <text x="64" y="43" text-anchor="middle" font-family="sans-serif" font-size="7" font-weight="bold" fill="rgba(255,255,255,0.85)">$</text>
+  </symbol>
+</svg>
+
+<!-- HEADER -->
 <header class="header">
-  <div class="header-content">
-    <div class="logo-container"><img src="./icons/loterpraca.png" alt="Logo" id="logoImg"/></div>
-    <div class="header-title">
-      <h1 id="headerTitle">Bolões</h1>
-      <p id="headerSub">Cadastro e movimentação</p>
+  <div class="header-inner">
+    <div class="loja-tree" id="lojaTreeWrap">
+      <img src="./icons/loterpraca.png" alt="Logo" id="logoImg"/>
     </div>
-    <div class="brand-logos">
-      <button type="button" class="brand-btn" data-slug="boulevard"    title="Boulevard">   <img src="./icons/boulevard.png"    alt="Boulevard"/></button>
-      <button type="button" class="brand-btn" data-slug="centro"       title="Centro">      <img src="./icons/loterpraca.png"   alt="Centro"/></button>
-      <button type="button" class="brand-btn" data-slug="lotobel"      title="Lotobel">     <img src="./icons/lotobel.png"      alt="Lotobel"/></button>
-      <button type="button" class="brand-btn" data-slug="santa-tereza" title="Santa Tereza"><img src="./icons/santa-tereza.png" alt="Santa Tereza"/></button>
-      <button type="button" class="brand-btn" data-slug="via-brasil"   title="Via Brasil">  <img src="./icons/via-brasil.png"   alt="Via Brasil"/></button>
+    <div class="header-info">
+      <div class="header-nome" id="headerTitle">Centro</div>
+      <div class="header-sub" id="headerSub">Cadastro · Movimentação</div>
     </div>
+    <div class="loja-btns">
+      <button type="button" class="loja-btn brand-btn" data-slug="centro"       title="Centro">      <img src="./icons/loterpraca.png"   alt="Centro"/></button>
+      <button type="button" class="loja-btn brand-btn" data-slug="boulevard"    title="Boulevard">   <img src="./icons/boulevard.png"    alt="Boulevard"/></button>
+      <button type="button" class="loja-btn brand-btn" data-slug="lotobel"      title="Lotobel">     <img src="./icons/lotobel.png"      alt="Lotobel"/></button>
+      <button type="button" class="loja-btn brand-btn" data-slug="santa-tereza" title="Santa Tereza"><img src="./icons/santa-tereza.png" alt="Santa Tereza"/></button>
+      <button type="button" class="loja-btn brand-btn" data-slug="via-brasil"   title="Via Brasil">  <img src="./icons/via-brasil.png"   alt="Via Brasil"/></button>
+    </div>
+    <button type="button" class="btn-menu" onclick="location.href='./menu.html'">
+      <i class="fas fa-th-large"></i> <span>Menu</span>
+    </button>
   </div>
 </header>
 
+<!-- CONTEÚDO -->
 <div class="wrap">
+
   <div class="quickbar" id="quickZone">
     <div class="quickbar-grid" id="modGrid"></div>
     <div class="quickchips" id="chipsWrap"><div class="chips-row" id="chipsRow"></div></div>
@@ -124,13 +353,10 @@
   <div class="card">
     <div class="section-header">
       <div class="section-icon"><i class="fas fa-ticket-alt"></i></div>
-      <h2 class="section-title">Dados do bolão</h2>
-    </div>
-    <div class="grid-1">
-      <div class="field">
-        <label><i class="fas fa-store"></i> Loja de origem</label>
-        <div class="origem-chip" id="origemChip"><i class="fas fa-store"></i> <span id="origemNome">—</span></div>
-      </div>
+      <h2 class="section-title">
+        Dados do bolão
+        <span class="origem-chip" id="origemChip"><i class="fas fa-store"></i> <span id="origemNome">—</span></span>
+      </h2>
     </div>
     <div class="grid-2">
       <div class="field">
@@ -191,24 +417,22 @@
       <div class="section-icon"><i class="fas fa-exchange-alt"></i></div>
       <h2 class="section-title">
         Movimentar
-        <span class="origem-chip" id="movOrigemChip" style="margin-left:8px">
-          <i class="fas fa-store"></i> <span id="movOrigemNome">—</span>
-        </span>
-        <button type="button" class="btn-ghost" id="btnBuscar" style="padding:3px 9px;font-size:12px;margin-left:4px">
+        <span class="origem-chip" id="movOrigemChip"><i class="fas fa-store"></i> <span id="movOrigemNome">—</span></span>
+        <button type="button" class="btn-ghost" id="btnBuscar" style="padding:4px 10px;font-size:11px;min-height:28px;margin-left:4px">
           <i class="fas fa-search"></i> Buscar
         </button>
       </h2>
     </div>
     <div class="grid-2 force-2">
-      <div class="field"><label><i class="fas fa-building"></i> Boulevard</label><input id="deltaBoulevard" inputmode="numeric" placeholder="0"/></div>
-      <div class="field"><label><i class="fas fa-city"></i> Centro</label><input id="deltaCentro" inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><label><i class="fas fa-building"></i> Boulevard</label>  <input id="deltaBoulevard"  inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><label><i class="fas fa-city"></i> Centro</label>          <input id="deltaCentro"      inputmode="numeric" placeholder="0"/></div>
     </div>
     <div class="grid-2 force-2">
-      <div class="field"><label><i class="fas fa-landmark"></i> Lotobel</label><input id="deltaLotobel" inputmode="numeric" placeholder="0"/></div>
-      <div class="field"><label><i class="fas fa-church"></i> Santa Tereza</label><input id="deltaSantaTereza" inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><label><i class="fas fa-landmark"></i> Lotobel</label>     <input id="deltaLotobel"     inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><label><i class="fas fa-church"></i> Santa Tereza</label>  <input id="deltaSantaTereza" inputmode="numeric" placeholder="0"/></div>
     </div>
     <div class="grid-2 force-2">
-      <div class="field"><label><i class="fas fa-road"></i> Via Brasil</label><input id="deltaViaBrasil" inputmode="numeric" placeholder="0"/></div>
+      <div class="field"><label><i class="fas fa-road"></i> Via Brasil</label>      <input id="deltaViaBrasil"   inputmode="numeric" placeholder="0"/></div>
       <div class="field"></div>
     </div>
     <div class="actions">
@@ -216,6 +440,7 @@
       <button class="btn-ghost" id="btnZerarMov"  ><i class="fas fa-undo"></i> Limpar</button>
     </div>
   </div>
+
 </div>
 
 <div class="modal-overlay" id="modalOverlay">
@@ -234,6 +459,23 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sislot-config.js"></script>
+<script>
+// Patch: integra o aplicarTema do bolao-cadastro.js com o novo sistema visual
+function _patchAplicarTema() {
+  if (typeof aplicarTema !== 'function') { setTimeout(_patchAplicarTema, 60); return; }
+  const _orig = aplicarTema;
+  window.aplicarTema = function(slug) {
+    _orig(slug);
+    // atualiza data-loja no body (aciona CSS vars dos temas)
+    document.body.setAttribute('data-loja', slug);
+    // atualiza botões seletores
+    document.querySelectorAll('.loja-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.slug === slug)
+    );
+  };
+}
+_patchAplicarTema();
+</script>
 <script src="./bolao-cadastro.js"></script>
 </body>
 </html>
