@@ -437,8 +437,12 @@ async function init() {
 function mudarAba(aba) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  $(`tab-${aba}`).classList.add('active');
+  // Ativa o CONTEÚDO pelo ID da div
   document.getElementById(`tab-${aba}`).classList.add('active');
+  // Ativa o BOTÃO pelo atributo onclick
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    if (btn.getAttribute('onclick')?.includes(`'${aba}'`)) btn.classList.add('active');
+  });
 }
 
 // ── CONCURSOS ──
@@ -649,11 +653,10 @@ async function renderListaCadastros() {
 }
 
 function editarConcurso(numConcurso) {
-  $('c-busca').value = numConcurso;
   mudarAba('cadastro');
-  buscarConcurso();
+  $('c-busca').value = numConcurso;
+  setTimeout(() => buscarConcurso(), 50);
 }
-
 function aplicarTipoBilhete(tipo) {
   const cfg = TIPOS_BILHETE[tipo]; if(!cfg) return;
   $('c-valor-fracao').value = cfg.valor_fracao.toFixed(2);
