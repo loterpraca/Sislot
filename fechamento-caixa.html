@@ -1090,15 +1090,14 @@ async function trocarLoteria() {
 async function carregarFuncionarios() {
   const { data } = await sb
     .from('usuarios_loterias')
-    .select('usuarios!inner(id, nome)')
+    .select('usuarios(id,nome)')
     .eq('loteria_id', loteriaAtiva.id)
-    .eq('usuarios.ativo', true)
-    .eq('usuarios.pode_logar', true);
+    .eq('ativo', true);
 
   const sel = $('funcionario');
   sel.innerHTML = '<option value="">Selecione...</option>';
 
-  const lista = (data || []).map(ul => ul.usuarios).filter(Boolean);
+  const lista = (data||[]).map(ul => ul.usuarios).filter(Boolean);
 
   if (isAdmin(usuario)) {
     lista.forEach(u => {
@@ -1107,12 +1106,14 @@ async function carregarFuncionarios() {
     });
     sel.disabled = false;
   } else {
+    // Operador só vê o próprio nome
     const opt = document.createElement('option');
     opt.value = usuario.id; opt.textContent = usuario.nome; sel.appendChild(opt);
     sel.value = usuario.id; sel.disabled = true;
     sel.classList.add('filled');
   }
 }
+
 function onFuncChange() {
   const sel = $('funcionario');
   sel.classList.toggle('filled', !!sel.value);
@@ -1590,44 +1591,39 @@ async function carregarBoloes() {
       .lte('dt_inicial', dataRef)
       .gte('dt_concurso', dataRef);
 
-    // Busca bolões externos: aqueles onde esta loja aparece como destino em movimentacoes_cotas
+    // Busca bolões externos: movimentacoes_cotas onde esta loja é destino
     const { data: movsExt } = await sb
-      .from('view_posicao_destinos')
-      .select('*')
-      .eq('loteria_id', loteriaAtiva.id); // loja atual como destino
+      .from('movimentacoes_cotas')
+      .select('bolao_id, qtd_cotas, boloes(id,loteria_id,modalidade,concurso,valor_cota,qtd_jogos,qtd_dezenas,dt_inicial,dt_concurso,status,loterias(nome))')
+      .eq('loteria_destino', loteriaAtiva.id)
+      .eq('status', 'ATIVO');
 
-    // Para cada mov externo, busca o bolão correspondente
-    const bolaoIdsExt = [...new Set((movsExt||[]).map(m => m.bolao_id))];
-    let boloesExtRaw = [];
-    if (bolaoIdsExt.length) {
-      const { data } = await sb
-        .from('boloes')
-        .select('id,loteria_id,modalidade,concurso,valor_cota,qtd_jogos,qtd_dezenas,dt_inicial,dt_concurso,loterias(nome)')
-        .in('id', bolaoIdsExt)
-        .eq('status', 'ATIVO')
-        .lte('dt_inicial', dataRef)
-        .gte('dt_concurso', dataRef);
-      boloesExtRaw = data || [];
-    }
+    // Filtra apenas bolões vigentes na data e agrupa por bolao_id somando cotas
+    const mapaExt = {};
+    (movsExt || []).forEach(m => {
+      const b = m.boloes;
+      if (!b || b.status !== 'ATIVO') return;
+      if (b.dt_inicial > dataRef || b.dt_concurso < dataRef) return;
+      if (!mapaExt[m.bolao_id]) {
+        mapaExt[m.bolao_id] = { bolao: b, qtdCotas: 0 };
+      }
+      mapaExt[m.bolao_id].qtdCotas += m.qtd_cotas || 0;
+    });
 
-    // Enriquece externos com saldo da view
-    lstInt = (boloesInt||[]).map(b => ({
+    lstInt = (boloesInt || []).map(b => ({
       bolao_id: b.id, modalidade: b.modalidade, concurso: b.concurso,
       qtdJogos: b.qtd_jogos, qtdDezenas: b.qtd_dezenas,
       valorCota: b.valor_cota, dtInicial: b.dt_inicial, dtConcurso: b.dt_concurso,
       saldoEnviado: null, origem: loteriaAtiva.nome, tipo: 'INTERNO'
     }));
 
-    lstExt = boloesExtRaw.map(b => {
-      const mov = (movsExt||[]).find(m => m.bolao_id === b.id);
-      return {
-        bolao_id: b.id, modalidade: b.modalidade, concurso: b.concurso,
-        qtdJogos: b.qtd_jogos, qtdDezenas: b.qtd_dezenas,
-        valorCota: b.valor_cota, dtInicial: b.dt_inicial, dtConcurso: b.dt_concurso,
-        saldoEnviado: mov?.qtd_cotas_liquidas ?? null,
-        origem: b.loterias?.nome || '', tipo: 'EXTERNO'
-      };
-    });
+    lstExt = Object.values(mapaExt).map(({ bolao: b, qtdCotas }) => ({
+      bolao_id: b.id, modalidade: b.modalidade, concurso: b.concurso,
+      qtdJogos: b.qtd_jogos, qtdDezenas: b.qtd_dezenas,
+      valorCota: b.valor_cota, dtInicial: b.dt_inicial, dtConcurso: b.dt_concurso,
+      saldoEnviado: qtdCotas,
+      origem: b.loterias?.nome || '', tipo: 'EXTERNO'
+    }));
 
     const total = lstInt.length + lstExt.length;
     if (!total) { setB3('b3-vazio'); return; }
@@ -1697,7 +1693,7 @@ function renderBoloes() {
         card.style.animationDelay = (i*.04)+'s';
         card.innerHTML = `
           <div>
-            <div class="bolao-key">${b.bolao_id?.slice(-8)||''} · ${b.concurso}</div>
+            <div class="bolao-key">#${b.bolao_id||''} · ${b.concurso}</div>
             <div class="bolao-nome">${b.modalidade} — Concurso ${b.concurso}</div>
             <div class="bolao-metas">${metas.join('')}</div>
           </div>
