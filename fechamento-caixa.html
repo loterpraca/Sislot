@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00c896">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fechamento de Caixa — SISLOT</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./sislot-config.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --deep:#0a1628;--mid:#0f2244;--panel:#132952;--border:#1e3a6e;
+  --accent:#00c896;--amber:#f5a623;--purple:#a78bfa;--sky:#38bdf8;
+  --coral:#fb7185;--bright:#e8eef8;--muted:#8fa3c8;--dim:#4a6491;
+  --input:#0d1e3a;--err:#ff5252;
+  --ic:#00c896;--ie:#f5a623;--ec:#38bdf8;--ee:#fb7185;
+}
+
+body{
+  background:var(--deep);font-family:'IBM Plex Sans',sans-serif;
+  color:var(--bright);min-height:100vh;display:flex;flex-direction:column;
+  background-image:
+    radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,150,.07) 0%,transparent 70%),
+    repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(30,58,110,.3) 39px,rgba(30,58,110,.3) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(30,58,110,.15) 39px,rgba(30,58,110,.15) 40px);
+}
+
+/* ── TOPBAR ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:56px;
+  background:rgba(15,34,68,.97);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(8px);position:sticky;top:0;z-index:200;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{
+  width:32px;height:32px;background:var(--accent);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--deep);
+}
+.brand-name{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.brand-sub{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.topbar-right{display:flex;align-items:center;gap:10px}
+#relogio{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+
+/* Seletor de loteria na topbar */
+.loteria-selector{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,200,150,.07);border:1px solid rgba(0,200,150,.2);
+  border-radius:8px;padding:5px 10px;font-size:12px;color:var(--accent);
+  font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .2s;
+}
+.loteria-selector:hover{background:rgba(0,200,150,.12);border-color:var(--accent)}
+.loteria-selector select{
+  background:transparent;border:none;color:var(--accent);
+  font-family:'IBM Plex Mono',monospace;font-size:12px;
+  outline:none;cursor:pointer;
+}
+.loteria-selector select option{background:var(--mid);color:var(--bright)}
+
+.btn-topbar{
+  display:flex;align-items:center;gap:5px;background:transparent;
+  border:1px solid var(--border);border-radius:6px;padding:5px 10px;
+  font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;
+  color:var(--muted);white-space:nowrap;font-family:'IBM Plex Sans',sans-serif;
+}
+.btn-topbar:hover{color:var(--bright);border-color:var(--muted)}
+.btn-inicio:hover{color:var(--accent);border-color:rgba(0,200,150,.4);background:rgba(0,200,150,.05)}
+.btn-sair:hover{color:var(--err);border-color:rgba(255,82,82,.4);background:rgba(255,82,82,.05)}
+
+/* ── STEPS BAR ── */
+.steps-bar{
+  display:flex;align-items:center;justify-content:center;
+  padding:20px 24px 0;gap:0;
+}
+.step{display:flex;align-items:center;gap:6px}
+.step-circle{
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;transition:all .3s;
+}
+.step.done   .step-circle{background:var(--accent);color:var(--deep)}
+.step.active .step-circle{background:var(--accent);color:var(--deep);box-shadow:0 0 0 4px rgba(0,200,150,.15)}
+.step.wait   .step-circle{background:var(--panel);color:var(--dim);border:1px solid var(--border)}
+.step-label{font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+.step.done .step-label,.step.active .step-label{color:var(--accent)}
+.step.wait .step-label{color:var(--dim)}
+.step-line{width:48px;height:1px;background:var(--border);margin:0 4px;transition:background .4s}
+.step-line.done{background:rgba(0,200,150,.4)}
+@media(max-width:600px){.step-label{display:none}.step-line{width:24px}}
+
+/* ── MAIN ── */
+.main{flex:1;padding:24px;max-width:900px;width:100%;margin:0 auto}
+
+.page-header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);
+}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.page-sub{font-size:12px;color:var(--muted);margin-top:3px;font-weight:300}
+.step-badge{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);
+  background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);
+  padding:3px 10px;border-radius:20px;letter-spacing:.1em;text-transform:uppercase;
+}
+
+/* ── SECTIONS ── */
+.section{margin-bottom:24px;animation:fadeUp .35s ease both}
+.section-label{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
+
+/* ── FIELD ── */
+.field{display:flex;flex-direction:column;gap:5px}
+.field-label{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field-label.req::after{content:' *';color:var(--accent)}
+
+input[type=text],input[type=number],input[type=date],select.sel{
+  width:100%;background:var(--input);border:1px solid var(--border);
+  border-radius:6px;padding:10px 13px;
+  font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--bright);
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;-moz-appearance:textfield;
+}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
+input:focus,select.sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,150,.1);background:#0e2040}
+input.filled,select.sel.filled{border-color:rgba(0,200,150,.35)}
+input::placeholder{color:var(--dim);font-size:12px}
+select.sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a6491' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px;cursor:pointer}
+select.sel option{background:var(--mid);color:var(--bright)}
+select.sel:disabled{opacity:.85;cursor:default}
+
+.pfx-wrap{position:relative}
+.pfx{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);pointer-events:none}
+.pfx-wrap input{padding-left:32px}
+
+/* ── CHIP ── */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  padding:4px 10px;border-radius:20px;transition:all .3s;
+  opacity:0;transform:translateY(3px);
+}
+.chip.show{opacity:1;transform:translateY(0)}
+.chip-green{background:rgba(0,200,150,.07);border:1px solid rgba(0,200,150,.2);color:var(--accent)}
+.chip-amber{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);color:var(--amber)}
+
+/* ── DÍVIDAS ── */
+.divida-row{
+  display:grid;grid-template-columns:1fr 150px 32px;gap:10px;align-items:center;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;animation:slideIn .2s ease both;transition:border-color .2s;
+}
+.divida-row:hover{border-color:rgba(0,200,150,.2)}
+.divida-num{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:.1em;margin-bottom:3px}
+.dividas-list{display:flex;flex-direction:column;gap:8px}
+.btn-rm{
+  background:transparent;border:1px solid rgba(255,82,82,.2);border-radius:5px;
+  color:rgba(255,82,82,.45);width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;
+}
+.btn-rm:hover{background:rgba(255,82,82,.1);border-color:var(--err);color:var(--err)}
+.btn-add{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  background:transparent;border:1px dashed var(--border);border-radius:8px;
+  color:var(--accent);padding:9px;font-size:12px;font-weight:500;
+  cursor:pointer;transition:all .2s;width:100%;margin-top:8px;
+  font-family:'IBM Plex Sans',sans-serif;
+}
+.btn-add:hover{border-color:var(--accent);background:rgba(0,200,150,.05)}
+.btn-add:disabled{opacity:.35;cursor:not-allowed;border-color:var(--border);color:var(--dim)}
+.div-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.div-counter{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
+
+/* ── TELA 2: PRODUTOS ── */
+.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.prod-grid{grid-template-columns:1fr}}
+.prod-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .2s}
+.prod-card.has-val{border-color:rgba(0,200,150,.3)}
+.prod-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.prod-nome{font-size:13px;font-weight:600}
+.badge{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 7px;border-radius:10px;letter-spacing:.07em;text-transform:uppercase}
+.badge-r{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--amber)}
+.badge-t{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--accent)}
+.faixas{display:flex;flex-direction:column;gap:9px}
+.faixa-row{display:grid;grid-template-columns:88px 1fr 72px;gap:8px;align-items:center}
+.faixa-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-align:right;transition:color .2s}
+.faixa-sub.on{color:var(--accent)}
+.qtd-wrap{display:flex;align-items:center}
+.btn-q{
+  width:28px;height:32px;border:1px solid var(--border);background:var(--mid);
+  color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;font-family:'IBM Plex Mono',monospace;user-select:none;
+}
+.btn-q:first-child{border-radius:5px 0 0 5px}
+.btn-q:last-child{border-radius:0 5px 5px 0}
+.btn-q:hover{background:rgba(0,200,150,.1);color:var(--accent);border-color:rgba(0,200,150,.3)}
+input.inp-qtd{
+  width:46px!important;height:32px;text-align:center;border-radius:0!important;
+  border-left:none!important;border-right:none!important;
+  font-size:14px!important;font-weight:600!important;padding:0!important;
+}
+input.inp-qtd.filled{border-top-color:rgba(0,200,150,.4)!important;border-bottom-color:rgba(0,200,150,.4)!important;color:var(--accent)!important}
+input.inp-preco{width:72px!important;padding:6px 8px!important;font-size:12px!important;border-radius:5px!important;text-align:center}
+.prod-footer{margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.prod-tot-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+.prod-tot-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--dim);transition:color .2s}
+.prod-tot-val.on{color:var(--accent)}
+
+/* ── TELA 2: FEDERAIS ── */
+.state-box{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:36px 20px;text-align:center;
+  background:var(--panel);border:1px dashed var(--border);border-radius:10px;
+}
+.state-title{font-size:13px;font-weight:600;color:var(--muted)}
+.state-sub{font-size:11px;color:var(--dim);max-width:280px}
+.spinner{width:28px;height:28px;border-radius:50%;border:3px solid rgba(167,139,250,.15);border-top-color:var(--purple);animation:spin .8s linear infinite}
+.fed-table-wrap{border-radius:10px;border:1px solid var(--border);overflow:hidden}
+table.fed-table{width:100%;border-collapse:collapse}
+table.fed-table thead tr{background:var(--mid)}
+table.fed-table thead th{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+  padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;
+}
+table.fed-table tbody tr{border-bottom:1px solid rgba(30,58,110,.5);transition:background .15s}
+table.fed-table tbody tr:last-child{border-bottom:none}
+table.fed-table tbody tr:hover{background:rgba(255,255,255,.02)}
+table.fed-table tbody tr.hv{background:rgba(167,139,250,.04)}
+table.fed-table tbody td{padding:9px 12px;font-size:12px;vertical-align:middle}
+table.fed-table tbody td.mono{font-family:'IBM Plex Mono',monospace;font-size:11px}
+.btn-buscar-fed{
+  display:flex;align-items:center;gap:7px;
+  background:var(--panel);border:1px solid var(--border);
+  color:var(--bright);border-radius:6px;padding:9px 16px;
+  font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;
+  font-family:'IBM Plex Sans',sans-serif;margin-bottom:14px;
+}
+.btn-buscar-fed:hover:not(:disabled){border-color:var(--purple);color:var(--purple);background:rgba(167,139,250,.05)}
+.btn-buscar-fed:disabled{opacity:.4;cursor:not-allowed}
+input.inp-fed{
+  width:54px!important;height:32px;text-align:center;border-radius:0!important;
+  border-left:none!important;border-right:none!important;
+  font-size:13px!important;font-weight:600!important;padding:0!important;
+}
+input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bottom-color:rgba(167,139,250,.5)!important;color:var(--purple)!important}
+.fed-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-align:center;margin-top:2px;transition:color .2s}
+.fed-sub.on{color:var(--purple)}
+
+/* ── TELA 3: BOLÕES ── */
+.bloco-sep{display:flex;align-items:center;gap:12px;margin:20px 0 14px}
+.bloco-label{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;padding:4px 12px;border-radius:5px;white-space:nowrap;
+}
+.bloco-line{flex:1;height:1px}
+.bloco-tot{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:5px;white-space:nowrap}
+
+.b-int .bloco-label{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--ic)}
+.b-int .bloco-line{background:rgba(0,200,150,.2)}
+.b-int .bloco-tot{background:rgba(0,200,150,.06);border:1px solid rgba(0,200,150,.15);color:var(--ic)}
+.b-ext .bloco-label{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);color:var(--ec)}
+.b-ext .bloco-line{background:rgba(56,189,248,.2)}
+.b-ext .bloco-tot{background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);color:var(--ec)}
+
+/* Agrupamento por modalidade */
+.mod-group{margin-bottom:18px}
+.mod-header{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 0 8px;margin-bottom:8px;border-bottom:1px solid rgba(30,58,110,.5);
+}
+.mod-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.mod-nome{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.mod-count{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:1px 6px;border-radius:6px}
+.mod-subtot{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;margin-left:auto}
+
+/* internos */
+.ic .mod-dot{background:var(--ic);box-shadow:0 0 5px var(--ic)}
+.ic .mod-nome{color:var(--ic)}
+.ic .mod-count{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--ic)}
+.ic .mod-subtot{color:var(--ic)}
+/* externos */
+.ec .mod-dot{background:var(--ec);box-shadow:0 0 5px var(--ec)}
+.ec .mod-nome{color:var(--ec)}
+.ec .mod-count{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);color:var(--ec)}
+.ec .mod-subtot{color:var(--ec)}
+
+.bolao-card{
+  display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:11px 13px;margin-bottom:7px;transition:border-color .2s;
+  animation:cardIn .25s ease both;
+}
+.bolao-card.is-int{border-left:3px solid var(--ic)}
+.bolao-card.is-ext{border-left:3px solid var(--ec)}
+.bolao-card.is-int.has-val{background:rgba(0,200,150,.02);border-right-color:rgba(0,200,150,.25)}
+.bolao-card.is-ext.has-val{background:rgba(56,189,248,.02);border-right-color:rgba(56,189,248,.25)}
+.bolao-key{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.1em;margin-bottom:2px;text-transform:uppercase}
+.bolao-nome{font-size:12px;font-weight:600;color:var(--bright);margin-bottom:4px;line-height:1.3}
+.bolao-metas{display:flex;flex-wrap:wrap;gap:4px}
+.meta-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;padding:1px 6px;border-radius:3px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);white-space:nowrap;
+}
+.meta-dest{color:var(--amber);border-color:rgba(245,166,35,.2);background:rgba(245,166,35,.05)}
+.meta-saldo{color:var(--sky);border-color:rgba(56,189,248,.2);background:rgba(56,189,248,.05)}
+.qtd-block{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:110px}
+.qtd-lbl{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.qtd-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-align:right;min-height:12px;transition:color .2s}
+.bolao-card.is-int .qtd-sub.on{color:var(--ic)}
+.bolao-card.is-ext .qtd-sub.on{color:var(--ec)}
+.bolao-card.is-int .btn-q:hover{background:rgba(0,200,150,.12);color:var(--ic);border-color:rgba(0,200,150,.35)}
+.bolao-card.is-ext .btn-q:hover{background:rgba(56,189,248,.12);color:var(--ec);border-color:rgba(56,189,248,.35)}
+.bolao-card.is-int input.inp-qtd.filled{color:var(--ic)!important;border-top-color:rgba(0,200,150,.4)!important;border-bottom-color:rgba(0,200,150,.4)!important}
+.bolao-card.is-ext input.inp-qtd.filled{color:var(--ec)!important;border-top-color:rgba(56,189,248,.4)!important;border-bottom-color:rgba(56,189,248,.4)!important}
+
+/* Lista de vendas (aparece quando qtd > 0) */
+.vendas-list{
+  background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;margin-top:12px;
+  display:none;animation:fadeUp .25s ease;
+}
+.vendas-list.show{display:block}
+.vendas-list-title{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.venda-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;border-bottom:1px solid rgba(30,58,110,.4);font-size:11px;
+  animation:slideIn .15s ease both;
+}
+.venda-item:last-child{border-bottom:none}
+.venda-item .vi-nome{color:var(--muted);font-size:11px}
+.venda-item .vi-qtd{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:11px}
+.venda-item .vi-val{font-family:'IBM Plex Mono',monospace;color:var(--bright);font-size:11px}
+
+/* ── TELA 4: RESUMO ── */
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:700px){.grade{grid-template-columns:1fr}}
+.bloco{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.bloco-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.bloco-head-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.bloco-head-title{font-size:12px;font-weight:600;letter-spacing:.04em}
+.bloco-head-tot{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600}
+.bloco-deb .bloco-head{background:rgba(255,82,82,.05);border-bottom-color:rgba(255,82,82,.15)}
+.bloco-deb .bloco-head-icon{background:rgba(255,82,82,.1)}
+.bloco-deb .bloco-head-title,.bloco-deb .bloco-head-tot{color:var(--err)}
+.bloco-cred .bloco-head{background:rgba(0,200,150,.05);border-bottom-color:rgba(0,200,150,.15)}
+.bloco-cred .bloco-head-icon{background:rgba(0,200,150,.1)}
+.bloco-cred .bloco-head-title,.bloco-cred .bloco-head-tot{color:var(--accent)}
+.linha{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(30,58,110,.5);transition:background .15s}
+.linha:last-child{border-bottom:none}
+.linha:hover{background:rgba(255,255,255,.015)}
+.linha-label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.linha-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.bloco-deb .linha-dot{background:rgba(255,82,82,.5)}
+.bloco-cred .linha-dot{background:rgba(0,200,150,.5)}
+.linha-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--bright)}
+.linha-val.zero{color:var(--dim)}
+.linha.sub{padding-left:32px;background:rgba(255,255,255,.01)}
+.linha.sub .linha-label{font-size:10px;color:var(--dim)}
+.linha.sub .linha-val{font-size:10px;color:var(--dim)}
+
+/* Quebra */
+.quebra-card{border-radius:12px;padding:20px 24px;margin-bottom:16px;border:2px solid;display:flex;align-items:center;gap:20px;transition:all .4s}
+.q-eq{background:rgba(0,200,150,.06);border-color:rgba(0,200,150,.3)}
+.q-pos{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.35)}
+.q-neg{background:rgba(255,82,82,.06);border-color:rgba(255,82,82,.35)}
+.q-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px}
+.q-eq .q-icon{background:rgba(0,200,150,.12)}
+.q-pos .q-icon{background:rgba(245,166,35,.12)}
+.q-neg .q-icon{background:rgba(255,82,82,.12)}
+.q-info{flex:1}
+.q-titulo{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px}
+.q-eq .q-titulo{color:var(--accent)}
+.q-pos .q-titulo{color:var(--amber)}
+.q-neg .q-titulo{color:var(--err)}
+.q-desc{font-size:11px;color:var(--muted)}
+.q-valor{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;line-height:1;text-align:right}
+.q-eq .q-valor{color:var(--accent)}
+.q-pos .q-valor{color:var(--amber)}
+.q-neg .q-valor{color:var(--err)}
+
+/* Justificativa */
+.just-wrap{background:rgba(245,166,35,.04);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:none}
+.just-wrap.show{display:block;animation:fadeUp .3s ease}
+.just-label{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}
+textarea#justificativa{
+  width:100%;background:var(--input);border:1px solid rgba(245,166,35,.25);
+  border-radius:7px;padding:10px 12px;resize:vertical;min-height:72px;
+  font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--bright);
+  outline:none;transition:border-color .2s;line-height:1.5;
+}
+textarea#justificativa:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.1)}
+textarea#justificativa::placeholder{color:var(--dim)}
+.just-counter{font-size:10px;color:var(--dim);text-align:right;margin-top:4px}
+
+/* ── TOTAIS BAR ── */
+.totais-bar{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:20px;margin-bottom:6px}
+.tot-item{flex:1;padding:12px 14px}
+.tot-item+.tot-item{border-left:1px solid var(--border)}
+.tot-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.tot-val{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--dim);transition:color .3s}
+.tv-a{color:var(--amber)}
+.tv-g{color:var(--accent)}
+.tv-p{color:var(--purple)}
+.tv-b{color:var(--bright);font-size:16px}
+.tv-ic{color:var(--ic)}
+.tv-ec{color:var(--ec)}
+@media(max-width:640px){.totais-bar{flex-wrap:wrap}}
+
+/* ── FOOTER ── */
+.form-footer{display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid var(--border);margin-top:8px}
+.btn-back{
+  display:flex;align-items:center;gap:7px;background:transparent;
+  border:1px solid var(--border);color:var(--muted);border-radius:8px;
+  padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;
+  transition:all .2s;font-family:'IBM Plex Sans',sans-serif;
+}
+.btn-back:hover{border-color:var(--muted);color:var(--bright)}
+.btn-next{
+  display:flex;align-items:center;gap:9px;background:var(--accent);
+  color:var(--deep);border:none;border-radius:8px;padding:11px 24px;
+  font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+  transition:all .2s;text-transform:uppercase;font-family:'IBM Plex Sans',sans-serif;
+}
+.btn-next:hover:not(:disabled){background:#00e8ad;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,200,150,.25)}
+.btn-next:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-finalizar{
+  display:flex;align-items:center;gap:9px;
+  border:none;border-radius:8px;padding:11px 24px;
+  font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+  transition:all .2s;text-transform:uppercase;font-family:'IBM Plex Sans',sans-serif;
+}
+.btn-finalizar.salvar{background:var(--accent);color:var(--deep)}
+.btn-finalizar.salvar:hover:not(:disabled){background:#00e8ad;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,200,150,.25)}
+.btn-finalizar.visualizar{background:rgba(56,189,248,.12);color:var(--sky);border:1px solid rgba(56,189,248,.3)}
+.btn-finalizar.visualizar:hover:not(:disabled){background:rgba(56,189,248,.2)}
+.btn-finalizar:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/* ── MODAIS ── */
+.overlay{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(10,22,40,.88);backdrop-filter:blur(6px);
+  align-items:center;justify-content:center;
+}
+.overlay.show{display:flex}
+.modal-box{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:14px;padding:26px 30px;width:min(92vw,400px);text-align:center;
+}
+.modal-icon{font-size:28px;margin-bottom:10px}
+.modal-title{font-size:14px;font-weight:600;color:var(--bright);margin-bottom:7px}
+.modal-desc{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6}
+.modal-btns{display:flex;gap:10px;justify-content:center}
+.modal-cancel{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:9px 18px;font-size:12px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all .2s}
+.modal-cancel:hover{border-color:var(--muted);color:var(--bright)}
+.modal-ok{border:none;border-radius:8px;padding:9px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all .2s}
+.modal-ok.verde{background:var(--accent);color:var(--deep)}
+.modal-ok.verde:hover{background:#00e8ad}
+.modal-ok.vermelho{background:var(--err);color:#fff}
+.modal-ok.vermelho:hover{background:#ff3333}
+.modal-ok.amber{background:var(--amber);color:var(--deep)}
+.modal-ok.amber:hover{background:#ffbd45}
+
+/* Modal gravando */
+.modal-gravando .spinner-lg{width:44px;height:44px;border-radius:50%;border:3px solid rgba(0,200,150,.15);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:0 auto 16px}
+.prog-bar-wrap{margin-top:14px;background:var(--mid);border-radius:4px;height:3px;overflow:hidden}
+.prog-bar{height:100%;background:var(--accent);transition:width .4s ease;width:0%;border-radius:4px}
+
+/* Modal admin */
+.admin-field{margin-bottom:10px}
+.admin-field input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:7px;padding:10px 12px;color:var(--bright);outline:none;font-family:'IBM Plex Mono',monospace;font-size:13px}
+.admin-field input:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.1)}
+.admin-err{font-size:11px;color:var(--err);margin-top:6px;display:none}
+
+/* ── INFO BAR ── */
+.info-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.info-chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
+}
+.info-chip strong{color:var(--bright)}
+
+/* ── BANNER MODO ── */
+.modo-banner{
+  display:none;align-items:flex-start;gap:10px;
+  border-radius:8px;padding:10px 14px;margin-bottom:16px;
+  font-size:11px;line-height:1.5;font-family:'IBM Plex Mono',monospace;
+  border:1px solid transparent;
+}
+.modo-banner.show{display:flex}
+.modo-banner.novo{background:rgba(0,200,150,.06);border-color:rgba(0,200,150,.2);color:var(--accent)}
+.modo-banner.edicao{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.25);color:var(--amber)}
+.modo-banner.visualizacao{background:rgba(56,189,248,.06);border-color:rgba(56,189,248,.25);color:var(--sky)}
+
+/* ── STEPS (visibilidade) ── */
+.step-content{display:none}
+.step-content.active{display:block;animation:fadeUp .3s ease}
+
+/* ── UTILS ── */
+.status-chip{display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;line-height:1.4;border:1px solid transparent}
+.status-chip.show{display:block}
+.status-chip.ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--bright)}
+.status-chip.err{background:rgba(255,82,82,.08);border-color:rgba(255,82,82,.2);color:#ffb3b3}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">LC</div>
+    <div>
+      <div class="brand-name">SisLot</div>
+      <div class="brand-sub">Fechamento de Caixa</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div id="relogio">--:--:--</div>
+    <div class="loteria-selector" id="loteria-wrap" style="display:none">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+      <select id="sel-loteria" onchange="trocarLoteria()">
+        <option value="">Carregando...</option>
+      </select>
+    </div>
+    <button class="btn-topbar btn-inicio" onclick="confirmarInicio()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Início
+    </button>
+    <button class="btn-topbar btn-sair" onclick="confirmarSair()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sair
+    </button>
+  </div>
+</header>
+
+<!-- ══ STEPS BAR ══ -->
+<div class="steps-bar" id="steps-bar">
+  <div class="step active" id="s1"><div class="step-circle">1</div><div class="step-label">Dados</div></div>
+  <div class="step-line" id="l1"></div>
+  <div class="step wait" id="s2"><div class="step-circle">2</div><div class="step-label">Produtos</div></div>
+  <div class="step-line" id="l2"></div>
+  <div class="step wait" id="s3"><div class="step-circle">3</div><div class="step-label">Bolões</div></div>
+  <div class="step-line" id="l3"></div>
+  <div class="step wait" id="s4"><div class="step-circle">4</div><div class="step-label">Resumo</div></div>
+</div>
+
+<main class="main">
+
+  <!-- ══════════════════════════════════════════
+       STEP 1 — DADOS EXTERNOS
+  ══════════════════════════════════════════ -->
+  <div class="step-content active" id="step1">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Entrada de Dados Externos</div>
+        <div class="page-sub">Preencha os valores conforme os relatórios físicos do dia</div>
+      </div>
+      <div class="step-badge">Tela 1 de 4</div>
+    </div>
+
+    <!-- Identificação -->
+    <div class="section">
+      <div class="section-label">Identificação</div>
+      <div class="g3">
+        <div class="field">
+          <label class="field-label req">Funcionário</label>
+          <select id="funcionario" class="sel" onchange="onFuncChange()">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label req">Data do Fechamento</label>
+          <input type="date" id="data-ref">
+        </div>
+        <div class="field">
+          <label class="field-label" style="opacity:0">.</label>
+          <button type="button" id="btn-buscar-fech" class="btn-back" style="justify-content:center;height:42px" onclick="buscarFechamentoExistente()">Buscar Fechamento</button>
+        </div>
+      </div>
+      <div class="status-chip" id="status-busca"></div>
+    </div>
+
+    <!-- Relatório e depósito -->
+    <div class="section">
+      <div class="section-label">Relatório e Movimentação Bancária</div>
+      <div class="g2">
+        <div class="field"><label class="field-label req">Valor do Relatório</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="relatorio" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+        <div class="field"><label class="field-label req">Depósito Bancário</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="deposito" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      </div>
+    </div>
+
+    <!-- Troco -->
+    <div class="section">
+      <div class="section-label">Controle de Troco</div>
+      <div class="g2">
+        <div class="field"><label class="field-label req">Troco Inicial (Fundo)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-ini" placeholder="0,00" step="0.01" oninput="calcTroco();autoFill(this)"></div></div>
+        <div class="field"><label class="field-label req">Troco Sobra (Final)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-sob" placeholder="0,00" step="0.01" oninput="calcTroco();autoFill(this)"></div></div>
+      </div>
+      <div class="chip chip-green" id="chip-troco" style="margin-top:8px">Diferença: <strong id="chip-troco-val">—</strong></div>
+    </div>
+
+    <!-- PIX e Prêmios -->
+    <div class="section">
+      <div class="section-label">PIX e Prêmios</div>
+      <div class="g3">
+        <div class="field"><label class="field-label req">PIX CNPJ Recebido</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-cnpj" placeholder="0,00" step="0.01" oninput="calcPix();autoFill(this)"></div></div>
+        <div class="field"><label class="field-label req">Diferença de PIX</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-dif" placeholder="0,00" step="0.01" oninput="calcPix();autoFill(this)"></div></div>
+        <div class="field"><label class="field-label req">Prêmio Raspadinha</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="premio-rasp" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      </div>
+      <div style="margin-top:12px;max-width:300px">
+        <div class="field"><label class="field-label req">Resgate Telesena</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="resgate-tele" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      </div>
+      <div class="chip chip-amber" id="chip-pix" style="margin-top:8px">PIX líquido: <strong id="chip-pix-val">—</strong></div>
+    </div>
+
+    <!-- Dívidas -->
+    <div class="section">
+      <div class="section-label">Dívidas de Clientes</div>
+      <div class="dividas-list" id="dividas-list"></div>
+      <div class="div-footer">
+        <div class="div-counter" id="div-counter">0 / 9 clientes</div>
+        <div class="chip chip-amber show" id="div-total-chip" style="opacity:0">Total: R$ 0,00</div>
+      </div>
+      <button type="button" class="btn-add" id="btn-add-div" onclick="addDivida()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+        Adicionar Cliente em Dívida
+      </button>
+    </div>
+
+    <div class="form-footer">
+      <div style="font-size:10px;color:var(--dim);font-style:italic"><span style="color:var(--accent)">*</span> Campos obrigatórios</div>
+      <button class="btn-next" onclick="avancarStep(2)">
+        Avançar para Tela 2
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 2 — PRODUTOS + FEDERAIS
+  ══════════════════════════════════════════ -->
+  <div class="step-content" id="step2">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Produtos e Federais</div>
+        <div class="page-sub">Quantidades vendidas de produtos físicos e bilhetes federais do dia</div>
+      </div>
+      <div class="step-badge">Tela 2 de 4</div>
+    </div>
+
+    <!-- Produtos físicos -->
+    <div class="section">
+      <div class="section-label">Produtos Físicos</div>
+      <div class="prod-grid">
+
+        <!-- Raspadinha -->
+        <div class="prod-card" id="card-rasp">
+          <div class="prod-head">
+            <div class="prod-nome">Raspadinha</div>
+            <span class="badge badge-r">4 faixas</span>
+          </div>
+          <div class="faixas" id="faixas-rasp"></div>
+          <div class="prod-footer">
+            <span class="prod-tot-lbl">Total</span>
+            <span class="prod-tot-val" id="rasp-tot">R$ 0,00</span>
+          </div>
+        </div>
+
+        <!-- Telesena -->
+        <div class="prod-card" id="card-tele">
+          <div class="prod-head">
+            <div class="prod-nome">Telesena</div>
+            <span class="badge badge-t">preço editável</span>
+          </div>
+          <div class="g2" style="margin-bottom:10px">
+            <div>
+              <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Preço Unitário</label>
+              <div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="tele-preco" value="16.00" step="0.50" min="0.01" onchange="recalcTele()" style="padding-left:32px"></div>
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Qtd Vendida</label>
+              <div class="qtd-wrap">
+                <button type="button" class="btn-q" onclick="ajTele(-1)">−</button>
+                <input type="number" class="inp-qtd" id="tele-qtd" placeholder="0" min="0" oninput="recalcTele()" onblur="blurQ('tele-qtd')">
+                <button type="button" class="btn-q" onclick="ajTele(+1)">+</button>
+              </div>
+            </div>
+          </div>
+          <div class="prod-footer">
+            <span class="prod-tot-lbl">Total</span>
+            <span class="prod-tot-val" id="tele-tot">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Federais -->
+    <div class="section">
+      <div class="section-label">Bilhetes Federais</div>
+      <button class="btn-buscar-fed" id="btn-fed" onclick="buscarFederais()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Buscar Federais
+      </button>
+      <div id="fs-inicial" class="state-box">
+        <div class="spinner"></div>
+        <div class="state-title">Carregando...</div>
+        <div class="state-sub">Buscando federais automaticamente</div>
+      </div>
+      <div id="fs-loading" class="state-box" style="display:none">
+        <div class="spinner"></div>
+        <div class="state-title">Buscando federais...</div>
+        <div class="state-sub" id="fs-load-sub">Consultando</div>
+      </div>
+      <div id="fs-erro" class="state-box" style="display:none">
+        <div class="state-title" style="color:var(--err)">Erro ao buscar federais</div>
+        <div class="state-sub" id="fs-err-msg">Verifique e tente novamente.</div>
+      </div>
+      <div id="fs-vazio" class="state-box" style="display:none">
+        <div class="state-title">Nenhum federal encontrado</div>
+        <div class="state-sub">Nenhum bilhete vigente para este período.</div>
+      </div>
+      <div id="fs-lista" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)"><strong id="fed-count" style="color:var(--purple)">0</strong> federais</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--purple)">Total: <strong id="fed-tot-lbl">R$ 0,00</strong></div>
+        </div>
+        <div class="fed-table-wrap">
+          <table class="fed-table">
+            <thead><tr>
+              <th>Modalidade</th><th>Concurso</th><th>Sorteio</th>
+              <th>Valor</th><th>Frações</th>
+              <th style="text-align:center;min-width:120px">Qtd Vendida</th>
+            </tr></thead>
+            <tbody id="fed-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Totais bar -->
+    <div class="totais-bar">
+      <div class="tot-item"><div class="tot-lbl">Raspadinha</div><div class="tot-val tv-a" id="t2-rasp">R$ 0,00</div></div>
+      <div class="tot-item"><div class="tot-lbl">Telesena</div><div class="tot-val tv-g" id="t2-tele">R$ 0,00</div></div>
+      <div class="tot-item"><div class="tot-lbl">Federais</div><div class="tot-val tv-p" id="t2-fed">R$ 0,00</div></div>
+      <div class="tot-item"><div class="tot-lbl">Total Geral</div><div class="tot-val tv-b" id="t2-geral">R$ 0,00</div></div>
+    </div>
+
+    <div class="form-footer">
+      <button class="btn-back" onclick="avancarStep(1)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 8H3M7 12l-4-4 4-4"/></svg>
+        Voltar
+      </button>
+      <button class="btn-next" onclick="avancarStep(3)">
+        Avançar para Tela 3
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 3 — BOLÕES
+  ══════════════════════════════════════════ -->
+  <div class="step-content" id="step3">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Bolões Vigentes</div>
+        <div class="page-sub">Internos e externos — cotas vendidas no dia</div>
+      </div>
+      <div class="step-badge">Tela 3 de 4</div>
+    </div>
+
+    <div id="b3-inicial" class="state-box">
+      <div class="spinner"></div>
+      <div class="state-title">Carregando bolões...</div>
+    </div>
+    <div id="b3-loading" class="state-box" style="display:none">
+      <div class="spinner"></div>
+      <div class="state-title">Buscando bolões vigentes...</div>
+    </div>
+    <div id="b3-erro" class="state-box" style="display:none">
+      <div class="state-title" style="color:var(--err)">Erro ao buscar bolões</div>
+      <div class="state-sub" id="b3-err-msg">Verifique e tente novamente.</div>
+      <button class="btn-next" style="font-size:12px;padding:8px 16px;margin-top:8px" onclick="carregarBoloes()">Tentar novamente</button>
+    </div>
+    <div id="b3-vazio" class="state-box" style="display:none">
+      <div class="state-title">Nenhum bolão vigente</div>
+      <div class="state-sub">Não há bolões ativos para a data informada.</div>
+    </div>
+
+    <div id="b3-lista" style="display:none">
+      <!-- renderizado por JS -->
+      <div id="boloes-wrap"></div>
+
+      <!-- Card total geral -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,200,150,.1),rgba(0,200,150,.04));border:1px solid rgba(0,200,150,.3);border-radius:10px;padding:14px 20px;margin-top:20px;margin-bottom:10px;gap:16px">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Total Bolões Vendidos</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:300"><span id="tot-cotas">0</span> cotas vendidas</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--accent)" id="tot-bol-geral">R$ 0,00</div>
+      </div>
+
+      <div class="totais-bar">
+        <div class="tot-item"><div class="tot-lbl">🟢 Internos</div><div class="tot-val tv-ic" id="tot-int">R$ 0,00</div></div>
+        <div class="tot-item"><div class="tot-lbl">🔵 Externos</div><div class="tot-val tv-ec" id="tot-ext">R$ 0,00</div></div>
+        <div class="tot-item"><div class="tot-lbl">Total</div><div class="tot-val tv-b" id="tot-bol">R$ 0,00</div></div>
+      </div>
+
+      <!-- Lista de vendas registradas -->
+      <div class="vendas-list" id="vendas-registradas">
+        <div class="vendas-list-title">Cotas vendidas registradas</div>
+        <div id="vendas-items"></div>
+      </div>
+    </div>
+
+    <div class="form-footer">
+      <button class="btn-back" onclick="avancarStep(2)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 8H3M7 12l-4-4 4-4"/></svg>
+        Voltar
+      </button>
+      <button class="btn-next" onclick="avancarStep(4)">
+        Avançar para Resumo
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STEP 4 — RESUMO FINAL
+  ══════════════════════════════════════════ -->
+  <div class="step-content" id="step4">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Resumo Final</div>
+        <div class="page-sub">Conferência de débitos e créditos — apuração da quebra</div>
+      </div>
+      <div class="step-badge">Tela 4 de 4</div>
+    </div>
+
+    <div class="modo-banner" id="modo-banner"></div>
+
+    <div class="info-bar">
+      <div class="info-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>Funcionário: <strong id="r-func">—</strong></div>
+      <div class="info-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Data: <strong id="r-data">—</strong></div>
+      <div class="info-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Loteria: <strong id="r-loteria">—</strong></div>
+    </div>
+
+    <div class="grade">
+      <!-- Débitos -->
+      <div class="bloco bloco-deb">
+        <div class="bloco-head">
+          <div class="bloco-head-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+          <span class="bloco-head-title">Débitos</span>
+          <span class="bloco-head-tot" id="r-tot-deb">R$ 0,00</span>
+        </div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Troco Inicial</div><div class="linha-val" id="r-troco-ini">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Total Produtos</div><div class="linha-val" id="r-produtos">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Total Federais</div><div class="linha-val" id="r-federais">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Total Bolões</div><div class="linha-val" id="r-boloes">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Relatório Diário</div><div class="linha-val" id="r-relatorio">R$ 0,00</div></div>
+      </div>
+      <!-- Créditos -->
+      <div class="bloco bloco-cred">
+        <div class="bloco-head">
+          <div class="bloco-head-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c896" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+          <span class="bloco-head-title">Créditos</span>
+          <span class="bloco-head-tot" id="r-tot-cred">R$ 0,00</span>
+        </div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Troco Sobra</div><div class="linha-val" id="r-troco-sob">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Depósito Bancário</div><div class="linha-val" id="r-deposito">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>PIX CNPJ</div><div class="linha-val" id="r-pix">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Diferença PIX</div><div class="linha-val" id="r-pix-dif">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Prêmio Raspadinha</div><div class="linha-val" id="r-rasp">R$ 0,00</div></div>
+        <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Resgate Telesena</div><div class="linha-val" id="r-tele">R$ 0,00</div></div>
+        <div class="linha" id="div-linha" style="cursor:pointer" onclick="toggleDividas()">
+          <div class="linha-label"><div class="linha-dot"></div>Dívidas Clientes <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2);color:var(--purple);margin-left:4px" id="div-badge">0</span> <span id="div-arrow" style="font-size:9px;color:var(--dim);margin-left:4px;transition:transform .2s;display:inline-block">▶</span></div>
+          <div class="linha-val" id="r-dividas">R$ 0,00</div>
+        </div>
+        <div id="div-sub-wrap" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Quebra -->
+    <div class="quebra-card q-eq" id="quebra-card">
+      <div class="q-icon" id="q-icon">✓</div>
+      <div class="q-info">
+        <div class="q-titulo" id="q-titulo">Caixa Equilibrado</div>
+        <div class="q-desc" id="q-desc">Créditos e débitos estão balanceados.</div>
+      </div>
+      <div>
+        <div class="q-valor" id="q-valor">R$ 0,00</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-align:right;margin-top:3px" id="q-detalhe">Créditos − Débitos</div>
+      </div>
+    </div>
+
+    <!-- Justificativa -->
+    <div class="just-wrap" id="just-wrap">
+      <div class="just-label">⚠ Justificativa obrigatória — quebra identificada</div>
+      <textarea id="justificativa" maxlength="500" placeholder="Descreva o motivo da diferença..."></textarea>
+      <div class="just-counter"><span id="just-cnt">0</span> / 500</div>
+    </div>
+
+    <div class="form-footer">
+      <button class="btn-back" onclick="avancarStep(3)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 8H3M7 12l-4-4 4-4"/></svg>
+        Voltar
+      </button>
+      <button class="btn-finalizar salvar" id="btn-final" onclick="finalizar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="btn-final-txt">Finalizar Fechamento</span>
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ MODAIS ══ -->
+<div class="overlay" id="m-inicio"><div class="modal-box"><div class="modal-icon">🏠</div><div class="modal-title">Voltar ao início?</div><div class="modal-desc">Os dados serão descartados e o formulário reiniciado.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-inicio')">Cancelar</button><button class="modal-ok verde" onclick="executarInicio()">Sim, reiniciar</button></div></div></div>
+<div class="overlay" id="m-sair"><div class="modal-box"><div class="modal-icon">🔒</div><div class="modal-title">Sair do sistema?</div><div class="modal-desc">Sua sessão será encerrada.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-sair')">Cancelar</button><button class="modal-ok vermelho" onclick="executarSair()">Sim, sair</button></div></div></div>
+<div class="overlay" id="m-sobrescrever"><div class="modal-box"><div class="modal-icon">⚠️</div><div class="modal-title">Fechamento já registrado</div><div class="modal-desc" id="m-sob-desc">Já existe um fechamento para esta data. Deseja sobrescrever?</div><div class="modal-btns"><button class="modal-cancel" onclick="responderModal('sob',false)">Cancelar</button><button class="modal-ok amber" onclick="responderModal('sob',true)">Sobrescrever</button></div></div></div>
+<div class="overlay" id="m-admin"><div class="modal-box" style="text-align:left"><div class="modal-title" style="color:var(--amber);margin-bottom:6px">Autenticação de Administrador</div><div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">Para sobrescrever é necessária autenticação de admin.</div><div class="admin-field"><input type="text" id="admin-login" placeholder="Usuário administrador"></div><div class="admin-field"><input type="password" id="admin-senha" placeholder="Senha"></div><div class="admin-err" id="admin-err">Credenciais inválidas.</div><div class="modal-btns" style="justify-content:flex-end;margin-top:14px"><button class="modal-cancel" onclick="responderModal('admin',null)">Cancelar</button><button class="modal-ok amber" onclick="confirmarAdmin()">Confirmar</button></div></div></div>
+<div class="overlay" id="m-gravando"><div class="modal-box modal-gravando"><div class="spinner-lg"></div><div class="modal-title" id="m-grav-titulo">Gravando fechamento...</div><div style="font-size:11px;color:var(--muted)" id="m-grav-sub">Aguarde</div><div class="prog-bar-wrap"><div class="prog-bar" id="m-prog"></div></div></div></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// SISLOT — Fechamento de Caixa (arquivo único, 4 steps)
+// Supabase-native, multi-loteria, auth unificada
+// ══════════════════════════════════════════════════════════════
+
+const sb = supabase.createClient(
+  window.SISLOT_CONFIG.url,
+  window.SISLOT_CONFIG.anonKey
+);
+
+// ── Estado global ──────────────────────────────────────────────
+let usuario      = null;   // registro interno
+let loteriaAtiva = null;   // {id, nome, slug, sheetId}
+let todasLojas   = [];     // lojas permitidas ao usuário
+let stepAtual    = 1;
+let modoAtual    = 'novo'; // novo | edicao | visualizacao
+let fechamentoOriginalId = null; // id do fechamento carregado (edição)
+
+// Dados das telas (estado em memória — não sessionStorage)
+const ESTADO = {
+  tela1: {},
+  tela2: { raspadinha: [], telesena: null, federais: [] },
+  tela3: { internos: [], externos: [] },
+};
+
+// Bolões carregados da tela 3
+let lstInt = []; // internos
+let lstExt = []; // externos
+let allBoloes = []; // [{tipo, data, idx}]
+
+// Federais carregados
+let federais = [];
+// Produtos dinâmicos do Supabase
+let produtosRasp = [];
+let produtoTele = null;
+const PRECOS_RASP_FALLBACK = [2.50, 5.00, 10.00, 20.00];
+const getPrecosRasp = () => produtosRasp.length ? produtosRasp.map(p => p.valor_unitario) : PRECOS_RASP_FALLBACK;
+
+// Resolvers de modais promise-based
+const resolvers = {};
+
+// ── Helpers ────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmtBRL = v => 'R$ ' + Math.abs(v||0).toFixed(2).replace('.',',');
+const fmtBRLs = v => Number(v||0).toFixed(2).replace('.',',');
+const fmtDataBR = iso => { if (!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; };
+const fmtDataISO = br => { const [d,m,y]=String(br||'').split('/'); return `${y}-${m}-${d}`; };
+const n = id => parseFloat($(id)?.value) || 0;
+const isAdmin = u => ['admin','adm','socio','ADM','ADMIN','SOCIO'].includes(String(u?.perfil||'').trim());
+
+function autoFill(el) {
+  el.classList.toggle('filled', el.value.trim() !== '');
+}
+function blurQ(id) {
+  const i = $(id); if (i && i.value==='0') i.value='';
+}
+
+// Relógio
+function updateClock() {
+  const now = new Date();
+  $('relogio').textContent =
+    now.toLocaleTimeString('pt-BR') + ' — ' +
+    now.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ── INIT ───────────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = './login.html'; return; }
+
+  const { data: usr } = await sb
+    .from('usuarios')
+    .select('id,nome,email,perfil,ativo,pode_logar')
+    .eq('auth_user_id', session.user.id)
+    .eq('ativo', true)
+    .eq('pode_logar', true)
+    .maybeSingle();
+
+  if (!usr) { location.href = './login.html'; return; }
+  usuario = usr;
+
+  await carregarLojas();
+  if (!todasLojas.length) { alert('Nenhuma loja vinculada a este usuário.'); return; }
+
+  renderSeletorLoteria();
+  await definirLoteriaAtiva(todasLojas[0]);
+
+  $('data-ref').value = new Date().toISOString().slice(0,10);
+  await carregarProdutos();
+  buildRaspadinha();
+}
+
+// ── LOJAS ──────────────────────────────────────────────────────
+async function carregarLojas() {
+  const { data } = await sb
+    .from('usuarios_loterias')
+    .select('loteria_id,papel_na_loja,principal,loterias(id,nome,slug,codigo,sheet_id_federais,aba_externos)')
+    .eq('usuario_id', usuario.id);
+
+  if (data) {
+    todasLojas = data.map(ul => ({
+      id:          ul.loterias.id,
+      nome:        ul.loterias.nome,
+      slug:        ul.loterias.slug,
+      codigo:      ul.loterias.codigo,
+      sheetId:     ul.loterias.sheet_id_federais || '',
+      abaExternos: ul.loterias.aba_externos || 'D.Centro',
+      principal:   ul.principal,
+    }));
+  }
+}
+
+function renderSeletorLoteria() {
+  const sel = $('sel-loteria');
+  sel.innerHTML = '';
+  todasLojas.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l.id; opt.textContent = l.nome;
+    sel.appendChild(opt);
+  });
+  $('loteria-wrap').style.display = 'flex';
+}
+
+async function definirLoteriaAtiva(loja) {
+  loteriaAtiva = loja;
+  $('sel-loteria').value = loja.id;
+  await carregarFuncionarios();
+}
+
+async function trocarLoteria() {
+  const id = parseInt($('sel-loteria').value);
+  const loja = todasLojas.find(l => l.id === id);
+  if (loja) {
+    // Reseta estado ao trocar de loja
+    resetEstado();
+    await definirLoteriaAtiva(loja);
+    if (stepAtual > 1) showStep(1);
+  }
+}
+
+// ── FUNCIONÁRIOS ───────────────────────────────────────────────
+async function carregarFuncionarios() {
+  const { data } = await sb
+    .from('usuarios_loterias')
+    .select('usuarios(id,nome)')
+    .eq('loteria_id', loteriaAtiva.id)
+    .eq('ativo', true);
+
+  const sel = $('funcionario');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+
+  const lista = (data||[]).map(ul => ul.usuarios).filter(Boolean);
+
+  if (isAdmin(usuario)) {
+    lista.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id; opt.textContent = u.nome; sel.appendChild(opt);
+    });
+    sel.disabled = false;
+  } else {
+    // Operador só vê o próprio nome
+    const opt = document.createElement('option');
+    opt.value = usuario.id; opt.textContent = usuario.nome; sel.appendChild(opt);
+    sel.value = usuario.id; sel.disabled = true;
+    sel.classList.add('filled');
+  }
+}
+
+function onFuncChange() {
+  const sel = $('funcionario');
+  sel.classList.toggle('filled', !!sel.value);
+}
+
+// ── STEPS ──────────────────────────────────────────────────────
+function showStep(n) {
+  stepAtual = n;
+  document.querySelectorAll('.step-content').forEach((el,i) => {
+    el.classList.toggle('active', i+1 === n);
+  });
+  // Steps bar
+  for (let i=1;i<=4;i++) {
+    const s = $('s'+i), l = $('l'+i);
+    if (i < n) { s.className='step done'; s.querySelector('.step-circle').textContent='✓'; }
+    else if (i===n) { s.className='step active'; s.querySelector('.step-circle').textContent=i; }
+    else { s.className='step wait'; s.querySelector('.step-circle').textContent=i; }
+    if (l) l.classList.toggle('done', i < n);
+  }
+  window.scrollTo(0,0);
+}
+
+async function avancarStep(para) {
+  if (para > stepAtual) {
+    // Validações ao avançar
+    if (stepAtual===1 && !validarStep1()) return;
+    if (stepAtual===2) coletarTela2();
+    if (stepAtual===3) coletarTela3();
+  }
+  if (para===3 && stepAtual===2) await carregarBoloes();
+  if (para===4) montarResumo();
+  showStep(para);
+}
+
+// ── VALIDAÇÃO STEP 1 ───────────────────────────────────────────
+function validarStep1() {
+  const reqs = ['funcionario','data-ref','relatorio','deposito','troco-ini','troco-sob','pix-cnpj','pix-dif','premio-rasp','resgate-tele'];
+  let ok = true;
+  reqs.forEach(id => {
+    const el = $(id);
+    if (!el?.value?.trim()) {
+      el?.classList.add('has-error');
+      ok = false;
+    }
+  });
+  if (!ok) {
+    const first = document.querySelector('.has-error');
+    first?.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  return ok;
+}
+
+// ── CHIPS TROCO E PIX ──────────────────────────────────────────
+function calcTroco() {
+  const ini = n('troco-ini'), sob = n('troco-sob');
+  const chip = $('chip-troco'), val = $('chip-troco-val');
+  if (ini || sob) {
+    const d = sob - ini;
+    val.textContent = 'R$ ' + d.toFixed(2).replace('.',',');
+    val.style.color = d >= 0 ? 'var(--accent)' : 'var(--err)';
+    chip.classList.add('show');
+  } else chip.classList.remove('show');
+}
+function calcPix() {
+  const rec = n('pix-cnpj'), dif = n('pix-dif');
+  const chip = $('chip-pix'), val = $('chip-pix-val');
+  if (rec || dif) {
+    const d = rec - dif;
+    val.textContent = 'R$ ' + d.toFixed(2).replace('.',',');
+    val.style.color = d===0?'var(--accent)':d>0?'var(--amber)':'var(--err)';
+    chip.classList.add('show');
+  } else chip.classList.remove('show');
+}
+
+// ── DÍVIDAS ────────────────────────────────────────────────────
+let dividaCount = 0;
+const MAX_DIV = 9;
+
+function renderDivCount() {
+  $('div-counter').textContent = `${dividaCount} / ${MAX_DIV} clientes`;
+  $('btn-add-div').disabled = dividaCount >= MAX_DIV;
+}
+function calcDivTotal() {
+  let t = 0;
+  document.querySelectorAll('.div-valor').forEach(i => t += parseFloat(i.value)||0);
+  const chip = $('div-total-chip');
+  if (dividaCount > 0) { chip.textContent = `Total dívidas: R$ ${t.toFixed(2).replace('.',',')}` ; chip.style.opacity='1'; }
+  else chip.style.opacity='0';
+}
+function addDivida(nome='', valor='') {
+  if (dividaCount >= MAX_DIV) return;
+  dividaCount++;
+  const list = $('dividas-list');
+  const idx = dividaCount;
+  const row = document.createElement('div');
+  row.className = 'divida-row';
+  row.innerHTML = `
+    <div>
+      <div class="divida-num">CLIENTE ${String(idx).padStart(2,'0')}</div>
+      <input type="text" class="div-nome" placeholder="Nome do cliente" value="${nome}" oninput="autoFill(this)">
+    </div>
+    <div class="pfx-wrap">
+      <span class="pfx">R$</span>
+      <input type="number" class="div-valor" placeholder="0,00" step="0.01" value="${valor}" oninput="calcDivTotal()" style="padding-left:32px">
+    </div>
+    <button type="button" class="btn-rm" onclick="remDivida(this)" title="Remover">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>
+    </button>
+  `;
+  list.appendChild(row);
+  renderDivCount(); calcDivTotal();
+  row.querySelector('.div-nome').focus();
+}
+function remDivida(btn) {
+  const row = btn.closest('.divida-row');
+  row.style.opacity='0'; row.style.transform='translateX(10px)'; row.style.transition='all .2s';
+  setTimeout(() => {
+    row.remove(); dividaCount--;
+    document.querySelectorAll('.divida-num').forEach((el,i) => el.textContent = `CLIENTE ${String(i+1).padStart(2,'0')}`);
+    renderDivCount(); calcDivTotal();
+  }, 200);
+}
+
+// ── BUSCAR FECHAMENTO EXISTENTE ────────────────────────────────
+async function buscarFechamentoExistente() {
+  const funcId  = $('funcionario').value;
+  const dataRef = $('data-ref').value;
+  const btn = $('btn-buscar-fech');
+
+  if (!funcId || !dataRef) {
+    showStatus('status-busca','Selecione funcionário e data antes de buscar.','err'); return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Buscando...';
+  hideStatus('status-busca');
+
+  try {
+    const { data: fech, error } = await sb
+      .from('fechamentos')
+      .select(`
+        *,
+        fechamento_produtos(*),
+        fechamento_federais(*),
+        fechamento_boloes(*),
+        fechamento_dividas(*)
+      `)
+      .eq('loteria_id', loteriaAtiva.id)
+      .eq('usuario_id', funcId)
+      .eq('data_ref', dataRef)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!fech) {
+      showStatus('status-busca','Nenhum fechamento encontrado para esta data.','ok');
+      modoAtual = 'novo'; fechamentoOriginalId = null;
+      return;
+    }
+
+    // Preenche os campos com o fechamento encontrado
+    preencherTela1(fech);
+    fechamentoOriginalId = fech.id;
+    modoAtual = 'visualizacao'; // será reavaliado na tela 4
+
+    // Armazena dados das outras telas para preencher ao navegar
+    ESTADO.tela2 = montarTela2DoFechamento(fech);
+    ESTADO.tela3 = montarTela3DoFechamento(fech);
+
+    showStatus('status-busca','✓ Fechamento carregado — modo edição ativo.','ok');
+
+  } catch(e) {
+    showStatus('status-busca','Erro ao buscar: '+e.message,'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Buscar Fechamento';
+  }
+}
+
+function preencherTela1(fech) {
+  const set = (id, v) => { const el=$(id); if(!el) return; el.value = v!==null&&v!==undefined ? Number(v).toFixed(2) : ''; el.classList.toggle('filled', !!el.value && el.value!=='0.00'); };
+  set('relatorio',    fech.relatorio);
+  set('deposito',     fech.deposito);
+  set('troco-ini',    fech.troco_inicial);
+  set('troco-sob',    fech.troco_sobra);
+  set('pix-cnpj',     fech.pix_cnpj);
+  set('pix-dif',      fech.diferenca_pix);
+  set('premio-rasp',  fech.premio_raspadinha);
+  set('resgate-tele', fech.resgate_telesena);
+
+  // Dívidas
+  $('dividas-list').innerHTML = ''; dividaCount = 0;
+  (fech.fechamento_dividas||[]).forEach(d => addDivida(d.cliente_nome, d.valor));
+
+  calcTroco(); calcPix();
+}
+
+function montarTela2DoFechamento(fech) {
+  const raspadinha = (fech.fechamento_produtos||[]).filter(p=>p.tipo==='RASPADINHA').map(p=>({preco:p.valor_unitario,qtd:p.qtd_vendida,sub:p.total}));
+  const telesena   = (fech.fechamento_produtos||[]).find(p=>p.tipo==='TELESENA') || null;
+  const federais   = (fech.fechamento_federais||[]).map(f=>({
+    modalidade:f.modalidade,concurso:f.concurso,dtSorteio:f.dt_sorteio,
+    valorUnit:f.valor_unitario,qtdVendida:f.qtd_vendida,subtotal:f.total
+  }));
+  return { raspadinha, telesena, federais };
+}
+
+function montarTela3DoFechamento(fech) {
+  const internos = (fech.fechamento_boloes||[]).filter(b=>b.tipo==='INTERNO').map(mapBolaoFech);
+  const externos = (fech.fechamento_boloes||[]).filter(b=>b.tipo==='EXTERNO').map(mapBolaoFech);
+  return { internos, externos };
+}
+
+function mapBolaoFech(b) {
+  return { bolao_id:b.bolao_id, modalidade:b.modalidade, qtdVendida:b.qtd_vendida, valorCota:b.valor_cota, subtotal:b.subtotal };
+}
+
+// ── PRODUTOS: carrega do Supabase ─────────────────────────────
+async function carregarProdutos() {
+  const { data } = await sb
+    .from('produtos')
+    .select('id, tipo, descricao, valor_unitario, ordem')
+    .eq('ativo', true)
+    .order('ordem');
+
+  if (data && data.length) {
+    produtosRasp = data.filter(p => p.tipo === 'RASPADINHA');
+    produtoTele  = data.find(p  => p.tipo === 'TELESENA') || null;
+  }
+  // Fallback se tabela ainda não tem dados
+  if (!produtosRasp.length) {
+    produtosRasp = PRECOS_RASP_FALLBACK.map((v, i) => ({
+      id: null, descricao: `Raspadinha R$ ${v.toFixed(2).replace('.',',')}`,
+      valor_unitario: v, ordem: i+1
+    }));
+  }
+  if (!produtoTele) {
+    produtoTele = { id: null, descricao: 'Telesena', valor_unitario: 16.00 };
+  }
+}
+
+// ── PRODUTOS: RASPADINHA ───────────────────────────────────────
+function buildRaspadinha() {
+  const wrap = $('faixas-rasp'); wrap.innerHTML = '';
+  produtosRasp.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'faixa-row';
+    div.innerHTML = `
+      <div class="pfx-wrap">
+        <span class="pfx">R$</span>
+        <input type="number" class="inp-preco" id="rp-${i}"
+          value="${Number(p.valor_unitario).toFixed(2)}"
+          step="0.50" min="0.01" onchange="recalcR(${i})"
+          title="${p.descricao}">
+      </div>
+      <div class="qtd-wrap">
+        <button type="button" class="btn-q" onclick="ajR(${i},-1)">−</button>
+        <input type="number" class="inp-qtd" id="rq-${i}" placeholder="0" min="0"
+          oninput="recalcR(${i})" onblur="blurQ('rq-${i}')">
+        <button type="button" class="btn-q" onclick="ajR(${i},+1)">+</button>
+      </div>
+      <div class="faixa-sub" id="rs-${i}">—</div>
+    `;
+    wrap.appendChild(div);
+  });
+  // Preenche preço da telesena do cadastro
+  if (produtoTele && $('tele-preco')) {
+    $('tele-preco').value = Number(produtoTele.valor_unitario).toFixed(2);
+  }
+}
+
+function ajR(i,d) {
+  const inp = $(`rq-${i}`);
+  inp.value = Math.max(0,(parseInt(inp.value)||0)+d)||'';
+  recalcR(i); inp.focus();
+}
+function recalcR(i) {
+  const qtd=parseInt($(`rq-${i}`).value)||0, prc=parseFloat($(`rp-${i}`).value)||0;
+  const sub=$(`rs-${i}`), inp=$(`rq-${i}`);
+  if(qtd>0){sub.textContent='R$ '+(qtd*prc).toFixed(2).replace('.',',');sub.classList.add('on');inp.classList.add('filled');}
+  else{sub.textContent='—';sub.classList.remove('on');inp.classList.remove('filled');}
+  updRaspTot();
+}
+function updRaspTot() {
+  let t=0;
+  produtosRasp.forEach((_,i)=>t+=(parseInt($(`rq-${i}`)?.value)||0)*(parseFloat($(`rp-${i}`)?.value)||0));
+  const el=$('rasp-tot'); el.textContent='R$ '+t.toFixed(2).replace('.',','); el.classList.toggle('on',t>0);
+  $('card-rasp').classList.toggle('has-val',t>0);
+  $('t2-rasp').textContent='R$ '+t.toFixed(2).replace('.',',');
+  updT2Geral();
+}
+function ajTele(d) { const inp=$('tele-qtd'); inp.value=Math.max(0,(parseInt(inp.value)||0)+d)||''; recalcTele(); inp.focus(); }
+function recalcTele() {
+  const qtd=parseInt($('tele-qtd').value)||0, prc=parseFloat($('tele-preco').value)||0, tot=qtd*prc;
+  const el=$('tele-tot'); el.textContent='R$ '+tot.toFixed(2).replace('.',','); el.classList.toggle('on',tot>0);
+  $('card-tele').classList.toggle('has-val',tot>0);
+  $('t2-tele').textContent='R$ '+tot.toFixed(2).replace('.',',');
+  updT2Geral();
+}
+function getRaspTot(){
+  let t=0;
+  produtosRasp.forEach((_,i)=>t+=(parseInt($(`rq-${i}`)?.value)||0)*(parseFloat($(`rp-${i}`)?.value)||0));
+  return t;
+}
+function getTeleTot(){return(parseInt($('tele-qtd').value)||0)*(parseFloat($('tele-preco').value)||0);}
+function getFedTot(){let t=0;federais.forEach((_,i)=>t+=(parseInt($(`fed-qtd-${i}`)?.value)||0)*Number(_.valorUnit||0));return t;}
+function updT2Geral(){const g=getRaspTot()+getTeleTot()+getFedTot();$('t2-geral').textContent='R$ '+g.toFixed(2).replace('.',',');$('t2-fed').textContent='R$ '+getFedTot().toFixed(2).replace('.',',');}
+
+// ── FEDERAIS ───────────────────────────────────────────────────
+function setFS(s){
+  ['fs-inicial','fs-loading','fs-erro','fs-vazio','fs-lista'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+  $(s).style.display = s==='fs-lista'?'block':'flex';
+}
+
+async function buscarFederais() {
+  const dataRef = $('data-ref').value;
+  if (!dataRef) { alert('Defina a data na tela 1 antes de buscar federais.'); return; }
+  await buscarFederaisSupabase(dataRef);
+}
+
+async function buscarFederaisSupabase(dataRef) {
+  setFS('fs-loading');
+  $('fs-load-sub').textContent = 'Consultando federais disponíveis para esta loja...';
+
+  try {
+    // Busca via view_saldo_federal:
+    // - Concursos próprios (loteria_id = loja atual) com saldo > 0
+    // - Concursos externos recebidos via movimentação com saldo > 0
+    // Filtra apenas concursos ainda não sorteados na data do fechamento
+    const { data, error } = await sb
+      .from('view_saldo_federal')
+      .select('*')
+      .eq('loteria_id', loteriaAtiva.id)
+      .gte('dt_sorteio', dataRef)         // apenas concursos com sorteio na data ou posterior
+      .gt('saldo_disponivel', 0)          // apenas quem tem frações para vender
+      .order('dt_sorteio', { ascending: true })
+      .order('concurso', { ascending: true });
+
+    if (error) throw error;
+
+    if (!data || !data.length) {
+      setFS('fs-vazio'); return;
+    }
+
+    // Mapeia para o formato interno (compatível com renderFed)
+    federais = data.map(f => ({
+      federal_id:    f.federal_id,
+      modalidade:    f.modalidade,
+      concurso:      f.concurso,
+      dtSorteio:     f.dt_sorteio,
+      valorUnit:     Number(f.valor_fracao),
+      valorCusto:    Number(f.valor_custo),
+      saldo:         f.saldo_disponivel,
+      isExterno:     f.is_externo,
+      qtdFracoes:    f.qtd_recebidas,
+    }));
+
+    renderFed();
+    setFS('fs-lista');
+
+    // Restaura quantidades se veio de fechamento carregado
+    if (ESTADO.tela2.federais?.length) restaurarFederais();
+
+  } catch(e) {
+    console.error(e);
+    setFS('fs-erro');
+    $('fs-err-msg').textContent = e.message || 'Erro ao buscar federais do Supabase.';
+  }
+}
+
+async function buscarFederaisSheets(dataRef) {
+  setFS('fs-loading');
+  const token = (await sb.auth.getSession()).data?.session?.access_token || '';
+  const [y,m] = dataRef.split('-').map(Number);
+  const dtIni = `01/${String(m).padStart(2,'0')}/${y}`;
+  const dtFimDate = new Date(y,m-1+3,0); // 3 meses à frente
+  const dtFim = `${String(dtFimDate.getDate()).padStart(2,'0')}/${String(dtFimDate.getMonth()+1).padStart(2,'0')}/${dtFimDate.getFullYear()}`;
+  $('fs-load-sub').textContent = `Período: ${dtIni} → ${dtFim}`;
+
+  try {
+    // Mantém chamada ao GAS legado enquanto não há cadastro próprio
+    const API = loteriaAtiva?.gasUrl || '';
+    if (!API) throw new Error('URL do GAS não configurada na loteria.');
+
+    const resp = await fetch(API, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'buscarFederais', token,
+        payload:{ sheetId:loteriaAtiva.sheetId, aba:'Federal', dataInicial:dtIni, dataFinal:dtFim, max:24 }
+      })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error);
+
+    federais = (data.federais||[]).sort((a,b)=>(parseInt(a.concurso)||0)-(parseInt(b.concurso)||0));
+    if (!federais.length) { setFS('fs-vazio'); return; }
+    renderFed();
+    setFS('fs-lista');
+
+    // Restaura quantidades se veio de um fechamento carregado
+    if (ESTADO.tela2.federais?.length) restaurarFederais();
+
+  } catch(e) {
+    setFS('fs-erro'); $('fs-err-msg').textContent = e.message;
+  }
+}
+
+function renderFed() {
+  const tb = $('fed-tbody'); tb.innerHTML = '';
+  $('fed-count').textContent = federais.length;
+
+  federais.forEach((f, i) => {
+    const tr = document.createElement('tr');
+    const externoLabel = f.isExterno
+      ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);color:var(--sky);margin-left:4px">ext</span>`
+      : '';
+    tr.innerHTML = `
+      <td class="mono">${f.modalidade}${externoLabel}</td>
+      <td class="mono" style="color:var(--purple);font-weight:600">${f.concurso}</td>
+      <td class="mono" style="color:var(--amber)">${f.dtSorteio}</td>
+      <td class="mono" style="color:var(--accent)">R$ ${Number(f.valorUnit).toFixed(2).replace('.',',')}</td>
+      <td class="mono" style="text-align:center;color:var(--sky)">${f.saldo}</td>
+      <td>
+        <div class="qtd-wrap" style="justify-content:center">
+          <button type="button" class="btn-q" style="border-color:rgba(167,139,250,.3)" onclick="ajFed(${i},-1)">−</button>
+          <input type="number" class="inp-fed" id="fed-qtd-${i}" min="0" max="${f.saldo}" placeholder="0" oninput="onFed(${i})" onblur="blurQ('fed-qtd-${i}')">
+          <button type="button" class="btn-q" style="border-color:rgba(167,139,250,.3)" onclick="ajFed(${i},+1)">+</button>
+        </div>
+        <div class="fed-sub" id="fed-sub-${i}">—</div>
+      </td>
+    `;
+    tb.appendChild(tr);
+  });
+
+  // Atualiza cabeçalho da coluna saldo
+  const headers = document.querySelectorAll('.fed-table thead th');
+  if (headers[4]) headers[4].textContent = 'Saldo';
+}
+function ajFed(i,d){
+  const inp=$(`fed-qtd-${i}`);
+  const max = federais[i]?.saldo || 999;
+  inp.value = Math.min(max, Math.max(0,(parseInt(inp.value)||0)+d)) || '';
+  onFed(i);
+  inp.focus();
+}
+function onFed(i){
+  const inp=$(`fed-qtd-${i}`),sub=$(`fed-sub-${i}`),qtd=parseInt(inp.value)||0,f=federais[i];
+  if(qtd>0){sub.textContent='R$ '+(qtd*Number(f.valorUnit||0)).toFixed(2).replace('.',',');sub.classList.add('on');inp.classList.add('filled');inp.closest('tr').classList.add('hv');}
+  else{sub.textContent='—';sub.classList.remove('on');inp.classList.remove('filled');inp.closest('tr').classList.remove('hv');}
+  $('fed-tot-lbl').textContent='R$ '+getFedTot().toFixed(2).replace('.',',');
+  updT2Geral();
+}
+function restaurarFederais(){
+  const mapa={};
+  ESTADO.tela2.federais.forEach(f=>{if(f.qtdVendida>0)mapa[f.concurso]=f.qtdVendida;});
+  federais.forEach((f,i)=>{const qtd=mapa[f.concurso];if(!qtd)return;const inp=$(`fed-qtd-${i}`);if(inp){inp.value=qtd;onFed(i);}});
+}
+
+// ── BOLÕES ─────────────────────────────────────────────────────
+function setB3(s){
+  ['b3-inicial','b3-loading','b3-erro','b3-vazio','b3-lista'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+  $(s).style.display=s==='b3-lista'?'block':'flex';
+}
+
+async function carregarBoloes() {
+  if (!$('data-ref').value) return;
+  setB3('b3-loading');
+
+  try {
+    const dataRef = $('data-ref').value;
+
+    // Busca bolões vigentes da loja (internos = origem é esta loja)
+    const { data: boloesInt } = await sb
+      .from('boloes')
+      .select('id,modalidade,concurso,valor_cota,qtd_cotas_total,qtd_jogos,qtd_dezenas,dt_inicial,dt_concurso,status')
+      .eq('loteria_id', loteriaAtiva.id)
+      .eq('status', 'ATIVO')
+      .lte('dt_inicial', dataRef)
+      .gte('dt_concurso', dataRef);
+
+    // Busca bolões externos: aqueles onde esta loja aparece como destino em movimentacoes_cotas
+    const { data: movsExt } = await sb
+      .from('view_posicao_destinos')
+      .select('*')
+      .eq('loteria_id', loteriaAtiva.id); // loja atual como destino
+
+    // Para cada mov externo, busca o bolão correspondente
+    const bolaoIdsExt = [...new Set((movsExt||[]).map(m => m.bolao_id))];
+    let boloesExtRaw = [];
+    if (bolaoIdsExt.length) {
+      const { data } = await sb
+        .from('boloes')
+        .select('id,loteria_id,modalidade,concurso,valor_cota,qtd_jogos,qtd_dezenas,dt_inicial,dt_concurso,loterias(nome)')
+        .in('id', bolaoIdsExt)
+        .eq('status', 'ATIVO')
+        .lte('dt_inicial', dataRef)
+        .gte('dt_concurso', dataRef);
+      boloesExtRaw = data || [];
+    }
+
+    // Enriquece externos com saldo da view
+    lstInt = (boloesInt||[]).map(b => ({
+      bolao_id: b.id, modalidade: b.modalidade, concurso: b.concurso,
+      qtdJogos: b.qtd_jogos, qtdDezenas: b.qtd_dezenas,
+      valorCota: b.valor_cota, dtInicial: b.dt_inicial, dtConcurso: b.dt_concurso,
+      saldoEnviado: null, origem: loteriaAtiva.nome, tipo: 'INTERNO'
+    }));
+
+    lstExt = boloesExtRaw.map(b => {
+      const mov = (movsExt||[]).find(m => m.bolao_id === b.id);
+      return {
+        bolao_id: b.id, modalidade: b.modalidade, concurso: b.concurso,
+        qtdJogos: b.qtd_jogos, qtdDezenas: b.qtd_dezenas,
+        valorCota: b.valor_cota, dtInicial: b.dt_inicial, dtConcurso: b.dt_concurso,
+        saldoEnviado: mov?.qtd_cotas_liquidas ?? null,
+        origem: b.loterias?.nome || '', tipo: 'EXTERNO'
+      };
+    });
+
+    const total = lstInt.length + lstExt.length;
+    if (!total) { setB3('b3-vazio'); return; }
+
+    renderBoloes();
+    setB3('b3-lista');
+
+    // Restaura quantidades se veio de fechamento carregado
+    if (ESTADO.tela3.internos?.length || ESTADO.tela3.externos?.length) restaurarBoloes();
+
+  } catch(e) {
+    $('b3-err-msg').textContent = e.message; setB3('b3-erro');
+  }
+}
+
+function renderBoloes() {
+  const wrap = $('boloes-wrap'); wrap.innerHTML = ''; allBoloes = [];
+
+  // Agrupa por modalidade
+  const agrupar = lista => {
+    const mapa = {};
+    lista.forEach(b => { if (!mapa[b.modalidade]) mapa[b.modalidade] = []; mapa[b.modalidade].push(b); });
+    return mapa;
+  };
+
+  const renderBloco = (lista, tipo) => {
+    if (!lista.length) return;
+    const isTipoInt = tipo === 'INTERNO';
+    const bsep = document.createElement('div');
+    bsep.className = `bloco-sep ${isTipoInt?'b-int':'b-ext'}`;
+    bsep.innerHTML = `
+      <div class="bloco-label">${isTipoInt?'Internos':'Externos'}</div>
+      <div class="bloco-line"></div>
+      <div class="bloco-tot" id="bloco-tot-${tipo.toLowerCase()}">R$ 0,00</div>
+    `;
+    wrap.appendChild(bsep);
+
+    const grupos = agrupar(lista);
+    const cls = isTipoInt ? 'ic' : 'ec';
+
+    Object.entries(grupos).forEach(([mod, boloes]) => {
+      const grp = document.createElement('div');
+      grp.className = 'mod-group';
+      grp.innerHTML = `
+        <div class="mod-header ${cls}">
+          <div class="mod-dot"></div>
+          <div class="mod-nome">${mod}</div>
+          <div class="mod-count">${boloes.length}</div>
+          <div class="mod-subtot" id="mod-tot-${tipo}-${mod.replace(/\s/g,'_')}">R$ 0,00</div>
+        </div>
+      `;
+
+      boloes.forEach((b, i) => {
+        const gi = allBoloes.length;
+        allBoloes.push({ tipo, data: b, idx: gi });
+
+        const metas = [];
+        if (b.qtdJogos)      metas.push(`<span class="meta-tag">${b.qtdJogos} jogo(s)</span>`);
+        if (b.qtdDezenas)    metas.push(`<span class="meta-tag">${b.qtdDezenas} dez.</span>`);
+        if (b.origem && !isTipoInt) metas.push(`<span class="meta-tag meta-dest">de ${b.origem}</span>`);
+        if (b.saldoEnviado !== null) metas.push(`<span class="meta-tag meta-saldo">${b.saldoEnviado} cotas recebidas</span>`);
+        metas.push(`<span class="meta-tag" style="color:var(--accent);border-color:rgba(0,200,150,.2)">R$ ${Number(b.valorCota).toFixed(2).replace('.',',')} / cota</span>`);
+
+        const card = document.createElement('div');
+        card.className = `bolao-card is-${isTipoInt?'int':'ext'}`;
+        card.dataset.idx = gi;
+        card.style.animationDelay = (i*.04)+'s';
+        card.innerHTML = `
+          <div>
+            <div class="bolao-key">${b.bolao_id?.slice(-8)||''} · ${b.concurso}</div>
+            <div class="bolao-nome">${b.modalidade} — Concurso ${b.concurso}</div>
+            <div class="bolao-metas">${metas.join('')}</div>
+          </div>
+          <div class="qtd-block">
+            <div class="qtd-lbl">Cotas Vendidas</div>
+            <div class="qtd-wrap">
+              <button type="button" class="btn-q" onclick="ajQ(${gi},-1)">−</button>
+              <input type="number" class="inp-qtd" id="qtd-${gi}" min="0" placeholder="0" oninput="onQtd(${gi})" onblur="blurQ('qtd-${gi}')">
+              <button type="button" class="btn-q" onclick="ajQ(${gi},+1)">+</button>
+            </div>
+            <div class="qtd-sub" id="sub-${gi}">—</div>
+          </div>
+        `;
+        grp.appendChild(card);
+      });
+      wrap.appendChild(grp);
+    });
+  };
+
+  renderBloco(lstInt, 'INTERNO');
+  renderBloco(lstExt, 'EXTERNO');
+  updBolTotais();
+}
+
+function ajQ(idx,d){const inp=$(`qtd-${idx}`);inp.value=Math.max(0,(parseInt(inp.value)||0)+d)||'';onQtd(idx);inp.focus();}
+function onQtd(idx){
+  const inp=$(`qtd-${idx}`),sub=$(`sub-${idx}`),card=inp.closest('.bolao-card'),b=allBoloes[idx].data,qtd=parseInt(inp.value)||0;
+  if(qtd>0){sub.textContent=fmtBRL(qtd*b.valorCota);sub.classList.add('on');inp.classList.add('filled');card.classList.add('has-val');}
+  else{sub.textContent='—';sub.classList.remove('on');inp.classList.remove('filled');card.classList.remove('has-val');}
+  updBolTotais();
+  atualizarListaVendas();
+}
+
+function updBolTotais(){
+  let tInt=0,tExt=0,totalCotas=0;
+  allBoloes.forEach(({tipo,data,idx})=>{
+    const qtd=parseInt($(`qtd-${idx}`)?.value)||0;
+    if(tipo==='INTERNO') tInt+=qtd*data.valorCota; else tExt+=qtd*data.valorCota;
+    totalCotas+=qtd;
+  });
+  const tot=tInt+tExt;
+  $('tot-int').textContent=fmtBRL(tInt);
+  $('tot-ext').textContent=fmtBRL(tExt);
+  $('tot-bol').textContent=fmtBRL(tot);
+  $('tot-bol-geral').textContent=fmtBRL(tot);
+  $('tot-cotas').textContent=totalCotas;
+  const bt=$('bloco-tot-interno');if(bt)bt.textContent=fmtBRL(tInt);
+  const be=$('bloco-tot-externo');if(be)be.textContent=fmtBRL(tExt);
+  // Subtotais por modalidade
+  const modTots={};
+  allBoloes.forEach(({tipo,data,idx})=>{
+    const qtd=parseInt($(`qtd-${idx}`)?.value)||0,key=`${tipo}-${data.modalidade.replace(/\s/g,'_')}`;
+    modTots[key]=(modTots[key]||0)+qtd*data.valorCota;
+  });
+  Object.entries(modTots).forEach(([k,v])=>{const el=$(`mod-tot-${k}`);if(el)el.textContent=fmtBRL(v);});
+}
+
+function atualizarListaVendas(){
+  const vendidos = allBoloes.filter(({idx})=>(parseInt($(`qtd-${idx}`)?.value)||0)>0);
+  const list=$('vendas-registradas'),items=$('vendas-items');
+  list.classList.toggle('show',vendidos.length>0);
+  items.innerHTML='';
+  vendidos.forEach(({tipo,data,idx})=>{
+    const qtd=parseInt($(`qtd-${idx}`).value)||0;
+    const item=document.createElement('div');item.className='venda-item';
+    item.innerHTML=`
+      <span class="vi-nome">${data.modalidade} — Conc. ${data.concurso} <span style="font-size:9px;color:var(--dim)">${tipo}</span></span>
+      <span class="vi-qtd">${qtd}x</span>
+      <span class="vi-val">${fmtBRL(qtd*data.valorCota)}</span>
+    `;
+    items.appendChild(item);
+  });
+}
+
+function restaurarBoloes(){
+  const mapa={};
+  [...(ESTADO.tela3.internos||[]),...(ESTADO.tela3.externos||[])].forEach(b=>{
+    if(b.qtdVendida>0) mapa[b.bolao_id]=b.qtdVendida;
+  });
+  allBoloes.forEach(({data,idx})=>{
+    const qtd=mapa[data.bolao_id];if(!qtd)return;
+    const inp=$(`qtd-${idx}`);if(inp){inp.value=qtd;onQtd(idx);}
+  });
+}
+
+// ── COLETAR DADOS DAS TELAS ────────────────────────────────────
+function coletarTela1() {
+  const dividas = [];
+  document.querySelectorAll('.divida-row').forEach(row => {
+    const nome = row.querySelector('.div-nome')?.value?.trim();
+    const valor = parseFloat(row.querySelector('.div-valor')?.value) || 0;
+    if (nome) dividas.push({ nome, valor });
+  });
+  ESTADO.tela1 = {
+    funcionario_id:    $('funcionario').value,
+    funcionario_nome:  $('funcionario').options[$('funcionario').selectedIndex]?.text || '',
+    data_ref:          $('data-ref').value,
+    relatorio:         n('relatorio'),
+    deposito:          n('deposito'),
+    troco_inicial:     n('troco-ini'),
+    troco_sobra:       n('troco-sob'),
+    pix_cnpj:          n('pix-cnpj'),
+    diferenca_pix:     n('pix-dif'),
+    premio_raspadinha: n('premio-rasp'),
+    resgate_telesena:  n('resgate-tele'),
+    dividas,
+  };
+}
+
+function coletarTela2() {
+  const raspadinha = produtosRasp.map((p, i) => ({
+    produto_id:     p.id,
+    descricao:      p.descricao,
+    preco:          parseFloat($(`rp-${i}`)?.value) || Number(p.valor_unitario),
+    qtd:            parseInt($(`rq-${i}`)?.value)   || 0,
+    sub:            (parseFloat($(`rp-${i}`)?.value) || Number(p.valor_unitario))
+                  * (parseInt($(`rq-${i}`)?.value)   || 0),
+  }));
+  const telesena = {
+    produto_id:   produtoTele?.id || null,
+    preco:        parseFloat($('tele-preco').value) || Number(produtoTele?.valor_unitario || 16),
+    qtd:          parseInt($('tele-qtd').value)     || 0,
+    sub:          getTeleTot(),
+  };
+  const feds = federais.map((f, i) => ({
+    federal_id:   f.federal_id,
+    modalidade:   f.modalidade,
+    concurso:     f.concurso,
+    dtSorteio:    f.dtSorteio,
+    valorUnit:    Number(f.valorUnit || 0),
+    isExterno:    f.isExterno,
+    qtdVendida:   parseInt($(`fed-qtd-${i}`)?.value) || 0,
+    subtotal:     (parseInt($(`fed-qtd-${i}`)?.value) || 0) * Number(f.valorUnit || 0),
+  }));
+  ESTADO.tela2 = { raspadinha, telesena, federais: feds };
+}
+
+function coletarTela3() {
+  const coleta = tipo => allBoloes.filter(b=>b.tipo===tipo).map(({data,idx})=>({
+    bolao_id:   data.bolao_id,
+    modalidade: data.modalidade,
+    valorCota:  Number(data.valorCota||0),
+    qtdVendida: parseInt($(`qtd-${idx}`)?.value)||0,
+    subtotal:   (parseInt($(`qtd-${idx}`)?.value)||0)*Number(data.valorCota||0),
+  }));
+  ESTADO.tela3 = { internos: coleta('INTERNO'), externos: coleta('EXTERNO') };
+}
+
+// ── RESUMO (TELA 4) ────────────────────────────────────────────
+function montarResumo() {
+  coletarTela1();
+
+  const t1 = ESTADO.tela1, t2 = ESTADO.tela2, t3 = ESTADO.tela3;
+
+  // Info bar
+  $('r-func').textContent    = t1.funcionario_nome || '—';
+  $('r-data').textContent    = fmtDataBR(t1.data_ref);
+  $('r-loteria').textContent = loteriaAtiva?.nome || '—';
+
+  // Débitos
+  const totalProd = [...(t2.raspadinha||[]).map(r=>r.sub),(t2.telesena?.sub||0)].reduce((a,b)=>a+b,0);
+  const totalFed  = (t2.federais||[]).reduce((a,f)=>a+f.subtotal,0);
+  const totalBol  = [...(t3.internos||[]),...(t3.externos||[])].reduce((a,b)=>a+b.subtotal,0);
+
+  const s = (id,v) => {const el=$(id);if(el){el.textContent=fmtBRL(v);el.classList.toggle('zero',v===0);}};
+  s('r-troco-ini', t1.troco_inicial);
+  s('r-produtos',  totalProd);
+  s('r-federais',  totalFed);
+  s('r-boloes',    totalBol);
+  s('r-relatorio', t1.relatorio);
+
+  const totDeb = t1.troco_inicial + totalProd + totalFed + totalBol + t1.relatorio;
+  s('r-tot-deb', totDeb);
+
+  // Créditos
+  const totalDiv = (t1.dividas||[]).reduce((a,d)=>a+d.valor,0);
+  s('r-troco-sob', t1.troco_sobra);
+  s('r-deposito',  t1.deposito);
+  s('r-pix',       t1.pix_cnpj);
+  s('r-pix-dif',   t1.diferenca_pix);
+  s('r-rasp',      t1.premio_raspadinha);
+  s('r-tele',      t1.resgate_telesena);
+  s('r-dividas',   totalDiv);
+
+  $('div-badge').textContent = (t1.dividas||[]).length;
+  const subWrap = $('div-sub-wrap'); subWrap.innerHTML='';
+  (t1.dividas||[]).forEach(d => {
+    const l=document.createElement('div');l.className='linha sub';
+    l.innerHTML=`<div class="linha-label"><div class="linha-dot"></div>${d.nome}</div><div class="linha-val">R$ ${parseFloat(d.valor).toFixed(2).replace('.',',')}</div>`;
+    subWrap.appendChild(l);
+  });
+
+  const totCred = t1.troco_sobra + t1.deposito + t1.pix_cnpj + t1.diferenca_pix + t1.premio_raspadinha + t1.resgate_telesena + totalDiv;
+  s('r-tot-cred', totCred);
+
+  const quebra = totCred - totDeb;
+  renderQuebra(quebra, totCred, totDeb);
+  detectarModo();
+}
+
+function renderQuebra(quebra, cred, deb) {
+  const card=$('quebra-card'),icon=$('q-icon'),titulo=$('q-titulo'),desc=$('q-desc'),val=$('q-valor'),det=$('q-detalhe');
+  const justWrap=$('just-wrap'), btn=$('btn-final');
+  card.className='quebra-card';
+  det.textContent=`Créditos (R$ ${fmtBRLs(cred)}) − Débitos (R$ ${fmtBRLs(deb)})`;
+  const abs=Math.abs(quebra), fmtA='R$ '+abs.toFixed(2).replace('.',',');
+
+  if (abs < 0.005) {
+    card.classList.add('q-eq'); icon.textContent='✓'; titulo.textContent='Caixa Equilibrado';
+    desc.textContent='Créditos e débitos estão balanceados.'; val.textContent='R$ 0,00';
+    justWrap.classList.remove('show'); if (modoAtual!=='visualizacao') btn.disabled=false;
+  } else if (quebra > 0) {
+    card.classList.add('q-pos'); icon.textContent='↑'; titulo.textContent='Sobra de Caixa';
+    desc.textContent=`O caixa apresenta sobra de ${fmtA}.`; val.textContent='+'+fmtA;
+    justWrap.classList.add('show'); btn.disabled=true;
+  } else {
+    card.classList.add('q-neg'); icon.textContent='↓'; titulo.textContent='Falta de Caixa';
+    desc.textContent=`O caixa apresenta falta de ${fmtA}.`; val.textContent='−'+fmtA;
+    justWrap.classList.add('show'); btn.disabled=true;
+  }
+
+  // Listener justificativa
+  const ta=$('justificativa'), cnt=$('just-cnt');
+  ta.oninput=()=>{
+    cnt.textContent=ta.value.length;
+    if(Math.abs(quebra)>=0.005 && modoAtual!=='visualizacao') btn.disabled=ta.value.trim().length<10;
+  };
+}
+
+function detectarModo() {
+  const banner=$('modo-banner');
+  banner.className='modo-banner';
+  if (!fechamentoOriginalId) {
+    modoAtual='novo'; banner.innerHTML='<span>Novo fechamento — será gravado ao finalizar.</span>';
+    banner.classList.add('show','novo');
+    $('btn-final').className='btn-finalizar salvar';
+    $('btn-final-txt').textContent='Finalizar Fechamento';
+  } else {
+    // Comparação simplificada: considera edição se chegou até aqui com um id carregado
+    modoAtual='edicao';
+    banner.innerHTML='<span>Modo <strong>edição</strong> — ao finalizar o registro existente será sobrescrito.</span>';
+    banner.classList.add('show','edicao');
+    $('btn-final').className='btn-finalizar salvar';
+    $('btn-final-txt').textContent='Salvar Alterações';
+  }
+}
+
+function toggleDividas(){
+  const sub=$('div-sub-wrap'),arrow=$('div-arrow');
+  const open=sub.style.display==='block';
+  sub.style.display=open?'none':'block';
+  arrow.style.transform=open?'rotate(0)':'rotate(90deg)';
+}
+
+// ── FINALIZAR ──────────────────────────────────────────────────
+async function finalizar() {
+  if (modoAtual==='visualizacao') {
+    resetEstado(); showStep(1); return;
+  }
+  const t1=ESTADO.tela1, t2=ESTADO.tela2, t3=ESTADO.tela3;
+  const btn=$('btn-final'); btn.disabled=true;
+
+  try {
+    let sobrescrever=false, adminAprovador=null;
+
+    if (modoAtual==='edicao' && fechamentoOriginalId) {
+      // Edição: exige admin para sobrescrever
+      adminAprovador = await abrirModalAdmin();
+      if (!adminAprovador) { btn.disabled=false; return; }
+      sobrescrever=true;
+    } else {
+      // Novo: verifica se já existe no banco
+      const { data: existe } = await sb.from('fechamentos')
+        .select('id')
+        .eq('loteria_id', loteriaAtiva.id)
+        .eq('usuario_id', t1.funcionario_id)
+        .eq('data_ref', t1.data_ref)
+        .maybeSingle();
+      if (existe) {
+        const confirm = await perguntarSobrescrever(t1.funcionario_nome, fmtDataBR(t1.data_ref));
+        if (!confirm) { btn.disabled=false; return; }
+        adminAprovador = await abrirModalAdmin();
+        if (!adminAprovador) { btn.disabled=false; return; }
+        sobrescrever=true;
+        fechamentoOriginalId=existe.id;
+      }
+    }
+
+    showGravando('Gravando fechamento de '+t1.funcionario_nome+'...'); setProgress(10);
+
+    // Calcula totais
+    const totalProd = [...(t2.raspadinha||[]).map(r=>r.sub),(t2.telesena?.sub||0)].reduce((a,b)=>a+b,0);
+    const totalFed  = (t2.federais||[]).reduce((a,f)=>a+f.subtotal,0);
+    const totalBol  = [...(t3.internos||[]),...(t3.externos||[])].reduce((a,b)=>a+b.subtotal,0);
+    const totalDiv  = (t1.dividas||[]).reduce((a,d)=>a+d.valor,0);
+    const totDeb    = t1.troco_inicial + totalProd + totalFed + totalBol + t1.relatorio;
+    const totCred   = t1.troco_sobra + t1.deposito + t1.pix_cnpj + t1.diferenca_pix + t1.premio_raspadinha + t1.resgate_telesena + totalDiv;
+    const quebra    = totCred - totDeb;
+    const justif    = $('justificativa')?.value?.trim() || '';
+
+    const payload = {
+      loteria_id:        loteriaAtiva.id,
+      usuario_id:        t1.funcionario_id,
+      funcionario_nome:  t1.funcionario_nome,
+      data_ref:          t1.data_ref,
+      troco_inicial:     t1.troco_inicial,
+      troco_sobra:       t1.troco_sobra,
+      relatorio:         t1.relatorio,
+      deposito:          t1.deposito,
+      pix_cnpj:          t1.pix_cnpj,
+      diferenca_pix:     t1.diferenca_pix,
+      premio_raspadinha: t1.premio_raspadinha,
+      resgate_telesena:  t1.resgate_telesena,
+      total_produtos:    totalProd,
+      total_federais:    totalFed,
+      total_boloes:      totalBol,
+      total_fiado:       totalDiv,
+      total_debitos:     totDeb,
+      total_creditos:    totCred,
+      quebra,
+      justificativa:     justif,
+      criado_por:        usuario.id,
+      sobrescrito_por:   adminAprovador?.id || null,
+      updated_at:        new Date().toISOString(),
+    };
+
+    setProgress(30);
+    let fechId;
+
+    if (sobrescrever && fechamentoOriginalId) {
+      // Deleta subtabelas e reatualiza
+      await sb.from('fechamento_produtos').delete().eq('fechamento_id', fechamentoOriginalId);
+      await sb.from('fechamento_federais').delete().eq('fechamento_id', fechamentoOriginalId);
+      await sb.from('fechamento_boloes').delete().eq('fechamento_id', fechamentoOriginalId);
+      await sb.from('fechamento_dividas').delete().eq('fechamento_id', fechamentoOriginalId);
+      const { error: errUpd } = await sb.from('fechamentos').update(payload).eq('id', fechamentoOriginalId);
+      if (errUpd) throw errUpd;
+      fechId = fechamentoOriginalId;
+    } else {
+      const { data: ins, error: errIns } = await sb.from('fechamentos').insert(payload).select('id').single();
+      if (errIns) throw errIns;
+      fechId = ins.id;
+    }
+
+    setProgress(55);
+
+    // Subtabela: produtos (com produto_id do Supabase)
+    const prodRows = [];
+    (t2.raspadinha||[]).forEach(r => {
+      if (r.qtd > 0) prodRows.push({
+        fechamento_id:  fechId,
+        produto_id:     r.produto_id || null,
+        tipo:           'RASPADINHA',
+        valor_unitario: r.preco,
+        qtd_vendida:    r.qtd,
+        total:          r.sub
+      });
+    });
+    if ((t2.telesena?.qtd||0) > 0) prodRows.push({
+      fechamento_id:  fechId,
+      produto_id:     t2.telesena.produto_id || null,
+      tipo:           'TELESENA',
+      valor_unitario: t2.telesena.preco,
+      qtd_vendida:    t2.telesena.qtd,
+      total:          t2.telesena.sub
+    });
+    if (prodRows.length) { const {error}=await sb.from('fechamento_produtos').insert(prodRows); if(error)throw error; }
+
+    setProgress(70);
+
+    // Subtabela: federais (com federal_id real do Supabase)
+    const fedRows = (t2.federais||[]).filter(f => f.qtdVendida > 0).map(f => ({
+      fechamento_id:  fechId,
+      federal_id:     f.federal_id,
+      qtd_vendida:    f.qtdVendida,
+      valor_fracao:   f.valorUnit,
+      total:          f.subtotal
+    }));
+    if (fedRows.length) { const {error}=await sb.from('fechamento_federais').insert(fedRows); if(error)throw error; }
+
+    setProgress(82);
+
+    // Subtabela: bolões
+    const bolRows = [...(t3.internos||[]),...(t3.externos||[])].filter(b=>b.qtdVendida>0).map(b=>({
+      fechamento_id:fechId, bolao_id:b.bolao_id,
+      tipo: (t3.internos||[]).includes(b)?'INTERNO':'EXTERNO',
+      modalidade:b.modalidade, qtd_vendida:b.qtdVendida,
+      valor_cota:b.valorCota, subtotal:b.subtotal
+    }));
+    // Recalcula tipo corretamente
+    const bolRowsCorretos = [
+      ...(t3.internos||[]).filter(b=>b.qtdVendida>0).map(b=>({fechamento_id:fechId,bolao_id:b.bolao_id,tipo:'INTERNO',modalidade:b.modalidade,qtd_vendida:b.qtdVendida,valor_cota:b.valorCota,subtotal:b.subtotal})),
+      ...(t3.externos||[]).filter(b=>b.qtdVendida>0).map(b=>({fechamento_id:fechId,bolao_id:b.bolao_id,tipo:'EXTERNO',modalidade:b.modalidade,qtd_vendida:b.qtdVendida,valor_cota:b.valorCota,subtotal:b.subtotal})),
+    ];
+    if (bolRowsCorretos.length) { const {error}=await sb.from('fechamento_boloes').insert(bolRowsCorretos); if(error)throw error; }
+
+    setProgress(93);
+
+    // Subtabela: dívidas
+    const divRows = (t1.dividas||[]).filter(d=>d.nome).map(d=>({ fechamento_id:fechId, cliente_nome:d.nome, valor:d.valor }));
+    if (divRows.length) { const {error}=await sb.from('fechamento_dividas').insert(divRows); if(error)throw error; }
+
+    setProgress(100);
+    hideGravando();
+
+    $('btn-final-txt').textContent='✓ Gravado!';
+    $('btn-final').style.background='#00e8ad';
+
+    setTimeout(() => {
+      alert(`✅ Fechamento gravado com sucesso!\n\nFuncionário: ${t1.funcionario_nome}\nLoteria: ${loteriaAtiva.nome}\nData: ${fmtDataBR(t1.data_ref)}\nQuebra: ${fmtBRL(quebra)}`);
+      resetEstado(); showStep(1);
+    }, 500);
+
+  } catch(e) {
+    hideGravando(); btn.disabled=false;
+    console.error(e); alert('❌ Erro ao gravar:\n\n'+(e.message||'Erro desconhecido'));
+  }
+}
+
+// ── MODAIS ─────────────────────────────────────────────────────
+function fecharModal(id){$(id).classList.remove('show')}
+function confirmarInicio(){$('m-inicio').classList.add('show')}
+function confirmarSair(){$('m-sair').classList.add('show')}
+function executarInicio(){resetEstado();fecharModal('m-inicio');showStep(1)}
+async function executarSair(){await sb.auth.signOut();location.href='./login.html'}
+
+function perguntarSobrescrever(func, data) {
+  return new Promise(resolve => {
+    resolvers['sob'] = resolve;
+    $('m-sob-desc').textContent = `Já existe um fechamento de "${func}" para ${data}. Deseja sobrescrever?`;
+    $('m-sobrescrever').classList.add('show');
+  });
+}
+function responderModal(key, val) {
+  fecharModal(`m-${key}`);
+  if (resolvers[key]) { resolvers[key](val); delete resolvers[key]; }
+}
+
+function abrirModalAdmin() {
+  return new Promise(resolve => {
+    resolvers['admin'] = resolve;
+    $('admin-login').value=''; $('admin-senha').value='';
+    $('admin-err').style.display='none';
+    $('m-admin').classList.add('show');
+    $('admin-login').focus();
+  });
+}
+
+async function confirmarAdmin() {
+  const login=$('admin-login').value.trim(), senha=$('admin-senha').value.trim();
+  const err=$('admin-err');
+  if (!login||!senha){err.textContent='Informe usuário e senha.';err.style.display='block';return;}
+  try {
+    // Valida admin no Supabase: busca usuário com perfil admin
+    const { data: adm } = await sb.from('usuarios')
+      .select('id,nome,perfil')
+      .ilike('nome', login)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    // Nota: em produção usar autenticação própria, não só nome
+    // Por ora valida perfil admin
+    if (!adm || !isAdmin(adm)) {
+      err.textContent='Usuário não encontrado ou sem perfil de admin.';err.style.display='block';return;
+    }
+    fecharModal('m-admin');
+    if (resolvers['admin']){resolvers['admin'](adm);delete resolvers['admin'];}
+  } catch(e){err.textContent='Erro ao validar.';err.style.display='block';}
+}
+
+function showGravando(titulo){$('m-grav-titulo').textContent=titulo;$('m-gravando').classList.add('show')}
+function hideGravando(){$('m-gravando').classList.remove('show')}
+function setProgress(pct){$('m-prog').style.width=pct+'%';$('m-grav-sub').textContent=pct+'%'}
+
+// ── STATUS ─────────────────────────────────────────────────────
+function showStatus(id,msg,tipo){const el=$(id);el.textContent=msg;el.className=`status-chip show ${tipo}`}
+function hideStatus(id){const el=$(id);el.className='status-chip'}
+
+// ── RESET ──────────────────────────────────────────────────────
+function resetEstado(){
+  ESTADO.tela1={}; ESTADO.tela2={raspadinha:[],telesena:null,federais:[]};
+  ESTADO.tela3={internos:[],externos:[]};
+  lstInt=[]; lstExt=[]; allBoloes=[]; federais=[];
+  fechamentoOriginalId=null; modoAtual='novo';
+  // Limpa campos da tela 1
+  ['relatorio','deposito','troco-ini','troco-sob','pix-cnpj','pix-dif','premio-rasp','resgate-tele'].forEach(id=>{const el=$(id);if(el){el.value='';el.classList.remove('filled');}});
+  $('dividas-list').innerHTML=''; dividaCount=0; renderDivCount(); calcDivTotal();
+  $('chip-troco').classList.remove('show'); $('chip-pix').classList.remove('show');
+  // Reseta tela 2
+  buildRaspadinha(); $('tele-qtd').value=''; recalcTele(); setFS('fs-inicial');
+  // Reseta tela 3
+  setB3('b3-inicial');
+  $('data-ref').value=new Date().toISOString().slice(0,10);
+}
+
+// ── START ──────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
