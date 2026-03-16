@@ -1090,14 +1090,15 @@ async function trocarLoteria() {
 async function carregarFuncionarios() {
   const { data } = await sb
     .from('usuarios_loterias')
-    .select('usuarios(id,nome)')
+    .select('usuarios!inner(id, nome)')
     .eq('loteria_id', loteriaAtiva.id)
-    .eq('ativo', true);
+    .eq('usuarios.ativo', true)
+    .eq('usuarios.pode_logar', true);
 
   const sel = $('funcionario');
   sel.innerHTML = '<option value="">Selecione...</option>';
 
-  const lista = (data||[]).map(ul => ul.usuarios).filter(Boolean);
+  const lista = (data || []).map(ul => ul.usuarios).filter(Boolean);
 
   if (isAdmin(usuario)) {
     lista.forEach(u => {
@@ -1106,14 +1107,12 @@ async function carregarFuncionarios() {
     });
     sel.disabled = false;
   } else {
-    // Operador só vê o próprio nome
     const opt = document.createElement('option');
     opt.value = usuario.id; opt.textContent = usuario.nome; sel.appendChild(opt);
     sel.value = usuario.id; sel.disabled = true;
     sel.classList.add('filled');
   }
 }
-
 function onFuncChange() {
   const sel = $('funcionario');
   sel.classList.toggle('filled', !!sel.value);
