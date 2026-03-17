@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gestão de Federais — SISLOT</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>
-<script src="./sislot-config.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./sislot-config.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--deep:#0a1628;--mid:#0f2244;--panel:#132952;--border:#1e3a6e;--accent:#00c896;--amber:#f5a623;--purple:#a78bfa;--sky:#38bdf8;--coral:#fb7185;--bright:#e8eef8;--muted:#8fa3c8;--dim:#4a6491;--input:#0d1e3a;--err:#ff5252}
@@ -504,7 +504,9 @@ function renderTabelaLojas(){
   tbody.innerHTML="";
   todasLojas.forEach(loja=>{
     const tr=document.createElement("tr");
-    tr.innerHTML="<td style='font-weight:500'>"+loja.nome+"</td><td><input type='number' class='inp-loja' id='rec-"+loja.id+"' min='0' placeholder='0' oninput="this.classList.toggle('filled',this.value!='')"></td><td><span id='sal-"+loja.id+"' style='font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--dim)'>—</span></td>";
+    const inp_id='rec-'+loja.id, sal_id='sal-'+loja.id;
+    tr.innerHTML='<td style="font-weight:500">'+loja.nome+'</td><td><input type="number" class="inp-loja" id="'+inp_id+'" min="0" placeholder="0"></td><td><span id="'+sal_id+'" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--dim)">—</span></td>';
+    tr.querySelector('#'+inp_id).addEventListener('input',function(){this.classList.toggle('filled',this.value!='')});
     tbody.appendChild(tr);
   });
 }
@@ -553,8 +555,11 @@ function renderListaConcursos(){
   concursos.forEach(c=>{
     const total=c.lojas.reduce((a,l)=>a+(l.qtd_recebidas||0),0);
     const card=document.createElement("div");card.className="conc-card";
-    const linhasLojas=c.lojas.map(l=>{const nome=todasLojas.find(lj=>lj.id===l.loteria_id)?.nome||"—";return"<tr><td>"+nome+"</td><td class='mono'>"+(l.qtd_recebidas||0)+"</td><td class='mono'>"+(l.qtd_devolvidas||0)+"</td><td class='mono'>"+(l.qtd_encalhe||0)+"</td></tr>"}).join("");
-    card.innerHTML="<div class='conc-head'><span class='conc-badge'>"+c.modalidade+"</span><div><div class='conc-title'>Concurso "+c.concurso+"</div><div class='conc-meta'>Sorteio: "+fmtData(c.dt_sorteio)+" · Fração: "+fmtBRL(c.valor_fracao)+" · Custo: "+fmtBRL(c.valor_custo)+"</div></div><button class='btn-amber' style='margin-left:auto;padding:5px 12px;font-size:11px' onclick="editarConcurso('"+c.concurso+"')">Editar</button></div><table class='lojas-table'><thead><tr><th>Loja</th><th>Recebidas</th><th>Dev. Interna</th><th>Encalhe</th></tr></thead><tbody>"+linhasLojas+"<tr style='background:rgba(255,255,255,.02)'><td style='font-weight:600;color:var(--accent)'>Total</td><td class='mono' style='color:var(--accent)'>"+total+"</td><td class='mono' style='color:var(--amber)'>"+c.lojas.reduce((a,l)=>a+(l.qtd_devolvidas||0),0)+"</td><td class='mono' style='color:var(--coral)'>"+c.lojas.reduce((a,l)=>a+(l.qtd_encalhe||0),0)+"</td></tr></tbody></table>";
+    const linhasLojas=c.lojas.map(l=>{const nome=todasLojas.find(lj=>lj.id===l.loteria_id)?.nome||'—';return'<tr><td>'+nome+'</td><td class="mono">'+(l.qtd_recebidas||0)+'</td><td class="mono">'+(l.qtd_devolvidas||0)+'</td><td class="mono">'+(l.qtd_encalhe||0)+'</td></tr>'}).join('');
+    const totalDev=c.lojas.reduce((a,l)=>a+(l.qtd_devolvidas||0),0);
+    const totalEnc=c.lojas.reduce((a,l)=>a+(l.qtd_encalhe||0),0);
+    card.innerHTML='<div class="conc-head"><span class="conc-badge">'+c.modalidade+'</span><div><div class="conc-title">Concurso '+c.concurso+'</div><div class="conc-meta">Sorteio: '+fmtData(c.dt_sorteio)+' · Fração: '+fmtBRL(c.valor_fracao)+' · Custo: '+fmtBRL(c.valor_custo)+'</div></div><button class="btn-amber" style="margin-left:auto;padding:5px 12px;font-size:11px" id="edit-btn-'+c.concurso+'">Editar</button></div><table class="lojas-table"><thead><tr><th>Loja</th><th>Recebidas</th><th>Dev. Interna</th><th>Encalhe</th></tr></thead><tbody>'+linhasLojas+'<tr style="background:rgba(255,255,255,.02)"><td style="font-weight:600;color:var(--accent)">Total</td><td class="mono" style="color:var(--accent)">'+total+'</td><td class="mono" style="color:var(--amber)">'+totalDev+'</td><td class="mono" style="color:var(--coral)">'+totalEnc+'</td></tr></tbody></table>';
+    card.querySelector('#edit-btn-'+c.concurso).addEventListener('click',()=>editarConcurso(c.concurso));
     wrap.appendChild(card);
   });
 }
@@ -581,7 +586,9 @@ async function carregarMovimentacoes(){
     const tipoBadge=m.tipo==="ENVIO"?"t-envio":m.tipo==="DEVOLUCAO_EXTERNA"?"t-devext":"t-encext";
     const tipoLabel=m.tipo==="ENVIO"?"Envio":m.tipo==="DEVOLUCAO_EXTERNA"?"Devolução Externa":"Encalhe Externo";
     const card=document.createElement("div");card.className="mov-card "+tipoCls;card.style.animationDelay=(i*.04)+"s";
-    card.innerHTML="<div><span class='mov-tipo-badge "+tipoBadge+"'>"+tipoLabel+"</span><div class='mov-info'><strong>"+origemNome+"</strong> → <strong>"+destNome+"</strong> &nbsp;·&nbsp; "+m.qtd_fracoes+" frações &nbsp;·&nbsp; "+fmtBRL(m.valor_fracao)+"/fração &nbsp;·&nbsp; <strong>"+fmtBRL(m.valor_total)+"</strong> &nbsp;·&nbsp; "+fmtData(m.data_mov)+"</div>"+(m.observacao?"<div style='font-size:10px;color:var(--dim);margin-top:3px'>"+m.observacao+"</div>":"")+"</div><button class='btn-amber' style='padding:5px 12px;font-size:11px' onclick="editarMov('"+m.id+"')">Alterar</button>";
+    const obsHtml=m.observacao?'<div style="font-size:10px;color:var(--dim);margin-top:3px">'+m.observacao+'</div>':'';
+    card.innerHTML='<div><span class="mov-tipo-badge '+tipoBadge+'">'+tipoLabel+'</span><div class="mov-info"><strong>'+origemNome+'</strong> → <strong>'+destNome+'</strong> &nbsp;·&nbsp; '+m.qtd_fracoes+' frações &nbsp;·&nbsp; '+fmtBRL(m.valor_fracao)+'/fração &nbsp;·&nbsp; <strong>'+fmtBRL(m.valor_total)+'</strong> &nbsp;·&nbsp; '+fmtData(m.data_mov)+'</div>'+obsHtml+'</div><button class="btn-amber" style="padding:5px 12px;font-size:11px" id="edit-mov-'+m.id+'">Alterar</button>';
+    card.querySelector('#edit-mov-'+m.id).addEventListener('click',()=>editarMov(m.id));
     list.appendChild(card);
   });
   wrap.appendChild(list);
@@ -646,8 +653,37 @@ function renderAdicionais(premios){
     const loja=todasLojas.find(l=>l.id===fed.loteria_id);
     const premio=premios.find(p=>p.federal_id===fed.id);
     const card=document.createElement("div");card.className="pos-card";card.style.animationDelay=(i*.05)+"s";
-    const destOpts=todasLojas.filter(l=>l.id!==fed.loteria_id).map(l=>"<option value='"+l.id+"'>"+l.nome+"</option>").join("");
-    card.innerHTML="<div class='pos-head'><div class='pos-loja'>"+(loja?.nome||"?")+"</div><div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent)'>"+(fed.qtd_recebidas||0)+" recebidas</div></div><div class='pos-body'><div class='pos-row'><span class='pos-label'>Recebidas da Caixa</span><span class='pos-val'>"+(fed.qtd_recebidas||0)+"</span></div><div class='pos-row'><span class='pos-label'>Dev. interna atual</span><span class='pos-val'>"+(fed.qtd_devolvidas||0)+"</span></div><div class='pos-row'><span class='pos-label'>Encalhe atual</span><span class='pos-val'>"+(fed.qtd_encalhe||0)+"</span></div><div class='pos-sep'></div><div class='pos-inp-row'><span class='pos-inp-label'>Dev. Interna (terminal)</span><input type='number' class='pos-inp' id='dev-int-"+fed.id+"' value='"+(fed.qtd_devolvidas||"")+"' min='0' placeholder='0' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-inp-row'><span class='pos-inp-label'>Encalhe real</span><input type='number' class='pos-inp' id='enc-"+fed.id+"' value='"+(fed.qtd_encalhe||"")+"' min='0' placeholder='0' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-sep'></div><div class='pos-inp-row'><span class='pos-inp-label'>Prêmio encalhe (R$)</span><input type='number' class='pos-inp' id='prem-"+fed.id+"' value='"+(premio?Number(premio.valor_premio).toFixed(2):"")+"' min='0' step='0.01' placeholder='0,00' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-sep'></div><div style='font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px'>Devolução externa avulsa</div><div class='pos-inp-row'><span class='pos-inp-label'>Qtd frações</span><input type='number' class='pos-inp' id='devext-qtd-"+fed.id+"' min='0' placeholder='0' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-inp-row'><span class='pos-inp-label'>Destino</span><select class='sel' id='devext-dest-"+fed.id+"' style='font-size:11px;padding:5px 28px 5px 8px;height:32px'><option value=''>—</option>"+destOpts+"</select></div></div>";
+    const destOpts=todasLojas.filter(l=>l.id!==fed.loteria_id).map(l=>'<option value="'+l.id+'">'+l.nome+'</option>').join("");
+    card.innerHTML=[
+      '<div class="pos-head">',
+        '<div class="pos-loja">'+(loja?.nome||"?")+'</div>',
+        '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent)">'+(fed.qtd_recebidas||0)+' recebidas</div>',
+      '</div>',
+      '<div class="pos-body">',
+        '<div class="pos-row"><span class="pos-label">Recebidas da Caixa</span><span class="pos-val">'+(fed.qtd_recebidas||0)+'</span></div>',
+        '<div class="pos-row"><span class="pos-label">Dev. interna atual</span><span class="pos-val">'+(fed.qtd_devolvidas||0)+'</span></div>',
+        '<div class="pos-row"><span class="pos-label">Encalhe atual</span><span class="pos-val">'+(fed.qtd_encalhe||0)+'</span></div>',
+        '<div class="pos-sep"></div>',
+        '<div class="pos-inp-row"><span class="pos-inp-label">Dev. Interna (terminal)</span>',
+          '<input type="number" class="pos-inp" id="dev-int-'+fed.id+'" value="'+(fed.qtd_devolvidas||"")+'" min="0" placeholder="0"></div>',
+        '<div class="pos-inp-row"><span class="pos-inp-label">Encalhe real</span>',
+          '<input type="number" class="pos-inp" id="enc-'+fed.id+'" value="'+(fed.qtd_encalhe||"")+'" min="0" placeholder="0"></div>',
+        '<div class="pos-sep"></div>',
+        '<div class="pos-inp-row"><span class="pos-inp-label">Prêmio encalhe (R$)</span>',
+          '<input type="number" class="pos-inp" id="prem-'+fed.id+'" value="'+(premio?Number(premio.valor_premio).toFixed(2):"")+'" min="0" step="0.01" placeholder="0,00"></div>',
+        '<div class="pos-sep"></div>',
+        '<div style="font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">Devolução externa avulsa</div>',
+        '<div class="pos-inp-row"><span class="pos-inp-label">Qtd frações</span>',
+          '<input type="number" class="pos-inp" id="devext-qtd-'+fed.id+'" min="0" placeholder="0"></div>',
+        '<div class="pos-inp-row"><span class="pos-inp-label">Destino</span>',
+          '<select class="sel" id="devext-dest-'+fed.id+'" style="font-size:11px;padding:5px 28px 5px 8px;height:32px"><option value="">—</option>'+destOpts+'</select></div>',
+      '</div>'
+    ].join("");
+    // Adiciona listeners para .amber
+    ["dev-int-"+fed.id,"enc-"+fed.id,"prem-"+fed.id,"devext-qtd-"+fed.id].forEach(id=>{
+      const el=card.querySelector("#"+id);
+      if(el) el.addEventListener("input",function(){this.classList.toggle("amber",this.value!=""&&this.value!="0")});
+    });
     grid.appendChild(card);
   });
   wrap.appendChild(grid);
@@ -670,6 +706,6 @@ let _confirmCb=null;
 function showConfirm(titulo,corpo,cb){$("mc-title").textContent=titulo;$("mc-body").textContent=corpo;_confirmCb=cb;$("mc-ok").onclick=()=>{fecharConfirm();_confirmCb&&_confirmCb()};$("modal-confirm").classList.add("show")}
 function fecharConfirm(){$("modal-confirm").classList.remove("show")}
 init();
-<\/script>
+</script>
 </body>
 </html>
