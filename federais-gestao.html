@@ -340,16 +340,7 @@ input[readonly]{opacity:.7}
     <div class="grid-2">
       <div class="card">
         <div class="sep" style="margin-top:0"><span class="sep-label">Encalhe e prêmio</span><div class="sep-line"></div></div>
-        <div class="grid-2">
-          <div class="field"><label class="field-label req">Concurso</label><select id="cfg-federal-encalhe"></select></div>
-          <div class="field"><label class="field-label req">Qtd encalhe</label><input type="number" id="cfg-qtd-encalhe"></div>
-        </div>
-        <div class="grid-3" style="margin-top:14px">
-          <div class="field"><label class="field-label">Qtd frações premiadas</label><input type="number" id="cfg-qtd-premiada"></div>
-          <div class="field"><label class="field-label">Prêmio total</label><input type="number" step="0.01" id="cfg-vlr-premio"></div>
-          <div class="field"><label class="field-label">Obs prêmio</label><input id="cfg-obs-premio"></div>
-        </div>
-        <div class="flex" style="margin-top:18px"><button class="btn-primary" id="btn-salvar-encalhe">Salvar encalhe/prêmio</button></div>
+        <div class="empty"><div class="empty-title">Lançamento migrou para a aba Exibição</div><div class="empty-sub">Use o botão Lançamento na linha do concurso para informar devolução na origem, encalhe e premiação.</div></div>
       </div>
 
       <div class="card">
@@ -361,6 +352,36 @@ input[readonly]{opacity:.7}
 </main>
 
 <div class="overlay" id="overlay"></div>
+<div class="overlay" id="overlay-lanc"></div>
+<div class="drawer" id="drawer-lanc">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-title" id="lanc-title">Lançamento</div>
+      <div class="drawer-sub" id="lanc-sub">Devolução, encalhe e premiação</div>
+    </div>
+    <button class="btn-secondary" id="btn-close-lanc">Fechar</button>
+  </div>
+  <div class="drawer-body">
+    <div class="grid-3">
+      <div class="field"><label class="field-label">Modalidade</label><input id="lanc-modalidade" value="Federal" readonly></div>
+      <div class="field"><label class="field-label">Concurso</label><input id="lanc-concurso" readonly></div>
+      <div class="field"><label class="field-label">Data do concurso</label><input id="lanc-data" readonly></div>
+    </div>
+    <div class="grid-3" style="margin-top:14px">
+      <div class="field"><label class="field-label">Loja origem</label><input id="lanc-loja" readonly></div>
+      <div class="field"><label class="field-label req">Qtd devolução na origem</label><input type="number" id="lanc-qtd-dev"></div>
+      <div class="field"><label class="field-label req">Qtd encalhe</label><input type="number" id="lanc-qtd-enc"></div>
+    </div>
+    <div class="grid-2" style="margin-top:14px">
+      <div class="field"><label class="field-label req">Valor total da premiação</label><input type="number" step="0.01" id="lanc-vlr-premio"></div>
+      <div class="field"><label class="field-label">Observação</label><input id="lanc-obs" placeholder="Opcional"></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn-secondary" id="btn-cancel-lanc">Cancelar</button>
+    <button class="btn-primary" id="btn-save-lanc">Salvar lançamento</button>
+  </div>
+</div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
     <div>
@@ -388,7 +409,8 @@ const state = {
   movimentos: [],
   vendasFuncionario: [],
   editingCadastroId: null,
-  editingMovId: null
+  editingMovId: null,
+  lancFederalId: null
 };
 
 function setClock(){ $('relogio').textContent = new Date().toLocaleTimeString('pt-BR') + ' — ' + new Date().toLocaleDateString('pt-BR'); }
@@ -542,7 +564,7 @@ function renderVisao(){
       <td class="money">${fmtMoney(r.premio_encalhe_total)}</td>
       <td class="mono">${r.estoque_atual}</td>
       <td class="money ${res>=0?'pos':'neg'}">${fmtMoney(res)}</td>
-      <td><div class="flex"><button class="btn-amber" onclick="openFederalDetail('${r.federal_id}')">Detalhar</button></div></td>
+      <td><div class="flex"><button class="btn-amber" onclick="openFederalDetail('${r.federal_id}')">Detalhar</button><button class="btn-secondary" onclick="openLancamento('${r.federal_id}')">Lançamento</button></div></td>
     </tr>`;
   }).join('') : `<tr><td colspan="13"><div class="empty"><div class="empty-title">Nada encontrado</div><div class="empty-sub">Ajuste os filtros ou cadastre o primeiro concurso.</div></div></td></tr>`;
 }
@@ -827,6 +849,61 @@ async function saveEncalhe(){
   }catch(e){ showStatus('st-config',e.message,'err'); }
 }
 
+window.openLancamento = function(federalId){
+  const f = lookupFederal(federalId); if(!f) return;
+  state.lancFederalId = federalId;
+  $('lanc-modalidade').value = 'Federal';
+  $('lanc-concurso').value = f.concurso;
+  $('lanc-data').value = f.dt_sorteio;
+  $('lanc-loja').value = lookupLoteriaName(f.loteria_id);
+  $('lanc-qtd-dev').value = f.qtd_devolvidas || 0;
+  $('lanc-qtd-enc').value = f.qtd_encalhe || 0;
+  $('lanc-vlr-premio').value = '';
+  $('lanc-obs').value = '';
+  $('overlay-lanc').classList.add('show');
+  $('drawer-lanc').classList.add('open');
+};
+
+function closeLancamento(){
+  $('overlay-lanc').classList.remove('show');
+  $('drawer-lanc').classList.remove('open');
+  state.lancFederalId = null;
+}
+
+async function saveLancamento(){
+  try{
+    if(!state.lancFederalId){ return; }
+    const qtdDev = Number($('lanc-qtd-dev').value||0);
+    const qtdEnc = Number($('lanc-qtd-enc').value||0);
+    const premio = Number($('lanc-vlr-premio').value||0);
+    const obs = $('lanc-obs').value.trim() || null;
+
+    const { error:e1 } = await sb.from('federais').update({
+      qtd_devolvidas: qtdDev,
+      qtd_encalhe: qtdEnc,
+      updated_at: new Date().toISOString()
+    }).eq('id', state.lancFederalId);
+    if(e1) throw e1;
+
+    if(premio > 0){
+      const { error:e2 } = await sb.from('federal_encalhe_premio').insert({
+        federal_id: state.lancFederalId,
+        qtd_fracoes_premiadas: qtdEnc || 1,
+        valor_premio: premio,
+        observacao: obs,
+        criado_por: state.usuario?.id || null
+      });
+      if(e2) throw e2;
+    }
+
+    showStatus('st-visao','Lançamento salvo.','ok');
+    closeLancamento();
+    await refreshAll();
+  }catch(e){
+    showStatus('st-visao', e.message, 'err');
+  }
+}
+
 window.openFederalDetail = function(federalId){
   const resumo=state.resumo.find(x=>String(x.federal_id)===String(federalId));
   const vendas=state.vendasFuncionario.filter(x=>String(x.federal_id)===String(federalId));
@@ -877,6 +954,7 @@ window.closeDrawer=closeDrawer;
 
 function bindEvents(){
   $('overlay').addEventListener('click', closeDrawer); $('btn-close-drawer').addEventListener('click', closeDrawer);
+  $('overlay-lanc').addEventListener('click', closeLancamento); $('btn-close-lanc').addEventListener('click', closeLancamento); $('btn-cancel-lanc').addEventListener('click', closeLancamento); $('btn-save-lanc').addEventListener('click', saveLancamento);
   $('btn-filtrar-visao').addEventListener('click', renderVisao); $('btn-limpar-visao').addEventListener('click', ()=>{ ['filtro-concurso','filtro-loja','filtro-dt-ini','filtro-dt-fim'].forEach(id=>$(id).value=''); renderVisao(); }); $('btn-recarregar-visao').addEventListener('click', refreshAll);
   $('btn-novo-cadastro').addEventListener('click', setCadastroDefaults); $('btn-cancelar-cadastro').addEventListener('click', ()=>$('card-form-cadastro').style.display='none'); $('btn-salvar-cadastro').addEventListener('click', saveCadastro);
   $('cad-tipo').addEventListener('change', e=>applyFederalType(e.target.value));
@@ -916,7 +994,6 @@ function bindEvents(){
   $('btn-salvar-fechamento').addEventListener('click', saveFechamento); $('btn-limpar-fechamento').addEventListener('click', ()=>{ $('fec-qtd-vendida').value=''; $('fec-total').value=''; });
   $('btn-filtrar-auditoria').addEventListener('click', renderAuditoria); $('btn-recarregar-auditoria').addEventListener('click', refreshAll);
   $('cfg-federal-encalhe').addEventListener('change', ()=>{ const r=state.resumo.find(x=>String(x.federal_id)===String($('cfg-federal-encalhe').value)); $('cfg-resumo').innerHTML = r ? `<div class="inline-pills"><span class="pill">Origem ${r.loja_origem}</span><span class="pill">Qtd inicial ${r.qtd_inicial}</span><span class="pill">Vendida ${r.qtd_vendida_total}</span><span class="pill">Estoque ${r.estoque_atual}</span><span class="pill">Resultado ${fmtMoney(r.resultado)}</span></div>` : '<div class="empty-title">Selecione um concurso acima</div>'; });
-  $('btn-salvar-encalhe').addEventListener('click', saveEncalhe);
 }
 
 bootstrap();
