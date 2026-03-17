@@ -24,7 +24,7 @@ body{background:var(--deep);font-family:"IBM Plex Sans",sans-serif;color:var(--b
 .main{flex:1;padding:28px 24px 60px;max-width:1400px;width:100%;margin:0 auto}.tab-panel{display:none}.tab-panel.active{display:block;animation:fadeUp .25s ease both}
 .page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border)}.page-title{font-size:22px;font-weight:700;letter-spacing:-.01em}.page-sub{font-size:13px;color:var(--muted);margin-top:4px;font-weight:300}
 .sep{display:flex;align-items:center;gap:14px;margin:24px 0 16px}.sep-label{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);white-space:nowrap}.sep-line{flex:1;height:1px;background:var(--border)}.sep-count{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--accent);background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);border-radius:4px;padding:2px 8px}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}@media(max-width:1100px){.grid-5,.grid-4,.grid-3{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.grid-5,.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}}
+.grid-1{display:grid;grid-template-columns:1fr;gap:14px}.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}@media(max-width:1100px){.grid-5,.grid-4,.grid-3{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.grid-5,.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}.soft-card{background:rgba(19,41,82,.74);border:1px solid var(--border);border-radius:12px;padding:14px}
 .field{display:flex;flex-direction:column;gap:6px}.field-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.field-label.req::after{content:" *";color:var(--accent)}
 input,select,textarea{width:100%;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--bright);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}textarea{resize:vertical;min-height:74px;font-family:"IBM Plex Sans",sans-serif}input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,150,.1)}input::placeholder,textarea::placeholder{color:var(--dim)}
@@ -97,6 +97,7 @@ input[readonly]{opacity:.7}
       <table class="table">
         <thead>
           <tr>
+            <th>Modalidade</th>
             <th>Loja Origem</th>
             <th>Concurso</th>
             <th>Dt Sorteio</th>
@@ -121,36 +122,38 @@ input[readonly]{opacity:.7}
     <div class="page-header">
       <div>
         <div class="page-title">Cadastro de Concurso</div>
-        <div class="page-sub">Cadastre o concurso base por loja, com sugestão automática para quarta e sábado.</div>
+        <div class="page-sub">Cadastre a Federal de todas as loterias de uma vez, com padrão automático para quarta e sábado.</div>
       </div>
     </div>
 
     <div class="status-bar" id="st-cadastro"></div>
 
-    <div class="grid-3" style="margin-bottom:18px">
+    <div class="grid-2" style="margin-bottom:18px">
       <div class="field"><label class="field-label">Buscar concurso</label><input id="cad-busca-concurso" placeholder="3060"></div>
-      <div class="field"><label class="field-label">Loja origem</label><select id="cad-busca-loja"></select></div>
       <div class="field" style="justify-content:flex-end"><label class="field-label">&nbsp;</label><div class="flex"><button class="btn-secondary" id="btn-buscar-cadastro">Buscar</button><button class="btn-primary" id="btn-novo-cadastro">Novo</button></div></div>
     </div>
 
     <div class="card" id="card-form-cadastro" style="display:none">
       <div class="sep"><span class="sep-label">Dados do concurso</span><div class="sep-line"></div></div>
       <div class="grid-4">
-        <div class="field"><label class="field-label req">Loja origem</label><select id="cad-loteria"></select></div>
+        <div class="field"><label class="field-label">Modalidade</label><input value="Federal" readonly></div>
         <div class="field"><label class="field-label req">Concurso</label><input id="cad-concurso" placeholder="3060"></div>
-        <div class="field"><label class="field-label req">Data sorteio</label><input type="date" id="cad-dt-sorteio"></div>
+        <div class="field"><label class="field-label req">Data sorteio</label><div class="flex" style="gap:0"><button type="button" class="btn-secondary" id="cad-data-prev" style="border-radius:8px 0 0 8px;padding:10px 12px">−</button><input type="date" id="cad-dt-sorteio" style="border-radius:0"><button type="button" class="btn-secondary" id="cad-data-next" style="border-radius:0 8px 8px 0;padding:10px 12px">+</button></div></div>
         <div class="field"><label class="field-label req">Tipo</label><select id="cad-tipo"><option value="COMUM">Comum</option><option value="ESPECIAL">Especial</option></select></div>
       </div>
       <div class="grid-4" style="margin-top:14px">
         <div class="field"><label class="field-label req">Valor fração</label><input type="number" id="cad-valor-fracao" step="0.01"></div>
         <div class="field"><label class="field-label req">Valor custo</label><input type="number" id="cad-valor-custo" step="0.01"></div>
         <div class="field"><label class="field-label req">Frações/bilhete</label><input type="number" id="cad-fracoes-bilhete" value="10"></div>
-        <div class="field"><label class="field-label req">Qtd inicial</label><input type="number" id="cad-qtd-inicial"></div>
+        <div class="field"><label class="field-label">Padrão automático</label><input value="Quarta / Sábado" readonly></div>
       </div>
-      <div class="grid-3" style="margin-top:14px">
-        <div class="field"><label class="field-label">Qtd devolvida origem</label><input type="number" id="cad-qtd-devolvida" value="0"></div>
-        <div class="field"><label class="field-label">Qtd encalhe</label><input type="number" id="cad-qtd-encalhe" value="0"></div>
-        <div class="field"><label class="field-label">Ativo</label><select id="cad-ativo"><option value="true">Sim</option><option value="false">Não</option></select></div>
+      <div class="sep"><span class="sep-label">Qtd inicial por loteria</span><div class="sep-line"></div></div>
+      <div class="grid-5" style="margin-top:14px">
+        <div class="field"><label class="field-label">Centro</label><input type="number" id="cad-qtd-centro"></div>
+        <div class="field"><label class="field-label">Boulevard</label><input type="number" id="cad-qtd-boulevard"></div>
+        <div class="field"><label class="field-label">Lotobel</label><input type="number" id="cad-qtd-lotobel"></div>
+        <div class="field"><label class="field-label">Santa Tereza</label><input type="number" id="cad-qtd-santa"></div>
+        <div class="field"><label class="field-label">Via Brasil</label><input type="number" id="cad-qtd-via"></div>
       </div>
       <div class="flex" style="margin-top:18px">
         <button class="btn-primary" id="btn-salvar-cadastro">Salvar concurso</button>
@@ -172,7 +175,6 @@ input[readonly]{opacity:.7}
             <th>Qtd Inicial</th>
             <th>Devolvida</th>
             <th>Encalhe</th>
-            <th>Ativo</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -287,7 +289,7 @@ input[readonly]{opacity:.7}
     <div class="page-header">
       <div>
         <div class="page-title">Auditoria e Edição Segura</div>
-        <div class="page-sub">Filtre, visualize, compare valores de referência e valores reais, e entre em modo edição só quando necessário.</div>
+        <div class="page-sub">Filtre e visualize as movimentações com foco em pendências e acertos.</div>
       </div>
     </div>
 
@@ -295,7 +297,7 @@ input[readonly]{opacity:.7}
 
     <div class="toolbar">
       <div class="toolbar-left">
-        <div class="field"><label class="field-label">Evento</label><select id="aud-tipo"><option value="">Todos</option><option>TRANSFERENCIA</option><option>VENDA_EXTERNA</option><option>DEVOLUCAO_CAIXA</option><option>VENDA_CAMBISTA</option><option>ACERTO</option><option>AJUSTE</option></select></div>
+        <div class="field"><label class="field-label">Evento</label><select id="aud-tipo"><option value="">Todos</option><option>TRANSFERENCIA</option><option>DEVOLUCAO_CAIXA</option><option>VENDA_CAMBISTA</option></select></div>
         <div class="field"><label class="field-label">Status</label><select id="aud-status"><option value="">Todos</option><option>PENDENTE</option><option>PAGO</option></select></div>
         <div class="field"><label class="field-label">Concurso</label><input id="aud-concurso"></div>
         <div class="field"><label class="field-label">Carimbo inicial</label><input type="date" id="aud-dt-ini"></div>
@@ -309,15 +311,14 @@ input[readonly]{opacity:.7}
         <thead>
           <tr>
             <th>Carimbo</th>
+            <th>Modalidade</th>
             <th>Concurso</th>
             <th>Evento</th>
             <th>Origem</th>
             <th>Destino</th>
             <th>Qtd</th>
-            <th>Ref</th>
-            <th>Real</th>
-            <th>Diferença</th>
-            <th>Acerto</th>
+            <th>Valor</th>
+            <th>Total</th>
             <th>Status</th>
             <th>Ações</th>
           </tr>
@@ -331,7 +332,7 @@ input[readonly]{opacity:.7}
     <div class="page-header">
       <div>
         <div class="page-title">Ajustes de Federal</div>
-        <div class="page-sub">Encerramento manual, encalhe, prêmio e operações auxiliares por concurso.</div>
+        <div class="page-sub">Lançamento manual migrou para a aba Exibição.</div>
       </div>
     </div>
 
@@ -345,7 +346,7 @@ input[readonly]{opacity:.7}
 
       <div class="card">
         <div class="sep" style="margin-top:0"><span class="sep-label">Resumo rápido</span><div class="sep-line"></div></div>
-        <div id="cfg-resumo" class="empty"><div class="empty-title">Selecione um concurso acima</div><div class="empty-sub">O sistema mostra posição resumida, prêmio e saldo restante.</div></div>
+        <div class="empty"><div class="empty-title">Painel informativo</div><div class="empty-sub">Os ajustes operacionais principais ficam nas abas Exibição, Movimentação e Fechamento.</div></div>
       </div>
     </div>
   </section>
@@ -408,9 +409,14 @@ const state = {
   resumo: [],
   movimentos: [],
   vendasFuncionario: [],
-  editingCadastroId: null,
+  editingCadastroConcurso: null,
   editingMovId: null,
   lancFederalId: null
+};
+
+const QTD_PADRAO = {
+  qua: { centro: 80, boulevard: 80, lotobel: 60, santa: 0, via: 0 },
+  sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 0, via: 0 }
 };
 
 function setClock(){ $('relogio').textContent = new Date().toLocaleTimeString('pt-BR') + ' — ' + new Date().toLocaleDateString('pt-BR'); }
@@ -464,7 +470,7 @@ async function loadBaseData(){
 
 function fillStaticSelects(){
   const lotLabel = x => `${x.id} • ${x.nome}`;
-  ['filtro-loja','cad-busca-loja','cad-loteria','mov-loteria-origem','mov-loteria-destino','fec-loteria'].forEach(id=>fillSelect(id,state.loterias,'Todas / selecione...', 'id', lotLabel));
+  ['filtro-loja','mov-loteria-origem','mov-loteria-destino','fec-loteria'].forEach(id=>fillSelect(id,state.loterias,'Todas / selecione...', 'id', lotLabel));
   fillSelect('fec-usuario', state.usuarios, 'Selecione...', 'id', x => x.nome);
 }
 
@@ -484,7 +490,7 @@ async function refreshAll(){
 }
 
 async function loadFederais(){
-  const { data } = await sb.from('federais').select('*').order('dt_sorteio',{ascending:false}).order('concurso',{ascending:false});
+  const { data } = await sb.from('federais').select('*').order('dt_sorteio',{ascending:false}).order('concurso',{ascending:false}).order('loteria_id');
   state.federais = data || [];
 }
 
@@ -504,8 +510,8 @@ async function loadVendasFuncionario(){
 }
 
 function fillFederalSelectors(){
-  const fedLabel = x => `${x.concurso} • ${lookupLoteriaName(x.loteria_id)} • ${fmtDate(x.dt_sorteio)}`;
-  ['mov-federal','fec-federal','cfg-federal-encalhe'].forEach(id=>fillSelect(id,state.federais,'Selecione...', 'id', fedLabel));
+  const fedLabel = x => `${x.concurso}`;
+  ['mov-federal','fec-federal'].forEach(id=>fillSelect(id,state.federais,'Selecione...', 'id', fedLabel));
 }
 
 function lookupLoteriaName(id){ return state.loterias.find(x => String(x.id)===String(id))?.nome || '—'; }
@@ -519,6 +525,40 @@ function applyFederalType(tipo){
     $('cad-valor-fracao').value='4.00';
     $('cad-valor-custo').value='3.21';
   }
+}
+
+function nextWedOrSat(base=new Date()){
+  const d=new Date(base); d.setHours(12,0,0,0);
+  while(![3,6].includes(d.getDay())) d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
+}
+
+function nextQuaSabFrom(baseIso, dir){
+  let d = new Date((baseIso || new Date().toISOString().slice(0,10))+'T12:00:00');
+  d.setDate(d.getDate() + (dir>0 ? 1 : -1));
+  while(![3,6].includes(d.getDay())) d.setDate(d.getDate() + (dir>0 ? 1 : -1));
+  return d.toISOString().slice(0,10);
+}
+
+function suggestNextConcurso(){
+  const nums = state.federais.map(f=>parseInt(f.concurso,10)).filter(n=>!isNaN(n));
+  return nums.length ? String(Math.max(...nums)+1) : '';
+}
+
+function suggestNextSorteio(){
+  if(!state.federais.length) return nextWedOrSat();
+  const dates = state.federais.map(f=>f.dt_sorteio).filter(Boolean).sort().reverse();
+  return nextQuaSabFrom(dates[0], 1);
+}
+
+function fillQtdPadraoCadastro(){
+  const d = $('cad-dt-sorteio').value ? new Date($('cad-dt-sorteio').value+'T12:00:00') : new Date();
+  const pad = d.getDay()===6 ? QTD_PADRAO.sab : QTD_PADRAO.qua;
+  $('cad-qtd-centro').value = pad.centro;
+  $('cad-qtd-boulevard').value = pad.boulevard;
+  $('cad-qtd-lotobel').value = pad.lotobel;
+  $('cad-qtd-santa').value = pad.santa;
+  $('cad-qtd-via').value = pad.via;
 }
 
 function renderKPIs(rows){
@@ -552,6 +592,7 @@ function renderVisao(){
   $('tbody-visao').innerHTML = rows.length ? rows.map(r=>{
     const res = Number(r.resultado||0);
     return `<tr>
+      <td>${r.modalidade || 'Federal'}</td>
       <td>${r.loja_origem}</td>
       <td class="mono">${r.concurso}</td>
       <td class="mono">${fmtDate(r.dt_sorteio)}</td>
@@ -564,29 +605,36 @@ function renderVisao(){
       <td class="money">${fmtMoney(r.premio_encalhe_total)}</td>
       <td class="mono">${r.estoque_atual}</td>
       <td class="money ${res>=0?'pos':'neg'}">${fmtMoney(res)}</td>
-      <td><div class="flex"><button class="btn-amber" onclick="openFederalDetail('${r.federal_id}')">Detalhar</button><button class="btn-secondary" onclick="openLancamento('${r.federal_id}')">Lançamento</button></div></td>
+      <td><div class="flex" style="flex-wrap:nowrap;gap:6px"><button class="btn-amber" style="padding:6px 10px;font-size:11px" onclick="openFederalDetail('${r.federal_id}')">Detalhar</button><button class="btn-secondary" style="padding:6px 10px;font-size:11px" onclick="openLancamento('${r.federal_id}')">Lançamento</button></div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="13"><div class="empty"><div class="empty-title">Nada encontrado</div><div class="empty-sub">Ajuste os filtros ou cadastre o primeiro concurso.</div></div></td></tr>`;
+  }).join('') : `<tr><td colspan="14"><div class="empty"><div class="empty-title">Nada encontrado</div><div class="empty-sub">Ajuste os filtros ou cadastre o primeiro concurso.</div></div></td></tr>`;
 }
 
 function renderCadastro(){
-  $('cnt-cadastros').textContent = state.federais.length;
-  $('tbody-cadastro').innerHTML = state.federais.length ? state.federais.map(f=>{
-    const tipo = Number(f.valor_fracao)===10 ? 'ESPECIAL' : 'COMUM';
+  const grupos = Object.values(state.federais.reduce((acc,f)=>{
+    if(!acc[f.concurso]) acc[f.concurso] = { concurso:f.concurso, dt_sorteio:f.dt_sorteio, valor_fracao:f.valor_fracao, valor_custo:f.valor_custo, qt_fracoes_bilhete:f.qt_fracoes_bilhete, itens:[] };
+    acc[f.concurso].itens.push(f);
+    return acc;
+  },{})).sort((a,b)=> String(b.concurso).localeCompare(String(a.concurso), undefined, {numeric:true}));
+  $('cnt-cadastros').textContent = grupos.length;
+  $('tbody-cadastro').innerHTML = grupos.length ? grupos.map(g=>{
+    const tipo = Number(g.valor_fracao)===10 ? 'ESPECIAL' : 'COMUM';
+    const totalIni = g.itens.reduce((a,x)=>a+Number(x.qtd_recebidas||0),0);
+    const totalDev = g.itens.reduce((a,x)=>a+Number(x.qtd_devolvidas||0),0);
+    const totalEnc = g.itens.reduce((a,x)=>a+Number(x.qtd_encalhe||0),0);
     return `<tr>
-      <td>${lookupLoteriaName(f.loteria_id)}</td>
-      <td class="mono">${f.concurso}</td>
-      <td class="mono">${fmtDate(f.dt_sorteio)}</td>
+      <td>Todos</td>
+      <td class="mono">${g.concurso}</td>
+      <td class="mono">${fmtDate(g.dt_sorteio)}</td>
       <td><span class="badge ${tipo==='COMUM'?'b-info':'b-warn'}">${tipo}</span></td>
-      <td class="money">${fmtMoney(f.valor_fracao)}</td>
-      <td class="money">${fmtMoney(f.valor_custo)}</td>
-      <td class="mono">${f.qtd_recebidas}</td>
-      <td class="mono">${f.qtd_devolvidas}</td>
-      <td class="mono">${f.qtd_encalhe}</td>
-      <td><span class="badge ${f.ativo?'b-ok':'b-cor'}">${f.ativo?'ATIVO':'INATIVO'}</span></td>
-      <td><div class="flex"><button class="btn-amber" onclick="editCadastro('${f.id}')">Editar</button><button class="btn-secondary" onclick="openFederalDetail('${f.id}')">Ver</button></div></td>
+      <td class="money">${fmtMoney(g.valor_fracao)}</td>
+      <td class="money">${fmtMoney(g.valor_custo)}</td>
+      <td class="mono">${totalIni}</td>
+      <td class="mono">${totalDev}</td>
+      <td class="mono">${totalEnc}</td>
+      <td><div class="flex"><button class="btn-amber" onclick="editCadastro('${g.concurso}')">Editar</button></div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Nenhum concurso cadastrado</div></td></tr>`;
+  }).join('') : `<tr><td colspan="10"><div class="empty"><div class="empty-title">Nenhum concurso cadastrado</div></div></td></tr>`;
 }
 
 function renderMovimentacoes(){
@@ -601,7 +649,7 @@ function renderMovimentacoes(){
       <td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td>
       <td class="mono">${m.qtd_fracoes}</td>
       <td class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</td>
-      <td class="money">${fmtMoney(m.valor_total_real || m.valor_total)}</td>
+      <td class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)))}</td>
       <td><span class="badge ${statusClass}">${m.status_acerto||'—'}</span></td>
       <td><div class="flex"><button class="btn-amber" onclick="editMov('${m.id}')">Editar</button></div></td>
     </tr>`;
@@ -621,10 +669,11 @@ function renderAuditoria(){
   if(di) rows=rows.filter(x=>String(x.data_mov)>=di);
   if(df) rows=rows.filter(x=>String(x.data_mov)<=df);
   $('tbody-auditoria').innerHTML = rows.length ? rows.map(m=>{
-    const total=Number(m.valor_total_real||m.valor_total||0);
+    const total=Number(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)));
     const statusClass = m.status_acerto==='PAGO' ? 'b-ok' : 'b-warn';
     return `<tr>
       <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
+      <td>${m.federais?.modalidade || 'Federal'}</td>
       <td class="mono">${m.federais?.concurso || '—'}</td>
       <td><span class="badge b-info">${m.tipo_evento || m.tipo || '—'}</span></td>
       <td>${lookupLoteriaName(m.loteria_origem)}</td>
@@ -635,77 +684,92 @@ function renderAuditoria(){
       <td><span class="badge ${statusClass}">${m.status_acerto||'—'}</span></td>
       <td><div class="flex"><button class="btn-amber" onclick="editMov('${m.id}')">Editar</button><button class="btn-secondary" onclick="openMovDetail('${m.id}')">Ver</button></div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="10"><div class="empty"><div class="empty-title">Sem registros para os filtros</div></div></td></tr>`;
+  }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Sem registros para os filtros</div></div></td></tr>`;
 }
 
 function setCadastroDefaults(){
-  state.editingCadastroId = null;
+  state.editingCadastroConcurso = null;
   $('card-form-cadastro').style.display='block';
-  $('cad-loteria').value='';
-  $('cad-concurso').value='';
-  $('cad-dt-sorteio').value=nextWedOrSat();
+  $('cad-concurso').value = suggestNextConcurso();
+  $('cad-dt-sorteio').value = suggestNextSorteio();
   $('cad-tipo').value='COMUM';
   applyFederalType('COMUM');
   $('cad-fracoes-bilhete').value='10';
-  $('cad-qtd-inicial').value='';
-  $('cad-qtd-devolvida').value='0';
-  $('cad-qtd-encalhe').value='0';
-  $('cad-ativo').value='true';
-}
-
-function nextWedOrSat(base=new Date()){
-  const d=new Date(base); d.setHours(12,0,0,0);
-  while(![3,6].includes(d.getDay())) d.setDate(d.getDate()+1);
-  return d.toISOString().slice(0,10);
+  fillQtdPadraoCadastro();
 }
 
 async function saveCadastro(){
   try{
-    const payload={
-      loteria_id:Number($('cad-loteria').value),
-      modalidade:'Federal',
-      concurso:$('cad-concurso').value.trim(),
-      dt_sorteio:$('cad-dt-sorteio').value,
-      valor_fracao:Number($('cad-valor-fracao').value||0),
-      valor_custo:Number($('cad-valor-custo').value||0),
-      qt_fracoes_bilhete:Number($('cad-fracoes-bilhete').value||10),
-      qtd_recebidas:Number($('cad-qtd-inicial').value||0),
-      qtd_devolvidas:Number($('cad-qtd-devolvida').value||0),
-      qtd_encalhe:Number($('cad-qtd-encalhe').value||0),
-      ativo:$('cad-ativo').value==='true',
-      criado_por:state.usuario?.id || null,
-      updated_at:new Date().toISOString()
-    };
-    if(!payload.loteria_id || !payload.concurso || !payload.dt_sorteio){ showStatus('st-cadastro','Preencha os campos obrigatórios.','err'); return; }
-    if(state.editingCadastroId){
-      const { error } = await sb.from('federais').update(payload).eq('id',state.editingCadastroId);
-      if(error) throw error;
-      showStatus('st-cadastro','Concurso atualizado.','ok');
+    const concurso=$('cad-concurso').value.trim();
+    const dt_sorteio=$('cad-dt-sorteio').value;
+    const valor_fracao=Number($('cad-valor-fracao').value||0);
+    const valor_custo=Number($('cad-valor-custo').value||0);
+    const qt_fracoes_bilhete=Number($('cad-fracoes-bilhete').value||10);
+    if(!concurso || !dt_sorteio){ showStatus('st-cadastro','Preencha concurso e data.','err'); return; }
+    const mapa = [
+      {id:1,qtd:Number($('cad-qtd-centro').value||0)},
+      {id:2,qtd:Number($('cad-qtd-boulevard').value||0)},
+      {id:3,qtd:Number($('cad-qtd-lotobel').value||0)},
+      {id:4,qtd:Number($('cad-qtd-santa').value||0)},
+      {id:5,qtd:Number($('cad-qtd-via').value||0)}
+    ];
+
+    if(state.editingCadastroConcurso){
+      for(const item of mapa){
+        const { error } = await sb.from('federais').update({
+          dt_sorteio,
+          valor_fracao,
+          valor_custo,
+          qt_fracoes_bilhete,
+          qtd_recebidas:item.qtd,
+          updated_at:new Date().toISOString()
+        }).eq('concurso', state.editingCadastroConcurso).eq('loteria_id', item.id);
+        if(error) throw error;
+      }
+      showStatus('st-cadastro','Concurso atualizado em todas as loterias.','ok');
     } else {
-      const { error } = await sb.from('federais').insert(payload);
-      if(error) throw error;
-      showStatus('st-cadastro','Concurso cadastrado.','ok');
+      for(const item of mapa){
+        const payload={
+          loteria_id:item.id,
+          modalidade:'Federal',
+          concurso,
+          dt_sorteio,
+          valor_fracao,
+          valor_custo,
+          qt_fracoes_bilhete,
+          qtd_recebidas:item.qtd,
+          qtd_devolvidas:0,
+          qtd_encalhe:0,
+          ativo:true,
+          criado_por:state.usuario?.id || null,
+          updated_at:new Date().toISOString()
+        };
+        const { error } = await sb.from('federais').insert(payload);
+        if(error) throw error;
+      }
+      showStatus('st-cadastro','Federais cadastradas para todas as loterias.','ok');
     }
     await refreshAll();
     $('card-form-cadastro').style.display='none';
   }catch(e){ showStatus('st-cadastro',e.message,'err'); }
 }
 
-window.editCadastro = function(id){
-  const f=lookupFederal(id); if(!f) return;
-  state.editingCadastroId=id;
+window.editCadastro = function(concurso){
+  const itens = state.federais.filter(x=>String(x.concurso)===String(concurso));
+  const f=itens[0]; if(!f) return;
+  state.editingCadastroConcurso=String(concurso);
   $('card-form-cadastro').style.display='block';
-  $('cad-loteria').value=f.loteria_id;
   $('cad-concurso').value=f.concurso;
   $('cad-dt-sorteio').value=f.dt_sorteio;
   $('cad-tipo').value=Number(f.valor_fracao)===10?'ESPECIAL':'COMUM';
   $('cad-valor-fracao').value=f.valor_fracao;
   $('cad-valor-custo').value=f.valor_custo;
   $('cad-fracoes-bilhete').value=f.qt_fracoes_bilhete;
-  $('cad-qtd-inicial').value=f.qtd_recebidas;
-  $('cad-qtd-devolvida').value=f.qtd_devolvidas;
-  $('cad-qtd-encalhe').value=f.qtd_encalhe;
-  $('cad-ativo').value=String(f.ativo);
+  $('cad-qtd-centro').value = itens.find(x=>x.loteria_id===1)?.qtd_recebidas || 0;
+  $('cad-qtd-boulevard').value = itens.find(x=>x.loteria_id===2)?.qtd_recebidas || 0;
+  $('cad-qtd-lotobel').value = itens.find(x=>x.loteria_id===3)?.qtd_recebidas || 0;
+  $('cad-qtd-santa').value = itens.find(x=>x.loteria_id===4)?.qtd_recebidas || 0;
+  $('cad-qtd-via').value = itens.find(x=>x.loteria_id===5)?.qtd_recebidas || 0;
 };
 
 async function saveMov(){
@@ -714,9 +778,6 @@ async function saveMov(){
     const valor = Number($('mov-valor').value||0);
     const qtd = Number($('mov-qtd').value||0);
     const tipoEvento = $('mov-tipo-evento').value;
-    const valorRef = tipoEvento === 'TRANSFERENCIA'
-      ? Number(federal?.valor_fracao||0)
-      : (tipoEvento === 'DEVOLUCAO_CAIXA' ? Number(federal?.valor_custo||0) : valor);
     const payload={
       federal_id:$('mov-federal').value,
       loteria_origem:Number($('mov-loteria-origem').value||0) || null,
@@ -725,7 +786,7 @@ async function saveMov(){
       tipo_evento:tipoEvento,
       qtd_fracoes:qtd,
       valor_fracao:valor,
-      valor_fracao_ref:valorRef,
+      valor_fracao_ref: Number(federal?.valor_fracao||0),
       valor_fracao_real:valor,
       valor_a_acertar:0,
       status_acerto: state.editingMovId ? ($('mov-status-acerto').value || 'PENDENTE') : 'PENDENTE',
@@ -780,7 +841,7 @@ window.editMov = function(id){
   $('mov-tipo-evento').value=m.tipo_evento || 'TRANSFERENCIA';
   $('mov-qtd').value=m.qtd_fracoes;
   $('mov-valor').value=m.valor_fracao_real || m.valor_fracao || '';
-  $('mov-total').value=m.valor_total_real || m.valor_total || '';
+  $('mov-total').value=(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0))).toFixed ? Number(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0))).toFixed(2) : '';
   $('mov-status-acerto').value=m.status_acerto || 'PENDENTE';
   $('mov-observacao').value=m.observacao || '';
   $('btn-excluir-mov').style.display='inline-flex';
@@ -831,22 +892,6 @@ async function saveFechamento(){
     $('fec-qtd-vendida').value=''; $('fec-total').value='';
     await refreshAll();
   }catch(e){ showStatus('st-fechamento',e.message,'err'); }
-}
-
-async function saveEncalhe(){
-  try{
-    const federalId = $('cfg-federal-encalhe').value;
-    if(!federalId){ showStatus('st-config','Selecione um concurso.','err'); return; }
-    const { error: e1 } = await sb.from('federais').update({ qtd_encalhe:Number($('cfg-qtd-encalhe').value||0), updated_at:new Date().toISOString() }).eq('id',federalId);
-    if(e1) throw e1;
-    const qtdPrem = Number($('cfg-qtd-premiada').value||0), valorPrem = Number($('cfg-vlr-premio').value||0);
-    if(qtdPrem>0 || valorPrem>0){
-      const { error:e2 } = await sb.from('federal_encalhe_premio').insert({ federal_id:federalId, qtd_fracoes_premiadas:qtdPrem||1, valor_premio:valorPrem, observacao:$('cfg-obs-premio').value||null, criado_por:state.usuario?.id || null });
-      if(e2) throw e2;
-    }
-    showStatus('st-config','Encalhe/prêmio salvos.','ok');
-    await refreshAll();
-  }catch(e){ showStatus('st-config',e.message,'err'); }
 }
 
 window.openLancamento = function(federalId){
@@ -911,6 +956,7 @@ window.openFederalDetail = function(federalId){
   openDrawer(`Federal ${resumo?.concurso || ''}`, `${resumo?.loja_origem || ''} • ${fmtDate(resumo?.dt_sorteio)}`, `
     <div class="card" style="margin-bottom:14px">
       <div class="inline-pills">
+        <span class="pill">Modalidade ${resumo?.modalidade || 'Federal'}</span>
         <span class="pill">Qtd inicial ${resumo?.qtd_inicial ?? 0}</span>
         <span class="pill">Vend. func ${resumo?.qtd_vendida_funcionarios ?? 0}</span>
         <span class="pill">Vend. externa ${resumo?.qtd_vendida_externa ?? 0}</span>
@@ -923,7 +969,7 @@ window.openFederalDetail = function(federalId){
     <div class="sep"><span class="sep-label">Vendas por funcionário</span><div class="sep-line"></div></div>
     <div class="table-wrap"><table class="table"><thead><tr><th>Funcionário</th><th>Qtd</th><th>Total</th></tr></thead><tbody>${vendas.length ? vendas.map(v=>`<tr><td>${v.funcionario_nome}</td><td class="mono">${v.qtd_vendida}</td><td class="money">${fmtMoney(v.total_vendido)}</td></tr>`).join('') : '<tr><td colspan="3" class="muted">Sem vendas lançadas</td></tr>'}</tbody></table></div>
     <div class="sep"><span class="sep-label">Eventos</span><div class="sep-line"></div></div>
-    <div class="table-wrap"><table class="table"><thead><tr><th>Evento</th><th>Origem</th><th>Destino</th><th>Qtd</th><th>Real</th></tr></thead><tbody>${movs.length ? movs.map(m=>`<tr><td>${m.tipo_evento||m.tipo}</td><td>${lookupLoteriaName(m.loteria_origem)}</td><td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td><td class="mono">${m.qtd_fracoes}</td><td class="money">${fmtMoney(m.valor_total_real||m.valor_total)}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Sem eventos</td></tr>'}</tbody></table></div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Evento</th><th>Origem</th><th>Destino</th><th>Qtd</th><th>Real</th></tr></thead><tbody>${movs.length ? movs.map(m=>`<tr><td>${m.tipo_evento||m.tipo}</td><td>${lookupLoteriaName(m.loteria_origem)}</td><td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td><td class="mono">${m.qtd_fracoes}</td><td class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)))}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Sem eventos</td></tr>'}</tbody></table></div>
   `, [{label:'Fechar', kind:'secondary', onClick:closeDrawer}]);
 };
 
@@ -936,7 +982,7 @@ window.openMovDetail = function(id){
       <div class="soft-card"><div class="field-label">Quantidade</div><div class="mono">${m.qtd_fracoes}</div></div>
       <div class="soft-card"><div class="field-label">Status</div><div>${m.status_acerto || '—'}</div></div>
       <div class="soft-card"><div class="field-label">Valor fração</div><div class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</div></div>
-      <div class="soft-card"><div class="field-label">Valor total</div><div class="money">${fmtMoney(m.valor_total_real || m.valor_total)}</div></div>
+      <div class="soft-card"><div class="field-label">Valor total</div><div class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)))}</div></div>
       <div class="soft-card"><div class="field-label">Data do concurso</div><div class="mono">${fmtDate(lookupFederal(m.federal_id)?.dt_sorteio)}</div></div>
       <div class="soft-card"><div class="field-label">Carimbo</div><div class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</div></div>
     </div>
@@ -955,10 +1001,27 @@ window.closeDrawer=closeDrawer;
 function bindEvents(){
   $('overlay').addEventListener('click', closeDrawer); $('btn-close-drawer').addEventListener('click', closeDrawer);
   $('overlay-lanc').addEventListener('click', closeLancamento); $('btn-close-lanc').addEventListener('click', closeLancamento); $('btn-cancel-lanc').addEventListener('click', closeLancamento); $('btn-save-lanc').addEventListener('click', saveLancamento);
-  $('btn-filtrar-visao').addEventListener('click', renderVisao); $('btn-limpar-visao').addEventListener('click', ()=>{ ['filtro-concurso','filtro-loja','filtro-dt-ini','filtro-dt-fim'].forEach(id=>$(id).value=''); renderVisao(); }); $('btn-recarregar-visao').addEventListener('click', refreshAll);
-  $('btn-novo-cadastro').addEventListener('click', setCadastroDefaults); $('btn-cancelar-cadastro').addEventListener('click', ()=>$('card-form-cadastro').style.display='none'); $('btn-salvar-cadastro').addEventListener('click', saveCadastro);
+  $('btn-filtrar-visao').addEventListener('click', renderVisao);
+  $('btn-limpar-visao').addEventListener('click', ()=>{ ['filtro-concurso','filtro-loja','filtro-dt-ini','filtro-dt-fim'].forEach(id=>$(id).value=''); renderVisao(); });
+  $('btn-recarregar-visao').addEventListener('click', refreshAll);
+
+  $('btn-novo-cadastro').addEventListener('click', setCadastroDefaults);
+  $('btn-cancelar-cadastro').addEventListener('click', ()=>$('card-form-cadastro').style.display='none');
+  $('btn-salvar-cadastro').addEventListener('click', saveCadastro);
   $('cad-tipo').addEventListener('change', e=>applyFederalType(e.target.value));
-  $('btn-salvar-mov').addEventListener('click', saveMov); $('btn-limpar-mov').addEventListener('click', clearMov); $('btn-excluir-mov').addEventListener('click', deleteMov);
+  $('cad-dt-sorteio').addEventListener('change', fillQtdPadraoCadastro);
+  $('cad-data-prev').addEventListener('click', ()=>{ $('cad-dt-sorteio').value = nextQuaSabFrom($('cad-dt-sorteio').value || suggestNextSorteio(), -1); fillQtdPadraoCadastro(); });
+  $('cad-data-next').addEventListener('click', ()=>{ $('cad-dt-sorteio').value = nextQuaSabFrom($('cad-dt-sorteio').value || suggestNextSorteio(), 1); fillQtdPadraoCadastro(); });
+
+  $('btn-buscar-cadastro').addEventListener('click', ()=>{
+    const c = $('cad-busca-concurso').value.trim();
+    if(!c) return;
+    editCadastro(c);
+  });
+
+  $('btn-salvar-mov').addEventListener('click', saveMov);
+  $('btn-limpar-mov').addEventListener('click', clearMov);
+  $('btn-excluir-mov').addEventListener('click', deleteMov);
   $('mov-modalidade').value = 'Federal';
   $('mov-federal').addEventListener('change', ()=>{
     const f=lookupFederal($('mov-federal').value);
@@ -974,26 +1037,30 @@ function bindEvents(){
     $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
   }));
   $('mov-tipo-evento').addEventListener('change', syncMovValorByTipo);
-  function syncMovValorByTipo(){
-    const f=lookupFederal($('mov-federal').value); if(!f) return;
-    const tipo=$('mov-tipo-evento').value;
-    if(tipo==='DEVOLUCAO_CAIXA'){
-      $('mov-valor').value=f.valor_custo;
-    } else if(tipo==='VENDA_CAMBISTA'){
-      $('mov-valor').value='';
-    } else {
-      $('mov-valor').value=f.valor_fracao;
-    }
-    $('mov-status-acerto').value='PENDENTE';
-    const qtd=Number($('mov-qtd').value||0), valor=Number($('mov-valor').value||0);
-    $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
-  }
+
   $('fec-data-ref').value=new Date().toISOString().slice(0,10);
   $('fec-federal').addEventListener('change', ()=>{ const f=lookupFederal($('fec-federal').value); if(f) $('fec-valor-fracao').value=f.valor_fracao; });
   ['fec-qtd-vendida','fec-valor-fracao'].forEach(id=>$(id).addEventListener('input', ()=>{ const q=Number($('fec-qtd-vendida').value||0), v=Number($('fec-valor-fracao').value||0); $('fec-total').value=q&&v?(q*v).toFixed(2):''; }));
-  $('btn-salvar-fechamento').addEventListener('click', saveFechamento); $('btn-limpar-fechamento').addEventListener('click', ()=>{ $('fec-qtd-vendida').value=''; $('fec-total').value=''; });
-  $('btn-filtrar-auditoria').addEventListener('click', renderAuditoria); $('btn-recarregar-auditoria').addEventListener('click', refreshAll);
-  $('cfg-federal-encalhe').addEventListener('change', ()=>{ const r=state.resumo.find(x=>String(x.federal_id)===String($('cfg-federal-encalhe').value)); $('cfg-resumo').innerHTML = r ? `<div class="inline-pills"><span class="pill">Origem ${r.loja_origem}</span><span class="pill">Qtd inicial ${r.qtd_inicial}</span><span class="pill">Vendida ${r.qtd_vendida_total}</span><span class="pill">Estoque ${r.estoque_atual}</span><span class="pill">Resultado ${fmtMoney(r.resultado)}</span></div>` : '<div class="empty-title">Selecione um concurso acima</div>'; });
+  $('btn-salvar-fechamento').addEventListener('click', saveFechamento);
+  $('btn-limpar-fechamento').addEventListener('click', ()=>{ $('fec-qtd-vendida').value=''; $('fec-total').value=''; });
+
+  $('btn-filtrar-auditoria').addEventListener('click', renderAuditoria);
+  $('btn-recarregar-auditoria').addEventListener('click', refreshAll);
+}
+
+function syncMovValorByTipo(){
+  const f=lookupFederal($('mov-federal').value); if(!f) return;
+  const tipo=$('mov-tipo-evento').value;
+  if(tipo==='DEVOLUCAO_CAIXA'){
+    $('mov-valor').value=f.valor_custo;
+  } else if(tipo==='VENDA_CAMBISTA'){
+    $('mov-valor').value='';
+  } else {
+    $('mov-valor').value=f.valor_fracao;
+  }
+  $('mov-status-acerto').value='PENDENTE';
+  const qtd=Number($('mov-qtd').value||0), valor=Number($('mov-valor').value||0);
+  $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
 }
 
 bootstrap();
