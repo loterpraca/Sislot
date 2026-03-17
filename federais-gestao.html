@@ -649,6 +649,7 @@ function renderMovimentacoes(){
       <td><div class="flex"><button class="btn-amber" onclick="editMov('${m.id}')">Editar</button></div></td>
     </tr>`;
   }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Sem movimentações</div></div></td></tr>`;
+  applyDestinoFilter();
 }
 
 function renderFechamentoResumo(){
@@ -926,21 +927,39 @@ async function saveLancamento(){
     if(e1) throw e1;
 
     if(premio > 0){
-      const { error:e2 } = await sb.from('federal_encalhe_premio').insert({
-        federal_id: state.lancFederalId,
-        qtd_fracoes_premiadas: qtdEnc || 1,
-        valor_premio: premio,
-        observacao: obs,
-        criado_por: state.usuario?.id || null
-      });
-      if(e2) throw e2;
+      const { data: premioExistente, error: eBusca } = await sb
+        .from('federal_encalhe_premio')
+        .select('id')
+        .eq('federal_id', state.lancFederalId)
+        .order('created_at',{ascending:false})
+        .limit(1);
+      if(eBusca) throw eBusca;
+
+      if(premioExistente && premioExistente.length){
+        const { error:e2 } = await sb.from('federal_encalhe_premio').update({
+          qtd_fracoes_premiadas: qtdEnc || 1,
+          valor_premio: premio,
+          observacao: obs,
+          data_registro: new Date().toISOString().slice(0,10)
+        }).eq('id', premioExistente[0].id);
+        if(e2) throw e2;
+      } else {
+        const { error:e3 } = await sb.from('federal_encalhe_premio').insert({
+          federal_id: state.lancFederalId,
+          qtd_fracoes_premiadas: qtdEnc || 1,
+          valor_premio: premio,
+          observacao: obs,
+          criado_por: state.usuario?.id || null
+        });
+        if(e3) throw e3;
+      }
     }
 
     showStatus('st-visao','Lançamento salvo.','ok');
     closeLancamento();
     await refreshAll();
   }catch(e){
-    showStatus('st-visao', e.message, 'err');
+    showStatus('st-visao', e.message,'err');
   }
 }
 
@@ -1007,17 +1026,17 @@ function bindEvents(){
   $('cad-data-prev').addEventListener('click', ()=>{ $('cad-dt-sorteio').value = nextQuaSabFrom($('cad-dt-sorteio').value || suggestNextSorteio(), -1); fillQtdPadraoCadastro(); });
   $('cad-data-next').addEventListener('click', ()=>{ $('cad-dt-sorteio').value = nextQuaSabFrom($('cad-dt-sorteio').value || suggestNextSorteio(), 1); fillQtdPadraoCadastro(); });
 
-  
-
   $('btn-salvar-mov').addEventListener('click', saveMov);
   $('btn-limpar-mov').addEventListener('click', clearMov);
   $('btn-excluir-mov').addEventListener('click', deleteMov);
   $('mov-modalidade').value = 'Federal';
+  $('mov-loteria-origem').addEventListener('change', applyDestinoFilter);
   $('mov-federal').addEventListener('change', ()=>{
     const f=lookupFederal($('mov-federal').value);
     if(!f){ $('mov-resumo-selec').innerHTML='<div class="empty-title">Selecione um concurso</div>'; return; }
     $('mov-modalidade').value='Federal';
     $('mov-loteria-origem').value=f.loteria_id;
+    applyDestinoFilter();
     $('mov-dt-concurso').value=f.dt_sorteio;
     syncMovValorByTipo();
     $('mov-resumo-selec').innerHTML=`<div class="inline-pills"><span class="pill">Modalidade Federal</span><span class="pill">Origem ${lookupLoteriaName(f.loteria_id)}</span><span class="pill">Concurso ${f.concurso}</span><span class="pill">Data ${fmtDate(f.dt_sorteio)}</span><span class="pill">Fração ${fmtMoney(f.valor_fracao)}</span><span class="pill">Custo ${fmtMoney(f.valor_custo)}</span></div>`;
@@ -1051,6 +1070,20 @@ function syncMovValorByTipo(){
   $('mov-status-acerto').value='PENDENTE';
   const qtd=Number($('mov-qtd').value||0), valor=Number($('mov-valor').value||0);
   $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
+}
+
+function applyDestinoFilter(){
+  const origem = $('mov-loteria-origem')?.value;
+  const sel = $('mov-loteria-destino');
+  if(!sel) return;
+  [...sel.options].forEach(opt => {
+    if(!opt.value){
+      opt.hidden = false;
+      return;
+    }
+    opt.hidden = !!origem && opt.value === origem;
+  });
+  if(origem && sel.value === origem) sel.value = '';
 }
 
 bootstrap().then(()=>setCadastroDefaults());
