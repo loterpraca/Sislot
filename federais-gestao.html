@@ -195,20 +195,21 @@ input[readonly]{opacity:.7}
       <div class="card">
         <div class="sep" style="margin-top:0"><span class="sep-label">Nova movimentação</span><div class="sep-line"></div></div>
         <div class="grid-3">
-          <div class="field"><label class="field-label req">Concurso</label><select id="mov-federal"></select></div>
           <div class="field"><label class="field-label">Modalidade</label><input id="mov-modalidade" value="Federal" readonly></div>
-          <div class="field"><label class="field-label">Carimbo</label><input id="mov-carimbo" readonly></div>
+          <div class="field"><label class="field-label req">Concurso</label><select id="mov-federal"></select></div>
+          <div class="field"><label class="field-label">Data do concurso</label><input type="date" id="mov-dt-concurso" readonly></div>
         </div>
-        <div class="grid-4" style="margin-top:14px">
+        <div class="grid-3" style="margin-top:14px">
           <div class="field"><label class="field-label req">Loteria origem</label><select id="mov-loteria-origem"></select></div>
           <div class="field"><label class="field-label req">Loteria destino</label><select id="mov-loteria-destino"></select></div>
-          <div class="field"><label class="field-label">Data do concurso</label><input type="date" id="mov-dt-concurso" readonly></div>
           <div class="field"><label class="field-label req">Tipo de evento</label><select id="mov-tipo-evento"><option value="TRANSFERENCIA">Transferência</option><option value="DEVOLUCAO_CAIXA">Devolução Caixa</option><option value="VENDA_CAMBISTA">Venda Cambista</option></select></div>
         </div>
-        <div class="grid-4" style="margin-top:14px">
+        <div class="grid-3" style="margin-top:14px">
           <div class="field"><label class="field-label req">Qtd de frações</label><input type="number" id="mov-qtd"></div>
           <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="mov-valor"></div>
           <div class="field"><label class="field-label">Valor total</label><input type="number" step="0.01" id="mov-total" readonly></div>
+        </div>
+        <div class="grid-1" style="margin-top:14px">
           <div class="field"><label class="field-label">Status</label><input id="mov-status-acerto" value="PENDENTE" readonly></div>
         </div>
         <div class="field" style="margin-top:14px"><label class="field-label">Observação</label><textarea id="mov-observacao" placeholder="Detalhes da operação"></textarea></div>
@@ -227,6 +228,7 @@ input[readonly]{opacity:.7}
         <thead>
           <tr>
             <th>Carimbo</th>
+            <th>Modalidade</th>
             <th>Concurso</th>
             <th>Evento</th>
             <th>Origem</th>
@@ -570,6 +572,7 @@ function renderMovimentacoes(){
     const statusClass = m.status_acerto==='PAGO' ? 'b-ok' : 'b-warn';
     return `<tr>
       <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
+      <td>${m.federais?.modalidade || 'Federal'}</td>
       <td class="mono">${m.federais?.concurso || '—'}</td>
       <td><span class="badge b-info">${m.tipo_evento || m.tipo || '—'}</span></td>
       <td>${lookupLoteriaName(m.loteria_origem)}</td>
@@ -580,7 +583,7 @@ function renderMovimentacoes(){
       <td><span class="badge ${statusClass}">${m.status_acerto||'—'}</span></td>
       <td><div class="flex"><button class="btn-amber" onclick="editMov('${m.id}')">Editar</button></div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="10"><div class="empty"><div class="empty-title">Sem movimentações</div></div></td></tr>`;
+  }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Sem movimentações</div></div></td></tr>`;
 }
 
 function renderFechamentoResumo(){
@@ -689,7 +692,9 @@ async function saveMov(){
     const valor = Number($('mov-valor').value||0);
     const qtd = Number($('mov-qtd').value||0);
     const tipoEvento = $('mov-tipo-evento').value;
-    const valorRef = tipoEvento === 'TRANSFERENCIA' ? Number(federal?.valor_fracao||0) : (tipoEvento === 'DEVOLUCAO_CAIXA' ? Number(federal?.valor_custo||0) : valor);
+    const valorRef = tipoEvento === 'TRANSFERENCIA'
+      ? Number(federal?.valor_fracao||0)
+      : (tipoEvento === 'DEVOLUCAO_CAIXA' ? Number(federal?.valor_custo||0) : valor);
     const payload={
       federal_id:$('mov-federal').value,
       loteria_origem:Number($('mov-loteria-origem').value||0) || null,
@@ -698,12 +703,9 @@ async function saveMov(){
       tipo_evento:tipoEvento,
       qtd_fracoes:qtd,
       valor_fracao:valor,
-      valor_total:qtd*valor,
       valor_fracao_ref:valorRef,
-      valor_total_ref:qtd*valorRef,
       valor_fracao_real:valor,
-      valor_total_real:qtd*valor,
-      valor_a_acertar:['DEVOLUCAO_CAIXA','VENDA_CAMBISTA'].includes(tipoEvento) ? qtd*valor : 0,
+      valor_a_acertar:0,
       status_acerto: state.editingMovId ? ($('mov-status-acerto').value || 'PENDENTE') : 'PENDENTE',
       data_mov:new Date().toISOString().slice(0,10),
       observacao:$('mov-observacao').value.trim() || null,
@@ -732,7 +734,6 @@ function clearMov(){
   state.editingMovId=null;
   $('mov-federal').value='';
   $('mov-modalidade').value='Federal';
-  $('mov-carimbo').value=new Date().toLocaleString('pt-BR');
   $('mov-loteria-origem').value='';
   $('mov-loteria-destino').value='';
   $('mov-dt-concurso').value='';
@@ -751,7 +752,6 @@ window.editMov = function(id){
   switchTab('movimentacao');
   $('mov-federal').value=m.federal_id;
   $('mov-modalidade').value='Federal';
-  $('mov-carimbo').value=new Date(m.created_at || Date.now()).toLocaleString('pt-BR');
   $('mov-loteria-origem').value=m.loteria_origem || '';
   $('mov-loteria-destino').value=m.loteria_destino || '';
   $('mov-dt-concurso').value=lookupFederal(m.federal_id)?.dt_sorteio || '';
@@ -852,7 +852,7 @@ window.openFederalDetail = function(federalId){
 
 window.openMovDetail = function(id){
   const m=state.movimentos.find(x=>String(x.id)===String(id)); if(!m) return;
-  openDrawer(`Movimentação ${m.tipo_evento || m.tipo}`, `Concurso ${m.federais?.concurso || '—'}`, `
+  openDrawer(`Movimentação ${m.tipo_evento || m.tipo}`, `${m.federais?.modalidade || 'Federal'} • Concurso ${m.federais?.concurso || '—'}`, `
     <div class="grid-2">
       <div class="soft-card"><div class="field-label">Origem</div><div>${lookupLoteriaName(m.loteria_origem)}</div></div>
       <div class="soft-card"><div class="field-label">Destino</div><div>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</div></div>
@@ -860,7 +860,7 @@ window.openMovDetail = function(id){
       <div class="soft-card"><div class="field-label">Status</div><div>${m.status_acerto || '—'}</div></div>
       <div class="soft-card"><div class="field-label">Valor fração</div><div class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</div></div>
       <div class="soft-card"><div class="field-label">Valor total</div><div class="money">${fmtMoney(m.valor_total_real || m.valor_total)}</div></div>
-      <div class="soft-card"><div class="field-label">Data</div><div class="mono">${fmtDate(m.data_mov)}</div></div>
+      <div class="soft-card"><div class="field-label">Data do concurso</div><div class="mono">${fmtDate(lookupFederal(m.federal_id)?.dt_sorteio)}</div></div>
       <div class="soft-card"><div class="field-label">Carimbo</div><div class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</div></div>
     </div>
     <div class="card" style="margin-top:14px"><div class="field-label">Observação</div><div style="margin-top:8px">${m.observacao || '—'}</div></div>
@@ -882,16 +882,14 @@ function bindEvents(){
   $('cad-tipo').addEventListener('change', e=>applyFederalType(e.target.value));
   $('btn-salvar-mov').addEventListener('click', saveMov); $('btn-limpar-mov').addEventListener('click', clearMov); $('btn-excluir-mov').addEventListener('click', deleteMov);
   $('mov-modalidade').value = 'Federal';
-  $('mov-carimbo').value = new Date().toLocaleString('pt-BR');
   $('mov-federal').addEventListener('change', ()=>{
     const f=lookupFederal($('mov-federal').value);
     if(!f){ $('mov-resumo-selec').innerHTML='<div class="empty-title">Selecione um concurso</div>'; return; }
     $('mov-modalidade').value='Federal';
-    $('mov-carimbo').value=new Date().toLocaleString('pt-BR');
     $('mov-loteria-origem').value=f.loteria_id;
     $('mov-dt-concurso').value=f.dt_sorteio;
     syncMovValorByTipo();
-    $('mov-resumo-selec').innerHTML=`<div class="inline-pills"><span class="pill">Origem ${lookupLoteriaName(f.loteria_id)}</span><span class="pill">Concurso ${f.concurso}</span><span class="pill">Fração ${fmtMoney(f.valor_fracao)}</span><span class="pill">Custo ${fmtMoney(f.valor_custo)}</span><span class="pill">Qtd inicial ${f.qtd_recebidas}</span></div>`;
+    $('mov-resumo-selec').innerHTML=`<div class="inline-pills"><span class="pill">Modalidade Federal</span><span class="pill">Origem ${lookupLoteriaName(f.loteria_id)}</span><span class="pill">Concurso ${f.concurso}</span><span class="pill">Data ${fmtDate(f.dt_sorteio)}</span><span class="pill">Fração ${fmtMoney(f.valor_fracao)}</span><span class="pill">Custo ${fmtMoney(f.valor_custo)}</span></div>`;
   });
   ['mov-qtd','mov-valor'].forEach(id=>$(id).addEventListener('input', ()=>{
     const qtd=Number($('mov-qtd').value||0), valor=Number($('mov-valor').value||0);
@@ -903,14 +901,12 @@ function bindEvents(){
     const tipo=$('mov-tipo-evento').value;
     if(tipo==='DEVOLUCAO_CAIXA'){
       $('mov-valor').value=f.valor_custo;
-      $('mov-status-acerto').value='PENDENTE';
     } else if(tipo==='VENDA_CAMBISTA'){
       $('mov-valor').value='';
-      $('mov-status-acerto').value='PENDENTE';
     } else {
       $('mov-valor').value=f.valor_fracao;
-      $('mov-status-acerto').value='PENDENTE';
     }
+    $('mov-status-acerto').value='PENDENTE';
     const qtd=Number($('mov-qtd').value||0), valor=Number($('mov-valor').value||0);
     $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
   }
