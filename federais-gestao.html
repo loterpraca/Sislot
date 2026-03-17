@@ -696,133 +696,78 @@ function setCadastroDefaults(){
 
 async function saveCadastro(){
   try{
-    const concurso = $('cad-concurso').value.trim();
-    const dt_sorteio = $('cad-dt-sorteio').value;
-    const valor_fracao = Number($('cad-valor-fracao').value || 0);
-    const valor_custo = Number($('cad-valor-custo').value || 0);
-    const qt_fracoes_bilhete = Number($('cad-fracoes-bilhete').value || 10);
-
-    if(!concurso || !dt_sorteio || !valor_fracao || !valor_custo){
-      showStatus('st-cadastro','Preencha concurso, data, valor fração e valor custo.','err');
-      return;
-    }
-
-    const registros = [
-      { loteria_id: 1, qtd_recebidas: Number($('cad-qtd-centro').value || 0) },
-      { loteria_id: 2, qtd_recebidas: Number($('cad-qtd-boulevard').value || 0) },
-      { loteria_id: 3, qtd_recebidas: Number($('cad-qtd-lotobel').value || 0) },
-      { loteria_id: 4, qtd_recebidas: Number($('cad-qtd-santa').value || 0) },
-      { loteria_id: 5, qtd_recebidas: Number($('cad-qtd-via').value || 0) }
+    const concurso=$('cad-concurso').value.trim();
+    const dt_sorteio=$('cad-dt-sorteio').value;
+    const valor_fracao=Number($('cad-valor-fracao').value||0);
+    const valor_custo=Number($('cad-valor-custo').value||0);
+    const qt_fracoes_bilhete=Number($('cad-fracoes-bilhete').value||10);
+    if(!concurso || !dt_sorteio){ showStatus('st-cadastro','Preencha concurso e data.','err'); return; }
+    const mapa = [
+      {id:1,qtd:Number($('cad-qtd-centro').value||0)},
+      {id:2,qtd:Number($('cad-qtd-boulevard').value||0)},
+      {id:3,qtd:Number($('cad-qtd-lotobel').value||0)},
+      {id:4,qtd:Number($('cad-qtd-santa').value||0)},
+      {id:5,qtd:Number($('cad-qtd-via').value||0)}
     ];
 
     if(state.editingCadastroConcurso){
-      for (const item of registros){
-        const { data: existente, error: eBusca } = await sb
-          .from('federais')
-          .select('id')
-          .eq('concurso', state.editingCadastroConcurso)
-          .eq('loteria_id', item.loteria_id)
-          .maybeSingle();
-
-        if(eBusca) throw eBusca;
-
-        if(existente){
-          const { error } = await sb
-            .from('federais')
-            .update({
-              modalidade: 'Federal',
-              dt_sorteio,
-              valor_fracao,
-              valor_custo,
-              qt_fracoes_bilhete,
-              qtd_recebidas: item.qtd_recebidas,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existente.id);
-
-          if(error) throw error;
-        } else {
-          const { error } = await sb
-            .from('federais')
-            .insert({
-              loteria_id: item.loteria_id,
-              modalidade: 'Federal',
-              concurso,
-              dt_sorteio,
-              valor_fracao,
-              valor_custo,
-              qt_fracoes_bilhete,
-              qtd_recebidas: item.qtd_recebidas,
-              qtd_devolvidas: 0,
-              qtd_encalhe: 0,
-              ativo: true,
-              criado_por: state.usuario?.id || null,
-              updated_at: new Date().toISOString()
-            });
-
-          if(error) throw error;
-        }
+      for(const item of mapa){
+        const { error } = await sb.from('federais').update({
+          dt_sorteio,
+          valor_fracao,
+          valor_custo,
+          qt_fracoes_bilhete,
+          qtd_recebidas:item.qtd,
+          updated_at:new Date().toISOString()
+        }).eq('concurso', state.editingCadastroConcurso).eq('loteria_id', item.id);
+        if(error) throw error;
       }
-
       showStatus('st-cadastro','Concurso atualizado em todas as loterias.','ok');
     } else {
-      for (const item of registros){
-        const { data: existente, error: eBusca } = await sb
-          .from('federais')
-          .select('id')
-          .eq('concurso', concurso)
-          .eq('loteria_id', item.loteria_id)
-          .maybeSingle();
-
-        if(eBusca) throw eBusca;
-
-        if(existente){
-          const { error } = await sb
-            .from('federais')
-            .update({
-              modalidade: 'Federal',
-              dt_sorteio,
-              valor_fracao,
-              valor_custo,
-              qt_fracoes_bilhete,
-              qtd_recebidas: item.qtd_recebidas,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existente.id);
-
-          if(error) throw error;
-        } else {
-          const { error } = await sb
-            .from('federais')
-            .insert({
-              loteria_id: item.loteria_id,
-              modalidade: 'Federal',
-              concurso,
-              dt_sorteio,
-              valor_fracao,
-              valor_custo,
-              qt_fracoes_bilhete,
-              qtd_recebidas: item.qtd_recebidas,
-              qtd_devolvidas: 0,
-              qtd_encalhe: 0,
-              ativo: true,
-              criado_por: state.usuario?.id || null,
-              updated_at: new Date().toISOString()
-            });
-
-          if(error) throw error;
-        }
+      for(const item of mapa){
+        const payload={
+          loteria_id:item.id,
+          modalidade:'Federal',
+          concurso,
+          dt_sorteio,
+          valor_fracao,
+          valor_custo,
+          qt_fracoes_bilhete,
+          qtd_recebidas:item.qtd,
+          qtd_devolvidas:0,
+          qtd_encalhe:0,
+          ativo:true,
+          criado_por:state.usuario?.id || null,
+          updated_at:new Date().toISOString()
+        };
+        const { error } = await sb.from('federais').insert(payload);
+        if(error) throw error;
       }
-
-      showStatus('st-cadastro','Concurso cadastrado para todas as loterias.','ok');
+      showStatus('st-cadastro','Federais cadastradas para todas as loterias.','ok');
     }
-
     await refreshAll();
     setCadastroDefaults();
-  } catch(e){
-    showStatus('st-cadastro', e.message, 'err');
-  }
+  }catch(e){ showStatus('st-cadastro',e.message,'err'); }
 }
+
+window.editCadastro = function(concurso){
+  const itens = state.federais.filter(x=>String(x.concurso)===String(concurso));
+  const f=itens[0]; if(!f) return;
+  state.editingCadastroConcurso=String(concurso);
+  $('card-form-cadastro').style.display='block';
+  $('cad-concurso').value=f.concurso;
+  $('cad-dt-sorteio').value=f.dt_sorteio;
+  $('cad-tipo').value=Number(f.valor_fracao)===10?'ESPECIAL':'COMUM';
+  $('cad-valor-fracao').value=f.valor_fracao;
+  $('cad-valor-custo').value=f.valor_custo;
+  $('cad-fracoes-bilhete').value=f.qt_fracoes_bilhete;
+  $('cad-qtd-centro').value = itens.find(x=>x.loteria_id===1)?.qtd_recebidas || 0;
+  $('cad-qtd-boulevard').value = itens.find(x=>x.loteria_id===2)?.qtd_recebidas || 0;
+  $('cad-qtd-lotobel').value = itens.find(x=>x.loteria_id===3)?.qtd_recebidas || 0;
+  $('cad-qtd-santa').value = itens.find(x=>x.loteria_id===4)?.qtd_recebidas || 0;
+  $('cad-qtd-via').value = itens.find(x=>x.loteria_id===5)?.qtd_recebidas || 0;
+};
+
 async function saveMov(){
   try{
     const federal=lookupFederal($('mov-federal').value);
