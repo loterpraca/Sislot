@@ -1,51 +1,39 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#00c896">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gestão de Federais — SISLOT</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./sislot-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>
+<script src="./sislot-config.js"><\/script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --deep:#0a1628;--mid:#0f2244;--panel:#132952;--border:#1e3a6e;
-  --accent:#00c896;--amber:#f5a623;--purple:#a78bfa;--sky:#38bdf8;
-  --coral:#fb7185;--bright:#e8eef8;--muted:#8fa3c8;--dim:#4a6491;
-  --input:#0d1e3a;--err:#ff5252;
-}
-body{
-  background:var(--deep);font-family:'IBM Plex Sans',sans-serif;
-  color:var(--bright);min-height:100vh;display:flex;flex-direction:column;
-  background-image:
-    radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,150,.07) 0%,transparent 70%),
-    repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(30,58,110,.3) 39px,rgba(30,58,110,.3) 40px),
-    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(30,58,110,.15) 39px,rgba(30,58,110,.15) 40px);
-}
+:root{--deep:#0a1628;--mid:#0f2244;--panel:#132952;--border:#1e3a6e;--accent:#00c896;--amber:#f5a623;--purple:#a78bfa;--sky:#38bdf8;--coral:#fb7185;--bright:#e8eef8;--muted:#8fa3c8;--dim:#4a6491;--input:#0d1e3a;--err:#ff5252}
+body{background:var(--deep);font-family:"IBM Plex Sans",sans-serif;color:var(--bright);min-height:100vh;display:flex;flex-direction:column;background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,150,.07) 0%,transparent 70%),repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(30,58,110,.3) 39px,rgba(30,58,110,.3) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(30,58,110,.15) 39px,rgba(30,58,110,.15) 40px)}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:rgba(15,34,68,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(8px);position:sticky;top:0;z-index:200}
 .brand{display:flex;align-items:center;gap:10px}
-.brand-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--deep)}
+.brand-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--deep)}
 .brand-name{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
 .brand-sub{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
-#relogio{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
-.btn-topbar{display:flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--muted);font-family:'IBM Plex Sans',sans-serif}
+#relogio{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted)}
+.btn-topbar{display:flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--muted);font-family:"IBM Plex Sans",sans-serif}
 .btn-topbar:hover{color:var(--accent);border-color:rgba(0,200,150,.4);background:rgba(0,200,150,.05)}
-.tabs-bar{display:flex;align-items:flex-end;gap:0;padding:20px 24px 0;border-bottom:1px solid var(--border);background:rgba(15,34,68,.6);position:sticky;top:56px;z-index:100}
-.tab-btn{display:flex;align-items:center;gap:8px;padding:10px 20px;font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;background:transparent;border:none;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s;font-family:'IBM Plex Sans',sans-serif;margin-bottom:-1px}
+.tabs-bar{display:flex;align-items:flex-end;padding:0 24px;border-bottom:1px solid var(--border);background:rgba(15,34,68,.6);position:sticky;top:56px;z-index:100}
+.tab-btn{display:flex;align-items:center;gap:8px;padding:14px 20px;font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;background:transparent;border:none;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s;font-family:"IBM Plex Sans",sans-serif;margin-bottom:-1px}
 .tab-btn:hover{color:var(--muted)}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.main{flex:1;padding:24px;max-width:1040px;width:100%;margin:0 auto}
-.tab-content{display:none;animation:fadeUp .3s ease both}
-.tab-content.active{display:block}
-.section{margin-bottom:24px}
-.section-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.main{flex:1;padding:28px 24px 60px;max-width:1040px;width:100%;margin:0 auto}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeUp .28s ease both}
+.page-header{margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.page-sub{font-size:13px;color:var(--muted);margin-top:4px;font-weight:300}
+.sep{display:flex;align-items:center;gap:14px;margin:24px 0 16px}
+.sep-label{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.sep-line{flex:1;height:1px;background:var(--border)}
+.sep-count{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--accent);background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);border-radius:4px;padding:2px 8px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
@@ -53,888 +41,635 @@ body{
 @media(max-width:480px){.g2,.g3,.g4{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:5px}
 .field-label{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.field-label.req::after{content:' *';color:var(--accent)}
-input,select.sel,textarea.ta{width:100%;background:var(--input);border:1px solid var(--border);border-radius:6px;padding:10px 13px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--bright);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;-moz-appearance:textfield}
+.field-label.req::after{content:" *";color:var(--accent)}
+input,select.sel,textarea.ta{width:100%;background:var(--input);border:1px solid var(--border);border-radius:6px;padding:10px 13px;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--bright);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;-moz-appearance:textfield}
 input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
 input:focus,select.sel:focus,textarea.ta:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,150,.1);background:#0e2040}
 input.filled,select.sel.filled{border-color:rgba(0,200,150,.35)}
-input::placeholder,textarea.ta::placeholder{color:var(--dim);font-size:12px}
+input::placeholder{color:var(--dim);font-size:12px}
 select.sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a6491' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px;cursor:pointer}
 select.sel option{background:var(--mid);color:var(--bright)}
-select.sel:disabled{opacity:.7;cursor:default}
-textarea.ta{resize:vertical;min-height:64px;font-size:12px}
+textarea.ta{resize:vertical;min-height:64px;font-size:12px;font-family:"IBM Plex Sans",sans-serif}
 .pfx-wrap{position:relative}
-.pfx{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);pointer-events:none}
+.pfx{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim);pointer-events:none}
 .pfx-wrap input{padding-left:32px}
-.concurso-search{display:flex;gap:10px;align-items:flex-end;margin-bottom:16px}
-.concurso-search .field{flex:1}
-.concurso-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px;animation:fadeUp .25s ease}
-.concurso-card-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.cc-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 9px;border-radius:4px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
-.cc-title{font-size:14px;font-weight:600;color:var(--bright)}
-.cc-meta{font-size:11px;color:var(--muted)}
+.btn-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn-primary{display:flex;align-items:center;gap:7px;background:var(--accent);color:var(--deep);border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:"IBM Plex Sans",sans-serif;transition:all .2s}
+.btn-primary:hover:not(:disabled){background:#00e8ad;transform:translateY(-1px);box-shadow:0 5px 18px rgba(0,200,150,.25)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-secondary{display:flex;align-items:center;gap:7px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;font-family:"IBM Plex Sans",sans-serif;transition:all .2s}
+.btn-secondary:hover{border-color:var(--muted);color:var(--bright)}
+.btn-amber{background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:500;cursor:pointer;font-family:"IBM Plex Sans",sans-serif;transition:all .2s}
+.btn-amber:hover{background:rgba(245,166,35,.18)}
+.tipo-grid{display:flex;gap:8px;margin-bottom:14px}
+.tipo-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--panel);cursor:pointer;transition:all .2s;text-align:left;font-family:"IBM Plex Sans",sans-serif}
+.tipo-btn:hover{border-color:rgba(0,200,150,.3)}
+.tipo-btn.ativo{border-color:var(--accent);background:rgba(0,200,150,.06)}
+.tipo-nome{font-size:11px;font-weight:600;color:var(--bright);margin-bottom:2px}
+.tipo-desc{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted)}
 .lojas-table{width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
 .lojas-table thead tr{background:var(--mid)}
-.lojas-table thead th{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border)}
+.lojas-table thead th{font-family:"IBM Plex Mono",monospace;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border)}
 .lojas-table tbody tr{border-bottom:1px solid rgba(30,58,110,.5);transition:background .15s}
 .lojas-table tbody tr:last-child{border-bottom:none}
 .lojas-table tbody tr:hover{background:rgba(255,255,255,.02)}
 .lojas-table tbody td{padding:8px 12px;font-size:12px;vertical-align:middle}
-.lojas-table tbody td.mono{font-family:'IBM Plex Mono',monospace;font-size:11px}
-.lojas-table input.inp-loja{width:100px;padding:5px 8px;font-size:12px;background:var(--input);border:1px solid var(--border);border-radius:5px;color:var(--bright);font-family:'IBM Plex Mono',monospace;outline:none;transition:border-color .15s}
-.lojas-table input.inp-loja:focus{border-color:var(--accent)}
-.lojas-table input.inp-loja.filled{border-color:rgba(0,200,150,.35)}
-.loja-saldo{font-family:'IBM Plex Mono',monospace;font-size:11px}
-.saldo-ok{color:var(--accent)}
-.saldo-zero{color:var(--dim)}
-.saldo-neg{color:var(--err)}
+.lojas-table tbody td.mono{font-family:"IBM Plex Mono",monospace;font-size:11px}
+.inp-loja{width:100px;padding:5px 8px;font-size:12px;background:var(--input);border:1px solid var(--border);border-radius:5px;color:var(--bright);font-family:"IBM Plex Mono",monospace;outline:none;transition:border-color .15s}
+.inp-loja:focus{border-color:var(--accent)}
+.inp-loja.filled{border-color:rgba(0,200,150,.35)}
+.conc-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+.conc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.conc-badge{font-family:"IBM Plex Mono",monospace;font-size:10px;padding:3px 9px;border-radius:4px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--accent)}
+.conc-title{font-size:14px;font-weight:600;color:var(--bright)}
+.conc-meta{font-size:11px;color:var(--muted)}
 .mov-list{display:flex;flex-direction:column;gap:10px}
-.mov-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;animation:cardIn .2s ease both;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
+.mov-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
 .mov-card.envio{border-left:3px solid var(--accent)}
 .mov-card.dev-ext{border-left:3px solid var(--amber)}
 .mov-card.enc-ext{border-left:3px solid var(--coral)}
-.mov-tipo-badge{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;display:inline-block;margin-bottom:4px}
-.tipo-envio{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--accent)}
-.tipo-devext{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);color:var(--amber)}
-.tipo-encext{background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.2);color:var(--coral)}
+.mov-tipo-badge{font-family:"IBM Plex Mono",monospace;font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;display:inline-block;margin-bottom:4px}
+.t-envio{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--accent)}
+.t-devext{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);color:var(--amber)}
+.t-encext{background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.2);color:var(--coral)}
 .mov-info{font-size:12px;color:var(--muted);line-height:1.6}
 .mov-info strong{color:var(--bright)}
-.mov-actions{display:flex;gap:8px}
-.posicao-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-.posicao-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;animation:cardIn .25s ease both}
-.posicao-head{padding:10px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.posicao-loja{font-size:13px;font-weight:600;color:var(--bright)}
-.posicao-saldo{font-family:'IBM Plex Mono',monospace;font-size:12px}
-.posicao-body{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.pos-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.pos-head{padding:10px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pos-loja{font-size:13px;font-weight:600;color:var(--bright)}
+.pos-body{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .pos-row{display:flex;align-items:center;justify-content:space-between;font-size:11px}
 .pos-label{color:var(--muted)}
-.pos-val{font-family:'IBM Plex Mono',monospace;color:var(--bright)}
+.pos-val{font-family:"IBM Plex Mono",monospace;color:var(--bright)}
 .pos-sep{height:1px;background:var(--border);margin:4px 0}
-.pos-input-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.pos-input-label{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-.pos-input{width:80px;padding:5px 8px;text-align:right;background:var(--input);border:1px solid var(--border);border-radius:5px;color:var(--bright);font-family:'IBM Plex Mono',monospace;font-size:12px;outline:none;transition:border-color .15s}
-.pos-input:focus{border-color:var(--accent)}
-.pos-input.amber{border-color:rgba(245,166,35,.35)!important}
-.overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,.88);backdrop-filter:blur(6px);align-items:center;justify-content:center}
-.overlay.show{display:flex}
-.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:26px 30px;width:min(92vw,480px)}
-.modal-title{font-size:14px;font-weight:600;color:var(--bright);margin-bottom:16px;display:flex;align-items:center;gap:8px}
-.modal-fields{display:flex;flex-direction:column;gap:12px}
-.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
-.btn-primary{display:flex;align-items:center;gap:8px;background:var(--accent);color:var(--deep);border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'IBM Plex Sans',sans-serif;text-transform:uppercase;letter-spacing:.04em}
-.btn-primary:hover:not(:disabled){background:#00e8ad;transform:translateY(-1px);box-shadow:0 5px 18px rgba(0,200,150,.25)}
-.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
-.btn-secondary{display:flex;align-items:center;gap:8px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;font-family:'IBM Plex Sans',sans-serif}
-.btn-secondary:hover{border-color:var(--muted);color:var(--bright)}
-.btn-amber{background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;font-family:'IBM Plex Sans',sans-serif}
-.btn-amber:hover{background:rgba(245,166,35,.18)}
-.btn-sm{padding:5px 10px;font-size:11px;border-radius:5px}
+.pos-inp-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pos-inp-label{font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.pos-inp{width:80px;padding:5px 8px;text-align:right;background:var(--input);border:1px solid var(--border);border-radius:5px;color:var(--bright);font-family:"IBM Plex Mono",monospace;font-size:12px;outline:none;transition:border-color .15s}
+.pos-inp:focus{border-color:var(--accent)}
+.pos-inp.amber{border-color:rgba(245,166,35,.35)!important}
 .status-bar{display:none;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.4;border:1px solid transparent;margin-bottom:16px}
 .status-bar.show{display:block}
 .status-bar.ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--bright)}
 .status-bar.err{background:rgba(255,82,82,.08);border-color:rgba(255,82,82,.2);color:#ffb3b3}
 .status-bar.warn{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2);color:var(--amber)}
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:40px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:10px}
-.empty-title{font-size:13px;font-weight:500;color:var(--muted)}
-.empty-sub{font-size:11px;color:var(--dim);max-width:280px}
-.spinner{width:24px;height:24px;border-radius:50%;border:3px solid rgba(167,139,250,.15);border-top-color:var(--purple);animation:spin .8s linear infinite}
-.btn-tipo-bilhete:hover{border-color:var(--accent)!important;background:rgba(0,200,150,.05)!important}
-.btn-tipo-bilhete.ativo{border-color:var(--accent)!important;background:rgba(0,200,150,.08)!important}
+.state-box{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:48px 24px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:10px}
+.state-title{font-size:13px;font-weight:600;color:var(--muted)}
+.state-sub{font-size:11px;color:var(--dim);max-width:300px}
+.spinner{width:28px;height:28px;border-radius:50%;border:3px solid rgba(167,139,250,.15);border-top-color:var(--purple);animation:spin .8s linear infinite}
+.overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,.88);backdrop-filter:blur(6px);align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:26px 30px;width:min(92vw,500px)}
+.modal-title{font-size:14px;font-weight:600;color:var(--bright);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal-body{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:20px;white-space:pre-line;font-family:"IBM Plex Mono",monospace;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:12px 14px;max-height:300px;overflow-y:auto}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── MOV PANEL (estilo movimentar.html) ── */
+.fed-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;cursor:pointer;transition:border-color .2s,background .2s;border-left:3px solid transparent;animation:cardIn .3s ease both}
+.fed-card:hover{border-color:rgba(0,200,150,.35);background:rgba(0,200,150,.02)}
+.fed-card.selected{border-color:var(--accent)!important;background:rgba(0,200,150,.05)!important;border-left-color:var(--accent)!important}
+.fed-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.fed-modal{font-size:13px;font-weight:600;color:var(--bright)}
+.fed-conc{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);border-radius:4px;padding:1px 7px}
+.fed-tags{display:flex;gap:6px;flex-wrap:wrap}
+.ftag{font-family:"IBM Plex Mono",monospace;font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.fed-saldos{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.saldo-pill{font-family:"IBM Plex Mono",monospace;font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(30,58,110,.6);border:1px solid var(--border);color:var(--dim);white-space:nowrap;display:flex;align-items:center;gap:4px}
+.saldo-pill .sp-loja{color:var(--muted)}
+.saldo-pill .sp-val{color:var(--bright);font-weight:600}
+.fed-select-ind{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.fed-card.selected .fed-select-ind{background:var(--accent);border-color:var(--accent)}
+.fed-select-ind svg{display:none;width:10px;height:10px;stroke:var(--deep)}
+.fed-card.selected .fed-select-ind svg{display:block}
+
+/* Panel deslizante */
+.mov-fed-panel{position:fixed;bottom:0;left:0;right:0;background:rgba(10,22,40,.97);border-top:1px solid var(--border);backdrop-filter:blur(12px);z-index:200;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:70vh;overflow-y:auto}
+.mov-fed-panel.open{transform:translateY(0)}
+.mov-fed-inner{max-width:1040px;margin:0 auto;padding:20px 24px 28px}
+.mov-fed-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:16px}
+.mov-fed-titulo{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.mov-fed-nome{font-size:15px;font-weight:600;color:var(--bright)}
+.mov-fed-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.mftag{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:3px 9px;border-radius:5px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted)}
+.mftag-green{color:var(--accent);background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2)}
+.btn-fechar-fed{background:transparent;border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--dim);font-size:18px;line-height:1;transition:all .2s;flex-shrink:0}
+.btn-fechar-fed:hover{border-color:var(--err);color:var(--err)}
+.destinos-grid-fed{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:18px}
+.dest-field{display:flex;flex-direction:column;gap:6px}
+.dest-label{font-size:11px;font-weight:500;color:var(--muted)}
+.dest-input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-family:"IBM Plex Mono",monospace;font-size:16px;font-weight:600;color:var(--bright);outline:none;text-align:center;transition:border-color .2s,box-shadow .2s;-moz-appearance:textfield}
+.dest-input::-webkit-outer-spin-button,.dest-input::-webkit-inner-spin-button{-webkit-appearance:none}
+.dest-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,150,.1)}
+.dest-input.filled{border-color:rgba(0,200,150,.4);color:var(--accent)}
+.dest-sub{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--dim);text-align:center;min-height:14px;transition:color .2s}
+.dest-sub.on{color:var(--accent)}
+.mov-fed-actions{display:flex;align-items:center;justify-content:space-between;padding-top:16px;border-top:1px solid var(--border);gap:12px}
+.mov-fed-total{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--dim)}
+.mov-fed-total span{color:var(--accent);font-size:16px;font-weight:600}
+.btn-registrar-fed{background:var(--accent);color:var(--deep);border:none;border-radius:8px;padding:11px 28px;cursor:pointer;font-family:"IBM Plex Sans",sans-serif;font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;transition:all .2s;display:flex;align-items:center;gap:8px}
+.btn-registrar-fed:hover:not(:disabled){background:#00e8ad;transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,200,150,.25)}
+.btn-registrar-fed:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+body.fed-panel-open .fed-list-area{padding-bottom:380px}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-
 <header class="topbar">
   <div class="brand">
     <div class="brand-icon">LC</div>
-    <div>
-      <div class="brand-name">SisLot</div>
-      <div class="brand-sub">Gestão de Federais</div>
-    </div>
+    <div><div class="brand-name">SisLot</div><div class="brand-sub">Gestão de Federais</div></div>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
     <div id="relogio"></div>
-    <button class="btn-topbar" onclick="history.back()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      Voltar
+    <button class="btn-topbar" onclick="location.href='./menu.html'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Menu
     </button>
   </div>
 </header>
-
 <div class="tabs-bar">
-  <button class="tab-btn active" onclick="mudarAba('cadastro')" id="tab-cadastro">
+  <button class="tab-btn active" id="btn-tab-cadastro" onclick="mudarAba('cadastro')">
     <div class="tab-dot" style="background:var(--accent)"></div>Cadastro
   </button>
-  <button class="tab-btn" onclick="mudarAba('movimentacao')" id="tab-movimentacao">
+  <button class="tab-btn" id="btn-tab-movimentacao" onclick="mudarAba('movimentacao')">
     <div class="tab-dot" style="background:var(--sky)"></div>Movimentação
   </button>
-  <button class="tab-btn" onclick="mudarAba('adicionais')" id="tab-adicionais">
+  <button class="tab-btn" id="btn-tab-adicionais" onclick="mudarAba('adicionais')">
     <div class="tab-dot" style="background:var(--amber)"></div>Informações Adicionais
   </button>
 </div>
-
 <main class="main">
-
-  <!-- ABA 1 — CADASTRO -->
-  <div class="tab-content active" id="tab-cadastro">
-    <div class="section">
-      <div class="section-label">Buscar ou criar concurso</div>
-      <div class="concurso-search">
-        <div class="field">
-          <label class="field-label">Número do concurso</label>
-          <input type="text" id="c-busca" placeholder="Ex: 6001" oninput="autoFill(this)">
-        </div>
-        <button class="btn-secondary" onclick="buscarConcurso()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          Buscar
-        </button>
-        <button class="btn-primary" onclick="novoConcurso()" style="margin-left:4px">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
-          Novo
-        </button>
-      </div>
-      <div class="status-bar" id="st-cadastro"></div>
+  <div class="tab-panel active" id="panel-cadastro">
+    <div class="page-header">
+      <div class="page-title">Cadastro de Concursos</div>
+      <div class="page-sub">Registre os bilhetes federais recebidos por loteria</div>
     </div>
-
-    <div id="form-cadastro" style="display:none">
-      <div class="section">
-        <div class="section-label">Dados do concurso</div>
-        <div class="g4" style="margin-bottom:14px">
-          <div class="field">
-            <label class="field-label req">Modalidade</label>
-            <input type="text" id="c-modalidade" placeholder="Ex: Federal" oninput="autoFill(this)">
-          </div>
-          <div class="field">
-            <label class="field-label req">Nº Concurso</label>
-            <input type="text" id="c-concurso" placeholder="Ex: 6001" oninput="autoFill(this)">
-          </div>
-          <div class="field">
-            <label class="field-label req">Data Sorteio</label>
-            <input type="date" id="c-dt-sorteio">
-          </div>
-          <div class="field">
-            <label class="field-label req">Frações por bilhete</label>
-            <input type="number" id="c-fracoes-bilhete" value="10" min="1" oninput="autoFill(this)">
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <button type="button" class="btn-tipo-bilhete" onclick="aplicarTipoBilhete('comum')"
-            style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--panel);cursor:pointer;transition:all .2s;font-family:'IBM Plex Sans',sans-serif;">
-            <div style="font-size:11px;font-weight:600;color:var(--bright);margin-bottom:2px">Bilhete Comum</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">Venda R$ 4,00 · Custo R$ 3,21 · Bilhete R$ 40,00</div>
-          </button>
-          <button type="button" class="btn-tipo-bilhete" onclick="aplicarTipoBilhete('especial')"
-            style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--panel);cursor:pointer;transition:all .2s;font-family:'IBM Plex Sans',sans-serif;">
-            <div style="font-size:11px;font-weight:600;color:var(--bright);margin-bottom:2px">Bilhete Especial</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">Venda R$ 10,00 · Custo R$ 8,04 · Bilhete R$ 100,00</div>
-          </button>
-        </div>
-        <div class="g2">
-          <div class="field">
-            <label class="field-label req">Valor Fração (venda)</label>
-            <div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="c-valor-fracao" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div>
-            <div style="font-size:9px;color:var(--dim);margin-top:2px">por fração · bilhete = fração × 10</div>
-          </div>
-          <div class="field">
-            <label class="field-label req">Valor Custo (acerto entre lojas)</label>
-            <div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="c-valor-custo" placeholder="Ex: 3,21" step="0.01" oninput="autoFill(this)"></div>
-            <div style="font-size:9px;color:var(--dim);margin-top:2px">por fração · usado na devolução e repasse</div>
-          </div>
-        </div>
+    <div class="status-bar" id="st-cad"></div>
+    <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:20px">
+      <div class="field" style="flex:1">
+        <label class="field-label">Buscar concurso existente</label>
+        <input type="text" id="c-busca" placeholder="Número do concurso (ex: 6001)">
       </div>
-
-      <div class="section">
-        <div class="section-label">Quantidade recebida por loja</div>
-        <table class="lojas-table" id="tabela-lojas">
-          <thead><tr><th>Loja</th><th>Qtd Recebida (Caixa)</th><th>Saldo Atual</th></tr></thead>
-          <tbody id="lojas-tbody"></tbody>
-        </table>
+      <button class="btn-secondary" onclick="buscarConcurso()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Buscar
+      </button>
+      <button class="btn-primary" onclick="novoConcurso()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+        Novo
+      </button>
+    </div>
+    <div id="form-cad" style="display:none">
+      <div class="sep"><span class="sep-label">Dados do concurso</span><div class="sep-line"></div></div>
+      <div class="g4" style="margin-bottom:14px">
+        <div class="field"><label class="field-label">Modalidade</label><input type="text" id="c-modalidade" value="Federal" readonly style="opacity:.6;cursor:default"></div>
+        <div class="field"><label class="field-label req">Nº Concurso</label><input type="text" id="c-concurso" placeholder="Ex: 6001" oninput="autoFill(this)"></div>
+        <div class="field"><label class="field-label req">Data Sorteio</label><div style="display:flex;align-items:center;gap:0;background:var(--input);border:1px solid var(--border);border-radius:6px;overflow:hidden"><button type="button" onclick="navegarData(-1)" style="width:36px;height:42px;background:transparent;border:none;border-right:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='rgba(0,200,150,.08)';this.style.color='var(--accent)'" onmouseout="this.style.background='transparent';this.style.color='var(--muted)'">&#8249;</button><input type="date" id="c-dt-sorteio" style="border:none;border-radius:0;flex:1;background:transparent" oninput="onDataChange()"><button type="button" onclick="navegarData(+1)" style="width:36px;height:42px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" onmouseover="this.style.background='rgba(0,200,150,.08)';this.style.color='var(--accent)'" onmouseout="this.style.background='transparent';this.style.color='var(--muted)'">&#8250;</button></div><div id="c-dia-semana" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px"></div></div>
+        <div class="field"><label class="field-label req">Frações / bilhete</label><input type="number" id="c-fracoes" value="10" min="1"></div>
       </div>
-
-      <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:8px">
-        <button class="btn-secondary" onclick="cancelarCadastro()">Cancelar</button>
-        <button class="btn-primary" id="btn-salvar-cadastro" onclick="salvarCadastro()">
+      <div class="tipo-grid">
+        <button type="button" class="tipo-btn" onclick="aplicarTipo('comum')"><div class="tipo-nome">Bilhete Comum</div><div class="tipo-desc">Venda R$ 4,00 · Custo R$ 3,21</div></button>
+        <button type="button" class="tipo-btn" onclick="aplicarTipo('especial')"><div class="tipo-nome">Bilhete Especial</div><div class="tipo-desc">Venda R$ 10,00 · Custo R$ 8,04</div></button>
+      </div>
+      <div class="g2" style="margin-bottom:20px">
+        <div class="field"><label class="field-label req">Valor Fração (venda)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="c-vf" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+        <div class="field"><label class="field-label req">Valor Custo (acerto)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="c-vc" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      </div>
+      <div class="sep"><span class="sep-label">Qtd recebida por loja</span><div class="sep-line"></div></div>
+      <table class="lojas-table" style="margin-bottom:20px">
+        <thead><tr><th>Loja</th><th>Qtd Recebida</th><th>Saldo atual</th></tr></thead>
+        <tbody id="tbody-lojas"></tbody>
+      </table>
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-salvar-cad" onclick="confirmarSalvarCadastro()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-          <span id="btn-salvar-txt">Salvar Concurso</span>
+          <span id="lbl-btn-cad">Salvar Concurso</span>
+        </button>
+        <button class="btn-secondary" onclick="fecharFormCad()">Cancelar</button>
+      </div>
+    </div>
+    <div id="lista-cad" style="margin-top:28px">
+      <div class="sep"><span class="sep-label">Concursos cadastrados</span><div class="sep-line"></div><span class="sep-count" id="cnt-cad">—</span></div>
+      <div id="wrap-cad"><div class="state-box"><div class="spinner"></div><div class="state-title">Carregando...</div></div></div>
+    </div>
+  </div>
+  <div class="tab-panel" id="panel-movimentacao">
+    <div class="page-header">
+      <div class="page-title">Movimentação de Federais</div>
+      <div class="page-sub">Selecione um federal vigente e distribua as frações entre as lojas</div>
+    </div>
+    <div class="status-bar" id="st-mov"></div>
+    <div class="fed-list-area" id="fed-list-area">
+      <div id="wrap-movs"><div class="state-box"><div class="spinner"></div><div class="state-title">Carregando federais vigentes...</div></div></div>
+    </div>
+  </div>
+  <div class="tab-panel" id="panel-adicionais">
+    <div class="page-header"><div class="page-title">Informações Adicionais</div><div class="page-sub">Devolução interna, encalhe e prêmios por loja</div></div>
+    <div class="status-bar" id="st-adic"></div>
+    <div class="field" style="max-width:340px;margin-bottom:20px"><label class="field-label">Selecionar concurso</label><select class="sel" id="sel-adic-conc" onchange="onSelecionarConcursoAdic()"><option value="">Selecione o concurso...</option></select></div>
+    <div id="wrap-adic"><div class="state-box"><div class="state-title">Selecione um concurso</div><div class="state-sub">A posição por loja aparecerá aqui</div></div></div>
+    <div id="btn-salvar-adic-wrap" style="display:none;margin-top:20px"><button class="btn-primary" onclick="confirmarSalvarAdicionais()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Salvar Informações Adicionais</button></div>
+  </div>
+</main>
+<!-- Panel deslizante de movimentação federal -->
+<div class="mov-fed-panel" id="movFedPanel">
+  <div class="mov-fed-inner">
+    <div class="mov-fed-header">
+      <div>
+        <div class="mov-fed-titulo">Federal Selecionado</div>
+        <div class="mov-fed-nome" id="mfp-nome">—</div>
+        <div class="mov-fed-tags" id="mfp-tags"></div>
+      </div>
+      <button class="btn-fechar-fed" onclick="fecharFedPanel()">×</button>
+    </div>
+    <div class="mov-fed-titulo" style="margin-bottom:12px">Frações a distribuir</div>
+    <div class="destinos-grid-fed" id="mfp-destinos"></div>
+    <div class="status-bar" id="st-mov-panel"></div>
+    <div class="mov-fed-actions">
+      <div class="mov-fed-total">Total: <span id="mfp-total">0 frações</span></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary" onclick="zerarFedMov()">Limpar</button>
+        <button class="btn-registrar-fed" id="btn-registrar-fed">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Registrar Movimentação
         </button>
       </div>
-    </div>
-
-    <div id="lista-cadastros" style="margin-top:24px">
-      <div class="section-label">Concursos cadastrados</div>
-      <div id="cadastros-wrap">
-        <div class="empty"><div class="spinner"></div><div class="empty-title">Carregando...</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ABA 2 — MOVIMENTAÇÃO -->
-  <div class="tab-content" id="tab-movimentacao">
-    <div class="section">
-      <div class="section-label">Selecionar concurso</div>
-      <div class="g2">
-        <div class="field">
-          <label class="field-label">Concurso</label>
-          <select class="sel" id="m-concurso" onchange="carregarMovimentacoes()">
-            <option value="">Selecione o concurso...</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="field-label">&nbsp;</label>
-          <button class="btn-primary" onclick="abrirModalMovimentacao()" id="btn-nova-mov" disabled>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
-            Nova Movimentação
-          </button>
-        </div>
-      </div>
-      <div class="status-bar" id="st-mov"></div>
-    </div>
-    <div id="movs-wrap">
-      <div class="empty"><div class="empty-title">Selecione um concurso</div></div>
-    </div>
-  </div>
-
-  <!-- ABA 3 — INFORMAÇÕES ADICIONAIS -->
-  <div class="tab-content" id="tab-adicionais">
-    <div class="section">
-      <div class="section-label">Selecionar concurso</div>
-      <div class="field" style="max-width:320px">
-        <label class="field-label">Concurso</label>
-        <select class="sel" id="a-concurso" onchange="carregarPosicao()">
-          <option value="">Selecione o concurso...</option>
-        </select>
-      </div>
-      <div class="status-bar" id="st-adic"></div>
-    </div>
-    <div id="posicao-wrap">
-      <div class="empty"><div class="empty-title">Selecione um concurso</div></div>
-    </div>
-    <div id="btn-salvar-adicionais-wrap" style="display:none;justify-content:flex-end;padding-top:16px">
-      <button class="btn-primary" onclick="salvarAdicionais()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Salvar Informações Adicionais
-      </button>
-    </div>
-  </div>
-
-</main>
-
-<!-- Modal Movimentação -->
-<div class="overlay" id="modal-mov">
-  <div class="modal-box">
-    <div class="modal-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--sky)" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-      <span id="modal-mov-titulo">Nova Movimentação</span>
-    </div>
-    <div class="modal-fields">
-      <input type="hidden" id="mov-id">
-      <div class="g2">
-        <div class="field">
-          <label class="field-label req">Loja Origem</label>
-          <select class="sel" id="mov-origem" onchange="onMovOrigemChange()"><option value="">Selecione...</option></select>
-        </div>
-        <div class="field">
-          <label class="field-label req">Loja Destino</label>
-          <select class="sel" id="mov-destino"><option value="">Selecione...</option></select>
-        </div>
-      </div>
-      <div class="g3">
-        <div class="field">
-          <label class="field-label req">Tipo</label>
-          <select class="sel" id="mov-tipo" onchange="onMovTipoChange()">
-            <option value="ENVIO">Envio</option>
-            <option value="DEVOLUCAO_EXTERNA">Devolução Externa</option>
-            <option value="ENCALHE_EXTERNO">Encalhe Externo</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="field-label req">Qtd Frações</label>
-          <input type="number" id="mov-qtd" min="1" placeholder="0" oninput="calcMovTotal()">
-        </div>
-        <div class="field">
-          <label class="field-label">Valor / Fração</label>
-          <div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="mov-valor" step="0.01" placeholder="0,00" oninput="calcMovTotal()"></div>
-        </div>
-      </div>
-      <div class="field">
-        <label class="field-label">Data</label>
-        <input type="date" id="mov-data">
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:10px 14px">
-        <span style="font-size:12px;color:var(--muted)">Valor Total</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--accent)" id="mov-total">R$ 0,00</span>
-      </div>
-      <div class="field">
-        <label class="field-label">Observação</label>
-        <textarea class="ta" id="mov-obs" placeholder="Opcional..." rows="2"></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="fecharModalMov()">Cancelar</button>
-      <button class="btn-primary" onclick="salvarMovimentacao()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Salvar
-      </button>
     </div>
   </div>
 </div>
-
+<div class="overlay" id="modal-confirm">
+  <div class="modal-box">
+    <div class="modal-title" id="mc-title">Confirmar</div>
+    <div class="modal-body" id="mc-body"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="fecharConfirm()">Cancelar</button>
+      <button class="btn-primary" id="mc-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
 <script>
-const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
-const $ = id => document.getElementById(id);
+const sb=supabase.createClient(window.SISLOT_CONFIG.url,window.SISLOT_CONFIG.anonKey);
+const $=id=>document.getElementById(id);
+let usuario=null,todasLojas=[],concursos=[],concAtualMov=null,concAtualAdic=null,editandoCad=null;
+const TIPOS={comum:{vf:4.00,vc:3.21},especial:{vf:10.00,vc:8.04}};
 
-let usuario    = null;
-let todasLojas = [];
-let concursos  = [];
-let concursoAtualMov  = null;
-let concursoAtualAdic = null;
-let editandoCadastro  = null;
-
-const TIPOS_BILHETE = {
-  comum:    { valor_fracao: 4.00,  valor_custo: 3.21 },
-  especial: { valor_fracao: 10.00, valor_custo: 8.04 },
+// Qtd padrão por loja por dia da semana (slug -> {qua, sab})
+// Para adicionar Santa Tereza e Via Brasil, edite os valores abaixo:
+const QTD_LOJAS={
+  "centro":       {qua:80, sab:80},
+  "lotobel":      {qua:60, sab:120},
+  "boulevard":    {qua:80, sab:70},
+  "santa-tereza": {qua:0,  sab:0},   // ← preencha quando souber
+  "via-brasil":   {qua:0,  sab:0},   // ← preencha quando souber
 };
 
-// ── Helpers ──
-const fmtBRL  = v => 'R$ ' + Math.abs(Number(v)||0).toFixed(2).replace('.',',');
-const fmtData = iso => { if(!iso) return '—'; const[y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; };
-const isAdmin = u => ['admin','adm','socio','ADM','ADMIN','SOCIO'].includes(String(u?.perfil||'').trim());
-function autoFill(el){ el.classList.toggle('filled', el.value.trim() !== ''); }
-function showStatus(id,msg,tipo='ok'){ const el=$(id); el.textContent=msg; el.className=`status-bar show ${tipo}`; }
-function hideStatus(id){ $(id).className='status-bar'; }
-
-function updateClock(){
-  $('relogio').textContent = new Date().toLocaleTimeString('pt-BR') + ' — ' +
-    new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
-}
-updateClock(); setInterval(updateClock, 1000);
-
-// ── INIT ──
-async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = './login.html'; return; }
-
-  const { data: usr } = await sb.from('usuarios')
-    .select('id,nome,perfil,ativo')
-    .eq('auth_user_id', session.user.id).eq('ativo',true).maybeSingle();
-
-  if (!usr || !isAdmin(usr)) { alert('Acesso restrito a administradores.'); location.href='./menu.html'; return; }
-  usuario = usr;
-
-  const { data: lojas } = await sb.from('loterias').select('id,nome,slug').eq('ativo',true).order('nome');
-  todasLojas = lojas || [];
-
-  await carregarConcursosGlobais();
-  renderTabelaLojas();
-  preencherSelectConcursos();
-  await renderListaCadastros();
+// Retorna próxima quarta (4) ou sábado (6) a partir de uma data
+function proximaQuaOuSab(dataISO){
+  const dt=dataISO?new Date(dataISO+"T12:00:00"):new Date();
+  const dia=dt.getDay(); // 0=dom,1=seg,...,6=sab
+  let add=0;
+  if(dia===3) add=0; // já é quarta
+  else if(dia===6) add=0; // já é sábado
+  else if(dia<3) add=3-dia;
+  else if(dia===4) add=2; // qui→sab
+  else if(dia===5) add=1; // sex→sab
+  else add=3-dia+7;
+  const r=new Date(dt); r.setDate(r.getDate()+add);
+  return r.toISOString().slice(0,10);
 }
 
-// ── ABAS ──
-function mudarAba(aba) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  // Ativa o CONTEÚDO pelo ID da div
-  document.getElementById(`tab-${aba}`).classList.add('active');
-  // Ativa o BOTÃO pelo atributo onclick
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    if (btn.getAttribute('onclick')?.includes(`'${aba}'`)) btn.classList.add('active');
+// Navega entre quarta e sábado (delta=+1 ou -1)
+function navegarData(delta){
+  const atual=$("c-dt-sorteio").value;
+  const dt=atual?new Date(atual+"T12:00:00"):new Date();
+  // próx quarta ou sab na direção delta
+  if(delta>0){
+    // avança para próx quarta ou sab
+    let d=new Date(dt); d.setDate(d.getDate()+1);
+    while(d.getDay()!==3&&d.getDay()!==6) d.setDate(d.getDate()+1);
+    $("c-dt-sorteio").value=d.toISOString().slice(0,10);
+  } else {
+    let d=new Date(dt); d.setDate(d.getDate()-1);
+    while(d.getDay()!==3&&d.getDay()!==6) d.setDate(d.getDate()-1);
+    $("c-dt-sorteio").value=d.toISOString().slice(0,10);
+  }
+  onDataChange();
+}
+
+function onDataChange(){
+  const v=$("c-dt-sorteio").value;
+  if(!v) return;
+  const dt=new Date(v+"T12:00:00");
+  const dias=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  const dia=dt.getDay();
+  const lbl=$("c-dia-semana");
+  if(dia===3){lbl.textContent="⚡ Quarta-feira";lbl.style.color="var(--accent)"}
+  else if(dia===6){lbl.textContent="⚡ Sábado";lbl.style.color="var(--accent)"}
+  else{lbl.textContent="⚠ "+dias[dia]+" — não é quarta nem sábado";lbl.style.color="var(--amber)"}
+  // Atualiza qtd das lojas conforme dia
+  preencherQtdLojas(dia);
+}
+
+function preencherQtdLojas(diaSemana){
+  const isSab=diaSemana===6;
+  todasLojas.forEach(loja=>{
+    const cfg=QTD_LOJAS[loja.slug];
+    const inp=$("rec-"+loja.id);
+    if(!inp||editandoCad) return; // não sobrescreve em edição
+    if(cfg){
+      const qtd=isSab?cfg.sab:cfg.qua;
+      inp.value=qtd>0?qtd:"";
+      inp.classList.toggle("filled",qtd>0);
+    }
   });
 }
-
-// ── CONCURSOS ──
-async function carregarConcursosGlobais() {
-  const { data } = await sb.from('federais')
-    .select('id,loteria_id,modalidade,concurso,dt_sorteio,valor_fracao,valor_custo,qtd_recebidas,qtd_devolvidas,qtd_encalhe,ativo')
-    .order('dt_sorteio', { ascending: false });
-
-  const mapa = {};
-  (data||[]).forEach(f => {
-    if (!mapa[f.concurso]) {
-      mapa[f.concurso] = { concurso:f.concurso, modalidade:f.modalidade, dt_sorteio:f.dt_sorteio, valor_fracao:f.valor_fracao, valor_custo:f.valor_custo, lojas:[] };
-    }
+const fmtBRL=v=>"R$ "+Math.abs(Number(v)||0).toFixed(2).replace(".",",");
+const fmtData=iso=>{if(!iso)return"—";const[y,m,d]=iso.split("-");return d+"/"+m+"/"+y};
+const isAdmin=u=>["ADMIN","SOCIO","ADM","admin","socio"].includes(String(u?.perfil||""));
+function autoFill(el){el.classList.toggle("filled",el.value.trim()!="")}
+function showSt(id,msg,tipo="ok"){const e=$(id);e.textContent=msg;e.className="status-bar show "+tipo}
+function hideSt(id){$(id).className="status-bar"}
+function updateClock(){$("relogio").textContent=new Date().toLocaleTimeString("pt-BR")+" — "+new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"})}
+updateClock();setInterval(updateClock,1000);
+async function init(){
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){location.href="./login.html";return}
+  const{data:usr}=await sb.from("usuarios").select("id,nome,perfil,ativo").eq("auth_user_id",session.user.id).eq("ativo",true).maybeSingle();
+  if(!usr||!isAdmin(usr)){alert("Acesso restrito a administradores.");location.href="./menu.html";return}
+  usuario=usr;
+  const{data:lojas}=await sb.from("loterias").select("id,nome,slug").eq("ativo",true).order("nome");
+  todasLojas=lojas||[];
+  await carregarConcursos();
+  renderTabelaLojas();
+  preencherSelects();
+  renderListaConcursos();
+  carregarFederaisVigentes(); // carrega aba movimentação em paralelo
+}
+function mudarAba(aba){
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("panel-"+aba).classList.add("active");
+  document.getElementById("btn-tab-"+aba).classList.add("active");
+}
+async function carregarConcursos(){
+  const{data}=await sb.from("federais").select("id,loteria_id,modalidade,concurso,dt_sorteio,valor_fracao,valor_custo,qtd_recebidas,qtd_devolvidas,qtd_encalhe,ativo").order("dt_sorteio",{ascending:false});
+  const mapa={};
+  (data||[]).forEach(f=>{
+    if(!mapa[f.concurso])mapa[f.concurso]={concurso:f.concurso,modalidade:f.modalidade,dt_sorteio:f.dt_sorteio,valor_fracao:f.valor_fracao,valor_custo:f.valor_custo,lojas:[]};
     mapa[f.concurso].lojas.push(f);
   });
-  concursos = Object.values(mapa).sort((a,b) => b.dt_sorteio.localeCompare(a.dt_sorteio));
+  concursos=Object.values(mapa).sort((a,b)=>b.dt_sorteio.localeCompare(a.dt_sorteio));
 }
-
-function preencherSelectConcursos() {
-  ['m-concurso','a-concurso'].forEach(id => {
-    const sel=$(id); if(!sel) return;
-    sel.innerHTML = '<option value="">Selecione o concurso...</option>';
-    concursos.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.concurso;
-      opt.textContent = `${c.modalidade} — Conc. ${c.concurso} (${fmtData(c.dt_sorteio)})`;
-      sel.appendChild(opt);
-    });
+function preencherSelects(){
+  ["sel-mov-conc","sel-adic-conc"].forEach(id=>{
+    const sel=$(id);if(!sel)return;
+    const val=sel.value;
+    sel.innerHTML="<option value=''>Selecione o concurso...</option>";
+    concursos.forEach(c=>{const o=document.createElement("option");o.value=c.concurso;o.textContent=c.modalidade+" — Conc. "+c.concurso+" ("+fmtData(c.dt_sorteio)+")";sel.appendChild(o)});
+    sel.value=val;
   });
 }
-
-// ── ABA 1: CADASTRO ──
-function novoConcurso() {
-  editandoCadastro = null;
-  ['c-modalidade','c-concurso','c-valor-fracao','c-valor-custo'].forEach(id => {
-    const el=$(id); if(el){el.value='';el.classList.remove('filled');}
-  });
-  $('c-dt-sorteio').value = '';
-  $('c-fracoes-bilhete').value = '10';
-  document.querySelectorAll('.inp-loja-rec').forEach(inp => { inp.value=''; inp.classList.remove('filled'); });
-  document.querySelectorAll('[id^="sal-"]').forEach(el => { el.textContent='—'; el.className='loja-saldo saldo-zero'; });
-  $('btn-salvar-txt').textContent = 'Salvar Concurso';
-  hideStatus('st-cadastro');
-  $('form-cadastro').style.display = 'block';
-  $('c-modalidade').focus();
+function novoConcurso(){
+  editandoCad=null;
+  // Modalidade sempre Federal
+  $("c-modalidade").value="Federal";
+  // Valor padrão: bilhete comum R$4,00
+  $("c-vf").value="4.00";$("c-vc").value="3.21";
+  $("c-vf").classList.add("filled");$("c-vc").classList.add("filled");
+  $("c-fracoes").value="10";
+  // Tipo comum ativo
+  document.querySelectorAll(".tipo-btn").forEach(b=>b.classList.remove("ativo"));
+  document.querySelectorAll(".tipo-btn").forEach(b=>{if(b.getAttribute("onclick")?.includes("comum"))b.classList.add("ativo")});
+  // Próximo concurso = último +1
+  const ultimoConcurso=concursos.length?parseInt(concursos[0].concurso)||0:0;
+  $("c-concurso").value=ultimoConcurso>0?String(ultimoConcurso+1):"";
+  if($("c-concurso").value)$("c-concurso").classList.add("filled");
+  // Data: olha a data do último concurso para determinar se o próximo é qua ou sab
+  let proximaData="";
+  if(concursos.length){
+    const ultDt=concursos[0].dt_sorteio;
+    const ultDia=new Date(ultDt+"T12:00:00").getDay();
+    // se último foi sábado(6) → próximo é quarta(3), e vice-versa
+    const dtBase=new Date(ultDt+"T12:00:00");
+    if(ultDia===6){
+      // avança até próxima quarta
+      let d=new Date(dtBase);d.setDate(d.getDate()+1);
+      while(d.getDay()!==3)d.setDate(d.getDate()+1);
+      proximaData=d.toISOString().slice(0,10);
+    } else {
+      // avança até próximo sábado
+      let d=new Date(dtBase);d.setDate(d.getDate()+1);
+      while(d.getDay()!==6)d.setDate(d.getDate()+1);
+      proximaData=d.toISOString().slice(0,10);
+    }
+  } else {
+    proximaData=proximaQuaOuSab(new Date().toISOString().slice(0,10));
+  }
+  $("c-dt-sorteio").value=proximaData;
+  onDataChange(); // atualiza label dia semana e qtd lojas
+  // Limpa saldos
+  document.querySelectorAll("[id^='sal-']").forEach(e=>{e.textContent="—";e.style.color="var(--dim)"});
+  $("lbl-btn-cad").textContent="Salvar Concurso";
+  hideSt("st-cad");
+  $("form-cad").style.display="block";
+  $("c-concurso").focus();
+  setTimeout(()=>$("form-cad").scrollIntoView({behavior:"smooth"}),50);
 }
-
-async function buscarConcurso() {
-  const num = $('c-busca').value.trim();
-  if (!num) { showStatus('st-cadastro','Informe o número do concurso.','warn'); return; }
-
-  const conc = concursos.find(c => c.concurso === num);
-  if (!conc) { showStatus('st-cadastro',`Concurso ${num} não encontrado. Clique em "Novo" para cadastrar.`,'warn'); return; }
-
-  editandoCadastro = conc;
-  $('c-modalidade').value   = conc.modalidade;
-  $('c-concurso').value     = conc.concurso;
-  $('c-dt-sorteio').value   = conc.dt_sorteio;
-  $('c-valor-fracao').value = Number(conc.valor_fracao).toFixed(2);
-  $('c-valor-custo').value  = Number(conc.valor_custo).toFixed(2);
-  ['c-modalidade','c-concurso','c-valor-fracao','c-valor-custo'].forEach(id => {
-    const el=$(id); if(el && el.value) el.classList.add('filled');
+async function buscarConcurso(){
+  const num=$("c-busca").value.trim();
+  if(!num){showSt("st-cad","Informe o número do concurso.","warn");return}
+  const c=concursos.find(x=>x.concurso===num);
+  if(!c){showSt("st-cad","Concurso "+num+" não encontrado. Clique em Novo para cadastrar.","warn");return}
+  editandoCad=c;
+  $("c-modalidade").value=c.modalidade;$("c-concurso").value=c.concurso;
+  $("c-dt-sorteio").value=c.dt_sorteio;
+  $("c-vf").value=Number(c.valor_fracao).toFixed(2);$("c-vc").value=Number(c.valor_custo).toFixed(2);
+  ["c-modalidade","c-concurso","c-vf","c-vc"].forEach(id=>{const e=$(id);if(e&&e.value)e.classList.add("filled")});
+  todasLojas.forEach(loja=>{
+    const f=c.lojas.find(l=>l.loteria_id===loja.id);
+    const inp=$("rec-"+loja.id),sal=$("sal-"+loja.id);
+    if(inp){inp.value=f?(f.qtd_recebidas||""):"";if(inp.value)inp.classList.add("filled")}
+    if(sal){sal.textContent=f?(f.qtd_recebidas||0):"—";sal.style.color=f&&f.qtd_recebidas>0?"var(--accent)":"var(--dim)"}
   });
-
-  document.querySelectorAll('.btn-tipo-bilhete').forEach(b => b.classList.remove('ativo'));
-  const vf = Number(conc.valor_fracao);
-  if (vf === 4.00) { const b=document.querySelectorAll('.btn-tipo-bilhete')[0]; if(b)b.classList.add('ativo'); }
-  else if (vf === 10.00) { const b=document.querySelectorAll('.btn-tipo-bilhete')[1]; if(b)b.classList.add('ativo'); }
-
-  todasLojas.forEach(loja => {
-    const f     = conc.lojas.find(l => l.loteria_id === loja.id);
-    const inpRec = $(`rec-${loja.id}`);
-    const elSal  = $(`sal-${loja.id}`);
-    if (inpRec) { inpRec.value = f ? (f.qtd_recebidas||'') : ''; if(inpRec.value) inpRec.classList.add('filled'); }
-    if (elSal)  { elSal.textContent = f ? (f.qtd_recebidas||0) : '—'; elSal.className = 'loja-saldo ' + (f && f.qtd_recebidas>0 ? 'saldo-ok' : 'saldo-zero'); }
-  });
-
-  $('btn-salvar-txt').textContent = 'Atualizar Concurso';
-  hideStatus('st-cadastro');
-  $('form-cadastro').style.display = 'block';
+  $("lbl-btn-cad").textContent="Atualizar Concurso";
+  hideSt("st-cad");
+  $("form-cad").style.display="block";
+  setTimeout(()=>$("form-cad").scrollIntoView({behavior:"smooth"}),50);
 }
-
-function renderTabelaLojas() {
-  const tbody = $('lojas-tbody'); if(!tbody) return;
-  tbody.innerHTML = '';
-  todasLojas.forEach(loja => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="font-weight:500">${loja.nome}</td>
-      <td><input type="number" class="inp-loja inp-loja-rec" id="rec-${loja.id}" min="0" placeholder="0" oninput="this.classList.toggle('filled',this.value!='')"></td>
-      <td><span class="loja-saldo saldo-zero" id="sal-${loja.id}">—</span></td>
-    `;
+function fecharFormCad(){$("form-cad").style.display="none";editandoCad=null;$("c-busca").value=""}
+function renderTabelaLojas(){
+  const tbody=$("tbody-lojas");if(!tbody)return;
+  tbody.innerHTML="";
+  todasLojas.forEach(loja=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML="<td style='font-weight:500'>"+loja.nome+"</td><td><input type='number' class='inp-loja' id='rec-"+loja.id+"' min='0' placeholder='0' oninput="this.classList.toggle('filled',this.value!='')"></td><td><span id='sal-"+loja.id+"' style='font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--dim)'>—</span></td>";
     tbody.appendChild(tr);
   });
 }
-
-async function salvarCadastro() {
-  const modalidade         = $('c-modalidade').value.trim();
-  const concurso           = $('c-concurso').value.trim();
-  const dt_sorteio         = $('c-dt-sorteio').value;
-  const valor_fracao       = parseFloat($('c-valor-fracao').value) || 0;
-  const valor_custo        = parseFloat($('c-valor-custo').value) || 0;
-  const qt_fracoes_bilhete = parseInt($('c-fracoes-bilhete').value) || 10;
-
-  if (!modalidade || !concurso || !dt_sorteio || !valor_fracao || !valor_custo) {
-    showStatus('st-cadastro','Preencha todos os campos obrigatórios.','err'); return;
-  }
-
-  const btn = $('btn-salvar-cadastro');
-  btn.disabled = true;
-
-  try {
-    for (const loja of todasLojas) {
-      const qtd = parseInt($(`rec-${loja.id}`)?.value) || 0;
-      const jaExiste = editandoCadastro?.lojas?.find(l => l.loteria_id === loja.id);
-
-      if (qtd === 0 && !jaExiste) continue;
-
-      if (jaExiste) {
-        // Atualiza registro existente
-        const { error } = await sb.from('federais')
-          .update({ qtd_recebidas:qtd, modalidade, dt_sorteio, valor_fracao, valor_custo, qt_fracoes_bilhete })
-          .eq('id', jaExiste.id);
-        if (error) throw error;
-      } else {
-        // Verifica se já existe antes de inserir (evita duplicate key)
-        const { data: existente } = await sb.from('federais')
-          .select('id')
-          .eq('loteria_id', loja.id)
-          .eq('concurso', concurso)
-          .maybeSingle();
-
-        if (existente) {
-          // Já existe — atualiza em vez de inserir
-          const { error } = await sb.from('federais')
-            .update({ qtd_recebidas:qtd, modalidade, dt_sorteio, valor_fracao, valor_custo, qt_fracoes_bilhete })
-            .eq('id', existente.id);
-          if (error) throw error;
-        } else {
-          // Não existe — insere novo
-          const { error } = await sb.from('federais').insert({
-            loteria_id: loja.id, modalidade, concurso, dt_sorteio,
-            valor_fracao, valor_custo, qt_fracoes_bilhete,
-            qtd_recebidas: qtd, ativo: true, criado_por: usuario.id,
-          });
-          if (error) throw error;
-        }
+function aplicarTipo(tipo){
+  const cfg=TIPOS[tipo];if(!cfg)return;
+  $("c-vf").value=cfg.vf.toFixed(2);$("c-vc").value=cfg.vc.toFixed(2);
+  $("c-vf").classList.add("filled");$("c-vc").classList.add("filled");
+  document.querySelectorAll(".tipo-btn").forEach(b=>b.classList.remove("ativo"));
+  document.querySelectorAll(".tipo-btn").forEach(b=>{if(b.getAttribute("onclick")?.includes(tipo))b.classList.add("ativo")});
+}
+function confirmarSalvarCadastro(){
+  const modalidade=$("c-modalidade").value.trim(),concurso=$("c-concurso").value.trim(),dt=$("c-dt-sorteio").value,vf=parseFloat($("c-vf").value)||0,vc=parseFloat($("c-vc").value)||0;
+  if(!modalidade||!concurso||!dt||!vf||!vc){showSt("st-cad","Preencha todos os campos obrigatórios.","err");return}
+  const linhas=["Modalidade: "+modalidade,"Concurso: "+concurso,"Sorteio: "+fmtData(dt),"Fração: "+fmtBRL(vf)+" · Custo: "+fmtBRL(vc),"","Qtd por loja:",...todasLojas.map(l=>{const q=parseInt($("rec-"+l.id)?.value)||0;return q>0?"  "+l.nome+": "+q:""}).filter(Boolean),"",editandoCad?"Confirma a atualização?":"Confirma o cadastro?"].join("\n");
+  showConfirm(editandoCad?"Atualizar Concurso":"Novo Concurso",linhas,salvarCadastro);
+}
+async function salvarCadastro(){
+  const modalidade=$("c-modalidade").value.trim(),concurso=$("c-concurso").value.trim(),dt_sorteio=$("c-dt-sorteio").value;
+  const valor_fracao=parseFloat($("c-vf").value)||0,valor_custo=parseFloat($("c-vc").value)||0;
+  const qt_fracoes_bilhete=parseInt($("c-fracoes").value)||10;
+  const btn=$("btn-salvar-cad");btn.disabled=true;
+  try{
+    for(const loja of todasLojas){
+      const qtd=parseInt($("rec-"+loja.id)?.value)||0;
+      const jaExiste=editandoCad?.lojas?.find(l=>l.loteria_id===loja.id);
+      if(qtd===0&&!jaExiste)continue;
+      if(jaExiste){
+        const{error}=await sb.from("federais").update({qtd_recebidas:qtd,modalidade,dt_sorteio,valor_fracao,valor_custo,qt_fracoes_bilhete}).eq("id",jaExiste.id);
+        if(error)throw error;
+      }else{
+        const{data:ex}=await sb.from("federais").select("id").eq("loteria_id",loja.id).eq("concurso",concurso).maybeSingle();
+        if(ex){const{error}=await sb.from("federais").update({qtd_recebidas:qtd,modalidade,dt_sorteio,valor_fracao,valor_custo,qt_fracoes_bilhete}).eq("id",ex.id);if(error)throw error}
+        else{const{error}=await sb.from("federais").insert({loteria_id:loja.id,modalidade,concurso,dt_sorteio,valor_fracao,valor_custo,qt_fracoes_bilhete,qtd_recebidas:qtd,ativo:true,criado_por:usuario.id});if(error)throw error}
       }
     }
-
-    showStatus('st-cadastro', editandoCadastro ? '✓ Concurso atualizado.' : '✓ Concurso cadastrado com sucesso.', 'ok');
-    await carregarConcursosGlobais();
-    preencherSelectConcursos();
-    await renderListaCadastros();
-    cancelarCadastro();
-
-  } catch(e) {
-    showStatus('st-cadastro','Erro: '+e.message,'err');
-  } finally {
-    btn.disabled = false;
-  }
+    showSt("st-cad",editandoCad?"✓ Concurso atualizado.":"✓ Concurso cadastrado com sucesso.","ok");
+    await carregarConcursos();preencherSelects();renderListaConcursos();fecharFormCad();
+  }catch(e){showSt("st-cad","Erro: "+e.message,"err")}
+  finally{btn.disabled=false}
 }
-
-function cancelarCadastro() {
-  $('form-cadastro').style.display = 'none';
-  editandoCadastro = null;
-  $('c-busca').value = '';
-}
-
-async function renderListaCadastros() {
-  const wrap = $('cadastros-wrap');
-  if (!concursos.length) {
-    wrap.innerHTML = '<div class="empty"><div class="empty-title">Nenhum concurso cadastrado</div><div class="empty-sub">Clique em "Novo" para cadastrar o primeiro.</div></div>';
-    return;
-  }
-  wrap.innerHTML = '';
-  concursos.forEach(c => {
-    const totalFracoes = c.lojas.reduce((a,l) => a+(l.qtd_recebidas||0), 0);
-    const card = document.createElement('div');
-    card.className = 'concurso-card';
-    card.innerHTML = `
-      <div class="concurso-card-head">
-        <span class="cc-badge" style="background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--accent)">${c.modalidade}</span>
-        <div>
-          <div class="cc-title">Concurso ${c.concurso}</div>
-          <div class="cc-meta">Sorteio: ${fmtData(c.dt_sorteio)} · Fração: ${fmtBRL(c.valor_fracao)} · Custo: ${fmtBRL(c.valor_custo)}</div>
-        </div>
-        <button class="btn-amber btn-sm" style="margin-left:auto" onclick="editarConcurso('${c.concurso}')">Editar</button>
-      </div>
-      <table class="lojas-table">
-        <thead><tr><th>Loja</th><th>Qtd Recebida</th><th>Dev Interna</th><th>Encalhe</th></tr></thead>
-        <tbody>
-          ${c.lojas.map(l => {
-            const nome = todasLojas.find(lj => lj.id === l.loteria_id)?.nome || '—';
-            return `<tr><td>${nome}</td><td class="mono">${l.qtd_recebidas||0}</td><td class="mono">${l.qtd_devolvidas||0}</td><td class="mono">${l.qtd_encalhe||0}</td></tr>`;
-          }).join('')}
-          <tr style="background:rgba(255,255,255,.02)">
-            <td style="font-weight:600;color:var(--accent)">Total</td>
-            <td class="mono" style="color:var(--accent)">${totalFracoes}</td>
-            <td class="mono" style="color:var(--amber)">${c.lojas.reduce((a,l)=>a+(l.qtd_devolvidas||0),0)}</td>
-            <td class="mono" style="color:var(--coral)">${c.lojas.reduce((a,l)=>a+(l.qtd_encalhe||0),0)}</td>
-          </tr>
-        </tbody>
-      </table>
-    `;
+function renderListaConcursos(){
+  const wrap=$("wrap-cad");
+  $("cnt-cad").textContent=concursos.length+" concurso"+(concursos.length!==1?"s":"");
+  if(!concursos.length){wrap.innerHTML="<div class='state-box'><div class='state-title'>Nenhum concurso cadastrado</div><div class='state-sub'>Clique em Novo para cadastrar o primeiro.</div></div>";return}
+  wrap.innerHTML="";
+  concursos.forEach(c=>{
+    const total=c.lojas.reduce((a,l)=>a+(l.qtd_recebidas||0),0);
+    const card=document.createElement("div");card.className="conc-card";
+    const linhasLojas=c.lojas.map(l=>{const nome=todasLojas.find(lj=>lj.id===l.loteria_id)?.nome||"—";return"<tr><td>"+nome+"</td><td class='mono'>"+(l.qtd_recebidas||0)+"</td><td class='mono'>"+(l.qtd_devolvidas||0)+"</td><td class='mono'>"+(l.qtd_encalhe||0)+"</td></tr>"}).join("");
+    card.innerHTML="<div class='conc-head'><span class='conc-badge'>"+c.modalidade+"</span><div><div class='conc-title'>Concurso "+c.concurso+"</div><div class='conc-meta'>Sorteio: "+fmtData(c.dt_sorteio)+" · Fração: "+fmtBRL(c.valor_fracao)+" · Custo: "+fmtBRL(c.valor_custo)+"</div></div><button class='btn-amber' style='margin-left:auto;padding:5px 12px;font-size:11px' onclick="editarConcurso('"+c.concurso+"')">Editar</button></div><table class='lojas-table'><thead><tr><th>Loja</th><th>Recebidas</th><th>Dev. Interna</th><th>Encalhe</th></tr></thead><tbody>"+linhasLojas+"<tr style='background:rgba(255,255,255,.02)'><td style='font-weight:600;color:var(--accent)'>Total</td><td class='mono' style='color:var(--accent)'>"+total+"</td><td class='mono' style='color:var(--amber)'>"+c.lojas.reduce((a,l)=>a+(l.qtd_devolvidas||0),0)+"</td><td class='mono' style='color:var(--coral)'>"+c.lojas.reduce((a,l)=>a+(l.qtd_encalhe||0),0)+"</td></tr></tbody></table>";
     wrap.appendChild(card);
   });
 }
-
-function editarConcurso(numConcurso) {
-  mudarAba('cadastro');
-  $('c-busca').value = numConcurso;
-  setTimeout(() => buscarConcurso(), 50);
+function editarConcurso(num){$("c-busca").value=num;mudarAba("cadastro");setTimeout(()=>buscarConcurso(),50)}
+function onSelecionarConcursoMov(){
+  const num=$("sel-mov-conc").value;hideSt("st-mov");
+  if(!num){$("btn-nova-mov").disabled=true;$("wrap-movs").innerHTML="<div class='state-box'><div class='state-title'>Selecione um concurso</div><div class='state-sub'>As movimentações aparecerão aqui</div></div>";return}
+  concAtualMov=concursos.find(c=>c.concurso===num);
+  $("btn-nova-mov").disabled=false;
+  carregarMovimentacoes();
 }
-function aplicarTipoBilhete(tipo) {
-  const cfg = TIPOS_BILHETE[tipo]; if(!cfg) return;
-  $('c-valor-fracao').value = cfg.valor_fracao.toFixed(2);
-  $('c-valor-custo').value  = cfg.valor_custo.toFixed(2);
-  $('c-valor-fracao').classList.add('filled');
-  $('c-valor-custo').classList.add('filled');
-  document.querySelectorAll('.btn-tipo-bilhete').forEach(b => b.classList.remove('ativo'));
-  document.querySelectorAll('.btn-tipo-bilhete').forEach(b => {
-    if (b.getAttribute('onclick')?.includes(tipo)) b.classList.add('ativo');
-  });
-}
-
-// ── ABA 2: MOVIMENTAÇÃO ──
-async function carregarMovimentacoes() {
-  const num = $('m-concurso').value;
-  const btn = $('btn-nova-mov');
-  if (!num) {
-    $('movs-wrap').innerHTML = '<div class="empty"><div class="empty-title">Selecione um concurso</div></div>';
-    btn.disabled = true; return;
-  }
-  concursoAtualMov = concursos.find(c => c.concurso === num);
-  btn.disabled = false;
-  $('movs-wrap').innerHTML = '<div class="empty"><div class="spinner"></div><div class="empty-title">Carregando...</div></div>';
-
-  const federalIds = concursoAtualMov?.lojas.map(l=>l.id) || [];
-  if (!federalIds.length) { $('movs-wrap').innerHTML = '<div class="empty"><div class="empty-title">Nenhum registro encontrado</div></div>'; return; }
-
-  const { data: movs } = await sb.from('federal_movimentacoes')
-    .select('*').in('federal_id', federalIds).order('created_at', { ascending: false });
-
-  if (!movs?.length) {
-    $('movs-wrap').innerHTML = '<div class="empty"><div class="empty-title">Nenhuma movimentação registrada</div><div class="empty-sub">Clique em "Nova Movimentação" para registrar.</div></div>';
-    return;
-  }
-  renderMovimentacoes(movs);
-}
-
-function renderMovimentacoes(movs) {
-  const wrap = $('movs-wrap'); wrap.innerHTML = '';
-  const list = document.createElement('div'); list.className = 'mov-list';
-  movs.forEach((m, i) => {
-    const origemFed  = concursoAtualMov?.lojas.find(l => l.id === m.federal_id);
-    const origemNome = todasLojas.find(l => l.id === origemFed?.loteria_id)?.nome || '?';
-    const destNome   = todasLojas.find(l => l.id === m.loteria_destino)?.nome || '?';
-    const tipoCls    = m.tipo==='ENVIO'?'envio':m.tipo==='DEVOLUCAO_EXTERNA'?'dev-ext':'enc-ext';
-    const tipoBadge  = m.tipo==='ENVIO'?'tipo-envio':m.tipo==='DEVOLUCAO_EXTERNA'?'tipo-devext':'tipo-encext';
-    const tipoLabel  = m.tipo==='ENVIO'?'Envio':m.tipo==='DEVOLUCAO_EXTERNA'?'Devolução Externa':'Encalhe Externo';
-    const card = document.createElement('div');
-    card.className = `mov-card ${tipoCls}`;
-    card.style.animationDelay = (i*.04)+'s';
-    card.innerHTML = `
-      <div>
-        <span class="mov-tipo-badge ${tipoBadge}">${tipoLabel}</span>
-        <div class="mov-info">
-          <strong>${origemNome}</strong> → <strong>${destNome}</strong> &nbsp;·&nbsp;
-          ${m.qtd_fracoes} frações &nbsp;·&nbsp; ${fmtBRL(m.valor_fracao)}/fração &nbsp;·&nbsp;
-          <strong>${fmtBRL(m.valor_total)}</strong> &nbsp;·&nbsp; ${fmtData(m.data_mov)}
-        </div>
-        ${m.observacao?`<div style="font-size:10px;color:var(--dim);margin-top:3px">${m.observacao}</div>`:''}
-      </div>
-      <div class="mov-actions">
-        <button class="btn-amber btn-sm" onclick="editarMovimentacao('${m.id}')">Alterar</button>
-      </div>
-    `;
+async function carregarMovimentacoes(){
+  $("wrap-movs").innerHTML="<div class='state-box'><div class='spinner'></div><div class='state-title'>Carregando...</div></div>";
+  const ids=concAtualMov?.lojas.map(l=>l.id)||[];if(!ids.length)return;
+  const{data:movs}=await sb.from("federal_movimentacoes").select("*").in("federal_id",ids).order("created_at",{ascending:false});
+  if(!movs?.length){$("wrap-movs").innerHTML="<div class='state-box'><div class='state-title'>Nenhuma movimentação registrada</div><div class='state-sub'>Clique em Nova Movimentação para registrar.</div></div>";return}
+  const wrap=$("wrap-movs");wrap.innerHTML="";
+  const list=document.createElement("div");list.className="mov-list";
+  movs.forEach((m,i)=>{
+    const origemFed=concAtualMov?.lojas.find(l=>l.id===m.federal_id);
+    const origemNome=todasLojas.find(l=>l.id===origemFed?.loteria_id)?.nome||"?";
+    const destNome=todasLojas.find(l=>l.id===m.loteria_destino)?.nome||"?";
+    const tipoCls=m.tipo==="ENVIO"?"envio":m.tipo==="DEVOLUCAO_EXTERNA"?"dev-ext":"enc-ext";
+    const tipoBadge=m.tipo==="ENVIO"?"t-envio":m.tipo==="DEVOLUCAO_EXTERNA"?"t-devext":"t-encext";
+    const tipoLabel=m.tipo==="ENVIO"?"Envio":m.tipo==="DEVOLUCAO_EXTERNA"?"Devolução Externa":"Encalhe Externo";
+    const card=document.createElement("div");card.className="mov-card "+tipoCls;card.style.animationDelay=(i*.04)+"s";
+    card.innerHTML="<div><span class='mov-tipo-badge "+tipoBadge+"'>"+tipoLabel+"</span><div class='mov-info'><strong>"+origemNome+"</strong> → <strong>"+destNome+"</strong> &nbsp;·&nbsp; "+m.qtd_fracoes+" frações &nbsp;·&nbsp; "+fmtBRL(m.valor_fracao)+"/fração &nbsp;·&nbsp; <strong>"+fmtBRL(m.valor_total)+"</strong> &nbsp;·&nbsp; "+fmtData(m.data_mov)+"</div>"+(m.observacao?"<div style='font-size:10px;color:var(--dim);margin-top:3px'>"+m.observacao+"</div>":"")+"</div><button class='btn-amber' style='padding:5px 12px;font-size:11px' onclick="editarMov('"+m.id+"')">Alterar</button>";
     list.appendChild(card);
   });
   wrap.appendChild(list);
 }
-
-function abrirModalMovimentacao(movId=null) {
-  $('mov-id').value = movId || '';
-  $('modal-mov-titulo').textContent = movId ? 'Alterar Movimentação' : 'Nova Movimentação';
-  $('mov-data').value = new Date().toISOString().slice(0,10);
-  $('mov-obs').value = '';
-  if (!movId) {
-    $('mov-tipo').value  = 'ENVIO';
-    $('mov-qtd').value   = '';
-    $('mov-valor').value = concursoAtualMov ? Number(concursoAtualMov.valor_fracao).toFixed(2) : '';
-    $('mov-total').textContent = 'R$ 0,00';
-  }
-  ['mov-origem','mov-destino'].forEach(id => {
-    const sel=$(id); sel.innerHTML = '<option value="">Selecione...</option>';
-    const lista = id==='mov-origem'
-      ? (concursoAtualMov?.lojas||[]).map(l => ({ val:l.id, nome:todasLojas.find(lj=>lj.id===l.loteria_id)?.nome||'?' }))
-      : todasLojas.map(l => ({ val:l.id, nome:l.nome }));
-    lista.forEach(l => { const opt=document.createElement('option'); opt.value=l.val; opt.textContent=l.nome; sel.appendChild(opt); });
-  });
-  $('modal-mov').classList.add('show');
+function abrirModalMov(movId=null){
+  $("mov-edit-id").value=movId||"";
+  $("modal-mov-titulo").textContent=movId?"Alterar Movimentação":"Nova Movimentação";
+  $("mov-data").value=new Date().toISOString().slice(0,10);
+  $("mov-obs").value="";
+  if(!movId){$("mov-tipo").value="ENVIO";$("mov-qtd").value="";$("mov-valor").value=concAtualMov?Number(concAtualMov.valor_fracao).toFixed(2):"";$("mov-total-val").textContent="R$ 0,00"}
+  $("mov-origem").innerHTML="<option value=''>Selecione...</option>";
+  $("mov-destino").innerHTML="<option value=''>Selecione...</option>";
+  (concAtualMov?.lojas||[]).forEach(l=>{const nome=todasLojas.find(lj=>lj.id===l.loteria_id)?.nome||"?";const o=document.createElement("option");o.value=l.id;o.textContent=nome;$("mov-origem").appendChild(o)});
+  todasLojas.forEach(l=>{const o=document.createElement("option");o.value=l.id;o.textContent=l.nome;$("mov-destino").appendChild(o)});
+  $("modal-mov").classList.add("show");
 }
-
-async function editarMovimentacao(movId) {
-  const { data: m } = await sb.from('federal_movimentacoes').select('*').eq('id',movId).single();
-  if (!m) return;
-  abrirModalMovimentacao(movId);
-  $('mov-tipo').value  = m.tipo;
-  $('mov-qtd').value   = m.qtd_fracoes;
-  $('mov-valor').value = Number(m.valor_fracao).toFixed(2);
-  $('mov-data').value  = m.data_mov;
-  $('mov-obs').value   = m.observacao||'';
-  const origemFed = concursoAtualMov?.lojas.find(l => l.id === m.federal_id);
-  if (origemFed) $('mov-origem').value = m.federal_id;
-  $('mov-destino').value = m.loteria_destino;
+async function editarMov(movId){
+  const{data:m}=await sb.from("federal_movimentacoes").select("*").eq("id",movId).single();
+  if(!m)return;
+  abrirModalMov(movId);
+  $("mov-tipo").value=m.tipo;$("mov-qtd").value=m.qtd_fracoes;$("mov-valor").value=Number(m.valor_fracao).toFixed(2);
+  $("mov-data").value=m.data_mov;$("mov-obs").value=m.observacao||"";
+  $("mov-origem").value=m.federal_id;$("mov-destino").value=m.loteria_destino;
   calcMovTotal();
 }
-
-function onMovTipoChange() {
-  const tipo = $('mov-tipo').value;
-  if (tipo==='DEVOLUCAO_EXTERNA' && concursoAtualMov) $('mov-valor').value = Number(concursoAtualMov.valor_custo).toFixed(2);
-  else if (concursoAtualMov) $('mov-valor').value = Number(concursoAtualMov.valor_fracao).toFixed(2);
-  calcMovTotal();
+function onMovTipoChange(){const tipo=$("mov-tipo").value;if(tipo==="DEVOLUCAO_EXTERNA"&&concAtualMov)$("mov-valor").value=Number(concAtualMov.valor_custo).toFixed(2);else if(concAtualMov)$("mov-valor").value=Number(concAtualMov.valor_fracao).toFixed(2);calcMovTotal()}
+function onMovOrigemChange(){const fedId=$("mov-origem").value;const fed=concAtualMov?.lojas.find(l=>l.id===fedId);if(fed){$("mov-valor").value=$("mov-tipo").value==="DEVOLUCAO_EXTERNA"?Number(fed.valor_custo).toFixed(2):Number(fed.valor_fracao).toFixed(2);calcMovTotal()}}
+function calcMovTotal(){const qtd=parseInt($("mov-qtd").value)||0,val=parseFloat($("mov-valor").value)||0;$("mov-total-val").textContent=fmtBRL(qtd*val)}
+function fecharModalMov(){$("modal-mov").classList.remove("show")}
+async function salvarMovimentacao(){
+  const movId=$("mov-edit-id").value,fedId=$("mov-origem").value,destId=parseInt($("mov-destino").value);
+  const tipo=$("mov-tipo").value,qtd=parseInt($("mov-qtd").value)||0,valor=parseFloat($("mov-valor").value)||0;
+  const dataMov=$("mov-data").value,obs=$("mov-obs").value.trim();
+  if(!fedId||!destId||qtd<=0||!valor){showSt("st-mov","Preencha todos os campos obrigatórios.","err");return}
+  const payload={federal_id:fedId,loteria_destino:destId,tipo,qtd_fracoes:qtd,valor_fracao:valor,data_mov:dataMov,observacao:obs||null,criado_por:usuario.id};
+  try{
+    if(movId){const{error}=await sb.from("federal_movimentacoes").update(payload).eq("id",movId);if(error)throw error}
+    else{const{error}=await sb.from("federal_movimentacoes").insert(payload);if(error)throw error}
+    fecharModalMov();showSt("st-mov",movId?"✓ Movimentação atualizada.":"✓ Movimentação registrada.","ok");
+    carregarMovimentacoes();
+  }catch(e){showSt("st-mov","Erro: "+e.message,"err")}
 }
-
-function onMovOrigemChange() {
-  const fedId = $('mov-origem').value;
-  const fed = concursoAtualMov?.lojas.find(l => l.id === fedId);
-  if (fed) {
-    $('mov-valor').value = $('mov-tipo').value==='DEVOLUCAO_EXTERNA'
-      ? Number(fed.valor_custo).toFixed(2)
-      : Number(fed.valor_fracao).toFixed(2);
-    calcMovTotal();
-  }
+function onSelecionarConcursoAdic(){
+  const num=$("sel-adic-conc").value;hideSt("st-adic");
+  if(!num){$("btn-salvar-adic-wrap").style.display="none";$("wrap-adic").innerHTML="<div class='state-box'><div class='state-title'>Selecione um concurso</div></div>";return}
+  concAtualAdic=concursos.find(c=>c.concurso===num);
+  carregarAdicionais();
 }
-
-function calcMovTotal() {
-  const qtd=parseInt($('mov-qtd').value)||0, val=parseFloat($('mov-valor').value)||0;
-  $('mov-total').textContent = fmtBRL(qtd*val);
+async function carregarAdicionais(){
+  $("wrap-adic").innerHTML="<div class='state-box'><div class='spinner'></div><div class='state-title'>Carregando...</div></div>";
+  const ids=concAtualAdic?.lojas.map(l=>l.id)||[];
+  const{data:premios}=await sb.from("federal_encalhe_premio").select("*").in("federal_id",ids);
+  renderAdicionais(premios||[]);
+  $("btn-salvar-adic-wrap").style.display="block";
 }
-
-function fecharModalMov() { $('modal-mov').classList.remove('show'); }
-
-async function salvarMovimentacao() {
-  const movId   = $('mov-id').value;
-  const fedId   = $('mov-origem').value;
-  const destId  = parseInt($('mov-destino').value);
-  const tipo    = $('mov-tipo').value;
-  const qtd     = parseInt($('mov-qtd').value)||0;
-  const valor   = parseFloat($('mov-valor').value)||0;
-  const dataMov = $('mov-data').value;
-  const obs     = $('mov-obs').value.trim();
-
-  if (!fedId || !destId || qtd<=0 || !valor) { showStatus('st-mov','Preencha todos os campos obrigatórios.','err'); return; }
-
-  const payload = { federal_id:fedId, loteria_destino:destId, tipo, qtd_fracoes:qtd, valor_fracao:valor, data_mov:dataMov, observacao:obs||null, criado_por:usuario.id };
-
-  try {
-    if (movId) {
-      const {error}=await sb.from('federal_movimentacoes').update(payload).eq('id',movId);
-      if(error) throw error;
-    } else {
-      const {error}=await sb.from('federal_movimentacoes').insert(payload);
-      if(error) throw error;
-    }
-    fecharModalMov();
-    showStatus('st-mov', movId?'✓ Movimentação atualizada.':'✓ Movimentação registrada.','ok');
-    await carregarMovimentacoes();
-  } catch(e) {
-    showStatus('st-mov','Erro: '+e.message,'err');
-  }
-}
-
-// ── ABA 3: INFORMAÇÕES ADICIONAIS ──
-async function carregarPosicao() {
-  const num = $('a-concurso').value;
-  if (!num) {
-    $('posicao-wrap').innerHTML = '<div class="empty"><div class="empty-title">Selecione um concurso</div></div>';
-    $('btn-salvar-adicionais-wrap').style.display = 'none'; return;
-  }
-  concursoAtualAdic = concursos.find(c => c.concurso === num);
-  $('posicao-wrap').innerHTML = '<div class="empty"><div class="spinner"></div><div class="empty-title">Carregando posição...</div></div>';
-
-  const federalIds = concursoAtualAdic?.lojas.map(l=>l.id)||[];
-  const { data: premios } = await sb.from('federal_encalhe_premio').select('*').in('federal_id', federalIds);
-
-  renderPosicao(premios||[]);
-  $('btn-salvar-adicionais-wrap').style.display = 'flex';
-}
-
-function renderPosicao(premios) {
-  const wrap = $('posicao-wrap');
-  if (!concursoAtualAdic?.lojas.length) {
-    wrap.innerHTML = '<div class="empty"><div class="empty-title">Nenhum registro para este concurso</div></div>'; return;
-  }
-  wrap.innerHTML = '';
-  const grid = document.createElement('div'); grid.className = 'posicao-grid';
-
-  concursoAtualAdic.lojas.forEach((fed, i) => {
-    const loja   = todasLojas.find(l => l.id === fed.loteria_id);
-    const premio = premios.find(p => p.federal_id === fed.id);
-    const card   = document.createElement('div');
-    card.className = 'posicao-card';
-    card.style.animationDelay = (i*.05)+'s';
-    card.innerHTML = `
-      <div class="posicao-head">
-        <div class="posicao-loja">${loja?.nome||'?'}</div>
-        <div class="posicao-saldo saldo-ok">${fed.qtd_recebidas||0} recebidas</div>
-      </div>
-      <div class="posicao-body">
-        <div class="pos-row"><span class="pos-label">Recebidas da Caixa</span><span class="pos-val">${fed.qtd_recebidas||0}</span></div>
-        <div class="pos-row"><span class="pos-label">Dev. interna</span><span class="pos-val">${fed.qtd_devolvidas||0}</span></div>
-        <div class="pos-row"><span class="pos-label">Encalhe</span><span class="pos-val">${fed.qtd_encalhe||0}</span></div>
-        <div class="pos-sep"></div>
-        <div class="pos-input-row">
-          <span class="pos-input-label">Dev. Interna (terminal)</span>
-          <input type="number" class="pos-input" id="dev-int-${fed.id}" value="${fed.qtd_devolvidas||''}" min="0" placeholder="0" oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')">
-        </div>
-        <div class="pos-input-row">
-          <span class="pos-input-label">Encalhe real</span>
-          <input type="number" class="pos-input" id="enc-${fed.id}" value="${fed.qtd_encalhe||''}" min="0" placeholder="0" oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')">
-        </div>
-        <div class="pos-sep"></div>
-        <div class="pos-input-row">
-          <span class="pos-input-label">Prêmio encalhe (R$)</span>
-          <div style="position:relative">
-            <span style="position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--dim)">R$</span>
-            <input type="number" class="pos-input" id="prem-${fed.id}" value="${premio?Number(premio.valor_premio).toFixed(2):''}" min="0" step="0.01" placeholder="0,00" style="padding-left:24px;width:100px" oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')">
-          </div>
-        </div>
-        <div class="pos-sep"></div>
-        <div style="font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">Devolução externa avulsa</div>
-        <div class="pos-input-row">
-          <span class="pos-input-label">Qtd frações</span>
-          <input type="number" class="pos-input" id="devext-qtd-${fed.id}" min="0" placeholder="0" oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')">
-        </div>
-        <div class="pos-input-row">
-          <span class="pos-input-label">Destino</span>
-          <select class="sel" id="devext-dest-${fed.id}" style="font-size:11px;padding:5px 28px 5px 8px;height:32px">
-            <option value="">—</option>
-            ${todasLojas.filter(l=>l.id!==fed.loteria_id).map(l=>`<option value="${l.id}">${l.nome}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-    `;
+function renderAdicionais(premios){
+  const wrap=$("wrap-adic");
+  if(!concAtualAdic?.lojas.length){wrap.innerHTML="<div class='state-box'><div class='state-title'>Nenhum registro</div></div>";return}
+  wrap.innerHTML="";
+  const grid=document.createElement("div");grid.className="pos-grid";
+  concAtualAdic.lojas.forEach((fed,i)=>{
+    const loja=todasLojas.find(l=>l.id===fed.loteria_id);
+    const premio=premios.find(p=>p.federal_id===fed.id);
+    const card=document.createElement("div");card.className="pos-card";card.style.animationDelay=(i*.05)+"s";
+    const destOpts=todasLojas.filter(l=>l.id!==fed.loteria_id).map(l=>"<option value='"+l.id+"'>"+l.nome+"</option>").join("");
+    card.innerHTML="<div class='pos-head'><div class='pos-loja'>"+(loja?.nome||"?")+"</div><div style='font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent)'>"+(fed.qtd_recebidas||0)+" recebidas</div></div><div class='pos-body'><div class='pos-row'><span class='pos-label'>Recebidas da Caixa</span><span class='pos-val'>"+(fed.qtd_recebidas||0)+"</span></div><div class='pos-row'><span class='pos-label'>Dev. interna atual</span><span class='pos-val'>"+(fed.qtd_devolvidas||0)+"</span></div><div class='pos-row'><span class='pos-label'>Encalhe atual</span><span class='pos-val'>"+(fed.qtd_encalhe||0)+"</span></div><div class='pos-sep'></div><div class='pos-inp-row'><span class='pos-inp-label'>Dev. Interna (terminal)</span><input type='number' class='pos-inp' id='dev-int-"+fed.id+"' value='"+(fed.qtd_devolvidas||"")+"' min='0' placeholder='0' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-inp-row'><span class='pos-inp-label'>Encalhe real</span><input type='number' class='pos-inp' id='enc-"+fed.id+"' value='"+(fed.qtd_encalhe||"")+"' min='0' placeholder='0' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-sep'></div><div class='pos-inp-row'><span class='pos-inp-label'>Prêmio encalhe (R$)</span><input type='number' class='pos-inp' id='prem-"+fed.id+"' value='"+(premio?Number(premio.valor_premio).toFixed(2):"")+"' min='0' step='0.01' placeholder='0,00' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-sep'></div><div style='font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px'>Devolução externa avulsa</div><div class='pos-inp-row'><span class='pos-inp-label'>Qtd frações</span><input type='number' class='pos-inp' id='devext-qtd-"+fed.id+"' min='0' placeholder='0' oninput="this.classList.toggle('amber',this.value!=''&&this.value!='0')"></div><div class='pos-inp-row'><span class='pos-inp-label'>Destino</span><select class='sel' id='devext-dest-"+fed.id+"' style='font-size:11px;padding:5px 28px 5px 8px;height:32px'><option value=''>—</option>"+destOpts+"</select></div></div>";
     grid.appendChild(card);
   });
   wrap.appendChild(grid);
 }
-
-async function salvarAdicionais() {
-  if (!concursoAtualAdic) return;
-  hideStatus('st-adic');
-  try {
-    for (const fed of concursoAtualAdic.lojas) {
-      const devInt  = parseInt($(`dev-int-${fed.id}`)?.value)||0;
-      const encalhe = parseInt($(`enc-${fed.id}`)?.value)||0;
-      const premVal = parseFloat($(`prem-${fed.id}`)?.value)||0;
-      const devExtQ = parseInt($(`devext-qtd-${fed.id}`)?.value)||0;
-      const devExtD = parseInt($(`devext-dest-${fed.id}`)?.value)||0;
-
-      const {error:errUpd} = await sb.from('federais').update({qtd_devolvidas:devInt,qtd_encalhe:encalhe}).eq('id',fed.id);
-      if(errUpd) throw errUpd;
-
-      if (premVal > 0) {
-        const {error:errPrem} = await sb.from('federal_encalhe_premio').upsert({
-          federal_id:fed.id, valor_premio:premVal,
-          data_registro:new Date().toISOString().slice(0,10), criado_por:usuario.id
-        },{onConflict:'federal_id'});
-        if(errPrem) throw errPrem;
-      }
-
-      if (devExtQ > 0 && devExtD) {
-        const {error:errMov} = await sb.from('federal_movimentacoes').insert({
-          federal_id:fed.id, loteria_destino:devExtD, tipo:'DEVOLUCAO_EXTERNA',
-          qtd_fracoes:devExtQ, valor_fracao:Number(concursoAtualAdic.valor_custo),
-          data_mov:new Date().toISOString().slice(0,10), criado_por:usuario.id,
-        });
-        if(errMov) throw errMov;
-      }
+function confirmarSalvarAdicionais(){showConfirm("Salvar Informações Adicionais","Confirma o salvamento das informações adicionais para este concurso?",salvarAdicionais)}
+async function salvarAdicionais(){
+  try{
+    for(const fed of concAtualAdic.lojas){
+      const devInt=parseInt($("dev-int-"+fed.id)?.value)||0,encalhe=parseInt($("enc-"+fed.id)?.value)||0;
+      const premVal=parseFloat($("prem-"+fed.id)?.value)||0,devExtQ=parseInt($("devext-qtd-"+fed.id)?.value)||0,devExtD=parseInt($("devext-dest-"+fed.id)?.value)||0;
+      const{error:e1}=await sb.from("federais").update({qtd_devolvidas:devInt,qtd_encalhe:encalhe}).eq("id",fed.id);if(e1)throw e1;
+      if(premVal>0){const{error:e2}=await sb.from("federal_encalhe_premio").upsert({federal_id:fed.id,valor_premio:premVal,data_registro:new Date().toISOString().slice(0,10),criado_por:usuario.id},{onConflict:"federal_id"});if(e2)throw e2}
+      if(devExtQ>0&&devExtD){const{error:e3}=await sb.from("federal_movimentacoes").insert({federal_id:fed.id,loteria_destino:devExtD,tipo:"DEVOLUCAO_EXTERNA",qtd_fracoes:devExtQ,valor_fracao:Number(concAtualAdic.valor_custo),data_mov:new Date().toISOString().slice(0,10),criado_por:usuario.id});if(e3)throw e3}
     }
-    showStatus('st-adic','✓ Informações adicionais salvas com sucesso.','ok');
-    await carregarConcursosGlobais();
-    await renderListaCadastros();
-    await carregarPosicao();
-  } catch(e) {
-    showStatus('st-adic','Erro: '+e.message,'err');
-  }
+    showSt("st-adic","✓ Informações adicionais salvas com sucesso.","ok");
+    await carregarConcursos();renderListaConcursos();carregarAdicionais();
+  }catch(e){showSt("st-adic","Erro: "+e.message,"err")}
 }
-
+let _confirmCb=null;
+function showConfirm(titulo,corpo,cb){$("mc-title").textContent=titulo;$("mc-body").textContent=corpo;_confirmCb=cb;$("mc-ok").onclick=()=>{fecharConfirm();_confirmCb&&_confirmCb()};$("modal-confirm").classList.add("show")}
+function fecharConfirm(){$("modal-confirm").classList.remove("show")}
 init();
-</script>
+<\/script>
 </body>
 </html>
