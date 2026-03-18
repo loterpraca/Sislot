@@ -1833,12 +1833,12 @@ async function buscarFechamentoExistente() {
 
     preencherTela1(fech);
     fechamentoOriginalId = fech.id;
-    modoAtual = 'visualizacao';
+    modoAtual = 'edicao';
 
     ESTADO.tela2 = montarTela2DoFechamento(fech);
     ESTADO.tela3 = montarTela3DoFechamento(fech);
 
-    showStatus('status-busca', '✓ Fechamento carregado.', 'ok');
+    showStatus('status-busca', '✓ Fechamento carregado para edição.', 'ok');
   } catch (e) {
     showStatus('status-busca', 'Erro ao buscar: ' + e.message, 'err');
   } finally {
