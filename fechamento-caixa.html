@@ -2593,15 +2593,6 @@ function detectarModo() {
     return;
   }
 
-  if (modoAtual === 'visualizacao') {
-    banner.innerHTML = '<span>Modo <strong>visualização</strong> — confira os dados carregados. Ao clicar no botão, o formulário será reiniciado para novo fechamento.</span>';
-    banner.classList.add('show', 'visualizacao');
-    $('btn-final').className = 'btn-finalizar visualizar';
-    $('btn-final-txt').textContent = 'Novo Fechamento';
-    $('btn-final').disabled = false;
-    return;
-  }
-
   modoAtual = 'edicao';
   banner.innerHTML = '<span>Modo <strong>edição</strong> — ao finalizar o registro existente será sobrescrito.</span>';
   banner.classList.add('show', 'edicao');
