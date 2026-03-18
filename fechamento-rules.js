@@ -46,6 +46,37 @@
     return true;
   }
 
+  function avaliarPermissaoGravacao({
+    usuarioLogado,
+    funcionarioSelecionadoId,
+    existeFechamento
+  }) {
+    const podeGravar = podeGravarFechamento({
+      usuarioLogado,
+      funcionarioSelecionadoId
+    });
+
+    if (!podeGravar) {
+      return {
+        permitido: false,
+        exigeToken: false,
+        motivo: 'Usuário sem permissão para gravar este fechamento.'
+      };
+    }
+
+    const sobrescrevendo = !!existeFechamento;
+    const exigeToken = sobrescrevendo
+      ? exigeTokenParaSobrescrever({ usuarioLogado })
+      : false;
+
+    return {
+      permitido: true,
+      exigeToken,
+      sobrescrevendo,
+      motivo: ''
+    };
+  }
+
   function gerarCodigoToken(tamanho = 6) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let out = '';
@@ -55,7 +86,12 @@
     return out;
   }
 
-  async function gerarTokenSobrescrita({ loteriaId, geradoPor, minutos = 10, observacao = '' }) {
+  async function gerarTokenSobrescrita({
+    loteriaId,
+    geradoPor,
+    minutos = 10,
+    observacao = ''
+  }) {
     const token = gerarCodigoToken(6);
     const expiraEm = new Date(Date.now() + minutos * 60 * 1000).toISOString();
 
@@ -101,6 +137,7 @@
 
     const agora = new Date();
     const expira = new Date(data.expira_em);
+
     if (expira <= agora) {
       throw new Error('Token expirado.');
     }
@@ -108,7 +145,11 @@
     return data;
   }
 
-  async function consumirTokenSobrescrita({ tokenId, usadoPor, fechamentoId = null }) {
+  async function consumirTokenSobrescrita({
+    tokenId,
+    usadoPor,
+    fechamentoId = null
+  }) {
     const { error } = await sb
       .from('autorizacoes_tokens')
       .update({
@@ -126,7 +167,7 @@
     return new Promise(resolve => {
       const modal = document.getElementById('m-token');
       const input = document.getElementById('token-autorizacao');
-      const erro  = document.getElementById('token-err');
+      const erro = document.getElementById('token-err');
 
       if (!modal || !input || !erro) {
         resolve(null);
@@ -136,9 +177,11 @@
       window.__fechamentoTokenResolver = resolve;
 
       input.value = '';
+      erro.textContent = '';
       erro.style.display = 'none';
       modal.classList.add('show');
-      input.focus();
+
+      setTimeout(() => input.focus(), 30);
     });
   }
 
@@ -149,11 +192,12 @@
 
   async function confirmarToken({ loteriaId }) {
     const input = document.getElementById('token-autorizacao');
-    const erro  = document.getElementById('token-err');
+    const erro = document.getElementById('token-err');
 
     if (!input || !erro) return;
 
     const codigo = input.value.trim().toUpperCase();
+
     if (!codigo) {
       erro.textContent = 'Informe o token.';
       erro.style.display = 'block';
@@ -180,6 +224,7 @@
 
   function cancelarToken() {
     fecharModalToken();
+
     if (window.__fechamentoTokenResolver) {
       window.__fechamentoTokenResolver(null);
       window.__fechamentoTokenResolver = null;
@@ -195,6 +240,7 @@
     podeSelecionarFuncionario,
     podeGravarFechamento,
     exigeTokenParaSobrescrever,
+    avaliarPermissaoGravacao,
     gerarCodigoToken,
     gerarTokenSobrescrita,
     validarTokenSobrescrita,
