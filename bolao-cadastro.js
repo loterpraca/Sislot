@@ -1,9 +1,5 @@
 /************************************************************
  * SISLOT — Bolões (Cadastro + Movimentação)
- * Banco: Supabase
- * Tabelas: boloes, movimentacoes_cotas, modelos_boloes,
- *          usuarios, usuarios_loterias, loterias
- * Views:   view_posicao_bolao, view_posicao_destinos
  ************************************************************/
 
 const sb = supabase.createClient(
@@ -13,7 +9,7 @@ const sb = supabase.createClient(
 
 const $ = id => document.getElementById(id);
 
-// ── Configuração visual das lojas (tema + logo) ──────────────────
+// ── Configuração visual das lojas ──────────────────────────
 const LOJA_CONFIG = {
   'boulevard':    { nome: 'Boulevard',    logo: './icons/boulevard.png',    theme: 'boulevard',    logoPos: '50% 50%' },
   'centro':       { nome: 'Centro',       logo: './icons/loterpraca.png',   theme: 'centro',       logoPos: '50% 42%' },
@@ -22,7 +18,6 @@ const LOJA_CONFIG = {
   'via-brasil':   { nome: 'Via Brasil',   logo: './icons/via-brasil.png',   theme: 'via-brasil',   logoPos: '50% 50%' },
 };
 
-// ── Modalidades para o quickbar ──────────────────────────────────
 const MODS = [
   { key: 'Mega Sena',     icon: './icons/mega-sena.png'     },
   { key: 'Lotofácil',     icon: './icons/lotofacil.png'     },
@@ -39,12 +34,12 @@ const MODS = [
   { key: 'São João',      icon: './icons/saojoao.png'       },
 ];
 
-// ── Estado da sessão ─────────────────────────────────────────────
-let usuario      = null;   // registro interno (tabela usuarios)
-let loteriaAtiva = null;   // loja selecionada (objeto de loterias)
-let todasLojas   = [];     // todas as lojas do usuário
-let lojaIdPorSlug = {};    // { 'centro': 1, ... }
-let SHORTCUTS    = {};     // modelos carregados do banco
+// ── Estado da tela ─────────────────────────────────────────
+let usuario = null;
+let loteriaAtiva = null;
+let todasLojas = [];
+let lojaIdPorSlug = {};
+let SHORTCUTS = {};
 
 const CAMPOS_FORM = ['modalidade','concurso','dataInicial','dataConcurso','qtdJogos','qtdDezenas','valorCota','cotas'];
 const CAMPOS_MOV  = ['deltaBoulevard','deltaCentro','deltaLotobel','deltaSantaTereza','deltaViaBrasil'];
@@ -53,90 +48,41 @@ const CAMPOS_MOV  = ['deltaBoulevard','deltaCentro','deltaLotobel','deltaSantaTe
  * INICIALIZAÇÃO
  ************************************************************/
 async function init() {
-  // 1. Verifica sessão Auth
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = './login.html'; return; }
+  const ctx = await window.SISLOT_SECURITY.protegerPagina('cadastro');
+  if (!ctx) return;
 
-  // 2. Busca usuário interno
-  const { data: usr, error: errUsr } = await sb
-    .from('usuarios')
-    .select('id, nome, email, perfil, ativo, pode_logar')
-    .eq('auth_user_id', session.user.id)
-    .eq('ativo', true)
-    .eq('pode_logar', true)
-    .maybeSingle();
+  usuario = ctx.usuario;
+  todasLojas = ctx.lojasPermitidas || [];
+  loteriaAtiva = ctx.lojaInicial || null;
 
-  if (errUsr || !usr) { location.href = './login.html'; return; }
+  todasLojas.forEach(l => {
+    lojaIdPorSlug[l.loteria_slug] = l.loteria_id;
+  });
 
-  // 3. Verifica perfil — operador não acessa essa tela
+  // mapa de todas as lojas ativas para movimentação
+  const todasAtivas = await window.SISLOT_SECURITY.carregarTodasLojas();
+  todasAtivas.forEach(l => {
+    lojaIdPorSlug[l.loteria_slug] = l.loteria_id;
+  });
 
-  usuario = usr;
-
-  // 4. Carrega lojas e modelos em paralelo
- await Promise.all([carregarLojas(), carregarTodasLojas()]);
-await carregarModelos(); // ← sobe para cá, antes do renderQuickbar
-// ...
-renderQuickbar();
-
-  if (todasLojas.length === 0) {
-    alert('Nenhuma loja vinculada a este usuário.');
+  if (!todasLojas.length || !loteriaAtiva) {
+    alert('Nenhuma loja disponível para este usuário.');
+    window.SISLOT_SECURITY.irParaInicio();
     return;
   }
 
-  // 5. Define loja ativa (principal ou primeira)
-  loteriaAtiva = todasLojas.find(l => l.principal) || todasLojas[0];
+  await carregarModelos();
 
-  // 6. Aplica tema e UI
   aplicarTema(loteriaAtiva.loteria_slug);
   atualizarOrigemUI();
   atualizarCamposMov();
-
-  // 7. Renderiza quickbar
   renderQuickbar();
-
-  // 8. Carrega draft
   loadDraft();
   applyFederalUI();
-
-  // 9. Bindings
   bind();
 
-  // 10. Data inicial = hoje se vazio
   if (!$('dataInicial').value) {
     $('dataInicial').value = new Date().toISOString().slice(0, 10);
-  }
-}
-
-async function carregarLojas() {
-  // Lojas que o usuário pode operar
-  const { data } = await sb
-    .from('usuarios_loterias')
-    .select('loteria_id, papel_na_loja, principal, loterias(id, nome, slug, codigo, cod_loterico)')
-    .eq('usuario_id', usuario.id);
-
-  if (data) {
-    todasLojas = data.map(ul => ({
-      loteria_id:     ul.loterias.id,
-      loteria_nome:   ul.loterias.nome,
-      loteria_slug:   ul.loterias.slug,
-      loteria_codigo: ul.loterias.codigo,
-      cod_loterico:   ul.loterias.cod_loterico,
-      principal:      ul.principal,
-    }));
-    todasLojas.forEach(l => { lojaIdPorSlug[l.loteria_slug] = l.loteria_id; });
-  }
-}
-
-async function carregarTodasLojas() {
-  // Todas as lojas ativas (para movimentação)
-  const { data } = await sb
-    .from('loterias')
-    .select('id, nome, slug, codigo, cod_loterico')
-    .eq('ativo', true)
-    .order('nome');
-
-  if (data) {
-    data.forEach(l => { lojaIdPorSlug[l.slug] = l.id; });
   }
 }
 
@@ -150,7 +96,6 @@ async function carregarModelos() {
   SHORTCUTS = {};
   if (!data) return;
 
-  // Monta mapa inverso: id -> slug
   const idParaSlug = {};
   Object.entries(lojaIdPorSlug).forEach(([slug, id]) => {
     idParaSlug[id] = slug;
@@ -195,6 +140,7 @@ function atualizarCamposMov() {
     'santa-tereza': 'deltaSantaTereza',
     'via-brasil':   'deltaViaBrasil',
   };
+
   Object.entries(mapaSlug).forEach(([slug, inputId]) => {
     const el = $(inputId);
     if (!el) return;
@@ -205,41 +151,39 @@ function atualizarCamposMov() {
 }
 
 /************************************************************
- * TROCA DE LOJA (sócio com múltiplas lojas)
+ * TROCA DE LOJA
  ************************************************************/
 function trocarLoja(slug) {
   const loja = todasLojas.find(l => l.loteria_slug === slug);
-  if (loja) {
-    loteriaAtiva = loja;
-  } else {
-    const id = lojaIdPorSlug[slug];
-    if (!id) return;
-    loteriaAtiva = {
-      loteria_id:   id,
-      loteria_slug: slug,
-      loteria_nome: LOJA_CONFIG[slug]?.nome || slug,
-    };
-  }
+  if (!loja) return; // sem brecha para loja fora do contexto
+
+  loteriaAtiva = loja;
   aplicarTema(slug);
   atualizarOrigemUI();
   atualizarCamposMov();
   renderChips(localStorage.getItem('sl_active_mod') || '');
   saveDraft();
 }
+
 /************************************************************
  * QUICKBAR
  ************************************************************/
 function renderQuickbar() {
   const grid = $('modGrid');
   grid.innerHTML = '';
+
   MODS.forEach(mod => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'qmod';
     btn.dataset.mod = mod.key;
     btn.title = mod.key;
+
     const img = document.createElement('img');
-    img.src = mod.icon; img.alt = mod.key; img.loading = 'lazy';
+    img.src = mod.icon;
+    img.alt = mod.key;
+    img.loading = 'lazy';
+
     btn.appendChild(img);
     btn.onclick = () => selecionarMod(mod.key);
     grid.appendChild(btn);
@@ -272,28 +216,42 @@ function setActiveModBtn(modKey) {
 }
 
 function renderChips(modKey) {
-  const slug  = loteriaAtiva?.loteria_slug || '';
+  const slug = loteriaAtiva?.loteria_slug || '';
   const chips = (SHORTCUTS[slug] || {})[modKey] || [];
-  const wrap  = $('chipsWrap'), row = $('chipsRow');
+  const wrap = $('chipsWrap');
+  const row = $('chipsRow');
+
   row.innerHTML = '';
-  if (!chips.length) { wrap.classList.remove('active'); return; }
+  if (!chips.length) {
+    wrap.classList.remove('active');
+    return;
+  }
 
   const modObj = MODS.find(m => m.key === modKey);
-  const icon   = modObj ? modObj.icon : '';
+  const icon = modObj ? modObj.icon : '';
 
   chips.forEach(sc => {
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'chip-tile';
+    b.type = 'button';
+    b.className = 'chip-tile';
     b.title = `${modKey} ${sc.nome}`;
+
     if (icon) {
-      const img = document.createElement('img'); img.src = icon; img.alt = modKey; b.appendChild(img);
+      const img = document.createElement('img');
+      img.src = icon;
+      img.alt = modKey;
+      b.appendChild(img);
     }
+
     const badge = document.createElement('span');
-    badge.className = 'chip-badge'; badge.textContent = sc.nome;
+    badge.className = 'chip-badge';
+    badge.textContent = sc.nome;
     b.appendChild(badge);
+
     b.onclick = () => aplicarShortcut(modKey, sc);
     row.appendChild(b);
   });
+
   wrap.classList.add('active');
 }
 
@@ -309,15 +267,21 @@ function aplicarShortcut(modKey, sc) {
 }
 
 /************************************************************
- * FEDERAL: desabilita jogos/dezenas
+ * FEDERAL
  ************************************************************/
 function applyFederalUI() {
   const modal = $('modalidade').value;
   const isFed = modal === 'Federal';
-  const j = $('qtdJogos'), d = $('qtdDezenas');
-  j.disabled = isFed; d.disabled = isFed;
-  if (isFed) { j.value = '0'; d.value = '0'; }
-  else {
+  const j = $('qtdJogos');
+  const d = $('qtdDezenas');
+
+  j.disabled = isFed;
+  d.disabled = isFed;
+
+  if (isFed) {
+    j.value = '0';
+    d.value = '0';
+  } else {
     if (j.value === '0') j.value = '';
     if (d.value === '0') d.value = '';
   }
@@ -330,21 +294,28 @@ function addDias(inputId, delta) {
   const el = $(inputId);
   const v  = el.value;
   let y, m, d;
+
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
     [y, m, d] = v.split('-').map(Number);
   } else {
-    const n = new Date(); y = n.getFullYear(); m = n.getMonth() + 1; d = n.getDate();
+    const n = new Date();
+    y = n.getFullYear();
+    m = n.getMonth() + 1;
+    d = n.getDate();
   }
+
   const dt = new Date(y, m - 1, d);
   dt.setDate(dt.getDate() + delta);
+
   el.value = dt.getFullYear() + '-' +
     String(dt.getMonth() + 1).padStart(2, '0') + '-' +
     String(dt.getDate()).padStart(2, '0');
+
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 /************************************************************
- * DRAFT (localStorage)
+ * DRAFT
  ************************************************************/
 function saveDraft() {
   const d = {};
@@ -359,9 +330,11 @@ function loadDraft() {
   try {
     const raw = localStorage.getItem('sl_draft');
     if (!raw) return;
+
     const d = JSON.parse(raw);
     CAMPOS_FORM.forEach(id => { if ($(id) && d[id] !== undefined) $(id).value = d[id]; });
     CAMPOS_MOV.forEach(id  => { if ($(id) && d[id] !== undefined) $(id).value = d[id]; });
+
     if (d._mod) {
       localStorage.setItem('sl_active_mod', d._mod);
       $('modalidade').value = d._mod;
@@ -399,15 +372,20 @@ function setBtnLoading(btn, on) {
     btn.disabled = false;
   }
 }
+
 /************************************************************
  * MODAL
  ************************************************************/
 function showModal(titulo, corpo, onConfirm, onCancel) {
   $('modalTitle').textContent = titulo;
   $('modalBody').textContent  = corpo;
+
   const overlay = $('modalOverlay');
   const fechar  = () => overlay.classList.remove('active');
-  const cancelar = () => { fechar(); typeof onCancel === 'function' && onCancel(); };
+  const cancelar = () => {
+    fechar();
+    if (typeof onCancel === 'function') onCancel();
+  };
 
   $('modalCancel').onclick = cancelar;
   overlay.onclick          = cancelar;
@@ -421,9 +399,12 @@ function showModal(titulo, corpo, onConfirm, onCancel) {
     $('modalCancel').style.display = 'flex';
     $('modalConfirm').textContent  = 'Confirmar';
     $('modalConfirm').onclick      = async e => {
-      e.preventDefault(); fechar(); await onConfirm();
+      e.preventDefault();
+      fechar();
+      await onConfirm();
     };
   }
+
   overlay.classList.add('active');
 }
 
@@ -437,17 +418,24 @@ function parseCota(v) {
 }
 
 function fmtBR(v) {
-  return parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return parseFloat(v || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 }
 
 function fmtBRL(v) {
-  return parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return parseFloat(v || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
 }
 
 function fmtData(s) {
   if (!s) return '—';
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`;
+    const [y, m, d] = s.split('-');
+    return `${d}/${m}/${y}`;
   }
   return s;
 }
@@ -480,8 +468,6 @@ async function onCadastrar() {
   try {
     const b = validarBase(true);
     if (!loteriaAtiva) throw new Error('Nenhuma loja selecionada.');
-
-    const custo = parseFloat(((b.valorCota * b.cotas) / 1.35).toFixed(2));
 
     const corpo = [
       '🧾 CONFIRMAÇÃO DE CADASTRO', '',
@@ -535,9 +521,13 @@ async function doCadastrar(b, somarCotas = false) {
     ].join('\n');
 
     showModal('Bolão já existe', corpo, async () => {
-      try { await doCadastrar(b, true); }
-      catch (e) { setStatus(e.message, 'err', 'exclamation-circle'); }
+      try {
+        await doCadastrar(b, true);
+      } catch (e) {
+        setStatus(e.message, 'err', 'exclamation-circle');
+      }
     });
+
     setStatus('Aguardando confirmação…', 'muted', 'clock');
     return;
   }
@@ -548,12 +538,13 @@ async function doCadastrar(b, somarCotas = false) {
       .from('boloes')
       .update({ qtd_cotas_total: novoTotal, updated_at: new Date().toISOString() })
       .eq('id', existe.id);
+
     if (error) throw new Error(error.message);
+
     setStatus(`✓ Cotas somadas! Novo total: ${novoTotal}`, 'ok', 'check-circle');
     return;
   }
 
-  // Novo bolão
   const { error } = await sb.from('boloes').insert({
     loteria_id:      loteriaId,
     criado_por:      usuario.id,
@@ -568,12 +559,13 @@ async function doCadastrar(b, somarCotas = false) {
     qtd_cotas_total: b.cotas,
     status:          'ATIVO',
   });
+
   if (error) throw new Error(error.message);
   setStatus('✓ Bolão cadastrado com sucesso!', 'ok', 'check-double');
 }
 
 /************************************************************
- * CANCELAR (exclusão lógica)
+ * CANCELAR
  ************************************************************/
 async function onDeletar() {
   const btn = $('btnDeletar');
@@ -593,7 +585,10 @@ async function onDeletar() {
       .neq('status', 'CANCELADO')
       .maybeSingle();
 
-    if (!bolao) { setStatus('Bolão não encontrado.', 'err', 'exclamation-circle'); return; }
+    if (!bolao) {
+      setStatus('Bolão não encontrado.', 'err', 'exclamation-circle');
+      return;
+    }
 
     const corpo = [
       '🗑️ CONFIRMAÇÃO DE CANCELAMENTO', '',
@@ -611,6 +606,7 @@ async function onDeletar() {
           .from('boloes')
           .update({ status: 'CANCELADO', updated_at: new Date().toISOString() })
           .eq('id', bolao.id);
+
         if (error) throw new Error(error.message);
         setStatus('✓ Bolão cancelado.', 'ok', 'check-circle');
       } catch (e) {
@@ -666,6 +662,7 @@ async function onBuscar() {
         `Cota: ${fmtBRL(cota)}`, '',
         'Verifique os dados ou cadastre primeiro.'
       ].join('\n'), null);
+
       setStatus('Bolão não localizado.', 'muted', 'info-circle');
       return;
     }
@@ -713,8 +710,9 @@ async function onMovimentar() {
     const concurso = $('concurso').value.trim();
     const cota     = parseCota($('valorCota').value);
 
-    if (!modal || !concurso || !cota)
+    if (!modal || !concurso || !cota) {
       throw new Error('Preencha modalidade, concurso e valor da cota.');
+    }
 
     const mapaDeltas = {
       'boulevard':    parseInt($('deltaBoulevard').value)   || 0,
@@ -727,7 +725,6 @@ async function onMovimentar() {
     const temDelta = Object.values(mapaDeltas).some(v => v !== 0);
     if (!temDelta) throw new Error('Informe ao menos um valor de destino.');
 
-    // Busca o bolão
     const { data: bolao } = await sb
       .from('boloes')
       .select('id, valor_cota, qtd_cotas_total')
@@ -740,16 +737,12 @@ async function onMovimentar() {
 
     if (!bolao) throw new Error('Bolão não encontrado. Cadastre antes de movimentar.');
 
-    // Busca histórico de movimentações por destino
     const { data: movs } = await sb
       .from('movimentacoes_cotas')
       .select('loteria_destino, loteria_origem, qtd_cotas')
       .eq('bolao_id', bolao.id)
       .eq('status', 'ATIVO');
 
-    // Monta saldo atual por loja destino
-    // qtd_cotas positivo = envio da origem para destino
-    // se loteria_origem = destino = devolução (subtrai)
     const saldoPorId = {};
     const historicoDetalhePorId = {};
 
@@ -758,25 +751,22 @@ async function onMovimentar() {
         const destId   = m.loteria_destino;
         const origemId = m.loteria_origem;
 
-        // Movimento de envio: origem → destino
         if (origemId === loteriaAtiva.loteria_id) {
-          if (!saldoPorId[destId])           saldoPorId[destId] = 0;
+          if (!saldoPorId[destId]) saldoPorId[destId] = 0;
           if (!historicoDetalhePorId[destId]) historicoDetalhePorId[destId] = [];
-          saldoPorId[destId]              += m.qtd_cotas;
+          saldoPorId[destId] += m.qtd_cotas;
           historicoDetalhePorId[destId].push(m.qtd_cotas);
         }
 
-        // Devolução: destino → origem (subtrai do saldo do destino)
         if (destId === loteriaAtiva.loteria_id) {
-          if (!saldoPorId[origemId])           saldoPorId[origemId] = 0;
+          if (!saldoPorId[origemId]) saldoPorId[origemId] = 0;
           if (!historicoDetalhePorId[origemId]) historicoDetalhePorId[origemId] = [];
-          saldoPorId[origemId]              -= m.qtd_cotas;
+          saldoPorId[origemId] -= m.qtd_cotas;
           historicoDetalhePorId[origemId].push(-m.qtd_cotas);
         }
       });
     }
 
-    // Monta confirmação
     const linhas = [
       `📍 Origem: ${loteriaAtiva.loteria_nome}`,
       `🎯 ${modal} — Concurso ${concurso}`,
@@ -814,9 +804,7 @@ async function onMovimentar() {
         return;
       }
 
-      const histStr  = hist.length
-        ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ')
-        : '0';
+      const histStr  = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
       const deltaStr = delta > 0 ? `[+${delta}]` : `[${delta}]`;
       linhas.push(`${icone} ${nome}: ${histStr} ${deltaStr} → ${final}`);
     });
@@ -844,8 +832,10 @@ async function onMovimentar() {
 
 async function doMovimentar(bolao, mapaDeltas) {
   const inserts = [];
+
   for (const [slug, qtd] of Object.entries(mapaDeltas)) {
     if (qtd === 0 || slug === loteriaAtiva.loteria_slug) continue;
+
     const destId = lojaIdPorSlug[slug];
     if (!destId) throw new Error(`Loja destino não encontrada: ${slug}`);
 
@@ -853,13 +843,15 @@ async function doMovimentar(bolao, mapaDeltas) {
       bolao_id:        bolao.id,
       loteria_origem:  loteriaAtiva.loteria_id,
       loteria_destino: destId,
-      qtd_cotas:       qtd,                          // pode ser negativo (redistribuição)
+      qtd_cotas:       qtd,
       valor_unitario:  bolao.valor_cota,
       status:          'ATIVO',
       criado_por:      usuario.id,
     });
   }
+
   if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
+
   const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
   if (error) throw new Error(error.message);
 }
@@ -868,27 +860,26 @@ async function doMovimentar(bolao, mapaDeltas) {
  * BINDINGS
  ************************************************************/
 function bind() {
-  // Steppers
   $('btnDiPrev').onclick = () => addDias('dataInicial', -1);
   $('btnDiNext').onclick = () => addDias('dataInicial', +1);
   $('btnDcPrev').onclick = () => addDias('dataConcurso', -1);
   $('btnDcNext').onclick = () => addDias('dataConcurso', +1);
 
-  // Ações principais
   $('btnCadastrar').addEventListener('click', onCadastrar);
   $('btnDeletar').addEventListener('click', onDeletar);
   $('btnMovimentar').addEventListener('click', onMovimentar);
   $('btnBuscar').addEventListener('click', onBuscar);
+
   $('btnLimpar').addEventListener('click', () => {
     limparFormSemLoja();
     setStatus('Campos limpos.', 'muted', 'broom');
   });
+
   $('btnZerarMov').addEventListener('click', () => {
     limparMov();
     setStatus('Movimentação limpa.', 'muted', 'broom');
   });
 
-  // Modalidade
   $('modalidade').addEventListener('change', () => {
     const m = $('modalidade').value;
     localStorage.setItem('sl_active_mod', m);
@@ -898,17 +889,14 @@ function bind() {
     saveDraft();
   });
 
-  // Brand buttons — troca contexto de loja
   document.querySelectorAll('.brand-btn').forEach(b => {
     b.addEventListener('click', () => trocarLoja(b.dataset.slug));
   });
 
-  // Draft em todos os campos
   [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
-    $(id)?.addEventListener('input',  saveDraft);
+    $(id)?.addEventListener('input', saveDraft);
     $(id)?.addEventListener('change', saveDraft);
   });
 }
 
-// ── Start ────────────────────────────────────────────────────────
-init().then(() => carregarModelos());
+init();
