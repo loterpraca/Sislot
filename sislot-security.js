@@ -115,7 +115,9 @@
         const match = vinc.find(v => v.loteria_id === l.loteria_id);
         return { ...l, principal: !!match?.principal };
       });
-    } else if (usuario.perfil === 'SOCIO') {
+    }
+
+    else if (usuario.perfil === 'SOCIO') {
       if (mod === 'cadastro' || mod === 'movimentacao') {
         permitido = true;
         const todas = await carregarTodasLojas();
@@ -125,6 +127,25 @@
           const match = vinc.find(v => v.loteria_id === l.loteria_id);
           return { ...l, principal: !!match?.principal };
         });
+      }
+
+      else if (mod === 'fechamento') {
+        permitido = true;
+        lojasPermitidas = await carregarVinculos(usuario.id);
+      }
+    }
+
+    else if (usuario.perfil === 'GERENTE') {
+      if (mod === 'fechamento') {
+        permitido = true;
+        lojasPermitidas = await carregarVinculos(usuario.id);
+      }
+    }
+
+    else if (usuario.perfil === 'OPERADOR') {
+      if (mod === 'fechamento') {
+        permitido = true;
+        lojasPermitidas = await carregarVinculos(usuario.id);
       }
     }
 
