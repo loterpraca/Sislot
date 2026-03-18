@@ -627,7 +627,12 @@ function renderCadastro(){
       <td class="mono">${totalIni}</td>
       <td class="mono">${totalDev}</td>
       <td class="mono">${totalEnc}</td>
-      <td><div class="flex"><button class="btn-amber" onclick="editCadastro('${g.concurso}')">Editar</button></div></td>
+      <td>
+        <div class="flex" style="flex-wrap:nowrap;gap:6px">
+          <button class="btn-amber" onclick="editCadastro('${g.concurso}')">Editar</button>
+          <button class="btn-danger" onclick="deleteCadastro('${g.concurso}')">Excluir</button>
+        </div>
+      </td>
     </tr>`;
   }).join('') : `<tr><td colspan="10"><div class="empty"><div class="empty-title">Nenhum concurso cadastrado</div></div></td></tr>`;
 }
@@ -646,7 +651,12 @@ function renderMovimentacoes(){
       <td class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</td>
       <td class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)))}</td>
       <td><span class="badge ${statusClass}">${m.status_acerto||'—'}</span></td>
-      <td><div class="flex"><button class="btn-amber" onclick="editMov('${m.id}')">Editar</button></div></td>
+      <td>
+        <div class="flex" style="flex-wrap:nowrap;gap:6px">
+          <button class="btn-amber" onclick="editMov('${m.id}')">Editar</button>
+          <button class="btn-danger" onclick="deleteMovDirect('${m.id}')">Excluir</button>
+        </div>
+      </td>
     </tr>`;
   }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Sem movimentações</div></div></td></tr>`;
   applyDestinoFilter();
@@ -678,7 +688,13 @@ function renderAuditoria(){
       <td class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</td>
       <td class="money">${fmtMoney(total)}</td>
       <td><span class="badge ${statusClass}">${m.status_acerto||'—'}</span></td>
-      <td><div class="flex"><button class="btn-amber" onclick="editMov('${m.id}')">Editar</button><button class="btn-secondary" onclick="openMovDetail('${m.id}')">Ver</button></div></td>
+      <td>
+        <div class="flex" style="flex-wrap:nowrap;gap:6px">
+          <button class="btn-amber" onclick="editMov('${m.id}')">Editar</button>
+          <button class="btn-secondary" onclick="openMovDetail('${m.id}')">Ver</button>
+          <button class="btn-danger" onclick="deleteMovDirect('${m.id}')">Excluir</button>
+        </div>
+      </td>
     </tr>`;
   }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Sem registros para os filtros</div></div></td></tr>`;
 }
@@ -713,6 +729,7 @@ async function saveCadastro(){
     if(state.editingCadastroConcurso){
       for(const item of mapa){
         const { error } = await sb.from('federais').update({
+          concurso,
           dt_sorteio,
           valor_fracao,
           valor_custo,
@@ -768,6 +785,54 @@ window.editCadastro = function(concurso){
   $('cad-qtd-via').value = itens.find(x=>x.loteria_id===5)?.qtd_recebidas || 0;
 };
 
+window.deleteCadastro = async function(concurso){
+  if(!concurso) return;
+  const ok = confirm(`Apagar o concurso ${concurso} em todas as loterias?`);
+  if(!ok) return;
+
+  try{
+    const idsFederais = state.federais
+      .filter(x => String(x.concurso) === String(concurso))
+      .map(x => x.id);
+
+    if(idsFederais.length){
+      const { error: ePremio } = await sb
+        .from('federal_encalhe_premio')
+        .delete()
+        .in('federal_id', idsFederais);
+      if(ePremio) throw ePremio;
+
+      const { error: eMov } = await sb
+        .from('federal_movimentacoes')
+        .delete()
+        .in('federal_id', idsFederais);
+      if(eMov) throw eMov;
+
+      const { error: eItensFech } = await sb
+        .from('fechamento_federais')
+        .delete()
+        .in('federal_id', idsFederais);
+      if(eItensFech) throw eItensFech;
+    }
+
+    const { error } = await sb
+      .from('federais')
+      .delete()
+      .eq('concurso', concurso);
+    if(error) throw error;
+
+    if(String(state.editingCadastroConcurso || '') === String(concurso)){
+      state.editingCadastroConcurso = null;
+      setCadastroDefaults();
+    }
+
+    showStatus('st-cadastro', `Concurso ${concurso} excluído.`, 'ok');
+    await refreshAll();
+  }catch(e){
+    showStatus('st-cadastro', e.message, 'err');
+  }
+};
+
 async function saveMov(){
   try{
     const federal=lookupFederal($('mov-federal').value);
@@ -793,7 +858,16 @@ async function saveMov(){
       editado_por: state.editingMovId ? state.usuario?.id : null,
       editado_em: state.editingMovId ? new Date().toISOString() : null
     };
-    if(!payload.federal_id || !payload.tipo_evento || !payload.qtd_fracoes || !payload.loteria_origem || !payload.loteria_destino){ showStatus('st-mov','Preencha concurso, origem, destino, evento e quantidade.','err'); return; }
+
+    if(!payload.federal_id || !payload.tipo_evento || !payload.qtd_fracoes || !payload.loteria_origem){
+      showStatus('st-mov','Preencha concurso, origem, evento e quantidade.','err');
+      return;
+    }
+    if(payload.tipo_evento === 'TRANSFERENCIA' && !payload.loteria_destino){
+      showStatus('st-mov','Selecione a loja destino.','err');
+      return;
+    }
+
     if(state.editingMovId){
       const { error } = await sb.from('federal_movimentacoes').update(payload).eq('id',state.editingMovId);
       if(error) throw error;
@@ -854,6 +928,30 @@ async function deleteMov(){
     await refreshAll();
   }catch(e){ showStatus('st-mov',e.message,'err'); }
 }
+
+window.deleteMovDirect = async function(id){
+  if(!id) return;
+  if(!confirm('Apagar esta linha de movimentação?')) return;
+
+  try{
+    const { error } = await sb
+      .from('federal_movimentacoes')
+      .delete()
+      .eq('id', id);
+    if(error) throw error;
+
+    if(String(state.editingMovId || '') === String(id)){
+      clearMov();
+    }
+
+    closeDrawer();
+    showStatus('st-mov', 'Movimentação apagada.', 'ok');
+    showStatus('st-auditoria', 'Movimentação apagada.', 'ok');
+    await refreshAll();
+  }catch(e){
+    showStatus('st-mov', e.message, 'err');
+  }
+};
 
 async function saveFechamento(){
   try{
