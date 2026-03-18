@@ -5,10 +5,11 @@
   );
 
   function rotaInicioPorPerfil(perfil) {
-    if (perfil === 'ADMIN' || perfil === 'SOCIO') return './menu.html';
-    if (perfil === 'GERENTE' || perfil === 'OPERADOR') return './fechamento-caixa.html';
-    return './login.html';
+  if (['ADMIN', 'SOCIO', 'GERENTE', 'OPERADOR'].includes(perfil)) {
+    return './menu.html';
   }
+  return './login.html';
+}
 
   async function buscarUsuarioPorAuthId(authUserId) {
     const { data: usr, error } = await sb
