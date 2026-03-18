@@ -32,7 +32,6 @@ body{
     repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(30,58,110,.15) 39px,rgba(30,58,110,.15) 40px);
 }
 
-/* ── TOPBAR ── */
 .topbar{
   display:flex;align-items:center;justify-content:space-between;
   padding:0 24px;height:56px;
@@ -50,7 +49,6 @@ body{
 .topbar-right{display:flex;align-items:center;gap:10px}
 #relogio{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
 
-/* Seletor de loteria na topbar */
 .loteria-selector{
   display:flex;align-items:center;gap:8px;
   background:rgba(0,200,150,.07);border:1px solid rgba(0,200,150,.2);
@@ -75,7 +73,6 @@ body{
 .btn-inicio:hover{color:var(--accent);border-color:rgba(0,200,150,.4);background:rgba(0,200,150,.05)}
 .btn-sair:hover{color:var(--err);border-color:rgba(255,82,82,.4);background:rgba(255,82,82,.05)}
 
-/* ── STEPS BAR ── */
 .steps-bar{
   display:flex;align-items:center;justify-content:center;
   padding:20px 24px 0;gap:0;
@@ -96,7 +93,6 @@ body{
 .step-line.done{background:rgba(0,200,150,.4)}
 @media(max-width:600px){.step-label{display:none}.step-line{width:24px}}
 
-/* ── MAIN ── */
 .main{flex:1;padding:24px;max-width:900px;width:100%;margin:0 auto}
 
 .page-header{
@@ -111,7 +107,6 @@ body{
   padding:3px 10px;border-radius:20px;letter-spacing:.1em;text-transform:uppercase;
 }
 
-/* ── SECTIONS ── */
 .section{margin-bottom:24px;animation:fadeUp .35s ease both}
 .section-label{
   font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;
@@ -120,17 +115,15 @@ body{
 }
 .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
 
-/* ── GRID ── */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 @media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
 
-/* ── FIELD ── */
 .field{display:flex;flex-direction:column;gap:5px}
 .field-label{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .field-label.req::after{content:' *';color:var(--accent)}
 
-input[type=text],input[type=number],input[type=date],select.sel{
+input[type=text],input[type=number],input[type=date],input[type=password],select.sel{
   width:100%;background:var(--input);border:1px solid var(--border);
   border-radius:6px;padding:10px 13px;
   font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--bright);
@@ -145,11 +138,15 @@ select.sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 select.sel option{background:var(--mid);color:var(--bright)}
 select.sel:disabled{opacity:.85;cursor:default}
 
+.has-error{
+  border-color:var(--err)!important;
+  box-shadow:0 0 0 3px rgba(255,82,82,.12)!important;
+}
+
 .pfx-wrap{position:relative}
 .pfx{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);pointer-events:none}
 .pfx-wrap input{padding-left:32px}
 
-/* ── CHIP ── */
 .chip{
   display:inline-flex;align-items:center;gap:6px;
   font-family:'IBM Plex Mono',monospace;font-size:11px;
@@ -160,7 +157,6 @@ select.sel:disabled{opacity:.85;cursor:default}
 .chip-green{background:rgba(0,200,150,.07);border:1px solid rgba(0,200,150,.2);color:var(--accent)}
 .chip-amber{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);color:var(--amber)}
 
-/* ── DÍVIDAS ── */
 .divida-row{
   display:grid;grid-template-columns:1fr 150px 32px;gap:10px;align-items:center;
   background:var(--panel);border:1px solid var(--border);border-radius:8px;
@@ -187,7 +183,6 @@ select.sel:disabled{opacity:.85;cursor:default}
 .div-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
 .div-counter{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
 
-/* ── TELA 2: PRODUTOS ── */
 .prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:640px){.prod-grid{grid-template-columns:1fr}}
 .prod-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .2s}
@@ -222,7 +217,6 @@ input.inp-preco{width:72px!important;padding:6px 8px!important;font-size:12px!im
 .prod-tot-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--dim);transition:color .2s}
 .prod-tot-val.on{color:var(--accent)}
 
-/* ── TELA 2: FEDERAIS ── */
 .state-box{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:8px;padding:36px 20px;text-align:center;
@@ -263,7 +257,6 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .fed-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-align:center;margin-top:2px;transition:color .2s}
 .fed-sub.on{color:var(--purple)}
 
-/* ── TELA 3: BOLÕES ── */
 .bloco-sep{display:flex;align-items:center;gap:12px;margin:20px 0 14px}
 .bloco-label{
   font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;
@@ -271,7 +264,6 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 }
 .bloco-line{flex:1;height:1px}
 .bloco-tot{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:5px;white-space:nowrap}
-
 .b-int .bloco-label{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--ic)}
 .b-int .bloco-line{background:rgba(0,200,150,.2)}
 .b-int .bloco-tot{background:rgba(0,200,150,.06);border:1px solid rgba(0,200,150,.15);color:var(--ic)}
@@ -279,7 +271,6 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .b-ext .bloco-line{background:rgba(56,189,248,.2)}
 .b-ext .bloco-tot{background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.15);color:var(--ec)}
 
-/* Agrupamento por modalidade */
 .mod-group{margin-bottom:18px}
 .mod-header{
   display:flex;align-items:center;gap:8px;
@@ -289,13 +280,10 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .mod-nome{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
 .mod-count{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:1px 6px;border-radius:6px}
 .mod-subtot{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;margin-left:auto}
-
-/* internos */
 .ic .mod-dot{background:var(--ic);box-shadow:0 0 5px var(--ic)}
 .ic .mod-nome{color:var(--ic)}
 .ic .mod-count{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--ic)}
 .ic .mod-subtot{color:var(--ic)}
-/* externos */
 .ec .mod-dot{background:var(--ec);box-shadow:0 0 5px var(--ec)}
 .ec .mod-nome{color:var(--ec)}
 .ec .mod-count{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);color:var(--ec)}
@@ -330,7 +318,6 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .bolao-card.is-int input.inp-qtd.filled{color:var(--ic)!important;border-top-color:rgba(0,200,150,.4)!important;border-bottom-color:rgba(0,200,150,.4)!important}
 .bolao-card.is-ext input.inp-qtd.filled{color:var(--ec)!important;border-top-color:rgba(56,189,248,.4)!important;border-bottom-color:rgba(56,189,248,.4)!important}
 
-/* Lista de vendas (aparece quando qtd > 0) */
 .vendas-list{
   background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:8px;
   padding:10px 12px;margin-top:12px;
@@ -348,7 +335,6 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .venda-item .vi-qtd{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:11px}
 .venda-item .vi-val{font-family:'IBM Plex Mono',monospace;color:var(--bright);font-size:11px}
 
-/* ── TELA 4: RESUMO ── */
 .grade{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 @media(max-width:700px){.grade{grid-template-columns:1fr}}
 .bloco{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
@@ -375,7 +361,6 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .linha.sub .linha-label{font-size:10px;color:var(--dim)}
 .linha.sub .linha-val{font-size:10px;color:var(--dim)}
 
-/* Quebra */
 .quebra-card{border-radius:12px;padding:20px 24px;margin-bottom:16px;border:2px solid;display:flex;align-items:center;gap:20px;transition:all .4s}
 .q-eq{background:rgba(0,200,150,.06);border-color:rgba(0,200,150,.3)}
 .q-pos{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.35)}
@@ -395,7 +380,6 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .q-pos .q-valor{color:var(--amber)}
 .q-neg .q-valor{color:var(--err)}
 
-/* Justificativa */
 .just-wrap{background:rgba(245,166,35,.04);border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:none}
 .just-wrap.show{display:block;animation:fadeUp .3s ease}
 .just-label{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px}
@@ -409,7 +393,6 @@ textarea#justificativa:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba
 textarea#justificativa::placeholder{color:var(--dim)}
 .just-counter{font-size:10px;color:var(--dim);text-align:right;margin-top:4px}
 
-/* ── TOTAIS BAR ── */
 .totais-bar{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:20px;margin-bottom:6px}
 .tot-item{flex:1;padding:12px 14px}
 .tot-item+.tot-item{border-left:1px solid var(--border)}
@@ -423,7 +406,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .tv-ec{color:var(--ec)}
 @media(max-width:640px){.totais-bar{flex-wrap:wrap}}
 
-/* ── FOOTER ── */
 .form-footer{display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid var(--border);margin-top:8px}
 .btn-back{
   display:flex;align-items:center;gap:7px;background:transparent;
@@ -452,7 +434,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .btn-finalizar.visualizar:hover:not(:disabled){background:rgba(56,189,248,.2)}
 .btn-finalizar:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
 
-/* ── MODAIS ── */
 .overlay{
   display:none;position:fixed;inset:0;z-index:9999;
   background:rgba(10,22,40,.88);backdrop-filter:blur(6px);
@@ -477,18 +458,15 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .modal-ok.amber{background:var(--amber);color:var(--deep)}
 .modal-ok.amber:hover{background:#ffbd45}
 
-/* Modal gravando */
 .modal-gravando .spinner-lg{width:44px;height:44px;border-radius:50%;border:3px solid rgba(0,200,150,.15);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:0 auto 16px}
 .prog-bar-wrap{margin-top:14px;background:var(--mid);border-radius:4px;height:3px;overflow:hidden}
 .prog-bar{height:100%;background:var(--accent);transition:width .4s ease;width:0%;border-radius:4px}
 
-/* Modal admin */
 .admin-field{margin-bottom:10px}
 .admin-field input{width:100%;background:var(--input);border:1px solid var(--border);border-radius:7px;padding:10px 12px;color:var(--bright);outline:none;font-family:'IBM Plex Mono',monospace;font-size:13px}
 .admin-field input:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.1)}
 .admin-err{font-size:11px;color:var(--err);margin-top:6px;display:none}
 
-/* ── INFO BAR ── */
 .info-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
 .info-chip{
   display:flex;align-items:center;gap:6px;
@@ -498,7 +476,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
 }
 .info-chip strong{color:var(--bright)}
 
-/* ── BANNER MODO ── */
 .modo-banner{
   display:none;align-items:flex-start;gap:10px;
   border-radius:8px;padding:10px 14px;margin-bottom:16px;
@@ -510,11 +487,9 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .modo-banner.edicao{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.25);color:var(--amber)}
 .modo-banner.visualizacao{background:rgba(56,189,248,.06);border-color:rgba(56,189,248,.25);color:var(--sky)}
 
-/* ── STEPS (visibilidade) ── */
 .step-content{display:none}
 .step-content.active{display:block;animation:fadeUp .3s ease}
 
-/* ── UTILS ── */
 .status-chip{display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11px;line-height:1.4;border:1px solid transparent}
 .status-chip.show{display:block}
 .status-chip.ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--bright)}
@@ -528,7 +503,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
 </head>
 <body>
 
-<!-- ══ TOPBAR ══ -->
 <header class="topbar">
   <div class="brand">
     <div class="brand-icon">LC</div>
@@ -556,7 +530,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
   </div>
 </header>
 
-<!-- ══ STEPS BAR ══ -->
 <div class="steps-bar" id="steps-bar">
   <div class="step active" id="s1"><div class="step-circle">1</div><div class="step-label">Dados</div></div>
   <div class="step-line" id="l1"></div>
@@ -569,9 +542,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
 
 <main class="main">
 
-  <!-- ══════════════════════════════════════════
-       STEP 1 — DADOS EXTERNOS
-  ══════════════════════════════════════════ -->
   <div class="step-content active" id="step1">
     <div class="page-header">
       <div>
@@ -581,7 +551,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       <div class="step-badge">Tela 1 de 4</div>
     </div>
 
-    <!-- Identificação -->
     <div class="section">
       <div class="section-label">Identificação</div>
       <div class="g3">
@@ -603,7 +572,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       <div class="status-chip" id="status-busca"></div>
     </div>
 
-    <!-- Relatório e depósito -->
     <div class="section">
       <div class="section-label">Relatório e Movimentação Bancária</div>
       <div class="g2">
@@ -612,7 +580,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       </div>
     </div>
 
-    <!-- Troco -->
     <div class="section">
       <div class="section-label">Controle de Troco</div>
       <div class="g2">
@@ -622,7 +589,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       <div class="chip chip-green" id="chip-troco" style="margin-top:8px">Diferença: <strong id="chip-troco-val">—</strong></div>
     </div>
 
-    <!-- PIX e Prêmios -->
     <div class="section">
       <div class="section-label">PIX e Prêmios</div>
       <div class="g3">
@@ -636,7 +602,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       <div class="chip chip-amber" id="chip-pix" style="margin-top:8px">PIX líquido: <strong id="chip-pix-val">—</strong></div>
     </div>
 
-    <!-- Dívidas -->
     <div class="section">
       <div class="section-label">Dívidas de Clientes</div>
       <div class="dividas-list" id="dividas-list"></div>
@@ -659,9 +624,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════
-       STEP 2 — PRODUTOS + FEDERAIS
-  ══════════════════════════════════════════ -->
   <div class="step-content" id="step2">
     <div class="page-header">
       <div>
@@ -671,12 +633,9 @@ textarea#justificativa::placeholder{color:var(--dim)}
       <div class="step-badge">Tela 2 de 4</div>
     </div>
 
-    <!-- Produtos físicos -->
     <div class="section">
       <div class="section-label">Produtos Físicos</div>
       <div class="prod-grid">
-
-        <!-- Raspadinha -->
         <div class="prod-card" id="card-rasp">
           <div class="prod-head">
             <div class="prod-nome">Raspadinha</div>
@@ -689,7 +648,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
           </div>
         </div>
 
-        <!-- Telesena -->
         <div class="prod-card" id="card-tele">
           <div class="prod-head">
             <div class="prod-nome">Telesena</div>
@@ -717,7 +675,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       </div>
     </div>
 
-    <!-- Federais -->
     <div class="section">
       <div class="section-label">Bilhetes Federais</div>
       <button class="btn-buscar-fed" id="btn-fed" onclick="buscarFederais()">
@@ -760,7 +717,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       </div>
     </div>
 
-    <!-- Totais bar -->
     <div class="totais-bar">
       <div class="tot-item"><div class="tot-lbl">Raspadinha</div><div class="tot-val tv-a" id="t2-rasp">R$ 0,00</div></div>
       <div class="tot-item"><div class="tot-lbl">Telesena</div><div class="tot-val tv-g" id="t2-tele">R$ 0,00</div></div>
@@ -780,9 +736,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════
-       STEP 3 — BOLÕES
-  ══════════════════════════════════════════ -->
   <div class="step-content" id="step3">
     <div class="page-header">
       <div>
@@ -811,10 +764,8 @@ textarea#justificativa::placeholder{color:var(--dim)}
     </div>
 
     <div id="b3-lista" style="display:none">
-      <!-- renderizado por JS -->
       <div id="boloes-wrap"></div>
 
-      <!-- Card total geral -->
       <div style="display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,200,150,.1),rgba(0,200,150,.04));border:1px solid rgba(0,200,150,.3);border-radius:10px;padding:14px 20px;margin-top:20px;margin-bottom:10px;gap:16px">
         <div>
           <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Total Bolões Vendidos</div>
@@ -829,7 +780,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
         <div class="tot-item"><div class="tot-lbl">Total</div><div class="tot-val tv-b" id="tot-bol">R$ 0,00</div></div>
       </div>
 
-      <!-- Lista de vendas registradas -->
       <div class="vendas-list" id="vendas-registradas">
         <div class="vendas-list-title">Cotas vendidas registradas</div>
         <div id="vendas-items"></div>
@@ -848,9 +798,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════
-       STEP 4 — RESUMO FINAL
-  ══════════════════════════════════════════ -->
   <div class="step-content" id="step4">
     <div class="page-header">
       <div>
@@ -869,7 +816,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
     </div>
 
     <div class="grade">
-      <!-- Débitos -->
       <div class="bloco bloco-deb">
         <div class="bloco-head">
           <div class="bloco-head-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
@@ -882,7 +828,7 @@ textarea#justificativa::placeholder{color:var(--dim)}
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Total Bolões</div><div class="linha-val" id="r-boloes">R$ 0,00</div></div>
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Relatório Diário</div><div class="linha-val" id="r-relatorio">R$ 0,00</div></div>
       </div>
-      <!-- Créditos -->
+
       <div class="bloco bloco-cred">
         <div class="bloco-head">
           <div class="bloco-head-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c896" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
@@ -903,7 +849,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       </div>
     </div>
 
-    <!-- Quebra -->
     <div class="quebra-card q-eq" id="quebra-card">
       <div class="q-icon" id="q-icon">✓</div>
       <div class="q-info">
@@ -916,7 +861,6 @@ textarea#justificativa::placeholder{color:var(--dim)}
       </div>
     </div>
 
-    <!-- Justificativa -->
     <div class="just-wrap" id="just-wrap">
       <div class="just-label">⚠ Justificativa obrigatória — quebra identificada</div>
       <textarea id="justificativa" maxlength="500" placeholder="Descreva o motivo da diferença..."></textarea>
@@ -937,12 +881,11 @@ textarea#justificativa::placeholder{color:var(--dim)}
 
 </main>
 
-<!-- ══ MODAIS ══ -->
 <div class="overlay" id="m-inicio"><div class="modal-box"><div class="modal-icon">🏠</div><div class="modal-title">Voltar ao início?</div><div class="modal-desc">Os dados serão descartados e o formulário reiniciado.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-inicio')">Cancelar</button><button class="modal-ok verde" onclick="executarInicio()">Sim, reiniciar</button></div></div></div>
-<div class="overlay" id="m-sair"><div class="modal-box"><div class="modal-icon">🔒</div><div class="modal-title">Sair do sistema?</div><div class="modal-desc">Sua sessão será encerrada.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-sair')">Cancelar</button><button class="modal-ok vermelho" onclick="executarSair()">Sim, sair</button></div></div></div>
-<div class="overlay" id="m-sobrescrever"><div class="modal-box"><div class="modal-icon">⚠️</div><div class="modal-title">Fechamento já registrado</div><div class="modal-desc" id="m-sob-desc">Já existe um fechamento para esta data. Deseja sobrescrever?</div><div class="modal-btns"><button class="modal-cancel" onclick="responderModal('sob',false)">Cancelar</button><button class="modal-ok amber" onclick="responderModal('sob',true)">Sobrescrever</button></div></div></div>
 
-  <div class="overlay" id="m-token">
+<div class="overlay" id="m-sair"><div class="modal-box"><div class="modal-icon">🔒</div><div class="modal-title">Sair do sistema?</div><div class="modal-desc">Sua sessão será encerrada.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-sair')">Cancelar</button><button class="modal-ok vermelho" onclick="executarSair()">Sim, sair</button></div></div></div>
+
+<div class="overlay" id="m-token">
   <div class="modal-box" style="text-align:left">
     <div class="modal-title" style="color:var(--amber);margin-bottom:6px">Token de autorização</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
@@ -958,26 +901,282 @@ textarea#justificativa::placeholder{color:var(--dim)}
     </div>
   </div>
 </div>
-<div class="overlay" id="m-gravando"><div class="modal-box modal-gravando"><div class="spinner-lg"></div><div class="modal-title" id="m-grav-titulo">Gravando fechamento...</div><div style="font-size:11px;color:var(--muted)" id="m-grav-sub">Aguarde</div><div class="prog-bar-wrap"><div class="prog-bar" id="m-prog"></div></div></div></div>
+
+<div class="overlay" id="m-gravando">
+  <div class="modal-box modal-gravando">
+    <div class="spinner-lg"></div>
+    <div class="modal-title" id="m-grav-titulo">Gravando fechamento...</div>
+    <div style="font-size:11px;color:var(--muted)" id="m-grav-sub">Aguarde</div>
+    <div class="prog-bar-wrap"><div class="prog-bar" id="m-prog"></div></div>
+  </div>
+</div>
 
 <script>
-<script>
-// ══════════════════════════════════════════════════════════════
-// SISLOT — Fechamento de Caixa
-// Supabase-native | federais e bolões vindos do banco
-// ══════════════════════════════════════════════════════════════
+(function () {
+  const sb = supabase.createClient(
+    window.SISLOT_CONFIG.url,
+    window.SISLOT_CONFIG.anonKey
+  );
 
+  function perfilNorm(usuario) {
+    return String(usuario?.perfil || '').trim().toUpperCase();
+  }
+
+  function isAdmin(usuario) {
+    return perfilNorm(usuario) === 'ADMIN';
+  }
+
+  function isSocio(usuario) {
+    return perfilNorm(usuario) === 'SOCIO';
+  }
+
+  function isGerente(usuario) {
+    return perfilNorm(usuario) === 'GERENTE';
+  }
+
+  function isOperador(usuario) {
+    return perfilNorm(usuario) === 'OPERADOR';
+  }
+
+  function podeSelecionarFuncionario(usuario) {
+    return isAdmin(usuario) || isSocio(usuario) || isGerente(usuario);
+  }
+
+  function podeGravarFechamento({ usuarioLogado, funcionarioSelecionadoId }) {
+    if (isAdmin(usuarioLogado) || isSocio(usuarioLogado) || isGerente(usuarioLogado)) {
+      return true;
+    }
+
+    if (isOperador(usuarioLogado)) {
+      return Number(usuarioLogado?.id) === Number(funcionarioSelecionadoId);
+    }
+
+    return false;
+  }
+
+  function exigeTokenParaSobrescrever({ usuarioLogado }) {
+    if (isAdmin(usuarioLogado) || isSocio(usuarioLogado)) return false;
+    if (isGerente(usuarioLogado) || isOperador(usuarioLogado)) return true;
+    return true;
+  }
+
+  function avaliarPermissaoGravacao({
+    usuarioLogado,
+    funcionarioSelecionadoId,
+    existeFechamento
+  }) {
+    const podeGravar = podeGravarFechamento({
+      usuarioLogado,
+      funcionarioSelecionadoId
+    });
+
+    if (!podeGravar) {
+      return {
+        permitido: false,
+        exigeToken: false,
+        motivo: 'Usuário sem permissão para gravar este fechamento.'
+      };
+    }
+
+    const sobrescrevendo = !!existeFechamento;
+    const exigeToken = sobrescrevendo
+      ? exigeTokenParaSobrescrever({ usuarioLogado })
+      : false;
+
+    return {
+      permitido: true,
+      exigeToken,
+      sobrescrevendo,
+      motivo: ''
+    };
+  }
+
+  function gerarCodigoToken(tamanho = 6) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let out = '';
+    for (let i = 0; i < tamanho; i++) {
+      out += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return out;
+  }
+
+  async function gerarTokenSobrescrita({
+    loteriaId,
+    geradoPor,
+    minutos = 10,
+    observacao = ''
+  }) {
+    const token = gerarCodigoToken(6);
+    const expiraEm = new Date(Date.now() + minutos * 60 * 1000).toISOString();
+
+    const { data, error } = await sb
+      .from('autorizacoes_tokens')
+      .insert({
+        token,
+        tipo: 'SOBRESCREVER_FECHAMENTO',
+        loteria_id: loteriaId,
+        gerado_por: geradoPor,
+        expira_em: expiraEm,
+        observacao
+      })
+      .select('id, token, expira_em')
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async function validarTokenSobrescrita({ token, loteriaId }) {
+    const codigo = String(token || '').trim().toUpperCase();
+
+    if (!codigo) {
+      throw new Error('Informe o token.');
+    }
+
+    const { data, error } = await sb
+      .from('autorizacoes_tokens')
+      .select('*')
+      .eq('token', codigo)
+      .eq('tipo', 'SOBRESCREVER_FECHAMENTO')
+      .eq('ativo', true)
+      .is('usado_em', null)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Token inválido.');
+
+    if (Number(data.loteria_id) !== Number(loteriaId)) {
+      throw new Error('Token não autorizado para esta loteria.');
+    }
+
+    const agora = new Date();
+    const expira = new Date(data.expira_em);
+
+    if (expira <= agora) {
+      throw new Error('Token expirado.');
+    }
+
+    return data;
+  }
+
+  async function consumirTokenSobrescrita({
+    tokenId,
+    usadoPor,
+    fechamentoId = null
+  }) {
+    const { error } = await sb
+      .from('autorizacoes_tokens')
+      .update({
+        usado_por: usadoPor,
+        fechamento_id: fechamentoId,
+        usado_em: new Date().toISOString(),
+        ativo: false
+      })
+      .eq('id', tokenId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async function abrirModalToken() {
+    return new Promise(resolve => {
+      const modal = document.getElementById('m-token');
+      const input = document.getElementById('token-autorizacao');
+      const erro = document.getElementById('token-err');
+
+      if (!modal || !input || !erro) {
+        resolve(null);
+        return;
+      }
+
+      window.__fechamentoTokenResolver = resolve;
+
+      input.value = '';
+      erro.textContent = '';
+      erro.style.display = 'none';
+      modal.classList.add('show');
+
+      setTimeout(() => input.focus(), 30);
+    });
+  }
+
+  function fecharModalToken() {
+    const modal = document.getElementById('m-token');
+    if (modal) modal.classList.remove('show');
+  }
+
+  async function confirmarToken({ loteriaId }) {
+    const input = document.getElementById('token-autorizacao');
+    const erro = document.getElementById('token-err');
+
+    if (!input || !erro) return;
+
+    const codigo = input.value.trim().toUpperCase();
+
+    if (!codigo) {
+      erro.textContent = 'Informe o token.';
+      erro.style.display = 'block';
+      return;
+    }
+
+    try {
+      const tokenValido = await validarTokenSobrescrita({
+        token: codigo,
+        loteriaId
+      });
+
+      fecharModalToken();
+
+      if (window.__fechamentoTokenResolver) {
+        window.__fechamentoTokenResolver(tokenValido);
+        window.__fechamentoTokenResolver = null;
+      }
+    } catch (e) {
+      erro.textContent = e.message || 'Token inválido.';
+      erro.style.display = 'block';
+    }
+  }
+
+  function cancelarToken() {
+    fecharModalToken();
+
+    if (window.__fechamentoTokenResolver) {
+      window.__fechamentoTokenResolver(null);
+      window.__fechamentoTokenResolver = null;
+    }
+  }
+
+  window.FECHAMENTO_RULES = {
+    perfilNorm,
+    isAdmin,
+    isSocio,
+    isGerente,
+    isOperador,
+    podeSelecionarFuncionario,
+    podeGravarFechamento,
+    exigeTokenParaSobrescrever,
+    avaliarPermissaoGravacao,
+    gerarCodigoToken,
+    gerarTokenSobrescrita,
+    validarTokenSobrescrita,
+    consumirTokenSobrescrita,
+    abrirModalToken,
+    confirmarToken,
+    cancelarToken
+  };
+})();
+</script>
+
+<script>
 const sb = supabase.createClient(
   window.SISLOT_CONFIG.url,
   window.SISLOT_CONFIG.anonKey
 );
 
-// ── Estado global ──────────────────────────────────────────────
 let usuario = null;
-let loteriaAtiva = null;   // { id, nome, slug, codigo, principal, papelNaLoja }
+let loteriaAtiva = null;
 let todasLojas = [];
 let stepAtual = 1;
-let modoAtual = 'novo';    // novo | edicao | visualizacao
+let modoAtual = 'novo';
 let fechamentoOriginalId = null;
 
 const ESTADO = {
@@ -995,7 +1194,6 @@ let produtosRasp = [];
 let produtoTele = null;
 
 const PRECOS_RASP_FALLBACK = [2.50, 5.00, 10.00, 20.00];
-const resolvers = {};
 
 const $ = id => document.getElementById(id);
 const fmtBRL = v => 'R$ ' + Math.abs(Number(v || 0)).toFixed(2).replace('.', ',');
@@ -1007,26 +1205,11 @@ const fmtDataBR = iso => {
 };
 const n = id => parseFloat($(id)?.value) || 0;
 
-function perfilUpper(v) {
-  return String(v || '').trim().toUpperCase();
-}
-function isSocio(u) {
-  return perfilUpper(u?.perfil) === 'SOCIO';
-}
-function isGerente(u) {
-  return perfilUpper(u?.perfil) === 'GERENTE';
-}
-function isOperador(u) {
-  return perfilUpper(u?.perfil) === 'OPERADOR';
-}
-function isAdmin(u) {
-  return ['ADMIN', 'SOCIO'].includes(perfilUpper(u?.perfil));
-}
-
 function autoFill(el) {
   if (!el) return;
   el.classList.toggle('filled', String(el.value || '').trim() !== '');
 }
+
 function blurQ(id) {
   const i = $(id);
   if (i && i.value === '0') i.value = '';
@@ -1044,7 +1227,6 @@ function hideStatus(id) {
   el.className = 'status-chip';
 }
 
-// ── Relógio ────────────────────────────────────────────────────
 function updateClock() {
   const now = new Date();
   $('relogio').textContent =
@@ -1059,7 +1241,6 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 1000);
 
-// ── Navegação pelos steps clicando nas bolinhas ────────────────
 function bindStepClicks() {
   for (let i = 1; i <= 4; i++) {
     const el = $('s' + i);
@@ -1077,53 +1258,63 @@ function bindStepClicks() {
   }
 }
 
-// ── INIT ───────────────────────────────────────────────────────
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    location.href = './login.html';
-    return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      location.href = './login.html';
+      return;
+    }
+
+    const { data: usr, error: usrErr } = await sb
+      .from('usuarios')
+      .select('id, nome, email, perfil, ativo, pode_logar, auth_user_id')
+      .eq('auth_user_id', session.user.id)
+      .eq('ativo', true)
+      .eq('pode_logar', true)
+      .maybeSingle();
+
+    if (usrErr) {
+      console.error('Erro ao buscar usuário:', usrErr);
+      alert('Erro ao carregar usuário: ' + usrErr.message);
+      return;
+    }
+
+    if (!usr) {
+      alert('Usuário autenticado, mas não encontrado na tabela usuarios.');
+      location.href = './login.html';
+      return;
+    }
+
+    usuario = usr;
+
+    await carregarLojas();
+
+    if (!todasLojas.length) {
+      alert('Nenhuma loteria vinculada a este usuário.');
+      return;
+    }
+
+    renderSeletorLoteria();
+    await definirLoteriaAtiva(
+      todasLojas.find(l => l.principal) || todasLojas[0]
+    );
+
+    $('data-ref').value = new Date().toISOString().slice(0, 10);
+
+    await carregarProdutos();
+    buildRaspadinha();
+    bindStepClicks();
+    renderDivCount();
+
+    setFS('fs-inicial');
+    setB3('b3-inicial');
+  } catch (e) {
+    console.error(e);
+    alert('Erro ao iniciar: ' + (e.message || e));
   }
-
-  const { data: usr } = await sb
-    .from('usuarios')
-    .select('id, nome, email, perfil, ativo, pode_logar')
-    .eq('auth_user_id', session.user.id)
-    .eq('ativo', true)
-    .eq('pode_logar', true)
-    .maybeSingle();
-
-  if (!usr) {
-    location.href = './login.html';
-    return;
-  }
-
-  usuario = usr;
-
-  await carregarLojas();
-  if (!todasLojas.length) {
-    alert('Nenhuma loja vinculada a este usuário.');
-    return;
-  }
-
-  renderSeletorLoteria();
-  await definirLoteriaAtiva(
-    todasLojas.find(l => l.principal) || todasLojas[0]
-  );
-
-  $('data-ref').value = new Date().toISOString().slice(0, 10);
-
-  await carregarProdutos();
-  buildRaspadinha();
-  bindStepClicks();
-  renderDivCount();
-
-  // busca federais automaticamente ao abrir step 2
-  setFS('fs-inicial');
-  setB3('b3-inicial');
 }
 
-// ── LOJAS ──────────────────────────────────────────────────────
 async function carregarLojas() {
   const { data, error } = await sb
     .from('usuarios_loterias')
@@ -1137,7 +1328,7 @@ async function carregarLojas() {
     .eq('usuario_id', usuario.id);
 
   if (error) {
-    console.error(error);
+    console.error('Erro ao carregar lojas:', error);
     todasLojas = [];
     return;
   }
@@ -1185,49 +1376,68 @@ async function trocarLoteria() {
   if (stepAtual > 1) showStep(1);
 }
 
-// ── FUNCIONÁRIOS ───────────────────────────────────────────────
 async function carregarFuncionarios() {
-  const { data, error } = await sb
-    .from('usuarios_loterias')
-    .select(`
-      usuario_id,
-      ativo,
-      usuarios(id, nome, perfil, ativo, pode_logar)
-    `)
-    .eq('loteria_id', loteriaAtiva.id)
-    .eq('ativo', true);
-
-  if (error) {
-    console.error(error);
-  }
-
   const sel = $('funcionario');
-  sel.innerHTML = '<option value="">Selecione...</option>';
+  sel.innerHTML = '<option value="">Carregando...</option>';
 
-  const lista = (data || [])
-    .map(r => r.usuarios)
-    .filter(u => u && u.ativo && u.pode_logar);
+  try {
+    const { data, error } = await sb
+      .from('usuarios_loterias')
+      .select(`
+        usuario_id,
+        ativo,
+        usuarios(id, nome, perfil, ativo, pode_logar)
+      `)
+      .eq('loteria_id', loteriaAtiva.id)
+      .eq('ativo', true);
 
-  if (isAdmin(usuario) || isGerente(usuario)) {
-    lista.forEach(u => {
-      const opt = document.createElement('option');
-      opt.value = u.id;
-      opt.textContent = u.nome;
-      sel.appendChild(opt);
+    if (error) throw error;
+
+    const listaBruta = (data || []).flatMap(r => {
+      if (!r.usuarios) return [];
+      return Array.isArray(r.usuarios) ? r.usuarios : [r.usuarios];
     });
-    sel.disabled = false;
-    sel.value = '';
-    sel.classList.remove('filled');
-    return;
-  }
 
-  const opt = document.createElement('option');
-  opt.value = usuario.id;
-  opt.textContent = usuario.nome;
-  sel.appendChild(opt);
-  sel.value = String(usuario.id);
-  sel.disabled = true;
-  sel.classList.add('filled');
+    const lista = listaBruta
+      .filter(u => u && u.ativo && u.pode_logar)
+      .filter((u, i, arr) => arr.findIndex(x => Number(x.id) === Number(u.id)) === i)
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+
+    sel.innerHTML = '<option value="">Selecione...</option>';
+
+    if (FECHAMENTO_RULES.podeSelecionarFuncionario(usuario)) {
+      lista.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.nome;
+        sel.appendChild(opt);
+      });
+
+      sel.disabled = false;
+      sel.value = '';
+      sel.classList.remove('filled');
+
+      if (!lista.length) {
+        showStatus('status-busca', 'Nenhum funcionário ativo encontrado para esta loteria.', 'err');
+      } else {
+        hideStatus('status-busca');
+      }
+      return;
+    }
+
+    const opt = document.createElement('option');
+    opt.value = usuario.id;
+    opt.textContent = usuario.nome;
+    sel.appendChild(opt);
+    sel.value = String(usuario.id);
+    sel.disabled = true;
+    sel.classList.add('filled');
+    hideStatus('status-busca');
+  } catch (e) {
+    console.error('Erro ao carregar funcionários:', e);
+    sel.innerHTML = '<option value="">Erro ao carregar</option>';
+    showStatus('status-busca', 'Erro ao carregar funcionários: ' + e.message, 'err');
+  }
 }
 
 function onFuncChange() {
@@ -1235,7 +1445,6 @@ function onFuncChange() {
   sel.classList.toggle('filled', !!sel.value);
 }
 
-// ── STEPS ──────────────────────────────────────────────────────
 function showStep(n) {
   stepAtual = n;
 
@@ -1266,7 +1475,10 @@ function showStep(n) {
 
 async function avancarStep(para) {
   if (para > stepAtual) {
-    if (stepAtual === 1 && !validarStep1()) return;
+    if (stepAtual === 1) {
+      if (!validarStep1()) return;
+      coletarTela1();
+    }
     if (stepAtual === 2) coletarTela2();
     if (stepAtual === 3) coletarTela3();
   }
@@ -1287,7 +1499,6 @@ async function avancarStep(para) {
   showStep(para);
 }
 
-// ── VALIDAÇÃO STEP 1 ───────────────────────────────────────────
 function validarStep1() {
   const reqs = [
     'funcionario',
@@ -1324,7 +1535,6 @@ function validarStep1() {
   return ok;
 }
 
-// ── CHIPS ──────────────────────────────────────────────────────
 function calcTroco() {
   const ini = n('troco-ini');
   const sob = n('troco-sob');
@@ -1357,7 +1567,6 @@ function calcPix() {
   }
 }
 
-// ── DÍVIDAS ────────────────────────────────────────────────────
 let dividaCount = 0;
 const MAX_DIV = 9;
 
@@ -1431,7 +1640,6 @@ function remDivida(btn) {
   }, 200);
 }
 
-// ── PRODUTOS ───────────────────────────────────────────────────
 async function carregarProdutos() {
   const { data, error } = await sb
     .from('produtos')
@@ -1585,7 +1793,6 @@ function updT2Geral() {
   $('t2-fed').textContent = 'R$ ' + getFedTot().toFixed(2).replace('.', ',');
 }
 
-// ── FECHAMENTO EXISTENTE ───────────────────────────────────────
 async function buscarFechamentoExistente() {
   const funcId = $('funcionario').value;
   const dataRef = $('data-ref').value;
@@ -1712,7 +1919,6 @@ function mapBolaoFech(b) {
   };
 }
 
-// ── FEDERAIS ───────────────────────────────────────────────────
 function setFS(s) {
   ['fs-inicial', 'fs-loading', 'fs-erro', 'fs-vazio', 'fs-lista'].forEach(id => {
     const el = $(id);
@@ -1861,7 +2067,6 @@ function restaurarFederais() {
   });
 }
 
-// ── BOLÕES ─────────────────────────────────────────────────────
 function setB3(s) {
   ['b3-inicial', 'b3-loading', 'b3-erro', 'b3-vazio', 'b3-lista'].forEach(id => {
     const el = $(id);
@@ -1928,7 +2133,7 @@ async function carregarBoloes() {
     const mapaExt = {};
 
     (movsExt || []).forEach(m => {
-      const b = m.boloes;
+      const b = Array.isArray(m.boloes) ? m.boloes[0] : m.boloes;
       if (!b || b.status !== 'ATIVO') return;
       if (b.dt_inicial > dataRef || b.dt_concurso < dataRef) return;
 
@@ -2130,6 +2335,10 @@ function updBolTotais() {
   const be = $('bloco-tot-externo');
   if (be) be.textContent = fmtBRL(tExt);
 
+  document.querySelectorAll('[id^="mod-tot-"]').forEach(el => {
+    el.textContent = 'R$ 0,00';
+  });
+
   const modTots = {};
   allBoloes.forEach(({ tipo, data, idx }) => {
     const qtd = parseInt($(`qtd-${idx}`)?.value) || 0;
@@ -2182,7 +2391,6 @@ function restaurarBoloes() {
   });
 }
 
-// ── COLETAR DADOS ──────────────────────────────────────────────
 function coletarTela1() {
   const dividas = [];
   document.querySelectorAll('.divida-row').forEach(row => {
@@ -2255,7 +2463,6 @@ function coletarTela3() {
   };
 }
 
-// ── RESUMO ─────────────────────────────────────────────────────
 function montarResumo() {
   coletarTela1();
   coletarTela2();
@@ -2382,6 +2589,16 @@ function detectarModo() {
     banner.classList.add('show', 'novo');
     $('btn-final').className = 'btn-finalizar salvar';
     $('btn-final-txt').textContent = 'Finalizar Fechamento';
+    $('btn-final').disabled = false;
+    return;
+  }
+
+  if (modoAtual === 'visualizacao') {
+    banner.innerHTML = '<span>Modo <strong>visualização</strong> — confira os dados carregados. Ao clicar no botão, o formulário será reiniciado para novo fechamento.</span>';
+    banner.classList.add('show', 'visualizacao');
+    $('btn-final').className = 'btn-finalizar visualizar';
+    $('btn-final-txt').textContent = 'Novo Fechamento';
+    $('btn-final').disabled = false;
     return;
   }
 
@@ -2390,6 +2607,7 @@ function detectarModo() {
   banner.classList.add('show', 'edicao');
   $('btn-final').className = 'btn-finalizar salvar';
   $('btn-final-txt').textContent = 'Salvar Alterações';
+  $('btn-final').disabled = false;
 }
 
 function toggleDividas() {
@@ -2401,198 +2619,6 @@ function toggleDividas() {
   arrow.style.transform = open ? 'rotate(0)' : 'rotate(90deg)';
 }
 
-// ── REGRAS DE PERMISSÃO ────────────────────────────────────────
-function getFuncionarioSelecionado() {
-  const id = $('funcionario').value;
-  const nome = $('funcionario').options[$('funcionario').selectedIndex]?.text || '';
-  return { id, nome };
-}
-
-function isMesmoFuncionarioSelecionado() {
-  return String(getFuncionarioSelecionado().id || '') === String(usuario?.id || '');
-}
-
-function isMesmaDataHoje(dataRef) {
-  const hoje = new Date().toISOString().slice(0, 10);
-  return String(dataRef || '') === hoje;
-}
-
-function abrirModalAdmin() {
-  return new Promise(resolve => {
-    resolvers.admin = resolve;
-    $('admin-login').value = '';
-    $('admin-senha').value = '';
-    $('admin-err').style.display = 'none';
-    $('m-admin').classList.add('show');
-    $('admin-login').focus();
-  });
-}
-
-async function confirmarAdmin() {
-  const login = $('admin-login').value.trim();
-  const senha = $('admin-senha').value.trim();
-  const err = $('admin-err');
-
-  if (!login || !senha) {
-    err.textContent = 'Informe usuário e senha.';
-    err.style.display = 'block';
-    return;
-  }
-
-  try {
-    const { data: aprovador } = await sb
-      .from('usuarios')
-      .select('id, nome, perfil, ativo')
-      .ilike('nome', login)
-      .eq('ativo', true)
-      .maybeSingle();
-
-    if (!aprovador || !isSocio(aprovador)) {
-      err.textContent = 'Autorização válida apenas com usuário sócio.';
-      err.style.display = 'block';
-      return;
-    }
-
-    fecharModal('m-admin');
-    if (resolvers.admin) {
-      resolvers.admin(aprovador);
-      delete resolvers.admin;
-    }
-  } catch (e) {
-    err.textContent = 'Erro ao validar.';
-    err.style.display = 'block';
-  }
-}
-
-function perguntarSobrescrever(func, data) {
-  return new Promise(resolve => {
-    resolvers.sob = resolve;
-    $('m-sob-desc').textContent = `Já existe um fechamento de "${func}" para ${data}. Deseja sobrescrever?`;
-    $('m-sobrescrever').classList.add('show');
-  });
-}
-
-function responderModal(key, val) {
-  fecharModal(`m-${key}`);
-  if (resolvers[key]) {
-    resolvers[key](val);
-    delete resolvers[key];
-  }
-}
-
-async function avaliarPermissaoGravacao({ existeFechamento, dataRef }) {
-  const mesmoFuncionario = isMesmoFuncionarioSelecionado();
-  const hoje = isMesmaDataHoje(dataRef);
-
-  if (isAdmin(usuario)) {
-    return {
-      permitido: true,
-      sobrescrever: !!existeFechamento,
-      aprovador: null
-    };
-  }
-
-  if (isGerente(usuario)) {
-    if (!existeFechamento) {
-      return {
-        permitido: true,
-        sobrescrever: false,
-        aprovador: null
-      };
-    }
-
-    if (mesmoFuncionario && hoje) {
-      return {
-        permitido: true,
-        sobrescrever: true,
-        aprovador: null
-      };
-    }
-
-    const confirmar = await perguntarSobrescrever(
-      getFuncionarioSelecionado().nome,
-      fmtDataBR(dataRef)
-    );
-    if (!confirmar) {
-      return { permitido: false, motivo: 'Sobrescrita cancelada.' };
-    }
-
-    const aprovador = await abrirModalAdmin();
-    if (!aprovador) {
-      return { permitido: false, motivo: 'Autorização não concedida.' };
-    }
-
-    return {
-      permitido: true,
-      sobrescrever: true,
-      aprovador
-    };
-  }
-
-  if (isOperador(usuario)) {
-    if (!mesmoFuncionario) {
-      return {
-        permitido: false,
-        motivo: 'Operador só pode gravar o próprio fechamento.'
-      };
-    }
-
-    if (!existeFechamento) {
-      return {
-        permitido: true,
-        sobrescrever: false,
-        aprovador: null
-      };
-    }
-
-    if (hoje) {
-      const confirmar = await perguntarSobrescrever(
-        getFuncionarioSelecionado().nome,
-        fmtDataBR(dataRef)
-      );
-      if (!confirmar) {
-        return { permitido: false, motivo: 'Sobrescrita cancelada.' };
-      }
-
-      const aprovador = await abrirModalAdmin();
-      if (!aprovador) {
-        return { permitido: false, motivo: 'Autorização não concedida.' };
-      }
-
-      return {
-        permitido: true,
-        sobrescrever: true,
-        aprovador
-      };
-    }
-
-    const confirmar = await perguntarSobrescrever(
-      getFuncionarioSelecionado().nome,
-      fmtDataBR(dataRef)
-    );
-    if (!confirmar) {
-      return { permitido: false, motivo: 'Sobrescrita cancelada.' };
-    }
-
-    const aprovador = await abrirModalAdmin();
-    if (!aprovador) {
-      return { permitido: false, motivo: 'Autorização não concedida.' };
-    }
-
-    return {
-      permitido: true,
-      sobrescrever: true,
-      aprovador
-    };
-  }
-
-  return {
-    permitido: false,
-    motivo: 'Perfil sem permissão para gravar fechamento.'
-  };
-}
-
-// ── FINALIZAR ──────────────────────────────────────────────────
 async function finalizar() {
   if (modoAtual === 'visualizacao') {
     resetEstado();
@@ -2614,7 +2640,7 @@ async function finalizar() {
     let existeId = fechamentoOriginalId;
 
     if (!existeId) {
-      const { data: existe } = await sb
+      const { data: existe, error: errExiste } = await sb
         .from('fechamentos')
         .select('id')
         .eq('loteria_id', loteriaAtiva.id)
@@ -2622,22 +2648,34 @@ async function finalizar() {
         .eq('data_ref', t1.data_ref)
         .maybeSingle();
 
+      if (errExiste) throw errExiste;
       if (existe?.id) existeId = existe.id;
     }
 
-    const permissao = await avaliarPermissaoGravacao({
-      existeFechamento: !!existeId,
-      dataRef: t1.data_ref
+    const permissao = FECHAMENTO_RULES.avaliarPermissaoGravacao({
+      usuarioLogado: usuario,
+      funcionarioSelecionadoId: t1.funcionario_id,
+      existeFechamento: !!existeId
     });
 
     if (!permissao.permitido) {
       btn.disabled = false;
-      if (permissao.motivo) alert(permissao.motivo);
+      alert(permissao.motivo || 'Sem permissão para gravar.');
       return;
     }
 
-    const sobrescrever = !!permissao.sobrescrever;
-    const aprovador = permissao.aprovador || null;
+    let tokenAutorizado = null;
+
+    if (permissao.exigeToken) {
+      tokenAutorizado = await FECHAMENTO_RULES.abrirModalToken();
+
+      if (!tokenAutorizado) {
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    const sobrescrever = !!permissao.sobrescrevendo;
 
     showGravando('Gravando fechamento de ' + t1.funcionario_nome + '...');
     setProgress(10);
@@ -2674,7 +2712,7 @@ async function finalizar() {
       quebra,
       justificativa: justif,
       criado_por: usuario.id,
-      sobrescrito_por: aprovador?.id || null,
+      sobrescrito_por: tokenAutorizado?.gerado_por || null,
       updated_at: new Date().toISOString()
     };
 
@@ -2683,10 +2721,17 @@ async function finalizar() {
     let fechId;
 
     if (sobrescrever && existeId) {
-      await sb.from('fechamento_produtos').delete().eq('fechamento_id', existeId);
-      await sb.from('fechamento_federais').delete().eq('fechamento_id', existeId);
-      await sb.from('fechamento_boloes').delete().eq('fechamento_id', existeId);
-      await sb.from('fechamento_dividas').delete().eq('fechamento_id', existeId);
+      const { error: delProdErr } = await sb.from('fechamento_produtos').delete().eq('fechamento_id', existeId);
+      if (delProdErr) throw delProdErr;
+
+      const { error: delFedErr } = await sb.from('fechamento_federais').delete().eq('fechamento_id', existeId);
+      if (delFedErr) throw delFedErr;
+
+      const { error: delBolErr } = await sb.from('fechamento_boloes').delete().eq('fechamento_id', existeId);
+      if (delBolErr) throw delBolErr;
+
+      const { error: delDivErr } = await sb.from('fechamento_dividas').delete().eq('fechamento_id', existeId);
+      if (delDivErr) throw delDivErr;
 
       const { error: errUpd } = await sb
         .from('fechamentos')
@@ -2745,6 +2790,9 @@ async function finalizar() {
       .map(f => ({
         fechamento_id: fechId,
         federal_id: f.federal_id,
+        concurso: f.concurso,
+        modalidade: f.modalidade,
+        dt_sorteio: f.dtSorteio,
         qtd_vendida: f.qtdVendida,
         valor_fracao: f.valorUnit,
         total: f.subtotal
@@ -2798,6 +2846,14 @@ async function finalizar() {
       if (error) throw error;
     }
 
+    if (tokenAutorizado?.id) {
+      await FECHAMENTO_RULES.consumirTokenSobrescrita({
+        tokenId: tokenAutorizado.id,
+        usadoPor: usuario.id,
+        fechamentoId: fechId
+      });
+    }
+
     setProgress(100);
     hideGravando();
 
@@ -2824,7 +2880,6 @@ async function finalizar() {
   }
 }
 
-// ── MODAIS ─────────────────────────────────────────────────────
 function fecharModal(id) {
   $(id).classList.remove('show');
 }
@@ -2850,6 +2905,8 @@ async function executarSair() {
 
 function showGravando(titulo) {
   $('m-grav-titulo').textContent = titulo;
+  $('m-grav-sub').textContent = 'Aguarde';
+  $('m-prog').style.width = '0%';
   $('m-gravando').classList.add('show');
 }
 
@@ -2862,7 +2919,6 @@ function setProgress(pct) {
   $('m-grav-sub').textContent = pct + '%';
 }
 
-// ── RESET ──────────────────────────────────────────────────────
 function resetEstado() {
   ESTADO.tela1 = {};
   ESTADO.tela2 = { raspadinha: [], telesena: null, federais: [] };
@@ -2893,6 +2949,11 @@ function resetEstado() {
       el.classList.remove('has-error');
     }
   });
+
+  if (FECHAMENTO_RULES.podeSelecionarFuncionario(usuario)) {
+    $('funcionario').value = '';
+    $('funcionario').classList.remove('filled');
+  }
 
   $('dividas-list').innerHTML = '';
   dividaCount = 0;
@@ -2931,7 +2992,6 @@ function resetEstado() {
   hideStatus('status-busca');
 }
 
-// ── START ──────────────────────────────────────────────────────
 init();
 </script>
 </body>
