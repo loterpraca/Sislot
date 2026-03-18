@@ -34,7 +34,6 @@
         repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(30,58,110,0.15) 39px, rgba(30,58,110,0.15) 40px);
     }
 
-    /* ── Topbar ── */
     .topbar {
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 32px; height: 56px;
@@ -84,13 +83,11 @@
     .btn-logout:hover { background: rgba(255,82,82,0.08); border-color: var(--error); color: var(--error); }
     .btn-logout svg { width: 12px; height: 12px; }
 
-    /* ── Main ── */
     .main {
       flex: 1; max-width: 900px; width: 100%;
       margin: 0 auto; padding: 40px 32px 48px;
     }
 
-    /* ── Hero ── */
     .hero { margin-bottom: 36px; animation: fadeIn 0.45s ease both; }
 
     .hero-tag {
@@ -114,7 +111,6 @@
     .hero-title span { color: var(--accent); }
     .hero-sub { font-size: 14px; color: var(--text-mid); font-weight: 300; }
 
-    /* ── Stats ── */
     .stats-row {
       display: grid; grid-template-columns: 1fr 1fr 1fr;
       gap: 10px; margin-bottom: 28px;
@@ -127,8 +123,6 @@
       transition: border-color 0.2s;
     }
     .stat-card:hover { border-color: rgba(0,200,150,0.3); }
-    /* Card da direita alinhado à direita */
-    .stat-card.right { margin-left: auto; }
     .stat-icon {
       width: 32px; height: 32px; border-radius: 7px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -150,7 +144,6 @@
       font-weight: 600; color: var(--text-bright);
     }
 
-    /* ── Section sep ── */
     .section-sep {
       display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
     }
@@ -161,7 +154,6 @@
     }
     .section-sep-line { flex: 1; height: 1px; background: var(--blue-border); }
 
-    /* ── Menu cards ── */
     .menu-grid {
       display: grid; grid-template-columns: repeat(3, 1fr);
       gap: 10px; margin-bottom: 10px;
@@ -197,20 +189,6 @@
     .menu-card.featured {
       border-color: rgba(0,200,150,0.3);
       background: linear-gradient(145deg, rgba(0,200,150,0.07) 0%, var(--blue-panel) 60%);
-    }
-
-    /* Badge "Em breve" para cards de desenvolvimento */
-    .menu-card.soon {
-      opacity: 0.6; cursor: default;
-      pointer-events: none;
-    }
-    .badge-soon {
-      position: absolute; top: 8px; right: 8px;
-      font-family: 'IBM Plex Mono', monospace; font-size: 8px;
-      font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--amber); background: rgba(245,166,35,0.1);
-      border: 1px solid rgba(245,166,35,0.25); border-radius: 3px;
-      padding: 2px 5px;
     }
 
     .card-arrow {
@@ -250,7 +228,6 @@
     .card-title { font-size: 13px; font-weight: 600; color: var(--text-bright); line-height: 1.2; }
     .card-desc  { font-size: 10px; color: var(--text-dim); font-weight: 300; line-height: 1.4; margin-top: 2px; }
 
-    /* ── Lojas ── */
     .lojas-row { display: flex; gap: 10px; flex-wrap: wrap; }
     .loja-chip {
       display: flex; align-items: center; gap: 8px;
@@ -267,7 +244,6 @@
     }
     .loja-logo img { width: 100%; height: 100%; object-fit: contain; }
 
-    /* ── Footer ── */
     footer {
       padding: 18px 32px; text-align: center;
       font-family: 'IBM Plex Mono', monospace; font-size: 10px;
@@ -275,7 +251,6 @@
       border-top: 1px solid var(--blue-border);
     }
 
-    /* ── Animations ── */
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -338,7 +313,6 @@
 </header>
 
 <div class="main">
-
   <div class="hero">
     <div class="hero-tag">
       <div class="hero-tag-dot"></div>
@@ -349,7 +323,6 @@
   </div>
 
   <div class="stats-row">
-    <!-- Vendas WhatsApp hoje -->
     <div class="stat-card">
       <div class="stat-icon si-green">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -362,7 +335,6 @@
       </div>
     </div>
 
-    <!-- Venda Marketplace -->
     <div class="stat-card">
       <div class="stat-icon si-amber">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -377,7 +349,6 @@
       </div>
     </div>
 
-    <!-- Movimentações hoje (direita) -->
     <div class="stat-card">
       <div class="stat-icon si-mov">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -400,11 +371,8 @@
       <div class="section-sep-line"></div>
     </div>
 
-    <!-- Grid 1: Gestão -->
     <div class="menu-grid">
-
-      <!-- 1. Cadastrar -->
-      <a class="menu-card featured" href="./bolao-cadastro.html">
+      <a class="menu-card featured card-cadastro" href="./bolao-cadastro.html">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-green">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -419,8 +387,7 @@
         </div>
       </a>
 
-      <!-- 2. Movimentar -->
-      <a class="menu-card" href="./movimentar.html" style="--card-color:#38bdf8">
+      <a class="menu-card card-movimentacao" href="./movimentar.html" style="--card-color:#38bdf8">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-blue">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -436,8 +403,7 @@
         </div>
       </a>
 
-      <!-- 3. Buscar -->
-      <a class="menu-card" href="./exibir.html" style="--card-color:var(--amber)">
+      <a class="menu-card card-exibir" href="./exibir.html" style="--card-color:var(--amber)">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-amber">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -451,8 +417,7 @@
         </div>
       </a>
 
-      <!-- 4. Fechamento -->
-      <a class="menu-card" href="./fechamento-caixa.html" style="--card-color:#a78bfa">
+      <a class="menu-card card-fechamento" href="./fechamento-caixa.html" style="--card-color:#a78bfa">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-purple">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -467,46 +432,41 @@
         </div>
       </a>
 
-     <!-- 5. Federal -->
-<a class="menu-card" href="./federais-gestao.html" style="--card-color:#ff5252">
-  <div class="card-icon ci-red">
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-      <line x1="1" y1="10" x2="23" y2="10"/>
-    </svg>
-  </div>
-  <div>
-    <div class="card-title">Federal</div>
-    <div class="card-desc">Gestão de bilhetes federais</div>
-  </div>
-</a>
+      <a class="menu-card card-federal" href="./federais-gestao.html" style="--card-color:#ff5252">
+        <div class="card-icon ci-red">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+        </div>
+        <div>
+          <div class="card-title">Federal</div>
+          <div class="card-desc">Gestão de bilhetes federais</div>
+        </div>
+      </a>
 
-<!-- 6. Produtos -->
-<a class="menu-card" href="./produtos-gestao.html" style="--card-color:#14b8a6">
-  <div class="card-icon ci-teal">
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <path d="M16 10a4 4 0 0 1-8 0"/>
-    </svg>
-  </div>
-  <div>
-    <div class="card-title">Produtos</div>
-    <div class="card-desc">Controle de estoque</div>
-  </div>
-</a>
-    </div><!-- fecha menu-grid -->
-    <!-- Separador Vendas -->
+      <a class="menu-card card-produtos" href="./produtos-gestao.html" style="--card-color:#14b8a6">
+        <div class="card-icon ci-teal">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+        </div>
+        <div>
+          <div class="card-title">Produtos</div>
+          <div class="card-desc">Controle de estoque</div>
+        </div>
+      </a>
+    </div>
+
     <div class="section-sep" style="margin-bottom:12px;margin-top:4px;">
       <div class="section-sep-label">Canais de Venda</div>
       <div class="section-sep-line"></div>
     </div>
 
-    <!-- Grid 2: Vendas -->
     <div class="vendas-grid">
-
-      <!-- 7. WhatsApp -->
-      <a class="menu-card" href="./whatsapp-vendas.html" style="--card-color:#25d366">
+      <a class="menu-card card-whatsapp" href="./whatsapp-vendas.html" style="--card-color:#25d366">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-wpp">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="#25d366">
@@ -519,8 +479,7 @@
         </div>
       </a>
 
-      <!-- 8. Marketplace -->
-      <a class="menu-card" href="./marketplace-vendas.html" style="--card-color:#f5a623">
+      <a class="menu-card card-marketplace" href="./marketplace-vendas.html" style="--card-color:#f5a623">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-amber">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -535,8 +494,7 @@
         </div>
       </a>
 
-      <!-- 9. Caixa -->
-      <a class="menu-card" href="./caixa-vendas.html" style="--card-color:#a78bfa">
+      <a class="menu-card card-caixa" href="./caixa-vendas.html" style="--card-color:#a78bfa">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-purple">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -550,7 +508,6 @@
           <div class="card-desc">Vendas presenciais</div>
         </div>
       </a>
-
     </div>
   </div>
 
@@ -560,7 +517,7 @@
       <div class="section-sep-line"></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px;">
-      <a class="menu-card" href="./configuracoes.html" style="--card-color:#a78bfa">
+      <a class="menu-card card-config" href="./configuracoes.html" style="--card-color:#a78bfa">
         <div class="card-arrow">→</div>
         <div class="card-icon ci-purple">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -604,13 +561,13 @@
       </div>
     </div>
   </div>
-
 </div>
 
 <footer>SISLOT v2.0 · Sistema de Gestão de Bolões · Supabase Auth</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sislot-config.js"></script>
+<script src="./sislot-security.js"></script>
 <script>
   const sb = supabase.createClient(
     window.SISLOT_CONFIG.url,
@@ -618,54 +575,73 @@
   );
 
   const PERFIL_LABEL = {
-    'ADMIN':   'Administrador',
-    'SOCIO':   'Sócio',
+    'ADMIN': 'Administrador',
+    'SOCIO': 'Sócio',
     'GERENTE': 'Gerente',
+    'OPERADOR': 'Operador',
   };
 
   function updateClock() {
     const now = new Date();
     document.getElementById('relogio').textContent =
       now.toLocaleTimeString('pt-BR') + ' — ' +
-      now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+      now.toLocaleDateString('pt-BR', {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
   }
-  updateClock();
-  setInterval(updateClock, 1000);
 
-  async function init() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { location.href = './login.html'; return; }
-
-    const { data: usr } = await sb
-      .from('usuarios')
-      .select('id, nome, perfil, ativo, pode_logar')
-      .eq('auth_user_id', session.user.id)
-      .eq('ativo', true)
-      .eq('pode_logar', true)
-      .maybeSingle();
-
-    if (!usr) { location.href = './login.html'; return; }
-
-    if (!['SOCIO', 'ADMIN', 'GERENTE'].includes(usr.perfil)) {
-      alert('Sem permissão para acessar o sistema.');
-      await sb.auth.signOut();
-      location.href = './login.html';
-      return;
-    }
-
+  function preencherUsuario(usr) {
     const primeiroNome = usr.nome?.split(' ')[0] || 'Usuário';
     const iniciais = usr.nome?.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || '?';
 
-    document.getElementById('heroNome').textContent   = primeiroNome;
-    document.getElementById('userName').textContent   = usr.nome;
-    document.getElementById('userRole').textContent   = PERFIL_LABEL[usr.perfil] || usr.perfil;
+    document.getElementById('heroNome').textContent = primeiroNome;
+    document.getElementById('userName').textContent = usr.nome || 'Usuário';
+    document.getElementById('userRole').textContent = PERFIL_LABEL[usr.perfil] || usr.perfil || '—';
     document.getElementById('userAvatar').textContent = iniciais;
+  }
 
-    if (usr.perfil === 'ADMIN') {
-      document.getElementById('adminWrap').style.display = '';
+  function esconder(seletor) {
+    document.querySelectorAll(seletor).forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+
+  function aplicarPermissoesMenu(perfil) {
+    // base: tudo visível
+    // gerente e operador: só fechamento
+    if (perfil === 'GERENTE' || perfil === 'OPERADOR') {
+      esconder('.card-cadastro');
+      esconder('.card-movimentacao');
+      esconder('.card-exibir');
+      esconder('.card-federal');
+      esconder('.card-produtos');
+      esconder('.card-whatsapp');
+      esconder('.card-marketplace');
+      esconder('.card-caixa');
+      esconder('.card-config');
+      document.getElementById('adminWrap').style.display = 'none';
+      return;
     }
 
+    // sócio: sem administração
+    if (perfil === 'SOCIO') {
+      esconder('.card-config');
+      document.getElementById('adminWrap').style.display = 'none';
+      return;
+    }
+
+    // admin: vê tudo
+    if (perfil === 'ADMIN') {
+      document.getElementById('adminWrap').style.display = '';
+    }
+  }
+
+  async function carregarIndicadores() {
     const hoje = new Date().toISOString().slice(0, 10);
+
     const [
       { count: totalMovs },
       { count: totalWpp },
@@ -679,14 +655,34 @@
     document.getElementById('statVendasWpp').textContent   = totalWpp  ?? '—';
     document.getElementById('statMarketplace').textContent = totalMkt  ?? '—';
     document.getElementById('statMovs').textContent        = totalMovs ?? '—';
+  }
+
+  async function init() {
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user?.id) {
+      location.href = './login.html';
+      return;
+    }
+
+    const usr = await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
+    preencherUsuario(usr);
+    aplicarPermissoesMenu(usr.perfil);
+    await carregarIndicadores();
 
     document.getElementById('btnLogout').onclick = async () => {
-      await sb.auth.signOut();
-      location.href = './login.html';
+      await window.SISLOT_SECURITY.sair();
     };
   }
 
-  init();
+  init().catch(async err => {
+    console.error(err);
+    try { await window.SISLOT_SECURITY.sair(); } catch (_) {
+      location.href = './login.html';
+    }
+  });
 </script>
 </body>
 </html>
