@@ -60,6 +60,7 @@
       return {
         permitido: false,
         exigeToken: false,
+        sobrescrevendo: false,
         motivo: 'Usuário sem permissão para gravar este fechamento.'
       };
     }
