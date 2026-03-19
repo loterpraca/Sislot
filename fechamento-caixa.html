@@ -1847,7 +1847,40 @@ async function buscarFechamentoExistente() {
     btn.textContent = 'Buscar Fechamento';
   }
 }
+function montarTela3DoFechamento(fech) {
+  const internos = [];
+  const externos = [];
 
+  (fech.fechamento_boloes || []).forEach(b => {
+    const item = {
+      bolao_id: b.bolao_id,
+      modalidade: b.modalidade,
+      concurso: b.concurso,
+      valorCota: b.valor_cota,
+      qtdVendida: b.qtd_vendida,
+      total: b.total,
+      origem: b.origem || null,
+      tipo: b.tipo || null
+    };
+
+    // classifica
+    if (b.tipo === 'EXTERNO' || b.origem) {
+      externos.push(item);
+    } else {
+      internos.push(item);
+    }
+  });
+
+  return {
+    internos,
+    externos,
+    dividas: (fech.fechamento_dividas || []).map(d => ({
+      id: d.id,
+      descricao: d.descricao,
+      valor: d.valor
+    }))
+  };
+}
 function preencherTela1(fech) {
   const set = (id, v) => {
     const el = $(id);
