@@ -4,11 +4,11 @@ const sb = supabase.createClient(
 );
 
 const LOJAS = [
-  { slug: 'boulevard',    nome: 'Boulevard',    logo: './Icons/boulevard.png'    },
-  { slug: 'centro',       nome: 'Centro',       logo: './Icons/loterpraca.png'   },
-  { slug: 'lotobel',      nome: 'Lotobel',      logo: './Icons/lotobel.png'      },
-  { slug: 'santa-tereza', nome: 'Santa Tereza', logo: './Icons/santa-tereza.png' },
-  { slug: 'via-brasil',   nome: 'Via Brasil',   logo: './Icons/via-brasil.png'   },
+  { slug: 'boulevard',    nome: 'Boulevard',    logo: './icons/boulevard.png'    },
+  { slug: 'centro',       nome: 'Centro',       logo: './icons/loterpraca.png'   },
+  { slug: 'lotobel',      nome: 'Lotobel',      logo: './icons/lotobel.png'      },
+  { slug: 'santa-tereza', nome: 'Santa Tereza', logo: './icons/santa-tereza.png' },
+  { slug: 'via-brasil',   nome: 'Via Brasil',   logo: './icons/via-brasil.png'   },
 ];
 
 let usuario = null;
