@@ -896,6 +896,14 @@ function bind() {
   $('btnDcPrev').onclick = () => addDias('dataConcurso', -1);
   $('btnDcNext').onclick = () => addDias('dataConcurso', +1);
 
+  $('btnConcursoPrev')?.addEventListener('click', async () => {
+    await ajustarConcurso(-1);
+  });
+
+  $('btnConcursoNext')?.addEventListener('click', async () => {
+    await ajustarConcurso(1);
+  });
+
   $('btnCadastrar')?.addEventListener('click', onCadastrar);
   $('btnDeletar')?.addEventListener('click', onDeletar);
   $('btnMovimentar')?.addEventListener('click', onMovimentar);
