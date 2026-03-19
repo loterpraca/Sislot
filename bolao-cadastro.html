@@ -62,10 +62,20 @@
           <option>Páscoa</option><option>São João</option><option>Independência</option><option>Virada</option>
         </select>
       </div>
-      <div class="field">
-        <label><i class="fas fa-hashtag"></i> Concurso</label>
-        <input id="concurso" inputmode="numeric" placeholder="Ex: 2940"/>
-      </div>
+      <<div class="field">
+  <label class="label-row">
+    <span><i class="fas fa-hashtag"></i> Concurso</span>
+    <span class="day-stepper">
+      <button type="button" class="day-btn" id="btnConcursoPrev" aria-label="Concurso anterior">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button type="button" class="day-btn" id="btnConcursoNext" aria-label="Próximo concurso">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </span>
+  </label>
+  <input id="concurso" inputmode="numeric" placeholder="Ex: 2940"/>
+</div>
     </div>
 
     <div class="grid-2">
