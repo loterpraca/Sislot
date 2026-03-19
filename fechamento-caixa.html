@@ -1474,29 +1474,39 @@ function showStep(n) {
 }
 
 async function avancarStep(para) {
-  if (para > stepAtual) {
-    if (stepAtual === 1) {
-      if (!validarStep1()) return;
-      coletarTela1();
+  try {
+    if (para > stepAtual) {
+      if (stepAtual === 1) {
+        if (!validarStep1()) return;
+        coletarTela1();
+      }
+
+      if (stepAtual === 2) coletarTela2();
+      if (stepAtual === 3) coletarTela3();
     }
-    if (stepAtual === 2) coletarTela2();
-    if (stepAtual === 3) coletarTela3();
-  }
 
-  if (para === 2) {
-    const dataRef = $('data-ref').value;
-    if (dataRef) await buscarFederaisSupabase(dataRef);
-  }
+    // vai primeiro pra tela
+    showStep(para);
 
-  if (para === 3 && stepAtual <= 2) {
-    await carregarBoloes();
-  }
+    // depois carrega os dados da tela
+    if (para === 2) {
+      const dataRef = $('data-ref').value;
+      if (dataRef) {
+        buscarFederaisSupabase(dataRef);
+      }
+    }
 
-  if (para === 4) {
-    montarResumo();
-  }
+    if (para === 3) {
+      carregarBoloes();
+    }
 
-  showStep(para);
+    if (para === 4) {
+      montarResumo();
+    }
+  } catch (e) {
+    console.error('Erro ao avançar de tela:', e);
+    alert('Erro ao avançar de tela:\n\n' + (e.message || e));
+  }
 }
 
 function validarStep1() {
@@ -2007,10 +2017,10 @@ async function buscarFederais() {
 }
 
 async function buscarFederaisSupabase(dataRef) {
-  setFS('fs-loading');
-  $('fs-load-sub').textContent = 'Consultando federais disponíveis para esta loja...';
-
   try {
+    setFS('fs-loading');
+    $('fs-load-sub').textContent = 'Consultando federais disponíveis para esta loja...';
+
     const { data, error } = await sb
       .from('view_saldo_federal')
       .select('*')
@@ -2044,16 +2054,16 @@ async function buscarFederaisSupabase(dataRef) {
     renderFed();
     setFS('fs-lista');
 
-    if (ESTADO.tela2.federais?.length) {
+    if (ESTADO.tela2?.federais?.length) {
       restaurarFederais();
     }
   } catch (e) {
-    console.error(e);
+    console.error('Erro ao buscar federais:', e);
+    federais = [];
     setFS('fs-erro');
     $('fs-err-msg').textContent = e.message || 'Erro ao buscar federais.';
   }
 }
-
 function renderFed() {
   const tb = $('fed-tbody');
   tb.innerHTML = '';
