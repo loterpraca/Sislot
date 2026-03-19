@@ -195,7 +195,7 @@ async function buscarBoloes() {
   const ids = boloes.map(b => b.id);
 
   const { data: posicoes } = await sb
-    .from('view_posicao_destinos')
+    .from('view_posicao_bolao_lojas')
     .select('*')
     .in('bolao_id', ids);
 
@@ -248,7 +248,7 @@ function renderBoloes(boloes, posicoes, movs) {
       let saldoPills = '';
       if (pos.length) {
         pos.forEach(p => {
-          const qtd = p.qtd_cotas_liquidas || 0;
+          const qtd = Number(p.qtd_cotas_posicao || 0);
           if (qtd > 0) {
             saldoPills += `<div class="saldo-pill">
               <span class="sp-loja">${p.loteria_nome || '—'}</span>
@@ -307,35 +307,27 @@ function selecionarBolao(b, posicoes, movs) {
   saldosPorLoja = {};
   historicoPorLoja = {};
 
-  posicoes.forEach(p => {
-    saldosPorLoja[p.loteria_id] = p.qtd_cotas_liquidas || 0;
+  LOJAS.forEach(loja => {
+    const lojaId = lojaIdPorSlug[loja.slug];
+    saldosPorLoja[lojaId] = 0;
   });
 
-  if (saldosPorLoja[b.loteria_id] == null) {
-    const totalDistribuidoSaindoDaOrigem = posicoes
-      .filter(p => p.loteria_id !== b.loteria_id)
-      .reduce((acc, p) => acc + (p.qtd_cotas_liquidas || 0), 0);
-
-    saldosPorLoja[b.loteria_id] = Math.max(
-      0,
-      (b.qtd_cotas_total || 0) - totalDistribuidoSaindoDaOrigem
-    );
-  }
+  posicoes.forEach(p => {
+    saldosPorLoja[p.loteria_id] = Number(p.qtd_cotas_posicao || 0);
+  });
 
   const movsBolao = movs.filter(m => m.bolao_id === b.id);
+
   movsBolao.forEach(m => {
     const origemId = m.loteria_origem;
     const destId = m.loteria_destino;
+    const qtd = Number(m.qtd_cotas || 0);
 
-    if (origemId === b.loteria_id) {
-      if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
-      historicoPorLoja[destId].push(m.qtd_cotas);
-    }
+    if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
+    historicoPorLoja[destId].push(qtd);
 
-    if (destId === b.loteria_id) {
-      if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
-      historicoPorLoja[origemId].push(-m.qtd_cotas);
-    }
+    if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
+    historicoPorLoja[origemId].push(-qtd);
   });
 
   abrirPanel(b);
@@ -357,7 +349,7 @@ function abrirPanel(b) {
 
   LOJAS.forEach(loja => {
     const id = lojaIdPorSlug[loja.slug];
-    const qtd = saldosPorLoja[id] || 0;
+    const qtd = Number(saldosPorLoja[id] || 0);
     if (qtd === 0 && id !== b.loteria_id) return;
 
     const item = document.createElement('div');
@@ -465,20 +457,23 @@ function atualizarSaldosLocaisAposMovimentacao(deltas) {
     saldosPorLoja[origemId] = 0;
   }
 
-  Object.entries(deltas).forEach(([slug, qtd]) => {
+  Object.entries(deltas).forEach(([slug, qtdRaw]) => {
+    const qtd = Number(qtdRaw || 0);
     const destId = lojaIdPorSlug[slug];
-    if (!destId || !qtd) return;
+    if (!destId || qtd === 0) return;
 
     if (saldosPorLoja[destId] == null) {
       saldosPorLoja[destId] = 0;
     }
-    if (!historicoPorLoja[destId]) {
-      historicoPorLoja[destId] = [];
-    }
 
     saldosPorLoja[destId] += qtd;
-    historicoPorLoja[destId].push(qtd);
     saldosPorLoja[origemId] -= qtd;
+
+    if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
+    historicoPorLoja[destId].push(qtd);
+
+    if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
+    historicoPorLoja[origemId].push(-qtd);
   });
 
   if (saldosPorLoja[origemId] < 0) {
@@ -529,7 +524,7 @@ function onMovimentar() {
     const id = lojaIdPorSlug[l.slug];
     const delta = deltas[l.slug] || 0;
     const hist = historicoPorLoja[id] || [];
-    const saldo = saldosPorLoja[id] || 0;
+    const saldo = Number(saldosPorLoja[id] || 0);
     const final = saldo + delta;
 
     if (delta === 0 && hist.length === 0) return;
@@ -580,12 +575,13 @@ async function doMovimentar(b, deltas) {
     const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
     if (error) throw new Error(error.message);
 
+    const bolaoIdAtual = bolaoSelecionado?.id;
+
     atualizarSaldosLocaisAposMovimentacao(deltas);
     refreshPanelSelecionado();
     setStatus('✓ Movimentação registrada com sucesso!', 'ok');
     zerarMov(false);
 
-    const bolaoIdAtual = bolaoSelecionado?.id;
     await buscarBoloes();
 
     if (bolaoIdAtual) {
