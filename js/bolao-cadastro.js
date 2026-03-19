@@ -102,7 +102,68 @@ async function init() {
     $('dataInicial').value = new Date().toISOString().slice(0, 10);
   }
 }
+async function buscarUltimoConcurso(modalidade) {
+  if (!modalidade || !loteriaAtiva?.loteria_id) return null;
 
+  const { data, error } = await sb
+    .from('boloes')
+    .select('concurso')
+    .eq('loteria_id', loteriaAtiva.loteria_id)
+    .eq('modalidade', modalidade)
+    .neq('status', 'CANCELADO');
+
+  if (error) throw new Error(error.message);
+  if (!data || !data.length) return null;
+
+  const numeros = data
+    .map(r => parseInt(r.concurso, 10))
+    .filter(n => Number.isFinite(n));
+
+  if (!numeros.length) return null;
+
+  return Math.max(...numeros);
+}
+
+async function ajustarConcurso(delta) {
+  const modalidade = $('modalidade')?.value?.trim();
+  const concursoEl = $('concurso');
+
+  if (!concursoEl) return;
+  if (!modalidade) {
+    setStatus('status', 'Selecione a modalidade antes de ajustar o concurso.', 'err', 'exclamation-circle');
+    return;
+  }
+
+  const atual = parseInt(concursoEl.value, 10);
+
+  if (Number.isFinite(atual)) {
+    const novo = atual + delta;
+    concursoEl.value = String(novo > 0 ? novo : 1);
+    concursoEl.dispatchEvent(new Event('input', { bubbles: true }));
+    concursoEl.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+
+  try {
+    setStatus('status', 'Buscando último concurso...', 'muted', 'spinner fa-spin');
+
+    const ultimo = await buscarUltimoConcurso(modalidade);
+
+    if (!Number.isFinite(ultimo)) {
+      setStatus('status', 'Nenhum concurso anterior encontrado para essa modalidade.', 'err', 'exclamation-circle');
+      return;
+    }
+
+    const novo = ultimo + delta;
+    concursoEl.value = String(novo > 0 ? novo : 1);
+    concursoEl.dispatchEvent(new Event('input', { bubbles: true }));
+    concursoEl.dispatchEvent(new Event('change', { bubbles: true }));
+
+    setStatus('status', `Concurso ajustado para ${concursoEl.value}.`, 'ok', 'check-circle');
+  } catch (e) {
+    setStatus('status', e.message || 'Erro ao buscar concurso.', 'err', 'exclamation-circle');
+  }
+}
 async function carregarModelos() {
   const { data } = await sb
     .from('modelos_boloes')
