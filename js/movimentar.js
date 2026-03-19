@@ -4,11 +4,11 @@ const sb = supabase.createClient(
 );
 
 const LOJAS = [
-  { slug: 'boulevard',    nome: 'Boulevard',    logo: './icons/boulevard.png'    },
-  { slug: 'centro',       nome: 'Centro',       logo: './icons/loterpraca.png'   },
-  { slug: 'lotobel',      nome: 'Lotobel',      logo: './icons/lotobel.png'      },
-  { slug: 'santa-tereza', nome: 'Santa Tereza', logo: './icons/santa-tereza.png' },
-  { slug: 'via-brasil',   nome: 'Via Brasil',   logo: './icons/via-brasil.png'   },
+  { slug: 'boulevard',    nome: 'Boulevard',    logo: './Icons/boulevard.png'    },
+  { slug: 'centro',       nome: 'Centro',       logo: './Icons/loterpraca.png'   },
+  { slug: 'lotobel',      nome: 'Lotobel',      logo: './Icons/lotobel.png'      },
+  { slug: 'santa-tereza', nome: 'Santa Tereza', logo: './Icons/santa-tereza.png' },
+  { slug: 'via-brasil',   nome: 'Via Brasil',   logo: './Icons/via-brasil.png'   },
 ];
 
 let usuario = null;
@@ -121,8 +121,34 @@ function bind() {
   });
 
   $('btnFecharPanel').addEventListener('click', fecharPanel);
-  $('btnZerarMov').addEventListener('click', zerarMov);
+  $('btnZerarMov').addEventListener('click', () => zerarMov());
   $('btnMovimentar').addEventListener('click', onMovimentar);
+
+  $('confirmCancel').addEventListener('click', () => {
+    $('confirmOverlay').classList.remove('show');
+  });
+
+  $('confirmOverlay').addEventListener('click', (e) => {
+    if (e.target === $('confirmOverlay')) {
+      $('confirmOverlay').classList.remove('show');
+    }
+  });
+
+  $('confirmOk').addEventListener('click', async () => {
+    $('confirmOverlay').classList.remove('show');
+
+    if (!bolaoSelecionado) return;
+
+    const deltas = {};
+    LOJAS.forEach(l => {
+      const inp = $(`dest-${l.slug}`);
+      if (!inp || inp.disabled) return;
+      const qtd = parseInt(inp.value, 10) || 0;
+      if (qtd !== 0) deltas[l.slug] = qtd;
+    });
+
+    await doMovimentar(bolaoSelecionado, deltas);
+  });
 }
 
 function atualizarDateDisplay() {
@@ -231,6 +257,7 @@ function renderBoloes(boloes, posicoes, movs) {
           }
         });
       }
+
       if (!saldoPills) {
         saldoPills = '<div class="saldo-pill"><span class="sp-loja">Sem distribuição</span></div>';
       }
@@ -283,6 +310,17 @@ function selecionarBolao(b, posicoes, movs) {
   posicoes.forEach(p => {
     saldosPorLoja[p.loteria_id] = p.qtd_cotas_liquidas || 0;
   });
+
+  if (saldosPorLoja[b.loteria_id] == null) {
+    const totalDistribuidoSaindoDaOrigem = posicoes
+      .filter(p => p.loteria_id !== b.loteria_id)
+      .reduce((acc, p) => acc + (p.qtd_cotas_liquidas || 0), 0);
+
+    saldosPorLoja[b.loteria_id] = Math.max(
+      0,
+      (b.qtd_cotas_total || 0) - totalDistribuidoSaindoDaOrigem
+    );
+  }
 
   const movsBolao = movs.filter(m => m.bolao_id === b.id);
   movsBolao.forEach(m => {
@@ -365,6 +403,11 @@ function abrirPanel(b) {
   document.body.classList.add('panel-open');
 }
 
+function refreshPanelSelecionado() {
+  if (!bolaoSelecionado) return;
+  abrirPanel(bolaoSelecionado);
+}
+
 function fecharPanel() {
   $('movPanel').classList.remove('open');
   document.body.classList.remove('panel-open');
@@ -399,7 +442,7 @@ function calcTotal() {
   $('movTotal').textContent = total + ' cotas';
 }
 
-function zerarMov() {
+function zerarMov(limparStatus = true) {
   LOJAS.forEach(l => {
     const inp = $(`dest-${l.slug}`);
     if (inp && !inp.disabled) {
@@ -410,7 +453,37 @@ function zerarMov() {
     }
   });
   calcTotal();
-  clearStatus();
+  if (limparStatus) clearStatus();
+}
+
+function atualizarSaldosLocaisAposMovimentacao(deltas) {
+  if (!bolaoSelecionado) return;
+
+  const origemId = bolaoSelecionado.loteria_id;
+
+  if (saldosPorLoja[origemId] == null) {
+    saldosPorLoja[origemId] = 0;
+  }
+
+  Object.entries(deltas).forEach(([slug, qtd]) => {
+    const destId = lojaIdPorSlug[slug];
+    if (!destId || !qtd) return;
+
+    if (saldosPorLoja[destId] == null) {
+      saldosPorLoja[destId] = 0;
+    }
+    if (!historicoPorLoja[destId]) {
+      historicoPorLoja[destId] = [];
+    }
+
+    saldosPorLoja[destId] += qtd;
+    historicoPorLoja[destId].push(qtd);
+    saldosPorLoja[origemId] -= qtd;
+  });
+
+  if (saldosPorLoja[origemId] < 0) {
+    saldosPorLoja[origemId] = 0;
+  }
 }
 
 function onMovimentar() {
@@ -507,9 +580,17 @@ async function doMovimentar(b, deltas) {
     const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
     if (error) throw new Error(error.message);
 
+    atualizarSaldosLocaisAposMovimentacao(deltas);
+    refreshPanelSelecionado();
     setStatus('✓ Movimentação registrada com sucesso!', 'ok');
-    zerarMov();
+    zerarMov(false);
+
+    const bolaoIdAtual = bolaoSelecionado?.id;
     await buscarBoloes();
+
+    if (bolaoIdAtual) {
+      document.querySelector(`.bolao-card[data-id="${bolaoIdAtual}"]`)?.classList.add('selected');
+    }
   } catch (e) {
     setStatus(e.message, 'err');
   } finally {
@@ -522,32 +603,6 @@ async function doMovimentar(b, deltas) {
       Movimentar`;
   }
 }
-
-$('confirmCancel').addEventListener('click', () => {
-  $('confirmOverlay').classList.remove('show');
-});
-
-$('confirmOverlay').addEventListener('click', (e) => {
-  if (e.target === $('confirmOverlay')) {
-    $('confirmOverlay').classList.remove('show');
-  }
-});
-
-$('confirmOk').addEventListener('click', async () => {
-  $('confirmOverlay').classList.remove('show');
-
-  if (!bolaoSelecionado) return;
-
-  const deltas = {};
-  LOJAS.forEach(l => {
-    const inp = $(`dest-${l.slug}`);
-    if (!inp || inp.disabled) return;
-    const qtd = parseInt(inp.value, 10) || 0;
-    if (qtd !== 0) deltas[l.slug] = qtd;
-  });
-
-  await doMovimentar(bolaoSelecionado, deltas);
-});
 
 document.addEventListener('DOMContentLoaded', () => {
   init().catch(async (err) => {
