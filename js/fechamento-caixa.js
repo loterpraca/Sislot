@@ -1889,6 +1889,9 @@ function executarInicio() {
   window.SISLOT_SECURITY.irParaInicio();
 }
 
+async function executarSair() {
+  await window.SISLOT_SECURITY.sair();
+}
 function showGravando(titulo) {
   $('m-grav-titulo').textContent = titulo;
   $('m-grav-sub').textContent = 'Aguarde';
