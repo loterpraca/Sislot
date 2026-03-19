@@ -18,25 +18,6 @@
 
   async function init() {
     registrarEventosCampos();
-
-    try {
-      if (
-        window.SISLOT_SECURITY &&
-        typeof window.SISLOT_SECURITY.redirecionarSeJaLogado === 'function'
-      ) {
-        await window.SISLOT_SECURITY.redirecionarSeJaLogado();
-        return;
-      }
-
-      const { data: { session } } = await sb.auth.getSession();
-      if (session?.user?.id) {
-        await redirecionarPorPerfilFallback(session.user.id);
-        return;
-      }
-    } catch (err) {
-      console.error('Erro ao validar sessão atual:', err);
-    }
-
     formLogin.addEventListener('submit', onSubmitLogin);
   }
 
