@@ -7,7 +7,17 @@ const sb = supabase.createClient(
   window.SISLOT_CONFIG.anonKey
 );
 
-const $ = id => document.getElementById(id);
+const {
+  $,
+  parseCota,
+  fmtBR,
+  fmtBRL,
+  fmtData,
+  addDias,
+  setStatus,
+  setBtnLoading,
+  showModal
+} = window.SISLOT_UTILS;
 
 // ── Configuração visual das lojas ──────────────────────────
 const LOJA_CONFIG = {
@@ -59,7 +69,6 @@ async function init() {
     lojaIdPorSlug[l.loteria_slug] = l.loteria_id;
   });
 
-  // mapa de todas as lojas ativas para movimentação
   const todasAtivas = await window.SISLOT_SECURITY.carregarTodasLojas();
   todasAtivas.forEach(l => {
     lojaIdPorSlug[l.loteria_slug] = l.loteria_id;
@@ -115,30 +124,35 @@ async function carregarModelos() {
  ************************************************************/
 function aplicarTema(slug) {
   const cfg = LOJA_CONFIG[slug] || LOJA_CONFIG['centro'];
+
   document.body.setAttribute('data-theme', cfg.theme);
+  document.body.setAttribute('data-loja', slug);
+
   const img = $('logoImg');
   img.src = cfg.logo;
   img.style.objectPosition = cfg.logoPos;
+
   $('headerTitle').textContent = cfg.nome;
-  $('headerSub').textContent   = 'Cadastro e movimentação';
-  document.querySelectorAll('.brand-btn').forEach(b => {
+  $('headerSub').textContent = 'Cadastro e movimentação';
+
+  document.querySelectorAll('.brand-btn, .loja-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.slug === slug);
   });
 }
 
 function atualizarOrigemUI() {
   const nome = loteriaAtiva?.loteria_nome || '—';
-  $('origemNome').textContent    = nome;
+  $('origemNome').textContent = nome;
   $('movOrigemNome').textContent = nome;
 }
 
 function atualizarCamposMov() {
   const mapaSlug = {
-    'boulevard':    'deltaBoulevard',
-    'centro':       'deltaCentro',
-    'lotobel':      'deltaLotobel',
+    'boulevard': 'deltaBoulevard',
+    'centro': 'deltaCentro',
+    'lotobel': 'deltaLotobel',
     'santa-tereza': 'deltaSantaTereza',
-    'via-brasil':   'deltaViaBrasil',
+    'via-brasil': 'deltaViaBrasil',
   };
 
   Object.entries(mapaSlug).forEach(([slug, inputId]) => {
@@ -155,7 +169,7 @@ function atualizarCamposMov() {
  ************************************************************/
 function trocarLoja(slug) {
   const loja = todasLojas.find(l => l.loteria_slug === slug);
-  if (!loja) return; // sem brecha para loja fora do contexto
+  if (!loja) return;
 
   loteriaAtiva = loja;
   aplicarTema(slug);
@@ -201,6 +215,7 @@ function renderQuickbar() {
 function selecionarMod(modKey) {
   const prev = localStorage.getItem('sl_active_mod') || '';
   if (prev !== modKey) limparFormSemLoja();
+
   $('modalidade').value = modKey;
   localStorage.setItem('sl_active_mod', modKey);
   setActiveModBtn(modKey);
@@ -256,13 +271,13 @@ function renderChips(modKey) {
 }
 
 function aplicarShortcut(modKey, sc) {
-  $('modalidade').value  = modKey;
-  $('qtdJogos').value    = sc.qtd_jogos ?? '';
-  $('qtdDezenas').value  = sc.qtd_dezenas ?? '';
-  $('valorCota').value   = fmtBR(sc.valor_cota);
-  $('cotas').value       = sc.qtd_cotas ?? '';
+  $('modalidade').value = modKey;
+  $('qtdJogos').value = sc.qtd_jogos ?? '';
+  $('qtdDezenas').value = sc.qtd_dezenas ?? '';
+  $('valorCota').value = fmtBR(sc.valor_cota);
+  $('cotas').value = sc.qtd_cotas ?? '';
   applyFederalUI();
-  setStatus('Atalho aplicado: ' + sc.nome, 'ok', 'check-circle');
+  setStatus('status', 'Atalho aplicado: ' + sc.nome, 'ok', 'check-circle');
   saveDraft();
 }
 
@@ -288,40 +303,13 @@ function applyFederalUI() {
 }
 
 /************************************************************
- * STEPPERS DE DATA
- ************************************************************/
-function addDias(inputId, delta) {
-  const el = $(inputId);
-  const v  = el.value;
-  let y, m, d;
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-    [y, m, d] = v.split('-').map(Number);
-  } else {
-    const n = new Date();
-    y = n.getFullYear();
-    m = n.getMonth() + 1;
-    d = n.getDate();
-  }
-
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + delta);
-
-  el.value = dt.getFullYear() + '-' +
-    String(dt.getMonth() + 1).padStart(2, '0') + '-' +
-    String(dt.getDate()).padStart(2, '0');
-
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
-/************************************************************
  * DRAFT
  ************************************************************/
 function saveDraft() {
   const d = {};
   CAMPOS_FORM.forEach(id => d[id] = $(id)?.value ?? '');
-  CAMPOS_MOV.forEach(id  => d[id] = $(id)?.value ?? '');
-  d._mod  = localStorage.getItem('sl_active_mod') || '';
+  CAMPOS_MOV.forEach(id => d[id] = $(id)?.value ?? '');
+  d._mod = localStorage.getItem('sl_active_mod') || '';
   d._slug = loteriaAtiva?.loteria_slug || '';
   try { localStorage.setItem('sl_draft', JSON.stringify(d)); } catch {}
 }
@@ -333,7 +321,7 @@ function loadDraft() {
 
     const d = JSON.parse(raw);
     CAMPOS_FORM.forEach(id => { if ($(id) && d[id] !== undefined) $(id).value = d[id]; });
-    CAMPOS_MOV.forEach(id  => { if ($(id) && d[id] !== undefined) $(id).value = d[id]; });
+    CAMPOS_MOV.forEach(id => { if ($(id) && d[id] !== undefined) $(id).value = d[id]; });
 
     if (d._mod) {
       localStorage.setItem('sl_active_mod', d._mod);
@@ -355,107 +343,24 @@ function limparMov() {
 }
 
 /************************************************************
- * STATUS / LOADING
+ * VALIDAÇÃO
  ************************************************************/
-function setStatus(msg, tipo = 'muted', icone = 'info-circle') {
-  const el = $('status');
-  el.className = 'status ' + tipo;
-  el.innerHTML = `<i class="fas fa-${icone}"></i><span>${msg}</span>`;
-}
-
-function setBtnLoading(btn, on) {
-  if (on) {
-    btn.classList.add('btn-loading');
-    btn.disabled = true;
-  } else {
-    btn.classList.remove('btn-loading');
-    btn.disabled = false;
-  }
-}
-
-/************************************************************
- * MODAL
- ************************************************************/
-function showModal(titulo, corpo, onConfirm, onCancel) {
-  $('modalTitle').textContent = titulo;
-  $('modalBody').textContent  = corpo;
-
-  const overlay = $('modalOverlay');
-  const fechar  = () => overlay.classList.remove('active');
-  const cancelar = () => {
-    fechar();
-    if (typeof onCancel === 'function') onCancel();
-  };
-
-  $('modalCancel').onclick = cancelar;
-  overlay.onclick          = cancelar;
-  $('modalBox').onclick    = e => e.stopPropagation();
-
-  if (!onConfirm) {
-    $('modalCancel').style.display = 'none';
-    $('modalConfirm').textContent  = 'OK';
-    $('modalConfirm').onclick      = fechar;
-  } else {
-    $('modalCancel').style.display = 'flex';
-    $('modalConfirm').textContent  = 'Confirmar';
-    $('modalConfirm').onclick      = async e => {
-      e.preventDefault();
-      fechar();
-      await onConfirm();
-    };
-  }
-
-  overlay.classList.add('active');
-}
-
-/************************************************************
- * PARSE / FORMAT
- ************************************************************/
-function parseCota(v) {
-  if (!v) return 0;
-  const s = String(v).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
-  return parseFloat(s) || 0;
-}
-
-function fmtBR(v) {
-  return parseFloat(v || 0).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
-
-function fmtBRL(v) {
-  return parseFloat(v || 0).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  });
-}
-
-function fmtData(s) {
-  if (!s) return '—';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, d] = s.split('-');
-    return `${d}/${m}/${y}`;
-  }
-  return s;
-}
-
 function validarBase(exigirCotas = true) {
-  const modalidade   = $('modalidade').value.trim();
-  const concurso     = $('concurso').value.trim();
-  const dataInicial  = $('dataInicial').value;
+  const modalidade = $('modalidade').value.trim();
+  const concurso = $('concurso').value.trim();
+  const dataInicial = $('dataInicial').value;
   const dataConcurso = $('dataConcurso').value;
-  const qtdJogos     = parseInt($('qtdJogos').value) || 0;
-  const qtdDezenas   = parseInt($('qtdDezenas').value) || 0;
-  const valorCota    = parseCota($('valorCota').value);
-  const cotas        = parseInt($('cotas').value) || 0;
+  const qtdJogos = parseInt($('qtdJogos').value) || 0;
+  const qtdDezenas = parseInt($('qtdDezenas').value) || 0;
+  const valorCota = parseCota($('valorCota').value);
+  const cotas = parseInt($('cotas').value) || 0;
 
-  if (!modalidade)   throw new Error('Modalidade é obrigatória.');
-  if (!concurso)     throw new Error('Número do concurso é obrigatório.');
-  if (!dataInicial)  throw new Error('Data inicial é obrigatória.');
+  if (!modalidade) throw new Error('Modalidade é obrigatória.');
+  if (!concurso) throw new Error('Número do concurso é obrigatório.');
+  if (!dataInicial) throw new Error('Data inicial é obrigatória.');
   if (!dataConcurso) throw new Error('Data do concurso é obrigatória.');
   if (!valorCota || valorCota <= 0) throw new Error('Valor da cota deve ser > 0.');
-  if (exigirCotas && cotas === 0)   throw new Error('Qtd de cotas é obrigatória.');
+  if (exigirCotas && cotas === 0) throw new Error('Qtd de cotas é obrigatória.');
 
   return { modalidade, concurso, dataInicial, dataConcurso, qtdJogos, qtdDezenas, valorCota, cotas };
 }
@@ -465,6 +370,7 @@ function validarBase(exigirCotas = true) {
  ************************************************************/
 async function onCadastrar() {
   const btn = $('btnCadastrar');
+
   try {
     const b = validarBase(true);
     if (!loteriaAtiva) throw new Error('Nenhuma loja selecionada.');
@@ -479,19 +385,23 @@ async function onCadastrar() {
       'Confirma o cadastro?'
     ].join('\n');
 
-    showModal('Confirmar cadastro', corpo, async () => {
-      setBtnLoading(btn, true);
-      setStatus('Salvando bolão…', 'muted', 'spinner fa-spin');
-      try {
-        await doCadastrar(b);
-      } catch (e) {
-        setStatus(e.message, 'err', 'exclamation-circle');
-      } finally {
-        setBtnLoading(btn, false);
+    showModal({
+      title: 'Confirmar cadastro',
+      body: corpo,
+      onConfirm: async () => {
+        setBtnLoading(btn, true);
+        setStatus('status', 'Salvando bolão…', 'muted', 'spinner fa-spin');
+        try {
+          await doCadastrar(b);
+        } catch (e) {
+          setStatus('status', e.message, 'err', 'exclamation-circle');
+        } finally {
+          setBtnLoading(btn, false);
+        }
       }
     });
   } catch (e) {
-    setStatus(e.message, 'err', 'exclamation-circle');
+    setStatus('status', e.message, 'err', 'exclamation-circle');
   }
 }
 
@@ -520,15 +430,19 @@ async function doCadastrar(b, somarCotas = false) {
       `Adicionar mais ${b.cotas}? Novo total: ${existe.qtd_cotas_total + b.cotas}`
     ].join('\n');
 
-    showModal('Bolão já existe', corpo, async () => {
-      try {
-        await doCadastrar(b, true);
-      } catch (e) {
-        setStatus(e.message, 'err', 'exclamation-circle');
+    showModal({
+      title: 'Bolão já existe',
+      body: corpo,
+      onConfirm: async () => {
+        try {
+          await doCadastrar(b, true);
+        } catch (e) {
+          setStatus('status', e.message, 'err', 'exclamation-circle');
+        }
       }
     });
 
-    setStatus('Aguardando confirmação…', 'muted', 'clock');
+    setStatus('status', 'Aguardando confirmação…', 'muted', 'clock');
     return;
   }
 
@@ -541,7 +455,7 @@ async function doCadastrar(b, somarCotas = false) {
 
     if (error) throw new Error(error.message);
 
-    setStatus(`✓ Cotas somadas! Novo total: ${novoTotal}`, 'ok', 'check-circle');
+    setStatus('status', `✓ Cotas somadas! Novo total: ${novoTotal}`, 'ok', 'check-circle');
     return;
   }
 
@@ -561,7 +475,7 @@ async function doCadastrar(b, somarCotas = false) {
   });
 
   if (error) throw new Error(error.message);
-  setStatus('✓ Bolão cadastrado com sucesso!', 'ok', 'check-double');
+  setStatus('status', '✓ Bolão cadastrado com sucesso!', 'ok', 'check-double');
 }
 
 /************************************************************
@@ -569,6 +483,7 @@ async function doCadastrar(b, somarCotas = false) {
  ************************************************************/
 async function onDeletar() {
   const btn = $('btnDeletar');
+
   try {
     const b = validarBase(false);
     if (!loteriaAtiva) throw new Error('Nenhuma loja selecionada.');
@@ -586,7 +501,7 @@ async function onDeletar() {
       .maybeSingle();
 
     if (!bolao) {
-      setStatus('Bolão não encontrado.', 'err', 'exclamation-circle');
+      setStatus('status', 'Bolão não encontrado.', 'err', 'exclamation-circle');
       return;
     }
 
@@ -599,24 +514,28 @@ async function onDeletar() {
       '⚠️ O bolão será marcado como CANCELADO. Confirma?'
     ].join('\n');
 
-    showModal('Confirmar cancelamento', corpo, async () => {
-      setBtnLoading(btn, true);
-      try {
-        const { error } = await sb
-          .from('boloes')
-          .update({ status: 'CANCELADO', updated_at: new Date().toISOString() })
-          .eq('id', bolao.id);
+    showModal({
+      title: 'Confirmar cancelamento',
+      body: corpo,
+      onConfirm: async () => {
+        setBtnLoading(btn, true);
+        try {
+          const { error } = await sb
+            .from('boloes')
+            .update({ status: 'CANCELADO', updated_at: new Date().toISOString() })
+            .eq('id', bolao.id);
 
-        if (error) throw new Error(error.message);
-        setStatus('✓ Bolão cancelado.', 'ok', 'check-circle');
-      } catch (e) {
-        setStatus(e.message, 'err', 'exclamation-circle');
-      } finally {
-        setBtnLoading(btn, false);
+          if (error) throw new Error(error.message);
+          setStatus('status', '✓ Bolão cancelado.', 'ok', 'check-circle');
+        } catch (e) {
+          setStatus('status', e.message, 'err', 'exclamation-circle');
+        } finally {
+          setBtnLoading(btn, false);
+        }
       }
     });
   } catch (e) {
-    setStatus(e.message, 'err', 'exclamation-circle');
+    setStatus('status', e.message, 'err', 'exclamation-circle');
   }
 }
 
@@ -625,20 +544,21 @@ async function onDeletar() {
  ************************************************************/
 async function onBuscar() {
   const btn = $('btnBuscar');
+
   try {
-    const modal    = $('modalidade').value.trim();
+    const modal = $('modalidade').value.trim();
     const concurso = $('concurso').value.trim();
-    const cota     = parseCota($('valorCota').value);
-    const jogos    = parseInt($('qtdJogos').value) || 0;
-    const dezenas  = parseInt($('qtdDezenas').value) || 0;
+    const cota = parseCota($('valorCota').value);
+    const jogos = parseInt($('qtdJogos').value) || 0;
+    const dezenas = parseInt($('qtdDezenas').value) || 0;
 
     if (!modal || !concurso || !cota) {
-      setStatus('Preencha modalidade, concurso e valor da cota para buscar.', 'err', 'exclamation-circle');
+      setStatus('status', 'Preencha modalidade, concurso e valor da cota para buscar.', 'err', 'exclamation-circle');
       return;
     }
 
     setBtnLoading(btn, true);
-    setStatus('Buscando saldos…', 'muted', 'spinner fa-spin');
+    setStatus('status', 'Buscando saldos…', 'muted', 'spinner fa-spin');
 
     let query = sb
       .from('boloes')
@@ -649,21 +569,24 @@ async function onBuscar() {
       .eq('valor_cota', cota)
       .neq('status', 'CANCELADO');
 
-    if (jogos > 0)   query = query.eq('qtd_jogos', jogos);
+    if (jogos > 0) query = query.eq('qtd_jogos', jogos);
     if (dezenas > 0) query = query.eq('qtd_dezenas', dezenas);
 
     const { data: bolao } = await query.maybeSingle();
 
     if (!bolao) {
-      showModal('Não encontrado', [
-        '❌ Bolão não encontrado', '',
-        `Modalidade: ${modal}`,
-        `Concurso: ${concurso}`,
-        `Cota: ${fmtBRL(cota)}`, '',
-        'Verifique os dados ou cadastre primeiro.'
-      ].join('\n'), null);
+      showModal({
+        title: 'Não encontrado',
+        body: [
+          '❌ Bolão não encontrado', '',
+          `Modalidade: ${modal}`,
+          `Concurso: ${concurso}`,
+          `Cota: ${fmtBRL(cota)}`, '',
+          'Verifique os dados ou cadastre primeiro.'
+        ].join('\n')
+      });
 
-      setStatus('Bolão não localizado.', 'muted', 'info-circle');
+      setStatus('status', 'Bolão não localizado.', 'muted', 'info-circle');
       return;
     }
 
@@ -690,13 +613,16 @@ async function onBuscar() {
       linhas.push('  (nenhuma distribuição registrada)');
     }
 
-    showModal('🔍 Posição atual', linhas.join('\n'), null);
-    setStatus('Busca concluída.', 'ok', 'check');
+    showModal({
+      title: '🔍 Posição atual',
+      body: linhas.join('\n')
+    });
 
+    setStatus('status', 'Busca concluída.', 'ok', 'check');
   } catch (e) {
-    setStatus(e.message, 'err', 'exclamation-circle');
+    setStatus('status', e.message, 'err', 'exclamation-circle');
   } finally {
-    setBtnLoading($('btnBuscar'), false);
+    setBtnLoading(btn, false);
   }
 }
 
@@ -705,10 +631,11 @@ async function onBuscar() {
  ************************************************************/
 async function onMovimentar() {
   const btn = $('btnMovimentar');
+
   try {
-    const modal    = $('modalidade').value.trim();
+    const modal = $('modalidade').value.trim();
     const concurso = $('concurso').value.trim();
-    const cota     = parseCota($('valorCota').value);
+    const cota = parseCota($('valorCota').value);
 
     if (!modal || !concurso || !cota) {
       throw new Error('Preencha modalidade, concurso e valor da cota.');
@@ -748,7 +675,7 @@ async function onMovimentar() {
 
     if (movs) {
       movs.forEach(m => {
-        const destId   = m.loteria_destino;
+        const destId = m.loteria_destino;
         const origemId = m.loteria_origem;
 
         if (origemId === loteriaAtiva.loteria_id) {
@@ -777,21 +704,21 @@ async function onMovimentar() {
 
     const slugsDestino = ['boulevard', 'centro', 'lotobel', 'santa-tereza', 'via-brasil'];
     const icones = {
-      'boulevard':    '🏢',
-      'centro':       '🏙️',
-      'lotobel':      '🏛️',
+      'boulevard': '🏢',
+      'centro': '🏙️',
+      'lotobel': '🏛️',
       'santa-tereza': '⛪',
-      'via-brasil':   '🛣️',
+      'via-brasil': '🛣️',
     };
 
     slugsDestino.forEach(slug => {
-      const delta  = mapaDeltas[slug] || 0;
+      const delta = mapaDeltas[slug] || 0;
       const destId = lojaIdPorSlug[slug];
-      const nome   = LOJA_CONFIG[slug]?.nome || slug;
-      const icone  = icones[slug] || '📍';
-      const hist   = historicoDetalhePorId[destId] || [];
-      const saldo  = saldoPorId[destId] || 0;
-      const final  = saldo + delta;
+      const nome = LOJA_CONFIG[slug]?.nome || slug;
+      const icone = icones[slug] || '📍';
+      const hist = historicoDetalhePorId[destId] || [];
+      const saldo = saldoPorId[destId] || 0;
+      const final = saldo + delta;
 
       if (delta === 0 && hist.length === 0) {
         linhas.push(`${icone} ${nome}: 0 (sem alteração)`);
@@ -804,29 +731,32 @@ async function onMovimentar() {
         return;
       }
 
-      const histStr  = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
+      const histStr = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
       const deltaStr = delta > 0 ? `[+${delta}]` : `[${delta}]`;
       linhas.push(`${icone} ${nome}: ${histStr} ${deltaStr} → ${final}`);
     });
 
     linhas.push('', '⚠️ Confirma a atualização desses valores?');
 
-    showModal('Confirmar Movimentação', linhas.join('\n'), async () => {
-      setBtnLoading(btn, true);
-      setStatus('Registrando…', 'muted', 'spinner fa-spin');
-      try {
-        await doMovimentar(bolao, mapaDeltas);
-        setStatus('✓ Movimentação registrada!', 'ok', 'check-double');
-        limparMov();
-      } catch (e) {
-        setStatus(e.message, 'err', 'exclamation-circle');
-      } finally {
-        setBtnLoading(btn, false);
+    showModal({
+      title: 'Confirmar Movimentação',
+      body: linhas.join('\n'),
+      onConfirm: async () => {
+        setBtnLoading(btn, true);
+        setStatus('status', 'Registrando…', 'muted', 'spinner fa-spin');
+        try {
+          await doMovimentar(bolao, mapaDeltas);
+          setStatus('status', '✓ Movimentação registrada!', 'ok', 'check-double');
+          limparMov();
+        } catch (e) {
+          setStatus('status', e.message, 'err', 'exclamation-circle');
+        } finally {
+          setBtnLoading(btn, false);
+        }
       }
     });
-
   } catch (e) {
-    setStatus(e.message, 'err', 'exclamation-circle');
+    setStatus('status', e.message, 'err', 'exclamation-circle');
   }
 }
 
@@ -840,13 +770,13 @@ async function doMovimentar(bolao, mapaDeltas) {
     if (!destId) throw new Error(`Loja destino não encontrada: ${slug}`);
 
     inserts.push({
-      bolao_id:        bolao.id,
-      loteria_origem:  loteriaAtiva.loteria_id,
+      bolao_id: bolao.id,
+      loteria_origem: loteriaAtiva.loteria_id,
       loteria_destino: destId,
-      qtd_cotas:       qtd,
-      valor_unitario:  bolao.valor_cota,
-      status:          'ATIVO',
-      criado_por:      usuario.id,
+      qtd_cotas: qtd,
+      valor_unitario: bolao.valor_cota,
+      status: 'ATIVO',
+      criado_por: usuario.id,
     });
   }
 
@@ -872,12 +802,12 @@ function bind() {
 
   $('btnLimpar').addEventListener('click', () => {
     limparFormSemLoja();
-    setStatus('Campos limpos.', 'muted', 'broom');
+    setStatus('status', 'Campos limpos.', 'muted', 'broom');
   });
 
   $('btnZerarMov').addEventListener('click', () => {
     limparMov();
-    setStatus('Movimentação limpa.', 'muted', 'broom');
+    setStatus('status', 'Movimentação limpa.', 'muted', 'broom');
   });
 
   $('modalidade').addEventListener('change', () => {
@@ -896,6 +826,14 @@ function bind() {
   [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
     $(id)?.addEventListener('input', saveDraft);
     $(id)?.addEventListener('change', saveDraft);
+  });
+
+  $('btnInicio')?.addEventListener('click', () => {
+    window.SISLOT_SECURITY.irParaInicio();
+  });
+
+  $('btnSair')?.addEventListener('click', async () => {
+    await window.SISLOT_SECURITY.sair();
   });
 }
 
