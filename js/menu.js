@@ -149,13 +149,8 @@
       configurarLogout();
       await carregarIndicadores();
     } catch (err) {
-      console.error(err);
-
-      try {
-        await window.SISLOT_SECURITY.sair();
-      } catch (_) {
-        location.href = './login.html';
-      }
+      console.error('Erro ao iniciar menu:', err);
+      alert(err.message || 'Erro ao iniciar menu');
     }
   }
 })();
