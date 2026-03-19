@@ -262,7 +262,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .wrap{padding:8px 12px 32px}
   .header{padding:0 12px}
   .btn-menu span{display:none}
-
+  .mov-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   .section-title{
     gap:6px;
   }
