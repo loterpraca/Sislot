@@ -143,7 +143,7 @@
       resetBotao();
     }
   }
-
+ 
   async function redirecionarPorPerfilFallback(authUserId) {
     const { data: usr, error } = await sb
       .from('usuarios')
