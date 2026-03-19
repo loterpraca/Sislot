@@ -83,8 +83,8 @@ async function init() {
   await carregarModelos();
 
   aplicarTema(loteriaAtiva.loteria_slug);
-  atualizarOrigemUI();
-  atualizarCamposMov();
+  OrigemUI();
+  CamposMov();
   renderQuickbar();
   loadDraft();
   applyFederalUI();
@@ -136,7 +136,7 @@ function aplicarTema(slug) {
   $('headerSub').textContent = 'Cadastro e movimentação';
 }
 
-function atualizarOrigemUI() {
+function OrigemUI() {
   const nome = loteriaAtiva?.loteria_nome || '—';
   $('origemNome').textContent = nome;
   $('movOrigemNome').textContent = nome;
@@ -151,22 +151,25 @@ function atualizarCamposMov() {
     'via-brasil': 'deltaViaBrasil',
   };
 
+  document.querySelectorAll('.mov-field').forEach(field => {
+    field.classList.remove('is-hidden');
+  });
+
   Object.entries(mapaSlug).forEach(([slug, inputId]) => {
     const el = $(inputId);
     if (!el) return;
 
-    const field = el.closest('.field');
+    const field = el.closest('.mov-field');
     const ehOrigem = slug === loteriaAtiva?.loteria_slug;
 
     el.disabled = ehOrigem;
     if (ehOrigem) el.value = '';
 
     if (field) {
-      field.style.display = ehOrigem ? 'none' : '';
+      field.classList.toggle('is-hidden', ehOrigem);
     }
   });
 }
-
 /************************************************************
  * TROCA DE LOJA
  ************************************************************/
