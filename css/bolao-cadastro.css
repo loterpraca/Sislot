@@ -127,6 +127,17 @@ body{
   text-transform:uppercase;color:var(--text);display:flex;align-items:center;gap:10px;flex-wrap:wrap
 }
 
+.mov-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+  min-height:116px;
+}
+
+.mov-field.is-hidden{
+  display:none;
+}
 .origem-chip{
   display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
   background:var(--t3);border:1px solid var(--t4);color:var(--t1);
@@ -249,4 +260,5 @@ button:disabled{opacity:.4;cursor:not-allowed}
   .wrap{padding:8px 12px 32px}
   .header{padding:0 12px}
   .btn-menu span{display:none}
+  .mov-grid{grid-template-columns:1fr 1fr;}
 }
