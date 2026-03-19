@@ -28,6 +28,14 @@ const LOJA_CONFIG = {
   'via-brasil':   { nome: 'Via Brasil',   logo: './icons/via-brasil.png',   theme: 'via-brasil',   logoPos: '50% 50%' },
 };
 
+const LOJAS_MOV = [
+  { slug: 'boulevard', id: 'deltaBoulevard', icon: 'fas fa-building', nome: 'Boulevard' },
+  { slug: 'centro', id: 'deltaCentro', icon: 'fas fa-city', nome: 'Centro' },
+  { slug: 'lotobel', id: 'deltaLotobel', icon: 'fas fa-landmark', nome: 'Lotobel' },
+  { slug: 'santa-tereza', id: 'deltaSantaTereza', icon: 'fas fa-church', nome: 'Santa Tereza' },
+  { slug: 'via-brasil', id: 'deltaViaBrasil', icon: 'fas fa-road', nome: 'Via Brasil' },
+];
+
 const MODS = [
   { key: 'Mega Sena',     icon: './icons/mega-sena.png'     },
   { key: 'Lotofácil',     icon: './icons/lotofacil.png'     },
@@ -143,32 +151,37 @@ function OrigemUI() {
 }
 
 function atualizarCamposMov() {
-  const mapaSlug = {
-    'boulevard': 'deltaBoulevard',
-    'centro': 'deltaCentro',
-    'lotobel': 'deltaLotobel',
-    'santa-tereza': 'deltaSantaTereza',
-    'via-brasil': 'deltaViaBrasil',
-  };
+  const grid = $('movGrid');
+  if (!grid) return;
 
-  document.querySelectorAll('.mov-field').forEach(field => {
-    field.classList.remove('is-hidden');
+  const valoresAtuais = {};
+  LOJAS_MOV.forEach(loja => {
+    const antigo = $(loja.id);
+    valoresAtuais[loja.id] = antigo ? antigo.value : '';
   });
 
-  Object.entries(mapaSlug).forEach(([slug, inputId]) => {
-    const el = $(inputId);
-    if (!el) return;
+  grid.innerHTML = '';
 
-    const field = el.closest('.mov-field');
-    const ehOrigem = slug === loteriaAtiva?.loteria_slug;
+  LOJAS_MOV
+    .filter(loja => loja.slug !== loteriaAtiva?.loteria_slug)
+    .forEach(loja => {
+      const field = document.createElement('div');
+      field.className = 'field';
 
-    el.disabled = ehOrigem;
-    if (ehOrigem) el.value = '';
+      field.innerHTML = `
+        <label><i class="${loja.icon}"></i> ${loja.nome}</label>
+        <input id="${loja.id}" inputmode="numeric" placeholder="0"/>
+      `;
 
-    if (field) {
-      field.classList.toggle('is-hidden', ehOrigem);
-    }
-  });
+      grid.appendChild(field);
+
+      const input = $(loja.id);
+      if (input) {
+        input.value = valoresAtuais[loja.id] || '';
+        input.addEventListener('input', saveDraft);
+        input.addEventListener('change', saveDraft);
+      }
+    });
 }
 /************************************************************
  * TROCA DE LOJA
@@ -344,8 +357,10 @@ function loadDraft() {
     if (!raw) return;
 
     const d = JSON.parse(raw);
-    CAMPOS_FORM.forEach(id => { if ($(id) && d[id] !== undefined) $(id).value = d[id]; });
-    CAMPOS_MOV.forEach(id => { if ($(id) && d[id] !== undefined) $(id).value = d[id]; });
+
+    CAMPOS_FORM.forEach(id => {
+      if ($(id) && d[id] !== undefined) $(id).value = d[id];
+    });
 
     if (d._mod) {
       localStorage.setItem('sl_active_mod', d._mod);
@@ -353,16 +368,24 @@ function loadDraft() {
       setActiveModBtn(d._mod);
       renderChips(d._mod);
     }
+
+    atualizarCamposMov();
+
+    CAMPOS_MOV.forEach(id => {
+      if ($(id) && d[id] !== undefined) $(id).value = d[id];
+    });
   } catch {}
 }
-
 function limparFormSemLoja() {
   CAMPOS_FORM.forEach(id => { if ($(id)) $(id).value = ''; });
   saveDraft();
 }
 
 function limparMov() {
-  CAMPOS_MOV.forEach(id => { if ($(id) && !$(id).disabled) $(id).value = ''; });
+  CAMPOS_MOV.forEach(id => {
+    const el = $(id);
+    if (el) el.value = '';
+  });
   saveDraft();
 }
 
@@ -843,10 +866,10 @@ function bind() {
     saveDraft();
   });
 
-  [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
-    $(id)?.addEventListener('input', saveDraft);
-    $(id)?.addEventListener('change', saveDraft);
-  });
+  CAMPOS_FORM.forEach(id => {
+  $(id)?.addEventListener('input', saveDraft);
+  $(id)?.addEventListener('change', saveDraft);
+});
 
   $('lojaTreeWrap')?.addEventListener('click', () => trocarLojaPorOffset(1));
   $('lojaTreeWrap')?.setAttribute('title', 'Trocar loja');
