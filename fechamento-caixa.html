@@ -912,6 +912,260 @@ textarea#justificativa::placeholder{color:var(--dim)}
 </div>
 
 <script>
+(function () {
+  const sb = supabase.createClient(
+    window.SISLOT_CONFIG.url,
+    window.SISLOT_CONFIG.anonKey
+  );
+
+  function perfilNorm(usuario) {
+    return String(usuario?.perfil || '').trim().toUpperCase();
+  }
+
+  function isAdmin(usuario) {
+    return perfilNorm(usuario) === 'ADMIN';
+  }
+
+  function isSocio(usuario) {
+    return perfilNorm(usuario) === 'SOCIO';
+  }
+
+  function isGerente(usuario) {
+    return perfilNorm(usuario) === 'GERENTE';
+  }
+
+  function isOperador(usuario) {
+    return perfilNorm(usuario) === 'OPERADOR';
+  }
+
+  function podeSelecionarFuncionario(usuario) {
+    return isAdmin(usuario) || isSocio(usuario) || isGerente(usuario);
+  }
+
+  function podeGravarFechamento({ usuarioLogado, funcionarioSelecionadoId }) {
+    if (isAdmin(usuarioLogado) || isSocio(usuarioLogado) || isGerente(usuarioLogado)) {
+      return true;
+    }
+
+    if (isOperador(usuarioLogado)) {
+      return Number(usuarioLogado?.id) === Number(funcionarioSelecionadoId);
+    }
+
+    return false;
+  }
+
+  function exigeTokenParaSobrescrever({ usuarioLogado }) {
+    if (isAdmin(usuarioLogado) || isSocio(usuarioLogado)) return false;
+    if (isGerente(usuarioLogado) || isOperador(usuarioLogado)) return true;
+    return true;
+  }
+
+  function avaliarPermissaoGravacao({
+    usuarioLogado,
+    funcionarioSelecionadoId,
+    existeFechamento
+  }) {
+    const podeGravar = podeGravarFechamento({
+      usuarioLogado,
+      funcionarioSelecionadoId
+    });
+
+    if (!podeGravar) {
+      return {
+        permitido: false,
+        exigeToken: false,
+        motivo: 'Usuário sem permissão para gravar este fechamento.'
+      };
+    }
+
+    const sobrescrevendo = !!existeFechamento;
+    const exigeToken = sobrescrevendo
+      ? exigeTokenParaSobrescrever({ usuarioLogado })
+      : false;
+
+    return {
+      permitido: true,
+      exigeToken,
+      sobrescrevendo,
+      motivo: ''
+    };
+  }
+
+  function gerarCodigoToken(tamanho = 6) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let out = '';
+    for (let i = 0; i < tamanho; i++) {
+      out += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return out;
+  }
+
+  async function gerarTokenSobrescrita({
+    loteriaId,
+    geradoPor,
+    minutos = 10,
+    observacao = ''
+  }) {
+    const token = gerarCodigoToken(6);
+    const expiraEm = new Date(Date.now() + minutos * 60 * 1000).toISOString();
+
+    const { data, error } = await sb
+      .from('autorizacoes_tokens')
+      .insert({
+        token,
+        tipo: 'SOBRESCREVER_FECHAMENTO',
+        loteria_id: loteriaId,
+        gerado_por: geradoPor,
+        expira_em: expiraEm,
+        observacao
+      })
+      .select('id, token, expira_em')
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async function validarTokenSobrescrita({ token, loteriaId }) {
+    const codigo = String(token || '').trim().toUpperCase();
+
+    if (!codigo) {
+      throw new Error('Informe o token.');
+    }
+
+    const { data, error } = await sb
+      .from('autorizacoes_tokens')
+      .select('*')
+      .eq('token', codigo)
+      .eq('tipo', 'SOBRESCREVER_FECHAMENTO')
+      .eq('ativo', true)
+      .is('usado_em', null)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Token inválido.');
+
+    if (Number(data.loteria_id) !== Number(loteriaId)) {
+      throw new Error('Token não autorizado para esta loteria.');
+    }
+
+    const agora = new Date();
+    const expira = new Date(data.expira_em);
+
+    if (expira <= agora) {
+      throw new Error('Token expirado.');
+    }
+
+    return data;
+  }
+
+  async function consumirTokenSobrescrita({
+    tokenId,
+    usadoPor,
+    fechamentoId = null
+  }) {
+    const { error } = await sb
+      .from('autorizacoes_tokens')
+      .update({
+        usado_por: usadoPor,
+        fechamento_id: fechamentoId,
+        usado_em: new Date().toISOString(),
+        ativo: false
+      })
+      .eq('id', tokenId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async function abrirModalToken() {
+    return new Promise(resolve => {
+      const modal = document.getElementById('m-token');
+      const input = document.getElementById('token-autorizacao');
+      const erro = document.getElementById('token-err');
+
+      if (!modal || !input || !erro) {
+        resolve(null);
+        return;
+      }
+
+      window.__fechamentoTokenResolver = resolve;
+
+      input.value = '';
+      erro.textContent = '';
+      erro.style.display = 'none';
+      modal.classList.add('show');
+
+      setTimeout(() => input.focus(), 30);
+    });
+  }
+
+  function fecharModalToken() {
+    const modal = document.getElementById('m-token');
+    if (modal) modal.classList.remove('show');
+  }
+
+  async function confirmarToken({ loteriaId }) {
+    const input = document.getElementById('token-autorizacao');
+    const erro = document.getElementById('token-err');
+
+    if (!input || !erro) return;
+
+    const codigo = input.value.trim().toUpperCase();
+
+    if (!codigo) {
+      erro.textContent = 'Informe o token.';
+      erro.style.display = 'block';
+      return;
+    }
+
+    try {
+      const tokenValido = await validarTokenSobrescrita({
+        token: codigo,
+        loteriaId
+      });
+
+      fecharModalToken();
+
+      if (window.__fechamentoTokenResolver) {
+        window.__fechamentoTokenResolver(tokenValido);
+        window.__fechamentoTokenResolver = null;
+      }
+    } catch (e) {
+      erro.textContent = e.message || 'Token inválido.';
+      erro.style.display = 'block';
+    }
+  }
+
+  function cancelarToken() {
+    fecharModalToken();
+
+    if (window.__fechamentoTokenResolver) {
+      window.__fechamentoTokenResolver(null);
+      window.__fechamentoTokenResolver = null;
+    }
+  }
+
+  window.FECHAMENTO_RULES = {
+    perfilNorm,
+    isAdmin,
+    isSocio,
+    isGerente,
+    isOperador,
+    podeSelecionarFuncionario,
+    podeGravarFechamento,
+    exigeTokenParaSobrescrever,
+    avaliarPermissaoGravacao,
+    gerarCodigoToken,
+    gerarTokenSobrescrita,
+    validarTokenSobrescrita,
+    consumirTokenSobrescrita,
+    abrirModalToken,
+    confirmarToken,
+    cancelarToken
+  };
+})();
+</script>
+
 <script>
 const sb = supabase.createClient(
   window.SISLOT_CONFIG.url,
@@ -1020,7 +1274,12 @@ async function init() {
       .eq('pode_logar', true)
       .maybeSingle();
 
-    if (usrErr) throw usrErr;
+    if (usrErr) {
+      console.error('Erro ao buscar usuário:', usrErr);
+      alert('Erro ao carregar usuário: ' + usrErr.message);
+      return;
+    }
+
     if (!usr) {
       alert('Usuário autenticado, mas não encontrado na tabela usuarios.');
       location.href = './login.html';
@@ -1066,8 +1325,7 @@ async function carregarLojas() {
       ativo,
       loterias(id, nome, slug, codigo, ativo)
     `)
-    .eq('usuario_id', usuario.id)
-    .eq('ativo', true);
+    .eq('usuario_id', usuario.id);
 
   if (error) {
     console.error('Erro ao carregar lojas:', error);
@@ -1076,6 +1334,7 @@ async function carregarLojas() {
   }
 
   todasLojas = (data || [])
+    .filter(ul => ul.ativo !== false)
     .filter(ul => ul.loterias && ul.loterias.ativo !== false)
     .map(ul => ({
       id: ul.loterias.id,
@@ -1166,12 +1425,9 @@ async function carregarFuncionarios() {
       return;
     }
 
-    const proprio = lista.find(u => Number(u.id) === Number(usuario.id));
-
-    sel.innerHTML = '';
     const opt = document.createElement('option');
     opt.value = usuario.id;
-    opt.textContent = proprio?.nome || usuario.nome;
+    opt.textContent = usuario.nome;
     sel.appendChild(opt);
     sel.value = String(usuario.id);
     sel.disabled = true;
@@ -1391,7 +1647,9 @@ async function carregarProdutos() {
     .eq('ativo', true)
     .order('ordem');
 
-  if (error) console.error(error);
+  if (error) {
+    console.error(error);
+  }
 
   if (data && data.length) {
     produtosRasp = data.filter(p => p.tipo === 'RASPADINHA');
@@ -1567,11 +1825,9 @@ async function buscarFechamentoExistente() {
     if (error) throw error;
 
     if (!fech) {
+      showStatus('status-busca', 'Nenhum fechamento encontrado para esta data.', 'ok');
       modoAtual = 'novo';
       fechamentoOriginalId = null;
-      ESTADO.tela2 = { raspadinha: [], telesena: null, federais: [] };
-      ESTADO.tela3 = { internos: [], externos: [] };
-      showStatus('status-busca', 'Nenhum fechamento encontrado para esta data.', 'ok');
       return;
     }
 
@@ -1581,11 +1837,7 @@ async function buscarFechamentoExistente() {
 
     ESTADO.tela2 = montarTela2DoFechamento(fech);
     ESTADO.tela3 = montarTela3DoFechamento(fech);
-
     preencherTela2();
-
-    if (federais.length) restaurarFederais();
-    if (allBoloes.length) restaurarBoloes();
 
     showStatus('status-busca', '✓ Fechamento carregado para edição.', 'ok');
   } catch (e) {
@@ -1620,7 +1872,47 @@ function preencherTela1(fech) {
   calcTroco();
   calcPix();
 }
+function preencherTela2() {
+  const t2 = ESTADO.tela2 || {};
 
+  // Raspadinha
+  const rasp = t2.raspadinha || [];
+  produtosRasp.forEach((p, i) => {
+    const item = rasp[i];
+    const inpPreco = $(`rp-${i}`);
+    const inpQtd = $(`rq-${i}`);
+
+    if (inpPreco) {
+      inpPreco.value = item?.preco != null
+        ? Number(item.preco).toFixed(2)
+        : Number(p.valor_unitario || 0).toFixed(2);
+    }
+
+    if (inpQtd) {
+      inpQtd.value = item?.qtd > 0 ? item.qtd : '';
+    }
+
+    recalcR(i);
+  });
+
+  // Telesena
+  if ($('tele-preco')) {
+    $('tele-preco').value = t2.telesena?.preco != null
+      ? Number(t2.telesena.preco).toFixed(2)
+      : Number(produtoTele?.valor_unitario || 16).toFixed(2);
+  }
+
+  if ($('tele-qtd')) {
+    $('tele-qtd').value = (t2.telesena?.qtd || 0) > 0
+      ? t2.telesena.qtd
+      : '';
+  }
+
+  recalcTele();
+
+  updT2Geral();
+}
+  
 function montarTela2DoFechamento(fech) {
   const raspMap = new Map(
     (fech.fechamento_produtos || [])
@@ -1670,74 +1962,6 @@ function montarTela2DoFechamento(fech) {
   }));
 
   return { raspadinha, telesena, federais: federaisCarregados };
-}
-
-function preencherTela2() {
-  const t2 = ESTADO.tela2 || {};
-
-  const raspMap = new Map(
-    (t2.raspadinha || []).map(r => [String(r.produto_id || ''), r])
-  );
-
-  produtosRasp.forEach((p, i) => {
-    const item = raspMap.get(String(p.id || ''));
-
-    const inpPreco = $(`rp-${i}`);
-    const inpQtd = $(`rq-${i}`);
-
-    const preco = item?.preco ?? p.valor_unitario ?? 0;
-    const qtd = item?.qtd ?? 0;
-
-    if (inpPreco) inpPreco.value = Number(preco).toFixed(2);
-    if (inpQtd) inpQtd.value = qtd > 0 ? qtd : '';
-
-    recalcR(i);
-  });
-
-  const tele = t2.telesena || {};
-
-  if ($('tele-preco')) {
-    $('tele-preco').value = Number(
-      tele.preco ?? produtoTele?.valor_unitario ?? 16
-    ).toFixed(2);
-  }
-
-  if ($('tele-qtd')) {
-    $('tele-qtd').value = (tele.qtd || 0) > 0 ? tele.qtd : '';
-  }
-
-  recalcTele();
-  updT2Geral();
-}
-
-function montarTela3DoFechamento(fech) {
-  const internos = (fech.fechamento_boloes || [])
-    .filter(b => b.tipo === 'INTERNO')
-    .map(mapBolaoFech);
-
-  const externos = (fech.fechamento_boloes || [])
-    .filter(b => b.tipo === 'EXTERNO')
-    .map(mapBolaoFech);
-
-  return { internos, externos };
-}
-
-function mapBolaoFech(b) {
-  return {
-    bolao_id: b.bolao_id,
-    modalidade: b.modalidade,
-    qtdVendida: b.qtd_vendida,
-    valorCota: b.valor_cota,
-    subtotal: b.subtotal
-  };
-}
-
-function setFS(s) {
-  ['fs-inicial', 'fs-loading', 'fs-erro', 'fs-vazio', 'fs-lista'].forEach(id => {
-    const el = $(id);
-    if (el) el.style.display = 'none';
-  });
-  $(s).style.display = s === 'fs-lista' ? 'block' : 'flex';
 }
 
 async function buscarFederais() {
@@ -1879,6 +2103,7 @@ function restaurarFederais() {
     }
   });
 }
+  
 
 function setB3(s) {
   ['b3-inicial', 'b3-loading', 'b3-erro', 'b3-vazio', 'b3-lista'].forEach(id => {
@@ -2006,34 +2231,6 @@ async function carregarBoloes() {
   }
 }
 
-function isModalidadeEspecial(modalidade) {
-  const m = String(modalidade || '').toUpperCase();
-  return (
-    m.includes('PÁSCOA') || m.includes('PASCOA') ||
-    m.includes('VIRADA') ||
-    m.includes('INDEPEND') ||
-    m.includes('SÃO JOÃO') || m.includes('SAO JOAO')
-  );
-}
-
-function ordenarBoloesFechamento(lista) {
-  return [...lista].sort((a, b) => {
-    const modA = String(a.modalidade || '');
-    const modB = String(b.modalidade || '');
-
-    const cmpMod = modA.localeCompare(modB, 'pt-BR');
-    if (cmpMod !== 0) return cmpMod;
-
-    const valA = Number(a.valorCota || 0);
-    const valB = Number(b.valorCota || 0);
-    if (valA !== valB) return valA - valB;
-
-    const concA = Number(a.concurso || 0);
-    const concB = Number(b.concurso || 0);
-    return concA - concB;
-  });
-}
-
 function renderBoloes() {
   const wrap = $('boloes-wrap');
   wrap.innerHTML = '';
@@ -2148,7 +2345,7 @@ function renderBoloes() {
 
   updBolTotais();
 }
-
+  
 function ajQ(idx, d) {
   const inp = $(`qtd-${idx}`);
   inp.value = Math.max(0, (parseInt(inp.value) || 0) + d) || '';
@@ -2178,7 +2375,43 @@ function onQtd(idx) {
   updBolTotais();
   atualizarListaVendas();
 }
+  
+function normalizarTexto(txt) {
+  return String(txt || '')
+    .toUpperCase()
+    .normalize('NFD')                // separa acento
+    .replace(/[\u0300-\u036f]/g, ''); // remove acento
+}
 
+function isModalidadeEspecial(modalidade) {
+  const m = normalizarTexto(modalidade);
+
+  return (
+    m.includes('PASCOA') ||
+    m.includes('VIRADA') ||
+    m.includes('INDEPENDENCIA') ||
+    m.includes('SAO JOAO')
+  );
+}
+
+function ordenarBoloesFechamento(lista) {
+  return [...lista].sort((a, b) => {
+    const modA = String(a.modalidade || '');
+    const modB = String(b.modalidade || '');
+
+    const cmpMod = modA.localeCompare(modB, 'pt-BR');
+    if (cmpMod !== 0) return cmpMod;
+
+    const valA = Number(a.valorCota || 0);
+    const valB = Number(b.valorCota || 0);
+    if (valA !== valB) return valA - valB;
+
+    const concA = Number(a.concurso || 0);
+    const concB = Number(b.concurso || 0);
+    return concA - concB;
+  });
+}
+  
 function updBolTotais() {
   let tInt = 0;
   let tExt = 0;
@@ -2235,7 +2468,7 @@ function updBolTotais() {
   if (blocoTrad) blocoTrad.textContent = fmtBRL(totTrad);
   if (blocoEsp) blocoEsp.textContent = fmtBRL(totEsp);
 }
-
+  
 function atualizarListaVendas() {
   const vendidos = allBoloes.filter(({ idx }) => (parseInt($(`qtd-${idx}`)?.value) || 0) > 0);
   const list = $('vendas-registradas');
@@ -2495,6 +2728,12 @@ function toggleDividas() {
 }
 
 async function finalizar() {
+  if (modoAtual === 'visualizacao') {
+    resetEstado();
+    showStep(1);
+    return;
+  }
+
   coletarTela1();
   coletarTela2();
   coletarTela3();
