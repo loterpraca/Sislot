@@ -134,10 +134,6 @@ function aplicarTema(slug) {
 
   $('headerTitle').textContent = cfg.nome;
   $('headerSub').textContent = 'Cadastro e movimentação';
-
-  document.querySelectorAll('.brand-btn, .loja-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.slug === slug);
-  });
 }
 
 function atualizarOrigemUI() {
@@ -158,9 +154,16 @@ function atualizarCamposMov() {
   Object.entries(mapaSlug).forEach(([slug, inputId]) => {
     const el = $(inputId);
     if (!el) return;
+
+    const field = el.closest('.field');
     const ehOrigem = slug === loteriaAtiva?.loteria_slug;
+
     el.disabled = ehOrigem;
     if (ehOrigem) el.value = '';
+
+    if (field) {
+      field.style.display = ehOrigem ? 'none' : '';
+    }
   });
 }
 
@@ -177,6 +180,24 @@ function trocarLoja(slug) {
   atualizarCamposMov();
   renderChips(localStorage.getItem('sl_active_mod') || '');
   saveDraft();
+}
+
+function getIndiceLojaAtual() {
+  return todasLojas.findIndex(l => l.loteria_slug === loteriaAtiva?.loteria_slug);
+}
+
+function trocarLojaPorOffset(offset) {
+  if (!todasLojas.length || !loteriaAtiva) return;
+
+  const atual = getIndiceLojaAtual();
+  if (atual < 0) return;
+
+  let prox = atual + offset;
+
+  if (prox < 0) prox = todasLojas.length - 1;
+  if (prox >= todasLojas.length) prox = 0;
+
+  trocarLoja(todasLojas[prox].loteria_slug);
 }
 
 /************************************************************
@@ -819,14 +840,14 @@ function bind() {
     saveDraft();
   });
 
-  document.querySelectorAll('.brand-btn').forEach(b => {
-    b.addEventListener('click', () => trocarLoja(b.dataset.slug));
-  });
-
   [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
     $(id)?.addEventListener('input', saveDraft);
     $(id)?.addEventListener('change', saveDraft);
   });
+
+  $('btnOrigemPrev')?.addEventListener('click', () => trocarLojaPorOffset(-1));
+  $('btnOrigemNext')?.addEventListener('click', () => trocarLojaPorOffset(1));
+  $('origemChip')?.addEventListener('click', () => trocarLojaPorOffset(1));
 
   $('btnInicio')?.addEventListener('click', () => {
     window.SISLOT_SECURITY.irParaInicio();
