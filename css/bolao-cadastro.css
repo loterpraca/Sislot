@@ -56,6 +56,8 @@ body{
 .btn-menu:hover{border-color:var(--t4);color:var(--t1);background:var(--t5)}
 .btn-menu i{font-size:11px}
 
+
+
 /* WRAP */
 .wrap{max-width:940px;width:100%;margin:0 auto;padding:14px 18px 48px;flex:1}
 
@@ -214,7 +216,29 @@ button:disabled{opacity:.4;cursor:not-allowed}
   border:2px solid rgba(255,255,255,.2);border-top-color:currentColor;
   border-radius:50%;animation:spin .6s linear infinite
 }
+.btn-theme-icon{
+  width:28px;
+  min-width:28px;
+  height:28px;
+  min-height:28px;
+  padding:0;
+  flex:0 0 28px;
+  border-radius:8px;
+  border:1px solid var(--t4);
+  background:var(--t3);
+  color:var(--t1);
+}
 
+.btn-theme-icon:hover:not(:disabled){
+  border-color:var(--t1);
+  background:var(--t5);
+  color:var(--t1);
+  transform:translateY(-1px);
+}
+
+.btn-theme-icon i{
+  font-size:11px;
+}
 .actions-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 
