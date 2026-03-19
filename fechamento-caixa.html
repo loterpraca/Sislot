@@ -3059,7 +3059,23 @@ function setProgress(pct) {
   $('m-prog').style.width = pct + '%';
   $('m-grav-sub').textContent = pct + '%';
 }
+function setFS(s) {
+  ['fs-inicial', 'fs-loading', 'fs-erro', 'fs-vazio', 'fs-lista'].forEach(id => {
+    const el = $(id);
+    if (el) el.style.display = 'none';
+  });
+  const alvo = $(s);
+  if (alvo) alvo.style.display = s === 'fs-lista' ? 'block' : 'flex';
+}
 
+function setB3(s) {
+  ['b3-inicial', 'b3-loading', 'b3-erro', 'b3-vazio', 'b3-lista'].forEach(id => {
+    const el = $(id);
+    if (el) el.style.display = 'none';
+  });
+  const alvo = $(s);
+  if (alvo) alvo.style.display = s === 'b3-lista' ? 'block' : 'flex';
+}
 function resetEstado() {
   ESTADO.tela1 = {};
   ESTADO.tela2 = { raspadinha: [], telesena: null, federais: [] };
