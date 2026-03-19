@@ -1890,8 +1890,9 @@ function executarInicio() {
   showStep(1);
 }
 
-async function executarSair() {
-  await window.SISLOT_SECURITY.sair();
+function executarInicio() {
+  fecharModal('m-inicio');
+  window.SISLOT_SECURITY.irParaInicio();
 }
 
 function showGravando(titulo) {
