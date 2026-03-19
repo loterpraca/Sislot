@@ -22,14 +22,6 @@
       <div class="header-sub" id="headerSub">Cadastro · Movimentação</div>
     </div>
 
-    <div class="loja-btns">
-      <button type="button" class="loja-btn brand-btn" data-slug="centro" title="Centro"><img src="./icons/loterpraca.png" alt="Centro"/></button>
-      <button type="button" class="loja-btn brand-btn" data-slug="boulevard" title="Boulevard"><img src="./icons/boulevard.png" alt="Boulevard"/></button>
-      <button type="button" class="loja-btn brand-btn" data-slug="lotobel" title="Lotobel"><img src="./icons/lotobel.png" alt="Lotobel"/></button>
-      <button type="button" class="loja-btn brand-btn" data-slug="santa-tereza" title="Santa Tereza"><img src="./icons/santa-tereza.png" alt="Santa Tereza"/></button>
-      <button type="button" class="loja-btn brand-btn" data-slug="via-brasil" title="Via Brasil"><img src="./icons/via-brasil.png" alt="Via Brasil"/></button>
-    </div>
-
     <button type="button" class="btn-menu" id="btnInicio">
       <i class="fas fa-home"></i> <span>Início</span>
     </button>
@@ -53,7 +45,19 @@
       <div class="section-icon"><i class="fas fa-ticket-alt"></i></div>
       <h2 class="section-title">
         Dados do bolão
-        <span class="origem-chip" id="origemChip"><i class="fas fa-store"></i> <span id="origemNome">—</span></span>
+        <span class="origem-switch">
+          <button type="button" class="origem-arrow" id="btnOrigemPrev" aria-label="Loja anterior">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+
+          <span class="origem-chip origem-chip-clickable" id="origemChip" title="Trocar loja">
+            <i class="fas fa-store"></i> <span id="origemNome">—</span>
+          </span>
+
+          <button type="button" class="origem-arrow" id="btnOrigemNext" aria-label="Próxima loja">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </span>
       </h2>
     </div>
 
