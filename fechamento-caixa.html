@@ -12,31 +12,27 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/fechamento-caixa.css">
 </head>
-<body>
+<body data-loja="centro">
 
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-icon">LC</div>
-    <div>
-      <div class="brand-name">SisLot</div>
-      <div class="brand-sub">Fechamento de Caixa</div>
+<header class="header">
+  <div class="header-inner">
+    <div class="loja-tree" id="lojaTreeWrap" title="Trocar loja">
+      <img src="./icons/loterpraca.png" alt="Logo" id="logoImg"/>
     </div>
-  </div>
-  <div style="display:flex;align-items:center;gap:10px">
+
+    <div class="header-info">
+      <div class="header-nome" id="headerTitle">Centro</div>
+      <div class="header-sub" id="headerSub">Fechamento de Caixa</div>
+    </div>
+
     <div id="relogio">--:--:--</div>
-    <div class="loteria-selector" id="loteria-wrap" style="display:none">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-      <select id="sel-loteria" onchange="trocarLoteria()">
-        <option value="">Carregando...</option>
-      </select>
-    </div>
-    <button class="btn-topbar btn-inicio" onclick="confirmarInicio()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Início
+
+    <button type="button" class="btn-menu" id="btnInicio">
+      <span>Início</span>
     </button>
-    <button class="btn-topbar btn-sair" onclick="confirmarSair()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Sair
+
+    <button type="button" class="btn-menu" id="btnSair">
+      <span>Sair</span>
     </button>
   </div>
 </header>
@@ -408,7 +404,7 @@
     <div class="admin-err" id="token-err">Token inválido.</div>
     <div class="modal-btns" style="justify-content:flex-end;margin-top:14px">
       <button class="modal-cancel" onclick="FECHAMENTO_RULES.cancelarToken()">Cancelar</button>
-      <button class="modal-ok amber" onclick="FECHAMENTO_RULES.confirmarToken({ loteriaId: loteriaAtiva.id })">Confirmar</button>
+      <button class="modal-ok amber" onclick="FECHAMENTO_RULES.confirmarToken({ loteriaId: window.loteriaAtiva?.id })">Confirmar</button>
     </div>
   </div>
 </div>
@@ -424,6 +420,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./sislot-config.js"></script>
+<script src="./sislot-security.js"></script>
 <script src="./js/fechamento-rules.js"></script>
 <script src="./js/fechamento-caixa.js"></script>
 </body>
