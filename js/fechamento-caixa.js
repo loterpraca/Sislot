@@ -1885,12 +1885,6 @@ function confirmarSair() {
 }
 
 function executarInicio() {
-  resetEstado();
-  fecharModal('m-inicio');
-  showStep(1);
-}
-
-function executarInicio() {
   fecharModal('m-inicio');
   window.SISLOT_SECURITY.irParaInicio();
 }
