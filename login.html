@@ -1,181 +1,63 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>SISLOT — Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --blue-deep:#0a1628;--blue-mid:#0f2244;--blue-panel:#132952;--blue-border:#1e3a6e;
-      --accent:#00c896;--text-bright:#e8eef8;--text-mid:#8fa3c8;--text-dim:#4a6491;
-      --input-bg:#0d1e3a;--input-border:#1e3a6e;--error:#ff5252;
-    }
-    body {
-      background:var(--blue-deep);font-family:'IBM Plex Sans',sans-serif;
-      color:var(--text-bright);min-height:100vh;display:flex;
-      align-items:center;justify-content:center;
-      background-image:
-        radial-gradient(ellipse 80% 40% at 50% 50%, rgba(0,200,150,0.12) 0%, transparent 70%),
-        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(30,58,110,0.3) 39px, rgba(30,58,110,0.3) 40px),
-        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(30,58,110,0.15) 39px, rgba(30,58,110,0.15) 40px);
-    }
-    .login-container{width:100%;max-width:420px;padding:20px;}
-    .login-card{background:rgba(19,41,82,0.75);backdrop-filter:blur(12px);border:1px solid var(--blue-border);border-radius:16px;padding:48px 40px;box-shadow:0 8px 32px rgba(0,0,0,.4);}
-    .login-header{text-align:center;margin-bottom:40px;}
-    .brand-icon{width:64px;height:64px;background:var(--accent);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:var(--blue-deep);margin:0 auto 20px;box-shadow:0 0 32px rgba(0,200,150,0.25);}
-    .login-title{font-size:24px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-bright);margin-bottom:6px;}
-    .login-subtitle{font-size:12px;color:var(--text-dim);letter-spacing:0.08em;text-transform:uppercase;}
-    .form-group{margin-bottom:20px;}
-    .form-label{display:block;font-size:11px;font-weight:500;color:var(--text-mid);margin-bottom:8px;letter-spacing:0.05em;text-transform:uppercase;}
-    .form-input{width:100%;height:48px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:8px;padding:0 16px;font-size:15px;color:var(--text-bright);font-family:'IBM Plex Sans',sans-serif;outline:none;transition:all 0.2s;}
-    .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,150,0.1);}
-    .form-input.error{border-color:var(--error);}
-    .field-error{display:none;margin-top:6px;font-size:11px;color:var(--error);font-weight:500;}
-    .field-error.visible{display:block;}
-    .btn-login{width:100%;height:52px;background:var(--accent);border:none;border-radius:8px;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue-deep);cursor:pointer;transition:all 0.2s;font-family:'IBM Plex Sans',sans-serif;margin-top:28px;display:flex;align-items:center;justify-content:center;gap:10px;}
-    .btn-login:hover:not(:disabled){background:#00e8ad;transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,200,150,0.3);}
-    .btn-login:disabled{opacity:0.5;cursor:not-allowed;}
-    .spinner{display:none;width:18px;height:18px;border:2px solid var(--blue-deep);border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;}
-    @keyframes spin{to{transform:rotate(360deg);}}
-    .alert{margin-top:20px;padding:14px 16px;background:rgba(255,82,82,0.08);border:1px solid rgba(255,82,82,0.3);border-radius:8px;font-size:13px;color:#ffb3b3;text-align:center;display:none;}
-    .alert.visible{display:block;}
-    .version{text-align:center;margin-top:28px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.1em;}
-  </style>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/login.css" />
 </head>
 <body>
-<div class="login-container">
-  <div class="login-card">
-    <div class="login-header">
-      <div class="brand-icon">SL</div>
-      <div class="login-title">SISLOT</div>
-      <div class="login-subtitle">Sistema de Lotéricas</div>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="brand-icon">SL</div>
+        <div class="login-title">SISLOT</div>
+        <div class="login-subtitle">Sistema de Lotéricas</div>
+      </div>
+
+      <form id="formLogin" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="email">E-mail</label>
+          <input
+            type="email"
+            id="email"
+            class="form-input"
+            autocomplete="username"
+            autofocus
+            placeholder="seu@email.com"
+          />
+          <div class="field-error" id="errEmail">Informe um e-mail válido</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="senha">Senha</label>
+          <input
+            type="password"
+            id="senha"
+            class="form-input"
+            autocomplete="current-password"
+            placeholder="••••••••"
+          />
+          <div class="field-error" id="errSenha">Informe sua senha</div>
+        </div>
+
+        <button type="submit" class="btn" id="btnLogin">
+          <span id="btnTexto">Entrar</span>
+          <div class="spinner" id="spinner"></div>
+        </button>
+
+        <div class="alert" id="alertErro"></div>
+      </form>
+
+      <div class="version">v2.0 · Supabase Auth</div>
     </div>
-    <form id="formLogin" novalidate>
-      <div class="form-group">
-        <label class="form-label" for="email">E-mail</label>
-        <input type="email" id="email" class="form-input" autocomplete="username" autofocus placeholder="seu@email.com"/>
-        <div class="field-error" id="errEmail">Informe um e-mail válido</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="senha">Senha</label>
-        <input type="password" id="senha" class="form-input" autocomplete="current-password" placeholder="••••••••"/>
-        <div class="field-error" id="errSenha">Informe sua senha</div>
-      </div>
-      <button type="submit" class="btn-login" id="btnLogin">
-        <span id="btnTexto">Entrar</span>
-        <div class="spinner" id="spinner"></div>
-      </button>
-      <div class="alert" id="alertErro"></div>
-    </form>
-    <div class="version">v2.0 · Supabase Auth</div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./sislot-config.js"></script>
-<script>
-  const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
-
-  (async () => {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) await redirecionarPorPerfil(session.user.id);
-  })();
-
-  async function redirecionarPorPerfil(authUserId) {
-    const { data: usr } = await sb
-      .from('usuarios')
-      .select('perfil, pode_logar, ativo')
-      .eq('auth_user_id', authUserId)
-      .maybeSingle();
-
-    if (!usr || !usr.ativo || !usr.pode_logar) {
-      mostrarErro('Usuário sem permissão de acesso.');
-      await sb.auth.signOut();
-      return;
-    }
-
-   if (usr.perfil === 'OPERADOR') {
-  window.location.href = './fechamento-caixa.html';
-} else {
-  window.location.href = './menu.html';
-}
-  }
-
-  const formLogin = document.getElementById('formLogin');
-  const btnLogin  = document.getElementById('btnLogin');
-  const btnTexto  = document.getElementById('btnTexto');
-  const spinner   = document.getElementById('spinner');
-
-  ['email','senha'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => {
-      document.getElementById(id).classList.remove('error');
-      document.getElementById('err' + id.charAt(0).toUpperCase() + id.slice(1)).classList.remove('visible');
-      document.getElementById('alertErro').classList.remove('visible');
-    });
-  });
-
-  formLogin.addEventListener('submit', async e => {
-    e.preventDefault();
-    document.querySelectorAll('.field-error').forEach(el => el.classList.remove('visible'));
-    document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
-    document.getElementById('alertErro').classList.remove('visible');
-
-    const email = document.getElementById('email').value.trim();
-    const senha = document.getElementById('senha').value.trim();
-
-    let valido = true;
-    if (!email || !email.includes('@')) {
-      document.getElementById('email').classList.add('error');
-      document.getElementById('errEmail').classList.add('visible');
-      valido = false;
-    }
-    if (!senha) {
-      document.getElementById('senha').classList.add('error');
-      document.getElementById('errSenha').classList.add('visible');
-      valido = false;
-    }
-    if (!valido) return;
-
-    btnLogin.disabled = true;
-    btnTexto.style.display = 'none';
-    spinner.style.display = 'block';
-
-    try {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
-      if (error) throw new Error(traduzirErro(error.message));
-
-      btnTexto.textContent = '✓ Entrando…';
-      btnTexto.style.display = 'block';
-      spinner.style.display = 'none';
-      btnLogin.style.background = '#00e8ad';
-
-      await redirecionarPorPerfil(data.user.id);
-    } catch (err) {
-      mostrarErro(err.message || 'Erro ao fazer login. Tente novamente.');
-      btnLogin.disabled = false;
-      btnTexto.style.display = 'block';
-      btnTexto.textContent = 'Entrar';
-      spinner.style.display = 'none';
-    }
-  });
-
-  function mostrarErro(msg) {
-    const el = document.getElementById('alertErro');
-    el.textContent = msg;
-    el.classList.add('visible');
-  }
-
-  function traduzirErro(msg) {
-    if (!msg) return 'Erro desconhecido.';
-    const m = msg.toLowerCase();
-    if (m.includes('invalid login') || m.includes('invalid credentials')) return 'E-mail ou senha incorretos.';
-    if (m.includes('email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
-    if (m.includes('too many requests')) return 'Muitas tentativas. Aguarde alguns minutos.';
-    if (m.includes('network')) return 'Sem conexão com o servidor.';
-    return msg;
-  }
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./js/sislot-security.js"></script>
+  <script src="./js/login.js"></script>
 </body>
 </html>
