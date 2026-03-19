@@ -1017,28 +1017,28 @@ async function carregarBoloes() {
     if (errInt) throw errInt;
 
     const { data: movsExt, error: errExt } = await sb
-      .from('movimentacoes_cotas')
-      .select(`
-        bolao_id,
-        qtd_cotas,
-        status,
-        loteria_destino,
-        boloes(
-          id,
-          loteria_id,
-          modalidade,
-          concurso,
-          valor_cota,
-          qtd_jogos,
-          qtd_dezenas,
-          dt_inicial,
-          dt_concurso,
-          status,
-          loterias(nome)
-        )
-      `)
-      .eq('loteria_destino', loteriaAtiva.id)
-      .eq('status', 'ATIVO');
+  .from('movimentacoes_cotas')
+  .select(`
+    bolao_id,
+    qtd_cotas,
+    status,
+    loteria_destino,
+    boloes(
+      id,
+      loteria_id,
+      modalidade,
+      concurso,
+      valor_cota,
+      qtd_jogos,
+      qtd_dezenas,
+      dt_inicial,
+      dt_concurso,
+      status,
+      loterias(nome, cod_loterico)
+    )
+  `)
+  .eq('loteria_destino', loteriaAtiva.id)
+  .eq('status', 'ATIVO');
 
     if (errExt) throw errExt;
 
@@ -1070,18 +1070,19 @@ async function carregarBoloes() {
     }));
 
     lstExt = Object.values(mapaExt).map(({ bolao: b, qtdCotas }) => ({
-      bolao_id: b.id,
-      modalidade: b.modalidade,
-      concurso: b.concurso,
-      qtdJogos: b.qtd_jogos,
-      qtdDezenas: b.qtd_dezenas,
-      valorCota: Number(b.valor_cota || 0),
-      dtInicial: b.dt_inicial,
-      dtConcurso: b.dt_concurso,
-      saldoEnviado: qtdCotas,
-      origem: b.loterias?.nome || '',
-      tipo: 'EXTERNO'
-    }));
+  bolao_id: b.id,
+  modalidade: b.modalidade,
+  concurso: b.concurso,
+  qtdJogos: b.qtd_jogos,
+  qtdDezenas: b.qtd_dezenas,
+  valorCota: Number(b.valor_cota || 0),
+  dtInicial: b.dt_inicial,
+  dtConcurso: b.dt_concurso,
+  saldoEnviado: qtdCotas,
+  origem: b.loterias?.nome || '',
+  origemCodLoterico: b.loterias?.cod_loterico || '',
+  tipo: 'EXTERNO'
+}));
 
     const total = lstInt.length + lstExt.length;
 
@@ -1175,15 +1176,16 @@ function renderBoloes() {
         if (b.qtdDezenas) metas.push(`<span class="meta-tag">${b.qtdDezenas} dez.</span>`);
         metas.push(`<span class="meta-tag" style="color:var(--accent);border-color:rgba(0,200,150,.2)">R$ ${Number(b.valorCota).toFixed(2).replace('.', ',')} / cota</span>`);
 
-        if (b.tipo === 'EXTERNO') {
-          metas.push(`<span class="meta-tag meta-dest">externo${b.origem ? ' · ' + b.origem : ''}</span>`);
-        } else {
-          metas.push(`<span class="meta-tag">interno</span>`);
-        }
+       if (b.tipo === 'EXTERNO') {
+  const origemTxt = [b.origem, b.origemCodLoterico].filter(Boolean).join(' · ');
+  metas.push(`<span class="meta-tag meta-dest">externo${origemTxt ? ' · ' + origemTxt : ''}</span>`);
+} else {
+  metas.push(`<span class="meta-tag">interno</span>`);
+}
 
-        if (b.saldoEnviado !== null && b.saldoEnviado !== undefined) {
-          metas.push(`<span class="meta-tag meta-saldo">${b.saldoEnviado} cotas recebidas</span>`);
-        }
+if (b.saldoEnviado !== null && b.saldoEnviado !== undefined) {
+  metas.push(`<span class="meta-tag meta-saldo">${b.saldoEnviado} cotas</span>`);
+}
 
         const card = document.createElement('div');
         card.className = `bolao-card is-${b.tipo === 'INTERNO' ? 'int' : 'ext'}`;
