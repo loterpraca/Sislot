@@ -845,10 +845,11 @@ function bind() {
     $(id)?.addEventListener('change', saveDraft);
   });
 
-$('lojaTreeWrap')?.addEventListener('click', () => trocarLojaPorOffset(1));
-$('lojaTreeWrap')?.setAttribute('title', 'Trocar loja');
-$('origemChip')?.addEventListener('click', () => trocarLojaPorOffset(1));
-$('movOrigemChip')?.addEventListener('click', () => trocarLojaPorOffset(1));
+  $('lojaTreeWrap')?.addEventListener('click', () => trocarLojaPorOffset(1));
+  $('lojaTreeWrap')?.setAttribute('title', 'Trocar loja');
+
+  $('origemChip')?.addEventListener('click', () => trocarLojaPorOffset(1));
+  $('movOrigemChip')?.addEventListener('click', () => trocarLojaPorOffset(1));
 
   $('btnInicio')?.addEventListener('click', () => {
     window.SISLOT_SECURITY.irParaInicio();
