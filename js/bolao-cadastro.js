@@ -29,11 +29,11 @@ const LOJA_CONFIG = {
 };
 
 const LOJAS_MOV = [
-  { slug: 'boulevard', id: 'deltaBoulevard', icon: 'fas fa-building', nome: 'Boulevard' },
-  { slug: 'centro', id: 'deltaCentro', icon: 'fas fa-city', nome: 'Centro' },
-  { slug: 'lotobel', id: 'deltaLotobel', icon: 'fas fa-landmark', nome: 'Lotobel' },
-  { slug: 'santa-tereza', id: 'deltaSantaTereza', icon: 'fas fa-church', nome: 'Santa Tereza' },
-  { slug: 'via-brasil', id: 'deltaViaBrasil', icon: 'fas fa-road', nome: 'Via Brasil' },
+  { slug: 'boulevard',    id: 'deltaBoulevard',   icon: 'fas fa-building',  nome: 'Boulevard' },
+  { slug: 'centro',       id: 'deltaCentro',      icon: 'fas fa-city',      nome: 'Centro' },
+  { slug: 'lotobel',      id: 'deltaLotobel',     icon: 'fas fa-landmark',  nome: 'Lotobel' },
+  { slug: 'santa-tereza', id: 'deltaSantaTereza', icon: 'fas fa-church',    nome: 'Santa Tereza' },
+  { slug: 'via-brasil',   id: 'deltaViaBrasil',   icon: 'fas fa-road',      nome: 'Via Brasil' },
 ];
 
 const MODS = [
@@ -91,8 +91,8 @@ async function init() {
   await carregarModelos();
 
   aplicarTema(loteriaAtiva.loteria_slug);
-  OrigemUI();
-  CamposMov();
+  atualizarOrigemUI();
+  atualizarCamposMov();
   renderQuickbar();
   loadDraft();
   applyFederalUI();
@@ -144,7 +144,7 @@ function aplicarTema(slug) {
   $('headerSub').textContent = 'Cadastro e movimentação';
 }
 
-function OrigemUI() {
+function atualizarOrigemUI() {
   const nome = loteriaAtiva?.loteria_nome || '—';
   $('origemNome').textContent = nome;
   $('movOrigemNome').textContent = nome;
@@ -174,6 +174,7 @@ function atualizarCamposMov() {
     }
   });
 }
+
 /************************************************************
  * TROCA DE LOJA
  ************************************************************/
@@ -367,6 +368,7 @@ function loadDraft() {
     });
   } catch {}
 }
+
 function limparFormSemLoja() {
   CAMPOS_FORM.forEach(id => { if ($(id)) $(id).value = ''; });
   saveDraft();
@@ -833,22 +835,22 @@ function bind() {
   $('btnDcPrev').onclick = () => addDias('dataConcurso', -1);
   $('btnDcNext').onclick = () => addDias('dataConcurso', +1);
 
-  $('btnCadastrar').addEventListener('click', onCadastrar);
-  $('btnDeletar').addEventListener('click', onDeletar);
-  $('btnMovimentar').addEventListener('click', onMovimentar);
-  $('btnBuscar').addEventListener('click', onBuscar);
+  $('btnCadastrar')?.addEventListener('click', onCadastrar);
+  $('btnDeletar')?.addEventListener('click', onDeletar);
+  $('btnMovimentar')?.addEventListener('click', onMovimentar);
+  $('btnBuscar')?.addEventListener('click', onBuscar);
 
-  $('btnLimpar').addEventListener('click', () => {
+  $('btnLimpar')?.addEventListener('click', () => {
     limparFormSemLoja();
     setStatus('status', 'Campos limpos.', 'muted', 'broom');
   });
 
-  $('btnZerarMov').addEventListener('click', () => {
+  $('btnZerarMov')?.addEventListener('click', () => {
     limparMov();
     setStatus('status', 'Movimentação limpa.', 'muted', 'broom');
   });
 
-  $('modalidade').addEventListener('change', () => {
+  $('modalidade')?.addEventListener('change', () => {
     const m = $('modalidade').value;
     localStorage.setItem('sl_active_mod', m);
     setActiveModBtn(m);
@@ -857,10 +859,10 @@ function bind() {
     saveDraft();
   });
 
-  CAMPOS_FORM.forEach(id => {
-  $(id)?.addEventListener('input', saveDraft);
-  $(id)?.addEventListener('change', saveDraft);
-});
+  [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
+    $(id)?.addEventListener('input', saveDraft);
+    $(id)?.addEventListener('change', saveDraft);
+  });
 
   $('lojaTreeWrap')?.addEventListener('click', () => trocarLojaPorOffset(1));
   $('lojaTreeWrap')?.setAttribute('title', 'Trocar loja');
