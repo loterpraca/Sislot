@@ -3,6 +3,14 @@ const sb = supabase.createClient(
   window.SISLOT_CONFIG.anonKey
 );
 
+const LOJA_CONFIG = {
+  'boulevard':    { nome: 'Boulevard',    logo: './icons/boulevard.png',    theme: 'boulevard',    logoPos: '50% 50%' },
+  'centro':       { nome: 'Centro',       logo: './icons/loterpraca.png',   theme: 'centro',       logoPos: '50% 42%' },
+  'lotobel':      { nome: 'Lotobel',      logo: './icons/lotobel.png',      theme: 'lotobel',      logoPos: '50% 50%' },
+  'santa-tereza': { nome: 'Santa Tereza', logo: './icons/santa-tereza.png', theme: 'santa-tereza', logoPos: '50% 50%' },
+  'via-brasil':   { nome: 'Via Brasil',   logo: './icons/via-brasil.png',   theme: 'via-brasil',   logoPos: '50% 50%' },
+};
+
 let usuario = null;
 let loteriaAtiva = null;
 let todasLojas = [];
@@ -71,6 +79,38 @@ function updateClock() {
     });
 }
 
+function aplicarTemaLoja(slug) {
+  const cfg = LOJA_CONFIG[slug] || LOJA_CONFIG['centro'];
+
+  document.body.setAttribute('data-loja', slug || 'centro');
+
+  const img = $('logoImg');
+  if (img) {
+    img.src = cfg.logo;
+    img.style.objectPosition = cfg.logoPos || '50% 50%';
+  }
+
+  const title = $('headerTitle');
+  if (title) title.textContent = cfg.nome;
+
+  const sub = $('headerSub');
+  if (sub) sub.textContent = 'Fechamento de Caixa';
+}
+
+function bindHeaderActions() {
+  $('lojaTreeWrap')?.addEventListener('click', async () => {
+    await trocarLoteria();
+  });
+
+  $('btnInicio')?.addEventListener('click', () => {
+    confirmarInicio();
+  });
+
+  $('btnSair')?.addEventListener('click', () => {
+    confirmarSair();
+  });
+}
+
 updateClock();
 setInterval(updateClock, 1000);
 
@@ -93,50 +133,45 @@ function bindStepClicks() {
 
 async function init() {
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      location.href = './login.html';
-      return;
-    }
+    const ctx = await window.SISLOT_SECURITY.protegerPagina('fechamento');
+    if (!ctx) return;
 
-    const { data: usr, error: usrErr } = await sb
-      .from('usuarios')
-      .select('id, nome, email, perfil, ativo, pode_logar, auth_user_id')
-      .eq('auth_user_id', session.user.id)
-      .eq('ativo', true)
-      .eq('pode_logar', true)
-      .maybeSingle();
+    usuario = ctx.usuario;
 
-    if (usrErr) {
-      console.error('Erro ao buscar usuário:', usrErr);
-      alert('Erro ao carregar usuário: ' + usrErr.message);
-      return;
-    }
-
-    if (!usr) {
-      alert('Usuário autenticado, mas não encontrado na tabela usuarios.');
-      location.href = './login.html';
-      return;
-    }
-
-    usuario = usr;
-
-    await carregarLojas();
+    todasLojas = (ctx.lojasPermitidas || []).map(l => ({
+      id: l.loteria_id,
+      nome: l.loteria_nome,
+      slug: l.loteria_slug,
+      codigo: l.loteria_codigo,
+      cod_loterico: l.cod_loterico || '',
+      principal: !!l.principal,
+      papelNaLoja: l.papel_na_loja || ''
+    }));
 
     if (!todasLojas.length) {
       alert('Nenhuma loteria vinculada a este usuário.');
       return;
     }
 
-    renderSeletorLoteria();
-    await definirLoteriaAtiva(
-      todasLojas.find(l => l.principal) || todasLojas[0]
-    );
+    const inicial = ctx.lojaInicial
+      ? {
+          id: ctx.lojaInicial.loteria_id,
+          nome: ctx.lojaInicial.loteria_nome,
+          slug: ctx.lojaInicial.loteria_slug,
+          codigo: ctx.lojaInicial.loteria_codigo,
+          cod_loterico: ctx.lojaInicial.cod_loterico || '',
+          principal: !!ctx.lojaInicial.principal,
+          papelNaLoja: ctx.lojaInicial.papel_na_loja || ''
+        }
+      : todasLojas[0];
+
+    await definirLoteriaAtiva(inicial);
 
     $('data-ref').value = new Date().toISOString().slice(0, 10);
 
     await carregarProdutos();
     buildRaspadinha();
+    bindHeaderActions();
     bindStepClicks();
     renderDivCount();
 
@@ -148,64 +183,37 @@ async function init() {
   }
 }
 
-async function carregarLojas() {
-  const { data, error } = await sb
-    .from('usuarios_loterias')
-    .select(`
-      loteria_id,
-      papel_na_loja,
-      principal,
-      ativo,
-      loterias(id, nome, slug, codigo, ativo)
-    `)
-    .eq('usuario_id', usuario.id);
-
-  if (error) {
-    console.error('Erro ao carregar lojas:', error);
-    todasLojas = [];
-    return;
-  }
-
-  todasLojas = (data || [])
-    .filter(ul => ul.ativo !== false)
-    .filter(ul => ul.loterias && ul.loterias.ativo !== false)
-    .map(ul => ({
-      id: ul.loterias.id,
-      nome: ul.loterias.nome,
-      slug: ul.loterias.slug,
-      codigo: ul.loterias.codigo,
-      principal: !!ul.principal,
-      papelNaLoja: ul.papel_na_loja || ''
-    }));
-}
-
-function renderSeletorLoteria() {
-  const sel = $('sel-loteria');
-  sel.innerHTML = '';
-
-  todasLojas.forEach(l => {
-    const opt = document.createElement('option');
-    opt.value = l.id;
-    opt.textContent = l.nome;
-    sel.appendChild(opt);
-  });
-
-  $('loteria-wrap').style.display = 'flex';
-}
-
 async function definirLoteriaAtiva(loja) {
   loteriaAtiva = loja;
-  $('sel-loteria').value = String(loja.id);
+  window.loteriaAtiva = loteriaAtiva;
+  aplicarTemaLoja(loja?.slug);
   await carregarFuncionarios();
 }
 
-async function trocarLoteria() {
-  const id = parseInt($('sel-loteria').value, 10);
-  const loja = todasLojas.find(l => l.id === id);
+async function trocarLoteria(slugOuId = null) {
+  let loja = null;
+
+  if (typeof slugOuId === 'string') {
+    loja = todasLojas.find(l => l.slug === slugOuId) || null;
+  } else if (typeof slugOuId === 'number') {
+    loja = todasLojas.find(l => Number(l.id) === Number(slugOuId)) || null;
+  }
+
+  if (!loja) {
+    const atual = todasLojas.findIndex(l => Number(l.id) === Number(loteriaAtiva?.id));
+    if (atual < 0) return;
+
+    let prox = atual + 1;
+    if (prox >= todasLojas.length) prox = 0;
+
+    loja = todasLojas[prox];
+  }
+
   if (!loja) return;
 
   resetEstado();
   await definirLoteriaAtiva(loja);
+
   if (stepAtual > 1) showStep(1);
 }
 
@@ -700,7 +708,7 @@ function montarTela3DoFechamento(fech) {
       concurso: b.concurso,
       valorCota: b.valor_cota,
       qtdVendida: b.qtd_vendida,
-      total: b.total,
+      total: b.total || b.subtotal || 0,
       origem: b.origem || null,
       tipo: b.tipo || null
     };
@@ -1017,28 +1025,28 @@ async function carregarBoloes() {
     if (errInt) throw errInt;
 
     const { data: movsExt, error: errExt } = await sb
-  .from('movimentacoes_cotas')
-  .select(`
-    bolao_id,
-    qtd_cotas,
-    status,
-    loteria_destino,
-    boloes(
-      id,
-      loteria_id,
-      modalidade,
-      concurso,
-      valor_cota,
-      qtd_jogos,
-      qtd_dezenas,
-      dt_inicial,
-      dt_concurso,
-      status,
-      loterias(nome, cod_loterico)
-    )
-  `)
-  .eq('loteria_destino', loteriaAtiva.id)
-  .eq('status', 'ATIVO');
+      .from('movimentacoes_cotas')
+      .select(`
+        bolao_id,
+        qtd_cotas,
+        status,
+        loteria_destino,
+        boloes(
+          id,
+          loteria_id,
+          modalidade,
+          concurso,
+          valor_cota,
+          qtd_jogos,
+          qtd_dezenas,
+          dt_inicial,
+          dt_concurso,
+          status,
+          loterias(nome, cod_loterico)
+        )
+      `)
+      .eq('loteria_destino', loteriaAtiva.id)
+      .eq('status', 'ATIVO');
 
     if (errExt) throw errExt;
 
@@ -1070,19 +1078,19 @@ async function carregarBoloes() {
     }));
 
     lstExt = Object.values(mapaExt).map(({ bolao: b, qtdCotas }) => ({
-  bolao_id: b.id,
-  modalidade: b.modalidade,
-  concurso: b.concurso,
-  qtdJogos: b.qtd_jogos,
-  qtdDezenas: b.qtd_dezenas,
-  valorCota: Number(b.valor_cota || 0),
-  dtInicial: b.dt_inicial,
-  dtConcurso: b.dt_concurso,
-  saldoEnviado: qtdCotas,
-  origem: b.loterias?.nome || '',
-  origemCodLoterico: b.loterias?.cod_loterico || '',
-  tipo: 'EXTERNO'
-}));
+      bolao_id: b.id,
+      modalidade: b.modalidade,
+      concurso: b.concurso,
+      qtdJogos: b.qtd_jogos,
+      qtdDezenas: b.qtd_dezenas,
+      valorCota: Number(b.valor_cota || 0),
+      dtInicial: b.dt_inicial,
+      dtConcurso: b.dt_concurso,
+      saldoEnviado: qtdCotas,
+      origem: b.loterias?.nome || '',
+      origemCodLoterico: b.loterias?.cod_loterico || '',
+      tipo: 'EXTERNO'
+    }));
 
     const total = lstInt.length + lstExt.length;
 
@@ -1176,16 +1184,16 @@ function renderBoloes() {
         if (b.qtdDezenas) metas.push(`<span class="meta-tag">${b.qtdDezenas} dez.</span>`);
         metas.push(`<span class="meta-tag" style="color:var(--accent);border-color:rgba(0,200,150,.2)">R$ ${Number(b.valorCota).toFixed(2).replace('.', ',')} / cota</span>`);
 
-       if (b.tipo === 'EXTERNO') {
-  const origemTxt = [b.origem, b.origemCodLoterico].filter(Boolean).join(' · ');
-  metas.push(`<span class="meta-tag meta-dest">externo${origemTxt ? ' · ' + origemTxt : ''}</span>`);
-} else {
-  metas.push(`<span class="meta-tag">interno</span>`);
-}
+        if (b.tipo === 'EXTERNO') {
+          const origemTxt = [b.origem, b.origemCodLoterico].filter(Boolean).join(' · ');
+          metas.push(`<span class="meta-tag meta-dest">externo${origemTxt ? ' · ' + origemTxt : ''}</span>`);
+        } else {
+          metas.push(`<span class="meta-tag">interno</span>`);
+        }
 
-if (b.saldoEnviado !== null && b.saldoEnviado !== undefined) {
-  metas.push(`<span class="meta-tag meta-saldo">${b.saldoEnviado} cotas</span>`);
-}
+        if (b.saldoEnviado !== null && b.saldoEnviado !== undefined) {
+          metas.push(`<span class="meta-tag meta-saldo">${b.saldoEnviado} cotas</span>`);
+        }
 
         const card = document.createElement('div');
         card.className = `bolao-card is-${b.tipo === 'INTERNO' ? 'int' : 'ext'}`;
@@ -1883,8 +1891,7 @@ function executarInicio() {
 }
 
 async function executarSair() {
-  await sb.auth.signOut();
-  location.href = './login.html';
+  await window.SISLOT_SECURITY.sair();
 }
 
 function showGravando(titulo) {
@@ -2012,5 +2019,6 @@ window.executarInicio = executarInicio;
 window.executarSair = executarSair;
 window.trocarLoteria = trocarLoteria;
 window.blurQ = blurQ;
+window.loteriaAtiva = loteriaAtiva;
 
 init();
