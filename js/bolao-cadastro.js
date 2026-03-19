@@ -151,37 +151,28 @@ function OrigemUI() {
 }
 
 function atualizarCamposMov() {
-  const grid = $('movGrid');
-  if (!grid) return;
+  const mapaSlug = {
+    boulevard: 'deltaBoulevard',
+    centro: 'deltaCentro',
+    lotobel: 'deltaLotobel',
+    'santa-tereza': 'deltaSantaTereza',
+    'via-brasil': 'deltaViaBrasil',
+  };
 
-  const valoresAtuais = {};
-  LOJAS_MOV.forEach(loja => {
-    const antigo = $(loja.id);
-    valoresAtuais[loja.id] = antigo ? antigo.value : '';
+  Object.entries(mapaSlug).forEach(([slug, inputId]) => {
+    const el = $(inputId);
+    if (!el) return;
+
+    const field = el.closest('.mov-item');
+    const ehOrigem = slug === loteriaAtiva?.loteria_slug;
+
+    el.disabled = ehOrigem;
+    if (ehOrigem) el.value = '';
+
+    if (field) {
+      field.classList.toggle('mov-origem', ehOrigem);
+    }
   });
-
-  grid.innerHTML = '';
-
-  LOJAS_MOV
-    .filter(loja => loja.slug !== loteriaAtiva?.loteria_slug)
-    .forEach(loja => {
-      const field = document.createElement('div');
-      field.className = 'field';
-
-      field.innerHTML = `
-        <label><i class="${loja.icon}"></i> ${loja.nome}</label>
-        <input id="${loja.id}" inputmode="numeric" placeholder="0"/>
-      `;
-
-      grid.appendChild(field);
-
-      const input = $(loja.id);
-      if (input) {
-        input.value = valoresAtuais[loja.id] || '';
-        input.addEventListener('input', saveDraft);
-        input.addEventListener('change', saveDraft);
-      }
-    });
 }
 /************************************************************
  * TROCA DE LOJA
