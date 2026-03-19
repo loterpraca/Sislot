@@ -129,14 +129,13 @@ body{
 
 .mov-grid{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:repeat(2,minmax(0,1fr));
   gap:10px;
   margin-top:10px;
-  min-height:116px;
 }
 
-.mov-field.is-hidden{
-  display:none;
+.mov-grid .field{
+  min-width:0;
 }
 .origem-chip{
   display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
