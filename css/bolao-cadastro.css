@@ -44,16 +44,6 @@ body{
 .header-nome{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text);line-height:1;margin-bottom:3px;transition:color var(--tr)}
 .header-sub{font-family:var(--mono);font-size:9px;font-weight:400;letter-spacing:.18em;text-transform:uppercase;color:var(--text3)}
 
-.loja-btns{display:flex;gap:5px;align-items:center}
-.loja-btn{
-  width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--panel);
-  cursor:pointer;transition:var(--tr);display:flex;align-items:center;justify-content:center;padding:3px
-}
-.loja-btn img{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))}
-.loja-btn svg{width:24px;height:24px}
-.loja-btn:hover{border-color:var(--border2);background:var(--panel2);transform:translateY(-1px)}
-.loja-btn.active{border-color:var(--t4);background:var(--t3);box-shadow:0 0 0 2px var(--t4)}
-
 .btn-menu{
   display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);
   border-radius:8px;padding:7px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:500;
@@ -141,6 +131,46 @@ body{
   display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
   background:var(--t3);border:1px solid var(--t4);color:var(--t1);
   font-size:11px;font-weight:500;font-family:var(--mono);letter-spacing:.06em;transition:var(--tr)
+}
+
+.origem-switch{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+
+.origem-arrow{
+  width:24px;
+  height:24px;
+  min-height:24px;
+  padding:0;
+  border-radius:6px;
+  border:1px solid var(--border);
+  background:var(--input-bg);
+  color:var(--t1);
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  transition:var(--tr);
+}
+
+.origem-arrow:hover{
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.origem-arrow i{
+  font-size:10px;
+}
+
+.origem-chip-clickable{
+  cursor:pointer;
+}
+
+.origem-chip-clickable:hover{
+  filter:brightness(1.08);
+  border-color:var(--t1);
 }
 
 .grid-1{display:grid;grid-template-columns:1fr;gap:10px}
