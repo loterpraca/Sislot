@@ -1,9 +1,6 @@
 /**
  * SISLOT - Utilitários Compartilhados
- * Versão: 1.0
- * 
- * Centraliza todas as funções comuns do sistema.
- * Mantém compatibilidade total com código existente.
+ * Versão: 1.0 (corrigida formatação de data)
  */
 
 (function() {
@@ -49,13 +46,37 @@
         });
     }
 
-    function fmtData(s) {
-        if (!s) return '—';
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-            const [y, m, d] = s.split('-');
-            return `${d}/${m}/${y}`;
+    // CORRIGIDO: aceita string YYYY-MM-DD ou Date
+    function fmtData(data) {
+        if (!data) return '—';
+        
+        let ano, mes, dia;
+        
+        if (data instanceof Date) {
+            ano = data.getFullYear();
+            mes = data.getMonth() + 1;
+            dia = data.getDate();
+        } else if (typeof data === 'string') {
+            const match = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                ano = parseInt(match[1]);
+                mes = parseInt(match[2]);
+                dia = parseInt(match[3]);
+            } else {
+                const d = new Date(data);
+                if (!isNaN(d.getTime())) {
+                    ano = d.getFullYear();
+                    mes = d.getMonth() + 1;
+                    dia = d.getDate();
+                } else {
+                    return '—';
+                }
+            }
+        } else {
+            return '—';
         }
-        return s;
+        
+        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
     }
 
     function fmtDataInput(date) {
@@ -363,5 +384,5 @@
     if (typeof window.addDias === 'undefined') window.addDias = SISLOT_UTILS.addDias;
 
     window.SISLOT_UTILS = SISLOT_UTILS;
-    console.log('✓ SISLOT_UTILS carregado');
+    console.log('✓ SISLOT_UTILS carregado (data fix)');
 })();
