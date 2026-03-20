@@ -384,37 +384,7 @@ function validarStep1() {
   return ok;
 }
 
-function calcTroco() {
-  const ini = n('troco-ini');
-  const sob = n('troco-sob');
-  const chip = $('chip-troco');
-  const val = $('chip-troco-val');
 
-  if (ini || sob) {
-    const d = sob - ini;
-    val.textContent = 'R$ ' + d.toFixed(2).replace('.', ',');
-    val.style.color = d >= 0 ? 'var(--accent)' : 'var(--err)';
-    chip.classList.add('show');
-  } else {
-    chip.classList.remove('show');
-  }
-}
-
-function calcPix() {
-  const rec = n('pix-cnpj');
-  const dif = n('pix-dif');
-  const chip = $('chip-pix');
-  const val = $('chip-pix-val');
-
-  if (rec || dif) {
-    const d = rec - dif;
-    val.textContent = 'R$ ' + d.toFixed(2).replace('.', ',');
-    val.style.color = d === 0 ? 'var(--accent)' : d > 0 ? 'var(--amber)' : 'var(--err)';
-    chip.classList.add('show');
-  } else {
-    chip.classList.remove('show');
-  }
-}
 
 let dividaCount = 0;
 const MAX_DIV = 9;
@@ -1958,9 +1928,6 @@ function resetEstado() {
   renderDivCount();
   calcDivTotal();
 
-  $('chip-troco').classList.remove('show');
-  $('chip-pix').classList.remove('show');
-
   buildRaspadinha();
   $('tele-qtd').value = '';
   recalcTele();
@@ -1993,8 +1960,6 @@ function resetEstado() {
 window.autoFill = autoFill;
 window.onFuncChange = onFuncChange;
 window.avancarStep = avancarStep;
-window.calcTroco = calcTroco;
-window.calcPix = calcPix;
 window.addDivida = addDivida;
 window.remDivida = remDivida;
 window.ajR = ajR;
