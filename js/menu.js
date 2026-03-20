@@ -119,4 +119,51 @@ async function carregarIndicadores() {
     ]);
 
     const statVendasWpp = $('statVendasWpp');
-    const statMarketplace = $('
+    const statMarketplace = $('statMarketplace');
+    const statMovs = $('statMovs');
+
+    if (statVendasWpp) statVendasWpp.textContent = wppResp.count ?? '—';
+    if (statMarketplace) statMarketplace.textContent = mktResp.count ?? '—';
+    if (statMovs) statMovs.textContent = movsResp.count ?? '—';
+}
+
+function configurarLogout() {
+    const btnLogout = $('btnLogout');
+    if (btnLogout) {
+        btnLogout.onclick = async () => {
+            await window.SISLOT_SECURITY.sair();
+        };
+    }
+}
+
+async function carregarUsuarioLogado() {
+    const { data: { session }, error } = await sb.auth.getSession();
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    if (!session?.user?.id) {
+        location.href = './login.html';
+        return null;
+    }
+
+    return await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
+}
+
+async function init() {
+    try {
+        startClock();
+
+        const usuario = await carregarUsuarioLogado();
+        if (!usuario) return;
+
+        preencherUsuario(usuario);
+        aplicarPermissoesMenu(usuario.perfil);
+        configurarLogout();
+        await carregarIndicadores();
+    } catch (err) {
+        console.error('Erro ao iniciar menu:', err);
+        alert(err.message || 'Erro ao iniciar menu');
+    }
+}
