@@ -1,1190 +1,366 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Federal — SISLOT</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./sislot-config.js"></script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--deep:#0a1628;--mid:#0f2244;--panel:#132952;--border:#1e3a6e;--accent:#00c896;--amber:#f5a623;--purple:#a78bfa;--sky:#38bdf8;--coral:#fb7185;--bright:#e8eef8;--muted:#8fa3c8;--dim:#4a6491;--input:#0d1e3a;--err:#ff5252;--ok:#00c896}
-body{background:var(--deep);font-family:"IBM Plex Sans",sans-serif;color:var(--bright);min-height:100vh;display:flex;flex-direction:column;background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,150,.07) 0%,transparent 70%),repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(30,58,110,.3) 39px,rgba(30,58,110,.3) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(30,58,110,.15) 39px,rgba(30,58,110,.15) 40px)}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:rgba(15,34,68,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(8px);position:sticky;top:0;z-index:500}
-.brand{display:flex;align-items:center;gap:10px}.brand-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--deep)}.brand-name{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}.brand-sub{font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
-.top-actions{display:flex;align-items:center;gap:12px}#relogio{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted)}
-.btn-topbar,.btn-primary,.btn-secondary,.btn-amber,.btn-danger{display:inline-flex;align-items:center;gap:7px;border-radius:8px;cursor:pointer;transition:all .2s;font-family:"IBM Plex Sans",sans-serif}.btn-topbar{background:transparent;border:1px solid var(--border);padding:6px 11px;font-size:11px;color:var(--muted)}.btn-topbar:hover{color:var(--accent);border-color:rgba(0,200,150,.4);background:rgba(0,200,150,.05)}
-.btn-primary{background:var(--accent);color:var(--deep);border:none;padding:8px 14px;font-size:12px;font-weight:600}.btn-primary:hover:not(:disabled){background:#00e8ad;transform:translateY(-1px);box-shadow:0 5px 18px rgba(0,200,150,.25)}
-.btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border);padding:8px 12px;font-size:12px}.btn-secondary:hover{color:var(--bright);border-color:var(--muted)}
-.btn-amber{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.24);color:var(--amber);padding:6px 10px;font-size:11px;font-weight:600}.btn-amber:hover{background:rgba(245,166,35,.16)}
-.btn-danger{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.24);color:#ffb3b3;padding:6px 10px;font-size:11px;font-weight:600}.btn-danger:hover{background:rgba(255,82,82,.16)}
-.tabs-bar{display:flex;align-items:flex-end;padding:0 24px;border-bottom:1px solid var(--border);background:rgba(15,34,68,.6);position:sticky;top:56px;z-index:400;overflow:auto}
-.tab-btn{display:flex;align-items:center;gap:8px;padding:14px 18px;font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;background:transparent;border:none;cursor:pointer;color:var(--dim);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}.tab-btn:hover{color:var(--muted)}.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}.tab-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.main{flex:1;padding:16px 12px 40px;max-width:1400px;width:100%;margin:0 auto}.tab-panel{display:none}.tab-panel.active{display:block;animation:fadeUp .25s ease both}
-.page-header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}.page-title{font-size:22px;font-weight:700;letter-spacing:-.01em}.page-sub{font-size:13px;color:var(--muted);margin-top:4px;font-weight:300}
-.sep{display:flex;align-items:center;gap:10px;margin:14px 0 10px}.sep-label{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);white-space:nowrap}.sep-line{flex:1;height:1px;background:var(--border)}.sep-count{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--accent);background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);border-radius:4px;padding:2px 8px}
-.grid-1{display:grid;grid-template-columns:1fr;gap:14px}.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}@media(max-width:1100px){.grid-5,.grid-4,.grid-3{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.grid-5,.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}.main{padding:12px 10px 30px}.tabs-bar{padding:0 10px}.topbar{padding:0 10px;height:52px}.tab-btn{padding:12px 12px;font-size:11px}.page-title{font-size:18px}.page-sub{font-size:12px}.field-label{font-size:9px}.table th,.table td{padding:8px 8px}}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px}.soft-card{background:rgba(19,41,82,.74);border:1px solid var(--border);border-radius:12px;padding:14px}
-.field{display:flex;flex-direction:column;gap:6px}.field-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.field-label.req::after{content:" *";color:var(--accent)}
-input,select,textarea{width:100%;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--bright);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}textarea{resize:vertical;min-height:74px;font-family:"IBM Plex Sans",sans-serif}input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,150,.1)}input::placeholder,textarea::placeholder{color:var(--dim)}
-input[readonly]{opacity:.7}
-.toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}.toolbar-left,.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.status-bar{display:none;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.4;border:1px solid transparent;margin-bottom:16px}.status-bar.show{display:block}.status-bar.ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--bright)}.status-bar.err{background:rgba(255,82,82,.08);border-color:rgba(255,82,82,.2);color:#ffb3b3}.status-bar.warn{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2);color:var(--amber)}
-.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px}.table{width:100%;border-collapse:collapse;background:var(--panel)}.table thead tr{background:var(--mid)}.table th{font-family:"IBM Plex Mono",monospace;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:10px 12px;text-align:left;position:sticky;top:0;z-index:2}.table td{padding:10px 12px;font-size:12px;border-top:1px solid rgba(30,58,110,.55);vertical-align:middle}.table tr:hover td{background:rgba(255,255,255,.02)}.mono{font-family:"IBM Plex Mono",monospace}.money{font-family:"IBM Plex Mono",monospace;font-weight:600}.pos{color:var(--accent)}.neg{color:#ffb3b3}.muted{color:var(--muted)}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px}@media(max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}.kpi-value{margin-top:8px;font-size:22px;font-weight:700}.kpi-sub{margin-top:3px;font-size:11px;color:var(--muted)}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid transparent}.b-ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--accent)}.b-warn{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2);color:var(--amber)}.b-info{background:rgba(56,189,248,.08);border-color:rgba(56,189,248,.2);color:var(--sky)}.b-cor{background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.2);color:var(--coral)}
-.drawer{position:fixed;top:0;right:0;width:min(720px,100vw);height:100vh;background:rgba(10,22,40,.98);border-left:1px solid var(--border);z-index:800;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column}.drawer.open{transform:translateX(0)}.drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border)}.drawer-title{font-size:16px;font-weight:700}.drawer-sub{font-size:12px;color:var(--muted);margin-top:4px}.drawer-body{padding:18px 20px;overflow:auto;flex:1}.drawer-foot{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
-.overlay{display:none;position:fixed;inset:0;background:rgba(3,9,18,.6);backdrop-filter:blur(4px);z-index:700}.overlay.show{display:block}
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:48px 24px;text-align:center;background:var(--panel);border:1px dashed var(--border);border-radius:12px}.empty-title{font-size:14px;font-weight:700;color:var(--muted)}.empty-sub{font-size:12px;color:var(--dim);max-width:420px}
-.inline-pills{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border);font-size:10px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
-.flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.right{margin-left:auto}.w-100{width:100%}
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/federal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-icon">LC</div>
-    <div>
-      <div class="brand-name">SisLot</div>
-      <div class="brand-sub">Federal • Controle Completo</div>
-    </div>
-  </div>
-  <div class="top-actions">
-    <div id="relogio"></div>
-    <button class="btn-topbar" onclick="location.href='./menu.html'">Menu</button>
-  </div>
-</header>
-
-<nav class="tabs-bar">
-  <button class="tab-btn active" data-tab="visao"><span class="tab-dot" style="background:var(--accent)"></span>Exibição</button>
-  <button class="tab-btn" data-tab="cadastro"><span class="tab-dot" style="background:var(--sky)"></span>Cadastro</button>
-  <button class="tab-btn" data-tab="movimentacao"><span class="tab-dot" style="background:var(--amber)"></span>Movimentação</button>
-  <button class="tab-btn" data-tab="fechamento"><span class="tab-dot" style="background:var(--purple)"></span>Fechamento</button>
-  <button class="tab-btn" data-tab="auditoria"><span class="tab-dot" style="background:var(--coral)"></span>Auditoria</button>
-  <button class="tab-btn" data-tab="config"><span class="tab-dot" style="background:var(--muted)"></span>Ajustes</button>
-</nav>
-
-<main class="main">
-  <section class="tab-panel active" id="panel-visao">
-    <div class="page-header">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">LC</div>
       <div>
-        <div class="page-title">Resumo Analítico da Federal</div>
-        <div class="page-sub">Visão central por concurso e loja origem, com vendas internas, externas, devoluções, encalhe e resultado.</div>
+        <div class="brand-name">SisLot</div>
+        <div class="brand-sub">Federal • Controle Completo</div>
       </div>
     </div>
-
-    <div class="status-bar" id="st-visao"></div>
-
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <div class="field" style="min-width:190px"><label class="field-label">Concurso</label><input id="filtro-concurso" placeholder="3060"></div>
-        <div class="field" style="min-width:180px"><label class="field-label">Loja origem</label><select id="filtro-loja"></select></div>
-        <div class="field" style="min-width:170px"><label class="field-label">Data sorteio inicial</label><input type="date" id="filtro-dt-ini"></div>
-        <div class="field" style="min-width:170px"><label class="field-label">Data sorteio final</label><input type="date" id="filtro-dt-fim"></div>
-      </div>
-      <div class="toolbar-right">
-        <button class="btn-secondary" id="btn-filtrar-visao">Filtrar</button>
-        <button class="btn-secondary" id="btn-limpar-visao">Limpar</button>
-        <button class="btn-primary" id="btn-recarregar-visao">Atualizar</button>
-      </div>
+    <div class="top-actions">
+      <div id="relogio"></div>
+      <button class="btn-topbar" onclick="location.href='./menu.html'">Menu</button>
     </div>
+  </header>
 
-    <div class="kpis" id="kpis-visao"></div>
+  <nav class="tabs-bar">
+    <button class="tab-btn active" data-tab="visao"><span class="tab-dot" style="background:var(--accent)"></span>Exibição</button>
+    <button class="tab-btn" data-tab="cadastro"><span class="tab-dot" style="background:var(--sky)"></span>Cadastro</button>
+    <button class="tab-btn" data-tab="movimentacao"><span class="tab-dot" style="background:var(--amber)"></span>Movimentação</button>
+    <button class="tab-btn" data-tab="fechamento"><span class="tab-dot" style="background:var(--purple)"></span>Fechamento</button>
+    <button class="tab-btn" data-tab="auditoria"><span class="tab-dot" style="background:var(--coral)"></span>Auditoria</button>
+    <button class="tab-btn" data-tab="config"><span class="tab-dot" style="background:var(--muted)"></span>Ajustes</button>
+  </nav>
 
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Modalidade</th>
-            <th>Loja Origem</th>
-            <th>Concurso</th>
-            <th>Dt Sorteio</th>
-            <th>Qtd Inicial</th>
-            <th>Vend. Funcionários</th>
-            <th>Vend. Externa</th>
-            <th>Dev. Origem</th>
-            <th>Dev. Terceiros</th>
-            <th>Encalhe</th>
-            <th>Prêmio</th>
-            <th>Estoque</th>
-            <th>Resultado</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-visao"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="tab-panel" id="panel-cadastro">
-    <div class="page-header">
-      <div>
-        <div class="page-title">Cadastro de Concurso</div>
-        <div class="page-sub">Cadastre a Federal de todas as loterias de uma vez, com padrão automático para quarta e sábado.</div>
-      </div>
-    </div>
-
-    <div class="status-bar" id="st-cadastro"></div>
-
-    <div class="card" id="card-form-cadastro" style="display:block">
-      <div class="sep"><span class="sep-label">Dados do concurso</span><div class="sep-line"></div></div>
-      <div class="grid-4">
-        <div class="field"><label class="field-label">Modalidade</label><input value="Federal" readonly></div>
-        <div class="field"><label class="field-label req">Concurso</label><input id="cad-concurso" placeholder="3060"></div>
-        <div class="field"><label class="field-label req">Data sorteio</label><div style="display:grid;grid-template-columns:36px 1fr 36px;gap:0;align-items:stretch"><button type="button" class="btn-secondary" id="cad-data-prev" style="border-radius:8px 0 0 8px;padding:0;height:34px;justify-content:center">−</button><input type="date" id="cad-dt-sorteio" style="border-radius:0;height:34px"><button type="button" class="btn-secondary" id="cad-data-next" style="border-radius:0 8px 8px 0;padding:0;height:34px;justify-content:center">+</button></div></div>
-        <div class="field"><label class="field-label req">Tipo</label><select id="cad-tipo"><option value="COMUM">Comum</option><option value="ESPECIAL">Especial</option></select></div>
-      </div>
-      <div class="grid-4" style="margin-top:14px">
-        <div class="field"><label class="field-label req">Valor fração</label><input type="number" id="cad-valor-fracao" step="0.01"></div>
-        <div class="field"><label class="field-label req">Valor custo</label><input type="number" id="cad-valor-custo" step="0.01"></div>
-        <div class="field"><label class="field-label req">Frações/bilhete</label><input type="number" id="cad-fracoes-bilhete" value="10"></div>
-        <div class="field"><label class="field-label">Padrão automático</label><input value="Quarta / Sábado" readonly></div>
-      </div>
-      <div class="sep"><span class="sep-label">Qtd inicial por loteria</span><div class="sep-line"></div></div>
-      <div class="grid-5" style="margin-top:14px">
-        <div class="field"><label class="field-label">Centro</label><input type="number" id="cad-qtd-centro"></div>
-        <div class="field"><label class="field-label">Boulevard</label><input type="number" id="cad-qtd-boulevard"></div>
-        <div class="field"><label class="field-label">Lotobel</label><input type="number" id="cad-qtd-lotobel"></div>
-        <div class="field"><label class="field-label">Santa Tereza</label><input type="number" id="cad-qtd-santa"></div>
-        <div class="field"><label class="field-label">Via Brasil</label><input type="number" id="cad-qtd-via"></div>
-      </div>
-      <div class="flex" style="margin-top:12px">
-        <button class="btn-primary" id="btn-salvar-cadastro">Salvar concurso</button>
-        <button class="btn-secondary" id="btn-cancelar-cadastro">Limpar</button>
-      </div>
-    </div>
-
-    <div class="sep"><span class="sep-label">Concursos cadastrados</span><div class="sep-line"></div><span class="sep-count" id="cnt-cadastros">0</span></div>
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Loja</th>
-            <th>Concurso</th>
-            <th>Dt Sorteio</th>
-            <th>Tipo</th>
-            <th>Valor Fração</th>
-            <th>Valor Custo</th>
-            <th>Qtd Inicial</th>
-            <th>Devolvida</th>
-            <th>Encalhe</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-cadastro"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="tab-panel" id="panel-movimentacao">
-    <div class="page-header">
-      <div>
-        <div class="page-title">Movimentação Operacional</div>
-        <div class="page-sub">Registre transferência, devolução na Caixa e venda cambista.</div>
-      </div>
-    </div>
-
-    <div class="status-bar" id="st-mov"></div>
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Nova movimentação</span><div class="sep-line"></div></div>
-        <div class="grid-3">
-          <div class="field"><label class="field-label">Modalidade</label><input id="mov-modalidade" value="Federal" readonly></div>
-          <div class="field"><label class="field-label req">Concurso</label><select id="mov-federal"></select></div>
-          <div class="field"><label class="field-label">Data do concurso</label><input type="date" id="mov-dt-concurso" readonly></div>
+  <main class="main">
+    <section class="tab-panel active" id="panel-visao">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Resumo Analítico da Federal</div>
+          <div class="page-sub">Visão central por concurso e loja origem, com vendas internas, externas, devoluções, encalhe e resultado.</div>
         </div>
-        <div class="grid-3" style="margin-top:14px">
-          <div class="field"><label class="field-label req">Loteria origem</label><select id="mov-loteria-origem"></select></div>
-          <div class="field"><label class="field-label req">Loteria destino</label><select id="mov-loteria-destino"></select></div>
-          <div class="field"><label class="field-label req">Tipo de evento</label><select id="mov-tipo-evento"><option value="TRANSFERENCIA">Transferência</option><option value="DEVOLUCAO_CAIXA">Devolução Caixa</option><option value="VENDA_CAMBISTA">Venda Cambista</option></select></div>
-        </div>
-        <div class="grid-3" style="margin-top:14px">
-          <div class="field"><label class="field-label req">Qtd de frações</label><input type="number" id="mov-qtd"></div>
-          <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="mov-valor"></div>
-          <div class="field"><label class="field-label">Valor total</label><input type="number" step="0.01" id="mov-total" readonly></div>
-        </div>
-        <div class="grid-1" style="margin-top:14px">
-          <div class="field"><label class="field-label">Status</label><input id="mov-status-acerto" value="PENDENTE" readonly></div>
-        </div>
-        <div class="field" style="margin-top:14px"><label class="field-label">Observação</label><textarea id="mov-observacao" placeholder="Detalhes da operação"></textarea></div>
-        <div class="flex" style="margin-top:18px"><button class="btn-primary" id="btn-salvar-mov">Salvar movimentação</button><button class="btn-secondary" id="btn-limpar-mov">Limpar</button><button class="btn-danger" id="btn-excluir-mov" style="display:none">Apagar linha</button></div>
       </div>
 
-      <div class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Resumo do concurso selecionado</span><div class="sep-line"></div></div>
-        <div id="mov-resumo-selec" class="empty"><div class="empty-title">Selecione um concurso</div><div class="empty-sub">O sistema mostra saldo, valores base e últimos eventos da origem escolhida.</div></div>
+      <div class="status-bar" id="st-visao"></div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="field" style="min-width:190px"><label class="field-label">Concurso</label><input id="filtro-concurso" placeholder="3060"></div>
+          <div class="field" style="min-width:180px"><label class="field-label">Loja origem</label><select id="filtro-loja"></select></div>
+          <div class="field" style="min-width:170px"><label class="field-label">Data sorteio inicial</label><input type="date" id="filtro-dt-ini"></div>
+          <div class="field" style="min-width:170px"><label class="field-label">Data sorteio final</label><input type="date" id="filtro-dt-fim"></div>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn-secondary" id="btn-filtrar-visao">Filtrar</button>
+          <button class="btn-secondary" id="btn-limpar-visao">Limpar</button>
+          <button class="btn-primary" id="btn-recarregar-visao">Atualizar</button>
+        </div>
       </div>
-    </div>
 
-    <div class="sep"><span class="sep-label">Histórico operacional</span><div class="sep-line"></div></div>
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Carimbo</th>
-            <th>Modalidade</th>
-            <th>Concurso</th>
-            <th>Evento</th>
-            <th>Origem</th>
-            <th>Destino</th>
-            <th>Qtd</th>
-            <th>Valor</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-mov"></tbody>
-      </table>
-    </div>
-  </section>
+      <div class="kpis" id="kpis-visao"></div>
 
-  <section class="tab-panel" id="panel-fechamento">
-    <div class="page-header">
-      <div>
-        <div class="page-title">Fechamento de Caixa • Federal</div>
-        <div class="page-sub">Lançamento de vendas dos funcionários por concurso e dia de fechamento.</div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Modalidade</th>
+              <th>Loja Origem</th>
+              <th>Concurso</th>
+              <th>Dt Sorteio</th>
+              <th>Qtd Inicial</th>
+              <th>Vend. Funcionários</th>
+              <th>Vend. Externa</th>
+              <th>Dev. Origem</th>
+              <th>Dev. Terceiros</th>
+              <th>Encalhe</th>
+              <th>Prêmio</th>
+              <th>Estoque</th>
+              <th>Resultado</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-visao"></tbody>
+        </table>
       </div>
-    </div>
+    </section>
 
-    <div class="status-bar" id="st-fechamento"></div>
+    <section class="tab-panel" id="panel-cadastro">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Cadastro de Concurso</div>
+          <div class="page-sub">Cadastre a Federal de todas as loterias de uma vez, com padrão automático para quarta e sábado.</div>
+        </div>
+      </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Novo lançamento</span><div class="sep-line"></div></div>
-        <div class="grid-3">
-          <div class="field"><label class="field-label req">Loja</label><select id="fec-loteria"></select></div>
-          <div class="field"><label class="field-label req">Funcionário</label><select id="fec-usuario"></select></div>
-          <div class="field"><label class="field-label req">Data fechamento</label><input type="date" id="fec-data-ref"></div>
+      <div class="status-bar" id="st-cadastro"></div>
+
+      <div class="card" id="card-form-cadastro" style="display:block">
+        <div class="sep"><span class="sep-label">Dados do concurso</span><div class="sep-line"></div></div>
+        <div class="grid-4">
+          <div class="field"><label class="field-label">Modalidade</label><input value="Federal" readonly></div>
+          <div class="field"><label class="field-label req">Concurso</label><input id="cad-concurso" placeholder="3060"></div>
+          <div class="field"><label class="field-label req">Data sorteio</label><div style="display:grid;grid-template-columns:36px 1fr 36px;gap:0;align-items:stretch"><button type="button" class="btn-secondary" id="cad-data-prev" style="border-radius:8px 0 0 8px;padding:0;height:34px;justify-content:center">−</button><input type="date" id="cad-dt-sorteio" style="border-radius:0;height:34px"><button type="button" class="btn-secondary" id="cad-data-next" style="border-radius:0 8px 8px 0;padding:0;height:34px;justify-content:center">+</button></div></div>
+          <div class="field"><label class="field-label req">Tipo</label><select id="cad-tipo"><option value="COMUM">Comum</option><option value="ESPECIAL">Especial</option></select></div>
         </div>
         <div class="grid-4" style="margin-top:14px">
-          <div class="field"><label class="field-label req">Concurso</label><select id="fec-federal"></select></div>
-          <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="fec-valor-fracao"></div>
-          <div class="field"><label class="field-label req">Qtd vendida</label><input type="number" id="fec-qtd-vendida"></div>
-          <div class="field"><label class="field-label req">Total</label><input type="number" step="0.01" id="fec-total"></div>
+          <div class="field"><label class="field-label req">Valor fração</label><input type="number" id="cad-valor-fracao" step="0.01"></div>
+          <div class="field"><label class="field-label req">Valor custo</label><input type="number" id="cad-valor-custo" step="0.01"></div>
+          <div class="field"><label class="field-label req">Frações/bilhete</label><input type="number" id="cad-fracoes-bilhete" value="10"></div>
+          <div class="field"><label class="field-label">Padrão automático</label><input value="Quarta / Sábado" readonly></div>
         </div>
-        <div class="flex" style="margin-top:18px"><button class="btn-primary" id="btn-salvar-fechamento">Salvar venda do funcionário</button><button class="btn-secondary" id="btn-limpar-fechamento">Limpar</button></div>
-      </div>
-      <div class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Conferência por funcionário</span><div class="sep-line"></div></div>
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th>Funcionário</th><th>Concurso</th><th>Qtd Vendida</th><th>Total</th></tr></thead>
-            <tbody id="tbody-fechamento-resumo"></tbody>
-          </table>
+        <div class="sep"><span class="sep-label">Qtd inicial por loteria</span><div class="sep-line"></div></div>
+        <div class="grid-5" style="margin-top:14px">
+          <div class="field"><label class="field-label">Centro</label><input type="number" id="cad-qtd-centro"></div>
+          <div class="field"><label class="field-label">Boulevard</label><input type="number" id="cad-qtd-boulevard"></div>
+          <div class="field"><label class="field-label">Lotobel</label><input type="number" id="cad-qtd-lotobel"></div>
+          <div class="field"><label class="field-label">Santa Tereza</label><input type="number" id="cad-qtd-santa"></div>
+          <div class="field"><label class="field-label">Via Brasil</label><input type="number" id="cad-qtd-via"></div>
+        </div>
+        <div class="flex" style="margin-top:12px">
+          <button class="btn-primary" id="btn-salvar-cadastro">Salvar concurso</button>
+          <button class="btn-secondary" id="btn-cancelar-cadastro">Limpar</button>
         </div>
       </div>
-    </div>
-  </section>
 
-  <section class="tab-panel" id="panel-auditoria">
-    <div class="page-header">
+      <div class="sep"><span class="sep-label">Concursos cadastrados</span><div class="sep-line"></div><span class="sep-count" id="cnt-cadastros">0</span></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Loja</th>
+              <th>Concurso</th>
+              <th>Dt Sorteio</th>
+              <th>Tipo</th>
+              <th>Valor Fração</th>
+              <th>Valor Custo</th>
+              <th>Qtd Inicial</th>
+              <th>Devolvida</th>
+              <th>Encalhe</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-cadastro"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-movimentacao">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Movimentação Operacional</div>
+          <div class="page-sub">Registre transferência, devolução na Caixa e venda cambista.</div>
+        </div>
+      </div>
+
+      <div class="status-bar" id="st-mov"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="sep" style="margin-top:0"><span class="sep-label">Nova movimentação</span><div class="sep-line"></div></div>
+          <div class="grid-3">
+            <div class="field"><label class="field-label">Modalidade</label><input id="mov-modalidade" value="Federal" readonly></div>
+            <div class="field"><label class="field-label req">Concurso</label><select id="mov-federal"></select></div>
+            <div class="field"><label class="field-label">Data do concurso</label><input type="date" id="mov-dt-concurso" readonly></div>
+          </div>
+          <div class="grid-3" style="margin-top:14px">
+            <div class="field"><label class="field-label req">Loteria origem</label><select id="mov-loteria-origem"></select></div>
+            <div class="field"><label class="field-label req">Loteria destino</label><select id="mov-loteria-destino"></select></div>
+            <div class="field"><label class="field-label req">Tipo de evento</label><select id="mov-tipo-evento"><option value="TRANSFERENCIA">Transferência</option><option value="DEVOLUCAO_CAIXA">Devolução Caixa</option><option value="VENDA_CAMBISTA">Venda Cambista</option></select></div>
+          </div>
+          <div class="grid-3" style="margin-top:14px">
+            <div class="field"><label class="field-label req">Qtd de frações</label><input type="number" id="mov-qtd"></div>
+            <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="mov-valor"></div>
+            <div class="field"><label class="field-label">Valor total</label><input type="number" step="0.01" id="mov-total" readonly></div>
+          </div>
+          <div class="grid-1" style="margin-top:14px">
+            <div class="field"><label class="field-label">Status</label><input id="mov-status-acerto" value="PENDENTE" readonly></div>
+          </div>
+          <div class="field" style="margin-top:14px"><label class="field-label">Observação</label><textarea id="mov-observacao" placeholder="Detalhes da operação"></textarea></div>
+          <div class="flex" style="margin-top:18px"><button class="btn-primary" id="btn-salvar-mov">Salvar movimentação</button><button class="btn-secondary" id="btn-limpar-mov">Limpar</button><button class="btn-danger" id="btn-excluir-mov" style="display:none">Apagar linha</button></div>
+        </div>
+
+        <div class="card">
+          <div class="sep" style="margin-top:0"><span class="sep-label">Resumo do concurso selecionado</span><div class="sep-line"></div></div>
+          <div id="mov-resumo-selec" class="empty"><div class="empty-title">Selecione um concurso</div><div class="empty-sub">O sistema mostra saldo, valores base e últimos eventos da origem escolhida.</div></div>
+        </div>
+      </div>
+
+      <div class="sep"><span class="sep-label">Histórico operacional</span><div class="sep-line"></div></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Carimbo</th>
+              <th>Modalidade</th>
+              <th>Concurso</th>
+              <th>Evento</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Qtd</th>
+              <th>Valor</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-mov"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-fechamento">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Fechamento de Caixa • Federal</div>
+          <div class="page-sub">Lançamento de vendas dos funcionários por concurso e dia de fechamento.</div>
+        </div>
+      </div>
+
+      <div class="status-bar" id="st-fechamento"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="sep" style="margin-top:0"><span class="sep-label">Novo lançamento</span><div class="sep-line"></div></div>
+          <div class="grid-3">
+            <div class="field"><label class="field-label req">Loja</label><select id="fec-loteria"></select></div>
+            <div class="field"><label class="field-label req">Funcionário</label><select id="fec-usuario"></select></div>
+            <div class="field"><label class="field-label req">Data fechamento</label><input type="date" id="fec-data-ref"></div>
+          </div>
+          <div class="grid-4" style="margin-top:14px">
+            <div class="field"><label class="field-label req">Concurso</label><select id="fec-federal"></select></div>
+            <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="fec-valor-fracao"></div>
+            <div class="field"><label class="field-label req">Qtd vendida</label><input type="number" id="fec-qtd-vendida"></div>
+            <div class="field"><label class="field-label req">Total</label><input type="number" step="0.01" id="fec-total"></div>
+          </div>
+          <div class="flex" style="margin-top:18px"><button class="btn-primary" id="btn-salvar-fechamento">Salvar venda do funcionário</button><button class="btn-secondary" id="btn-limpar-fechamento">Limpar</button></div>
+        </div>
+        <div class="card">
+          <div class="sep" style="margin-top:0"><span class="sep-label">Conferência por funcionário</span><div class="sep-line"></div></div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Funcionário</th><th>Concurso</th><th>Qtd Vendida</th><th>Total</th></tr></thead>
+              <tbody id="tbody-fechamento-resumo"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-auditoria">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Auditoria e Edição Segura</div>
+          <div class="page-sub">Filtre e visualize as movimentações com foco em pendências e acertos.</div>
+        </div>
+      </div>
+
+      <div class="status-bar" id="st-auditoria"></div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="field"><label class="field-label">Evento</label><select id="aud-tipo"><option value="">Todos</option><option>TRANSFERENCIA</option><option>DEVOLUCAO_CAIXA</option><option>VENDA_CAMBISTA</option></select></div>
+          <div class="field"><label class="field-label">Status</label><select id="aud-status"><option value="">Todos</option><option>PENDENTE</option><option>PAGO</option></select></div>
+          <div class="field"><label class="field-label">Concurso</label><input id="aud-concurso"></div>
+          <div class="field"><label class="field-label">Carimbo inicial</label><input type="date" id="aud-dt-ini"></div>
+          <div class="field"><label class="field-label">Carimbo final</label><input type="date" id="aud-dt-fim"></div>
+        </div>
+        <div class="toolbar-right"><button class="btn-secondary" id="btn-filtrar-auditoria">Filtrar</button><button class="btn-primary" id="btn-recarregar-auditoria">Atualizar</button></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Carimbo</th>
+              <th>Modalidade</th>
+              <th>Concurso</th>
+              <th>Evento</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Qtd</th>
+              <th>Valor</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-auditoria"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="panel-config">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Ajustes de Federal</div>
+          <div class="page-sub">Lançamento manual migrou para a aba Exibição.</div>
+        </div>
+      </div>
+
+      <div class="status-bar" id="st-config"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="sep" style="margin-top:0"><span class="sep-label">Encalhe e prêmio</span><div class="sep-line"></div></div>
+          <div class="empty"><div class="empty-title">Lançamento migrou para a aba Exibição</div><div class="empty-sub">Use o botão Lançamento na linha do concurso para informar devolução na origem, encalhe e premiação.</div></div>
+        </div>
+
+        <div class="card">
+          <div class="sep" style="margin-top:0"><span class="sep-label">Resumo rápido</span><div class="sep-line"></div></div>
+          <div class="empty"><div class="empty-title">Painel informativo</div><div class="empty-sub">Os ajustes operacionais principais ficam nas abas Exibição, Movimentação e Fechamento.</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay"></div>
+  <div class="overlay" id="overlay-lanc"></div>
+
+  <div class="drawer" id="drawer-lanc">
+    <div class="drawer-head">
       <div>
-        <div class="page-title">Auditoria e Edição Segura</div>
-        <div class="page-sub">Filtre e visualize as movimentações com foco em pendências e acertos.</div>
+        <div class="drawer-title" id="lanc-title">Lançamento</div>
+        <div class="drawer-sub" id="lanc-sub">Devolução, encalhe e premiação</div>
+      </div>
+      <button class="btn-secondary" id="btn-close-lanc">Fechar</button>
+    </div>
+    <div class="drawer-body">
+      <div class="grid-3">
+        <div class="field"><label class="field-label">Modalidade</label><input id="lanc-modalidade" value="Federal" readonly></div>
+        <div class="field"><label class="field-label">Concurso</label><input id="lanc-concurso" readonly></div>
+        <div class="field"><label class="field-label">Data do concurso</label><input id="lanc-data" readonly></div>
+      </div>
+      <div class="grid-3" style="margin-top:14px">
+        <div class="field"><label class="field-label">Loja origem</label><input id="lanc-loja" readonly></div>
+        <div class="field"><label class="field-label req">Qtd devolução na origem</label><input type="number" id="lanc-qtd-dev"></div>
+        <div class="field"><label class="field-label req">Qtd encalhe</label><input type="number" id="lanc-qtd-enc"></div>
+      </div>
+      <div class="grid-2" style="margin-top:14px">
+        <div class="field"><label class="field-label req">Valor total da premiação</label><input type="number" step="0.01" id="lanc-vlr-premio"></div>
+        <div class="field"><label class="field-label">Observação</label><input id="lanc-obs" placeholder="Opcional"></div>
       </div>
     </div>
-
-    <div class="status-bar" id="st-auditoria"></div>
-
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <div class="field"><label class="field-label">Evento</label><select id="aud-tipo"><option value="">Todos</option><option>TRANSFERENCIA</option><option>DEVOLUCAO_CAIXA</option><option>VENDA_CAMBISTA</option></select></div>
-        <div class="field"><label class="field-label">Status</label><select id="aud-status"><option value="">Todos</option><option>PENDENTE</option><option>PAGO</option></select></div>
-        <div class="field"><label class="field-label">Concurso</label><input id="aud-concurso"></div>
-        <div class="field"><label class="field-label">Carimbo inicial</label><input type="date" id="aud-dt-ini"></div>
-        <div class="field"><label class="field-label">Carimbo final</label><input type="date" id="aud-dt-fim"></div>
-      </div>
-      <div class="toolbar-right"><button class="btn-secondary" id="btn-filtrar-auditoria">Filtrar</button><button class="btn-primary" id="btn-recarregar-auditoria">Atualizar</button></div>
+    <div class="drawer-foot">
+      <button class="btn-secondary" id="btn-cancel-lanc">Cancelar</button>
+      <button class="btn-primary" id="btn-save-lanc">Salvar lançamento</button>
     </div>
+  </div>
 
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Carimbo</th>
-            <th>Modalidade</th>
-            <th>Concurso</th>
-            <th>Evento</th>
-            <th>Origem</th>
-            <th>Destino</th>
-            <th>Qtd</th>
-            <th>Valor</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-auditoria"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="tab-panel" id="panel-config">
-    <div class="page-header">
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
       <div>
-        <div class="page-title">Ajustes de Federal</div>
-        <div class="page-sub">Lançamento manual migrou para a aba Exibição.</div>
+        <div class="drawer-title" id="drawer-title">Detalhe</div>
+        <div class="drawer-sub" id="drawer-sub">Visualização protegida</div>
       </div>
+      <button class="btn-secondary" id="btn-close-drawer">Fechar</button>
     </div>
-
-    <div class="status-bar" id="st-config"></div>
-
-    <div class="grid-2">
-      <div class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Encalhe e prêmio</span><div class="sep-line"></div></div>
-        <div class="empty"><div class="empty-title">Lançamento migrou para a aba Exibição</div><div class="empty-sub">Use o botão Lançamento na linha do concurso para informar devolução na origem, encalhe e premiação.</div></div>
-      </div>
-
-      <div class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Resumo rápido</span><div class="sep-line"></div></div>
-        <div class="empty"><div class="empty-title">Painel informativo</div><div class="empty-sub">Os ajustes operacionais principais ficam nas abas Exibição, Movimentação e Fechamento.</div></div>
-      </div>
-    </div>
-  </section>
-</main>
-
-<div class="overlay" id="overlay"></div>
-<div class="overlay" id="overlay-lanc"></div>
-<div class="drawer" id="drawer-lanc">
-  <div class="drawer-head">
-    <div>
-      <div class="drawer-title" id="lanc-title">Lançamento</div>
-      <div class="drawer-sub" id="lanc-sub">Devolução, encalhe e premiação</div>
-    </div>
-    <button class="btn-secondary" id="btn-close-lanc">Fechar</button>
+    <div class="drawer-body" id="drawer-body"></div>
+    <div class="drawer-foot" id="drawer-foot"></div>
   </div>
-  <div class="drawer-body">
-    <div class="grid-3">
-      <div class="field"><label class="field-label">Modalidade</label><input id="lanc-modalidade" value="Federal" readonly></div>
-      <div class="field"><label class="field-label">Concurso</label><input id="lanc-concurso" readonly></div>
-      <div class="field"><label class="field-label">Data do concurso</label><input id="lanc-data" readonly></div>
-    </div>
-    <div class="grid-3" style="margin-top:14px">
-      <div class="field"><label class="field-label">Loja origem</label><input id="lanc-loja" readonly></div>
-      <div class="field"><label class="field-label req">Qtd devolução na origem</label><input type="number" id="lanc-qtd-dev"></div>
-      <div class="field"><label class="field-label req">Qtd encalhe</label><input type="number" id="lanc-qtd-enc"></div>
-    </div>
-    <div class="grid-2" style="margin-top:14px">
-      <div class="field"><label class="field-label req">Valor total da premiação</label><input type="number" step="0.01" id="lanc-vlr-premio"></div>
-      <div class="field"><label class="field-label">Observação</label><input id="lanc-obs" placeholder="Opcional"></div>
-    </div>
-  </div>
-  <div class="drawer-foot">
-    <button class="btn-secondary" id="btn-cancel-lanc">Cancelar</button>
-    <button class="btn-primary" id="btn-save-lanc">Salvar lançamento</button>
-  </div>
-</div>
-<div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <div>
-      <div class="drawer-title" id="drawer-title">Detalhe</div>
-      <div class="drawer-sub" id="drawer-sub">Visualização protegida</div>
-    </div>
-    <button class="btn-secondary" id="btn-close-drawer">Fechar</button>
-  </div>
-  <div class="drawer-body" id="drawer-body"></div>
-  <div class="drawer-foot" id="drawer-foot"></div>
-</div>
 
-<script>
-const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
-const $ = id => document.getElementById(id);
-const fmtMoney = v => 'R$ ' + (Number(v || 0).toFixed(2)).replace('.', ',');
-const fmtDate = v => { if(!v) return '—'; const [y,m,d] = String(v).split('-'); return `${d}/${m}/${y}`; };
-
-const state = {
-  usuario: null,
-  loterias: [],
-  usuarios: [],
-  federais: [],
-  resumo: [],
-  movimentos: [],
-  vendasFuncionario: [],
-  editingCadastroConcurso: null,
-  editingMovId: null,
-  lancFederalId: null
-};
-
-const QTD_PADRAO = {
-  qua: { centro: 80, boulevard: 80, lotobel: 60, santa: 0, via: 0 },
-  sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 0, via: 0 }
-};
-
-function setClock(){ $('relogio').textContent = new Date().toLocaleTimeString('pt-BR') + ' — ' + new Date().toLocaleDateString('pt-BR'); }
-setClock(); setInterval(setClock,1000);
-
-function showStatus(id,msg,t='ok'){ const el=$(id); el.textContent=msg; el.className=`status-bar show ${t}`; }
-function hideStatus(id){ const el=$(id); if(el) el.className='status-bar'; }
-
-function switchTab(tab){
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id===`panel-${tab}`));
-}
-document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
-
-function fillSelect(selectId, items, placeholder='Selecione...', valueKey='id', labelFn=(x)=>x.nome){
-  const sel=$(selectId); if(!sel) return;
-  const current=sel.value;
-  sel.innerHTML=`<option value="">${placeholder}</option>`;
-  items.forEach(item=>{
-    const opt=document.createElement('option');
-    opt.value=item[valueKey];
-    opt.textContent=labelFn(item);
-    sel.appendChild(opt);
-  });
-  if([...sel.options].some(o=>o.value===current)) sel.value=current;
-}
-
-async function bootstrap(){
-  await loadSession();
-  await loadBaseData();
-  bindEvents();
-  await refreshAll();
-}
-
-async function loadSession(){
-  const { data:{ session } } = await sb.auth.getSession();
-  if(!session){ location.href='./login.html'; return; }
-  const { data:user } = await sb.from('usuarios').select('id,nome,perfil,ativo').eq('auth_user_id', session.user.id).eq('ativo', true).maybeSingle();
-  state.usuario=user;
-}
-
-async function loadBaseData(){
-  const [lotRes, usuRes] = await Promise.all([
-    sb.from('loterias').select('id,nome,slug,ativo').eq('ativo',true).order('id'),
-    sb.from('usuarios').select('id,nome,ativo').eq('ativo',true).order('nome')
-  ]);
-  state.loterias = lotRes.data || [];
-  state.usuarios = usuRes.data || [];
-  fillStaticSelects();
-}
-
-function fillStaticSelects(){
-  const lotLabel = x => `${x.id} • ${x.nome}`;
-  ['filtro-loja','mov-loteria-origem','mov-loteria-destino','fec-loteria'].forEach(id=>fillSelect(id,state.loterias,'Todas / selecione...', 'id', lotLabel));
-  fillSelect('fec-usuario', state.usuarios, 'Selecione...', 'id', x => x.nome);
-}
-
-async function refreshAll(){
-  await Promise.all([
-    loadFederais(),
-    loadResumo(),
-    loadMovs(),
-    loadVendasFuncionario()
-  ]);
-  renderCadastro();
-  renderVisao();
-  renderMovimentacoes();
-  renderFechamentoResumo();
-  renderAuditoria();
-  fillFederalSelectors();
-}
-
-async function loadFederais(){
-  const { data } = await sb.from('federais').select('*').order('dt_sorteio',{ascending:false}).order('concurso',{ascending:false}).order('loteria_id');
-  state.federais = data || [];
-}
-
-async function loadResumo(){
-  const { data, error } = await sb.from('view_resumo_federal').select('*').order('dt_sorteio',{ascending:false}).order('concurso',{ascending:false});
-  state.resumo = error ? [] : (data || []);
-}
-
-async function loadMovs(){
-  const { data } = await sb.from('federal_movimentacoes').select('*, federais!inner(concurso,dt_sorteio,modalidade), usuarios(nome)').order('created_at',{ascending:false});
-  state.movimentos = data || [];
-}
-
-async function loadVendasFuncionario(){
-  const { data } = await sb.from('view_federal_vendas_funcionario').select('*').order('dt_sorteio',{ascending:false}).order('funcionario_nome');
-  state.vendasFuncionario = data || [];
-}
-
-function fillFederalSelectors(){
-  const fedLabel = x => `${x.concurso}`;
-  ['mov-federal','fec-federal'].forEach(id=>fillSelect(id,state.federais,'Selecione...', 'id', fedLabel));
-}
-
-function lookupLoteriaName(id){ return state.loterias.find(x => String(x.id)===String(id))?.nome || '—'; }
-function lookupFederal(id){ return state.federais.find(x => String(x.id)===String(id)); }
-
-function applyFederalType(tipo){
-  if(tipo==='ESPECIAL'){
-    $('cad-valor-fracao').value='10.00';
-    $('cad-valor-custo').value='8.04';
-  } else {
-    $('cad-valor-fracao').value='4.00';
-    $('cad-valor-custo').value='3.21';
-  }
-}
-
-function nextWedOrSat(base=new Date()){
-  const d=new Date(base); d.setHours(12,0,0,0);
-  while(![3,6].includes(d.getDay())) d.setDate(d.getDate()+1);
-  return d.toISOString().slice(0,10);
-}
-
-function nextQuaSabFrom(baseIso, dir){
-  let d = new Date((baseIso || new Date().toISOString().slice(0,10))+'T12:00:00');
-  d.setDate(d.getDate() + (dir>0 ? 1 : -1));
-  while(![3,6].includes(d.getDay())) d.setDate(d.getDate() + (dir>0 ? 1 : -1));
-  return d.toISOString().slice(0,10);
-}
-
-function suggestNextConcurso(){
-  const nums = state.federais.map(f=>parseInt(f.concurso,10)).filter(n=>!isNaN(n));
-  return nums.length ? String(Math.max(...nums)+1) : '';
-}
-
-function suggestNextSorteio(){
-  if(!state.federais.length) return nextWedOrSat();
-  const dates = state.federais.map(f=>f.dt_sorteio).filter(Boolean).sort().reverse();
-  return nextQuaSabFrom(dates[0], 1);
-}
-
-function fillQtdPadraoCadastro(){
-  const d = $('cad-dt-sorteio').value ? new Date($('cad-dt-sorteio').value+'T12:00:00') : new Date();
-  const pad = d.getDay()===6 ? QTD_PADRAO.sab : QTD_PADRAO.qua;
-  $('cad-qtd-centro').value = pad.centro;
-  $('cad-qtd-boulevard').value = pad.boulevard;
-  $('cad-qtd-lotobel').value = pad.lotobel;
-  $('cad-qtd-santa').value = pad.santa;
-  $('cad-qtd-via').value = pad.via;
-}
-
-function renderKPIs(rows){
-  const totalInicial = rows.reduce((a,x)=>a+Number(x.qtd_inicial||0),0);
-  const totalVendida = rows.reduce((a,x)=>a+Number(x.qtd_vendida_total||0),0);
-  const totalDev = rows.reduce((a,x)=>a+Number(x.qtd_devolvida_origem||0)+Number(x.qtd_devolvida_terceiros||0),0);
-  const totalEnc = rows.reduce((a,x)=>a+Number(x.qtd_encalhe||0),0);
-  const totalPrem = rows.reduce((a,x)=>a+Number(x.premio_encalhe_total||0),0);
-  const totalRes = rows.reduce((a,x)=>a+Number(x.resultado||0),0);
-  $('kpis-visao').innerHTML = [
-    ['Qtd Inicial', totalInicial, 'Carga base'],
-    ['Vendida', totalVendida, 'Funcionários + externa'],
-    ['Devolvida', totalDev, 'Origem + terceiros'],
-    ['Encalhe', totalEnc, 'Qtd restante sem venda'],
-    ['Prêmio', fmtMoney(totalPrem), 'Total de prêmio'],
-    ['Resultado', fmtMoney(totalRes), 'Apuração geral']
-  ].map(([l,v,s])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-value">${typeof v==='number' && !String(v).includes('R$') ? v : v}</div><div class="kpi-sub">${s}</div></div>`).join('');
-}
-
-function renderVisao(){
-  let rows=[...state.resumo];
-  const c=$('filtro-concurso').value.trim();
-  const loja=$('filtro-loja').value;
-  const di=$('filtro-dt-ini').value;
-  const df=$('filtro-dt-fim').value;
-  if(c) rows=rows.filter(x=>String(x.concurso).includes(c));
-  if(loja) rows=rows.filter(x=>String(x.loteria_id)===String(loja));
-  if(di) rows=rows.filter(x=>x.dt_sorteio>=di);
-  if(df) rows=rows.filter(x=>x.dt_sorteio<=df);
-  renderKPIs(rows);
-  $('tbody-visao').innerHTML = rows.length ? rows.map(r=>{
-    const res = Number(r.resultado||0);
-    return `<tr>
-      <td>${r.modalidade || 'Federal'}</td>
-      <td>${r.loja_origem}</td>
-      <td class="mono">${r.concurso}</td>
-      <td class="mono">${fmtDate(r.dt_sorteio)}</td>
-      <td class="mono">${r.qtd_inicial}</td>
-      <td class="mono">${r.qtd_vendida_funcionarios}</td>
-      <td class="mono">${r.qtd_vendida_externa}</td>
-      <td class="mono">${r.qtd_devolvida_origem}</td>
-      <td class="mono">${r.qtd_devolvida_terceiros}</td>
-      <td class="mono">${r.qtd_encalhe}</td>
-      <td class="money">${fmtMoney(r.premio_encalhe_total)}</td>
-      <td class="mono">${r.estoque_atual}</td>
-      <td class="money ${res>=0?'pos':'neg'}">${fmtMoney(res)}</td>
-      <td><div class="flex" style="flex-wrap:nowrap;gap:6px"><button class="btn-amber" style="padding:6px 10px;font-size:11px" onclick="openFederalDetail('${r.federal_id}')">Detalhar</button><button class="btn-secondary" style="padding:6px 10px;font-size:11px" onclick="openLancamento('${r.federal_id}')">Lançamento</button></div></td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="14"><div class="empty"><div class="empty-title">Nada encontrado</div><div class="empty-sub">Ajuste os filtros ou cadastre o primeiro concurso.</div></div></td></tr>`;
-}
-
-function renderCadastro(){
-  const grupos = Object.values(state.federais.reduce((acc,f)=>{
-    if(!acc[f.concurso]) acc[f.concurso] = { concurso:f.concurso, dt_sorteio:f.dt_sorteio, valor_fracao:f.valor_fracao, valor_custo:f.valor_custo, qt_fracoes_bilhete:f.qt_fracoes_bilhete, itens:[] };
-    acc[f.concurso].itens.push(f);
-    return acc;
-  },{})).sort((a,b)=> String(b.concurso).localeCompare(String(a.concurso), undefined, {numeric:true}));
-  $('cnt-cadastros').textContent = grupos.length;
-  $('tbody-cadastro').innerHTML = grupos.length ? grupos.map(g=>{
-    const tipo = Number(g.valor_fracao)===10 ? 'ESPECIAL' : 'COMUM';
-    const totalIni = g.itens.reduce((a,x)=>a+Number(x.qtd_recebidas||0),0);
-    const totalDev = g.itens.reduce((a,x)=>a+Number(x.qtd_devolvidas||0),0);
-    const totalEnc = g.itens.reduce((a,x)=>a+Number(x.qtd_encalhe||0),0);
-    return `<tr>
-      <td>Todos</td>
-      <td class="mono">${g.concurso}</td>
-      <td class="mono">${fmtDate(g.dt_sorteio)}</td>
-      <td><span class="badge ${tipo==='COMUM'?'b-info':'b-warn'}">${tipo}</span></td>
-      <td class="money">${fmtMoney(g.valor_fracao)}</td>
-      <td class="money">${fmtMoney(g.valor_custo)}</td>
-      <td class="mono">${totalIni}</td>
-      <td class="mono">${totalDev}</td>
-      <td class="mono">${totalEnc}</td>
-      <td>
-        <div class="flex" style="flex-wrap:nowrap;gap:6px">
-          <button class="btn-amber" onclick="editCadastro('${g.concurso}')">Editar</button>
-          <button class="btn-danger" onclick="deleteCadastro('${g.concurso}')">Excluir</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="10"><div class="empty"><div class="empty-title">Nenhum concurso cadastrado</div></div></td></tr>`;
-}
-
-function renderMovimentacoes(){
-  $('tbody-mov').innerHTML = state.movimentos.length ? state.movimentos.map(m=>{
-    const statusClass = m.status_acerto==='PAGO' ? 'b-ok' : 'b-warn';
-    return `<tr>
-      <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
-      <td>${m.federais?.modalidade || 'Federal'}</td>
-      <td class="mono">${m.federais?.concurso || '—'}</td>
-      <td><span class="badge b-info">${m.tipo_evento || m.tipo || '—'}</span></td>
-      <td>${lookupLoteriaName(m.loteria_origem)}</td>
-      <td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td>
-      <td class="mono">${m.qtd_fracoes}</td>
-      <td class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</td>
-      <td class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)))}</td>
-      <td><span class="badge ${statusClass}">${m.status_acerto||'—'}</span></td>
-      <td>
-        <div class="flex" style="flex-wrap:nowrap;gap:6px">
-          <button class="btn-amber" onclick="editMov('${m.id}')">Editar</button>
-          <button class="btn-danger" onclick="deleteMovDirect('${m.id}')">Excluir</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Sem movimentações</div></div></td></tr>`;
-  applyDestinoFilter();
-}
-
-function renderFechamentoResumo(){
-  $('tbody-fechamento-resumo').innerHTML = state.vendasFuncionario.length ? state.vendasFuncionario.map(v=>`<tr><td>${v.funcionario_nome}</td><td class="mono">${v.concurso}</td><td class="mono">${v.qtd_vendida}</td><td class="money">${fmtMoney(v.total_vendido)}</td></tr>`).join('') : `<tr><td colspan="4"><div class="empty"><div class="empty-title">Sem vendas lançadas</div></div></td></tr>`;
-}
-
-function renderAuditoria(){
-  let rows=[...state.movimentos];
-  const t=$('aud-tipo').value, s=$('aud-status').value, c=$('aud-concurso').value.trim(), di=$('aud-dt-ini').value, df=$('aud-dt-fim').value;
-  if(t) rows=rows.filter(x=>(x.tipo_evento||x.tipo)===t);
-  if(s) rows=rows.filter(x=>(x.status_acerto||'')===s);
-  if(c) rows=rows.filter(x=>String(x.federais?.concurso||'').includes(c));
-  if(di) rows=rows.filter(x=>String(x.data_mov)>=di);
-  if(df) rows=rows.filter(x=>String(x.data_mov)<=df);
-  $('tbody-auditoria').innerHTML = rows.length ? rows.map(m=>{
-    const total=Number(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)));
-    const statusClass = m.status_acerto==='PAGO' ? 'b-ok' : 'b-warn';
-    return `<tr>
-      <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
-      <td>${m.federais?.modalidade || 'Federal'}</td>
-      <td class="mono">${m.federais?.concurso || '—'}</td>
-      <td><span class="badge b-info">${m.tipo_evento || m.tipo || '—'}</span></td>
-      <td>${lookupLoteriaName(m.loteria_origem)}</td>
-      <td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td>
-      <td class="mono">${m.qtd_fracoes}</td>
-      <td class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</td>
-      <td class="money">${fmtMoney(total)}</td>
-      <td><span class="badge ${statusClass}">${m.status_acerto||'—'}</span></td>
-      <td>
-        <div class="flex" style="flex-wrap:nowrap;gap:6px">
-          <button class="btn-amber" onclick="editMov('${m.id}')">Editar</button>
-          <button class="btn-secondary" onclick="openMovDetail('${m.id}')">Ver</button>
-          <button class="btn-danger" onclick="deleteMovDirect('${m.id}')">Excluir</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="11"><div class="empty"><div class="empty-title">Sem registros para os filtros</div></div></td></tr>`;
-}
-
-function setCadastroDefaults(){
-  state.editingCadastroConcurso = null;
-  $('card-form-cadastro').style.display='block';
-  $('cad-concurso').value = suggestNextConcurso();
-  $('cad-dt-sorteio').value = suggestNextSorteio();
-  $('cad-tipo').value='COMUM';
-  applyFederalType('COMUM');
-  $('cad-fracoes-bilhete').value='10';
-  fillQtdPadraoCadastro();
-}
-
-async function saveCadastro(){
-  try{
-    const concurso=$('cad-concurso').value.trim();
-    const dt_sorteio=$('cad-dt-sorteio').value;
-    const valor_fracao=Number($('cad-valor-fracao').value||0);
-    const valor_custo=Number($('cad-valor-custo').value||0);
-    const qt_fracoes_bilhete=Number($('cad-fracoes-bilhete').value||10);
-    if(!concurso || !dt_sorteio){ showStatus('st-cadastro','Preencha concurso e data.','err'); return; }
-    const mapa = [
-      {id:1,qtd:Number($('cad-qtd-centro').value||0)},
-      {id:2,qtd:Number($('cad-qtd-boulevard').value||0)},
-      {id:3,qtd:Number($('cad-qtd-lotobel').value||0)},
-      {id:4,qtd:Number($('cad-qtd-santa').value||0)},
-      {id:5,qtd:Number($('cad-qtd-via').value||0)}
-    ];
-
-    if(state.editingCadastroConcurso){
-      for(const item of mapa){
-        const { error } = await sb.from('federais').update({
-          concurso,
-          dt_sorteio,
-          valor_fracao,
-          valor_custo,
-          qt_fracoes_bilhete,
-          qtd_recebidas:item.qtd,
-          updated_at:new Date().toISOString()
-        }).eq('concurso', state.editingCadastroConcurso).eq('loteria_id', item.id);
-        if(error) throw error;
-      }
-      showStatus('st-cadastro','Concurso atualizado em todas as loterias.','ok');
-    } else {
-      for(const item of mapa){
-        const payload={
-          loteria_id:item.id,
-          modalidade:'Federal',
-          concurso,
-          dt_sorteio,
-          valor_fracao,
-          valor_custo,
-          qt_fracoes_bilhete,
-          qtd_recebidas:item.qtd,
-          qtd_devolvidas:0,
-          qtd_encalhe:0,
-          ativo:true,
-          criado_por:state.usuario?.id || null,
-          updated_at:new Date().toISOString()
-        };
-        const { error } = await sb.from('federais').insert(payload);
-        if(error) throw error;
-      }
-      showStatus('st-cadastro','Federais cadastradas para todas as loterias.','ok');
-    }
-    await refreshAll();
-    setCadastroDefaults();
-  }catch(e){ showStatus('st-cadastro',e.message,'err'); }
-}
-
-window.editCadastro = function(concurso){
-  const itens = state.federais.filter(x=>String(x.concurso)===String(concurso));
-  const f=itens[0]; if(!f) return;
-  state.editingCadastroConcurso=String(concurso);
-  $('card-form-cadastro').style.display='block';
-  $('cad-concurso').value=f.concurso;
-  $('cad-dt-sorteio').value=f.dt_sorteio;
-  $('cad-tipo').value=Number(f.valor_fracao)===10?'ESPECIAL':'COMUM';
-  $('cad-valor-fracao').value=f.valor_fracao;
-  $('cad-valor-custo').value=f.valor_custo;
-  $('cad-fracoes-bilhete').value=f.qt_fracoes_bilhete;
-  $('cad-qtd-centro').value = itens.find(x=>x.loteria_id===1)?.qtd_recebidas || 0;
-  $('cad-qtd-boulevard').value = itens.find(x=>x.loteria_id===2)?.qtd_recebidas || 0;
-  $('cad-qtd-lotobel').value = itens.find(x=>x.loteria_id===3)?.qtd_recebidas || 0;
-  $('cad-qtd-santa').value = itens.find(x=>x.loteria_id===4)?.qtd_recebidas || 0;
-  $('cad-qtd-via').value = itens.find(x=>x.loteria_id===5)?.qtd_recebidas || 0;
-};
-
-window.deleteCadastro = async function(concurso){
-  if(!concurso) return;
-  const ok = confirm(`Apagar o concurso ${concurso} em todas as loterias?`);
-  if(!ok) return;
-
-  try{
-    const idsFederais = state.federais
-      .filter(x => String(x.concurso) === String(concurso))
-      .map(x => x.id);
-
-    if(idsFederais.length){
-      const { error: ePremio } = await sb
-        .from('federal_encalhe_premio')
-        .delete()
-        .in('federal_id', idsFederais);
-      if(ePremio) throw ePremio;
-
-      const { error: eMov } = await sb
-        .from('federal_movimentacoes')
-        .delete()
-        .in('federal_id', idsFederais);
-      if(eMov) throw eMov;
-
-      const { error: eItensFech } = await sb
-        .from('fechamento_federais')
-        .delete()
-        .in('federal_id', idsFederais);
-      if(eItensFech) throw eItensFech;
-    }
-
-    const { error } = await sb
-      .from('federais')
-      .delete()
-      .eq('concurso', concurso);
-    if(error) throw error;
-
-    if(String(state.editingCadastroConcurso || '') === String(concurso)){
-      state.editingCadastroConcurso = null;
-      setCadastroDefaults();
-    }
-
-    showStatus('st-cadastro', `Concurso ${concurso} excluído.`, 'ok');
-    await refreshAll();
-  }catch(e){
-    showStatus('st-cadastro', e.message, 'err');
-  }
-};
-
-async function saveMov(){
-  try{
-    const federal=lookupFederal($('mov-federal').value);
-    const valor = Number($('mov-valor').value||0);
-    const qtd = Number($('mov-qtd').value||0);
-    const tipoEvento = $('mov-tipo-evento').value;
-    const payload={
-      federal_id:$('mov-federal').value,
-      loteria_origem:Number($('mov-loteria-origem').value||0) || null,
-      loteria_destino:Number($('mov-loteria-destino').value||0) || null,
-      tipo: tipoEvento==='TRANSFERENCIA' ? 'ENVIO' : 'DEVOLUCAO_EXTERNA',
-      tipo_evento:tipoEvento,
-      qtd_fracoes:qtd,
-      valor_fracao:valor,
-      valor_fracao_ref: Number(federal?.valor_fracao||0),
-      valor_fracao_real:valor,
-      valor_a_acertar:0,
-      status_acerto: state.editingMovId ? ($('mov-status-acerto').value || 'PENDENTE') : 'PENDENTE',
-      data_mov:new Date().toISOString().slice(0,10),
-      observacao:$('mov-observacao').value.trim() || null,
-      criado_por:state.usuario?.id || null,
-      updated_at:new Date().toISOString(),
-      editado_por: state.editingMovId ? state.usuario?.id : null,
-      editado_em: state.editingMovId ? new Date().toISOString() : null
-    };
-
-    if(!payload.federal_id || !payload.tipo_evento || !payload.qtd_fracoes || !payload.loteria_origem){
-      showStatus('st-mov','Preencha concurso, origem, evento e quantidade.','err');
-      return;
-    }
-    if(payload.tipo_evento === 'TRANSFERENCIA' && !payload.loteria_destino){
-      showStatus('st-mov','Selecione a loja destino.','err');
-      return;
-    }
-
-    if(state.editingMovId){
-      const { error } = await sb.from('federal_movimentacoes').update(payload).eq('id',state.editingMovId);
-      if(error) throw error;
-      showStatus('st-mov','Movimentação atualizada.','ok');
-    } else {
-      const { error } = await sb.from('federal_movimentacoes').insert(payload);
-      if(error) throw error;
-      showStatus('st-mov','Movimentação registrada.','ok');
-    }
-    state.editingMovId=null;
-    clearMov();
-    await refreshAll();
-  }catch(e){ showStatus('st-mov',e.message,'err'); }
-}
-
-function clearMov(){
-  state.editingMovId=null;
-  $('mov-federal').value='';
-  $('mov-modalidade').value='Federal';
-  $('mov-loteria-origem').value='';
-  $('mov-loteria-destino').value='';
-  $('mov-dt-concurso').value='';
-  $('mov-tipo-evento').value='TRANSFERENCIA';
-  $('mov-qtd').value='';
-  $('mov-valor').value='';
-  $('mov-total').value='';
-  $('mov-status-acerto').value='PENDENTE';
-  $('mov-observacao').value='';
-  $('btn-excluir-mov').style.display='none';
-}
-
-window.editMov = function(id){
-  const m=state.movimentos.find(x=>String(x.id)===String(id)); if(!m) return;
-  state.editingMovId=id;
-  switchTab('movimentacao');
-  $('mov-federal').value=m.federal_id;
-  $('mov-modalidade').value='Federal';
-  $('mov-loteria-origem').value=m.loteria_origem || '';
-  $('mov-loteria-destino').value=m.loteria_destino || '';
-  $('mov-dt-concurso').value=lookupFederal(m.federal_id)?.dt_sorteio || '';
-  $('mov-tipo-evento').value=m.tipo_evento || 'TRANSFERENCIA';
-  $('mov-qtd').value=m.qtd_fracoes;
-  $('mov-valor').value=m.valor_fracao_real || m.valor_fracao || '';
-  $('mov-total').value=(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0))).toFixed ? Number(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0))).toFixed(2) : '';
-  $('mov-status-acerto').value=m.status_acerto || 'PENDENTE';
-  $('mov-observacao').value=m.observacao || '';
-  $('btn-excluir-mov').style.display='inline-flex';
-};
-
-async function deleteMov(){
-  if(!state.editingMovId) return;
-  if(!confirm('Apagar esta linha de movimentação?')) return;
-  try{
-    const { error } = await sb.from('federal_movimentacoes').delete().eq('id', state.editingMovId);
-    if(error) throw error;
-    showStatus('st-mov','Movimentação apagada.','ok');
-    clearMov();
-    await refreshAll();
-  }catch(e){ showStatus('st-mov',e.message,'err'); }
-}
-
-window.deleteMovDirect = async function(id){
-  if(!id) return;
-  if(!confirm('Apagar esta linha de movimentação?')) return;
-
-  try{
-    const { error } = await sb
-      .from('federal_movimentacoes')
-      .delete()
-      .eq('id', id);
-    if(error) throw error;
-
-    if(String(state.editingMovId || '') === String(id)){
-      clearMov();
-    }
-
-    closeDrawer();
-    showStatus('st-mov', 'Movimentação apagada.', 'ok');
-    showStatus('st-auditoria', 'Movimentação apagada.', 'ok');
-    await refreshAll();
-  }catch(e){
-    showStatus('st-mov', e.message, 'err');
-  }
-};
-
-async function saveFechamento(){
-  try{
-    const usuario = state.usuarios.find(x=>String(x.id)===String($('fec-usuario').value));
-    if(!$('fec-loteria').value || !$('fec-usuario').value || !$('fec-data-ref').value || !$('fec-federal').value){ showStatus('st-fechamento','Preencha loja, funcionário, data e concurso.','err'); return; }
-    const totalFed = Number($('fec-total').value||0);
-    const header={
-      loteria_id:Number($('fec-loteria').value),
-      usuario_id:Number($('fec-usuario').value),
-      funcionario_nome:usuario?.nome || 'Funcionário',
-      data_ref:$('fec-data-ref').value,
-      troco_inicial:0,troco_sobra:0,relatorio:0,deposito:0,pix_cnpj:0,diferenca_pix:0,premio_raspadinha:0,resgate_telesena:0,total_produtos:0,total_federais:totalFed,total_boloes:0,total_fiado:0,total_debitos:0,total_creditos:0,quebra:0,
-      criado_por:state.usuario?.id || null,
-      updated_at:new Date().toISOString()
-    };
-    const { data: fHeader, error: eHeader } = await sb.from('fechamentos').insert(header).select('id').single();
-    if(eHeader) throw eHeader;
-    const federal=lookupFederal($('fec-federal').value);
-    const item={
-      fechamento_id:fHeader.id,
-      federal_id:$('fec-federal').value,
-      modalidade:'Federal',
-      concurso:federal?.concurso || '',
-      dt_sorteio:federal?.dt_sorteio || null,
-      valor_fracao:Number($('fec-valor-fracao').value||0),
-      qtd_vendida:Number($('fec-qtd-vendida').value||0),
-      total:Number($('fec-total').value||0)
-    };
-    const { error: eItem } = await sb.from('fechamento_federais').insert(item);
-    if(eItem) throw eItem;
-    showStatus('st-fechamento','Venda do funcionário registrada.','ok');
-    $('fec-qtd-vendida').value=''; $('fec-total').value='';
-    await refreshAll();
-  }catch(e){ showStatus('st-fechamento',e.message,'err'); }
-}
-
-window.openLancamento = function(federalId){
-  const f = lookupFederal(federalId); if(!f) return;
-  state.lancFederalId = federalId;
-  $('lanc-modalidade').value = 'Federal';
-  $('lanc-concurso').value = f.concurso;
-  $('lanc-data').value = f.dt_sorteio;
-  $('lanc-loja').value = lookupLoteriaName(f.loteria_id);
-  $('lanc-qtd-dev').value = f.qtd_devolvidas || 0;
-  $('lanc-qtd-enc').value = f.qtd_encalhe || 0;
-  $('lanc-vlr-premio').value = '';
-  $('lanc-obs').value = '';
-  $('overlay-lanc').classList.add('show');
-  $('drawer-lanc').classList.add('open');
-};
-
-function closeLancamento(){
-  $('overlay-lanc').classList.remove('show');
-  $('drawer-lanc').classList.remove('open');
-  state.lancFederalId = null;
-}
-
-async function saveLancamento(){
-  try{
-    if(!state.lancFederalId){ return; }
-    const qtdDev = Number($('lanc-qtd-dev').value||0);
-    const qtdEnc = Number($('lanc-qtd-enc').value||0);
-    const premio = Number($('lanc-vlr-premio').value||0);
-    const obs = $('lanc-obs').value.trim() || null;
-
-    const { error:e1 } = await sb.from('federais').update({
-      qtd_devolvidas: qtdDev,
-      qtd_encalhe: qtdEnc,
-      updated_at: new Date().toISOString()
-    }).eq('id', state.lancFederalId);
-    if(e1) throw e1;
-
-    if(premio > 0){
-      const { data: premioExistente, error: eBusca } = await sb
-        .from('federal_encalhe_premio')
-        .select('id')
-        .eq('federal_id', state.lancFederalId)
-        .order('created_at',{ascending:false})
-        .limit(1);
-      if(eBusca) throw eBusca;
-
-      if(premioExistente && premioExistente.length){
-        const { error:e2 } = await sb.from('federal_encalhe_premio').update({
-          qtd_fracoes_premiadas: qtdEnc || 1,
-          valor_premio: premio,
-          observacao: obs,
-          data_registro: new Date().toISOString().slice(0,10)
-        }).eq('id', premioExistente[0].id);
-        if(e2) throw e2;
-      } else {
-        const { error:e3 } = await sb.from('federal_encalhe_premio').insert({
-          federal_id: state.lancFederalId,
-          qtd_fracoes_premiadas: qtdEnc || 1,
-          valor_premio: premio,
-          observacao: obs,
-          criado_por: state.usuario?.id || null
-        });
-        if(e3) throw e3;
-      }
-    }
-
-    showStatus('st-visao','Lançamento salvo.','ok');
-    closeLancamento();
-    await refreshAll();
-  }catch(e){
-    showStatus('st-visao', e.message,'err');
-  }
-}
-
-window.openFederalDetail = function(federalId){
-  const resumo=state.resumo.find(x=>String(x.federal_id)===String(federalId));
-  const vendas=state.vendasFuncionario.filter(x=>String(x.federal_id)===String(federalId));
-  const movs=state.movimentos.filter(x=>String(x.federal_id)===String(federalId));
-  openDrawer(`Federal ${resumo?.concurso || ''}`, `${resumo?.loja_origem || ''} • ${fmtDate(resumo?.dt_sorteio)}`, `
-    <div class="card" style="margin-bottom:14px">
-      <div class="inline-pills">
-        <span class="pill">Modalidade ${resumo?.modalidade || 'Federal'}</span>
-        <span class="pill">Qtd inicial ${resumo?.qtd_inicial ?? 0}</span>
-        <span class="pill">Vend. func ${resumo?.qtd_vendida_funcionarios ?? 0}</span>
-        <span class="pill">Vend. externa ${resumo?.qtd_vendida_externa ?? 0}</span>
-        <span class="pill">Dev. origem ${resumo?.qtd_devolvida_origem ?? 0}</span>
-        <span class="pill">Dev. terceiros ${resumo?.qtd_devolvida_terceiros ?? 0}</span>
-        <span class="pill">Encalhe ${resumo?.qtd_encalhe ?? 0}</span>
-        <span class="pill">Resultado ${fmtMoney(resumo?.resultado || 0)}</span>
-      </div>
-    </div>
-    <div class="sep"><span class="sep-label">Vendas por funcionário</span><div class="sep-line"></div></div>
-    <div class="table-wrap"><table class="table"><thead><tr><th>Funcionário</th><th>Qtd</th><th>Total</th></tr></thead><tbody>${vendas.length ? vendas.map(v=>`<tr><td>${v.funcionario_nome}</td><td class="mono">${v.qtd_vendida}</td><td class="money">${fmtMoney(v.total_vendido)}</td></tr>`).join('') : '<tr><td colspan="3" class="muted">Sem vendas lançadas</td></tr>'}</tbody></table></div>
-    <div class="sep"><span class="sep-label">Eventos</span><div class="sep-line"></div></div>
-    <div class="table-wrap"><table class="table"><thead><tr><th>Evento</th><th>Origem</th><th>Destino</th><th>Qtd</th><th>Real</th></tr></thead><tbody>${movs.length ? movs.map(m=>`<tr><td>${m.tipo_evento||m.tipo}</td><td>${lookupLoteriaName(m.loteria_origem)}</td><td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td><td class="mono">${m.qtd_fracoes}</td><td class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)))}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Sem eventos</td></tr>'}</tbody></table></div>
-  `, [{label:'Fechar', kind:'secondary', onClick:closeDrawer}]);
-};
-
-window.openMovDetail = function(id){
-  const m=state.movimentos.find(x=>String(x.id)===String(id)); if(!m) return;
-  openDrawer(`Movimentação ${m.tipo_evento || m.tipo}`, `${m.federais?.modalidade || 'Federal'} • Concurso ${m.federais?.concurso || '—'}`, `
-    <div class="grid-2">
-      <div class="soft-card"><div class="field-label">Origem</div><div>${lookupLoteriaName(m.loteria_origem)}</div></div>
-      <div class="soft-card"><div class="field-label">Destino</div><div>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</div></div>
-      <div class="soft-card"><div class="field-label">Quantidade</div><div class="mono">${m.qtd_fracoes}</div></div>
-      <div class="soft-card"><div class="field-label">Status</div><div>${m.status_acerto || '—'}</div></div>
-      <div class="soft-card"><div class="field-label">Valor fração</div><div class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</div></div>
-      <div class="soft-card"><div class="field-label">Valor total</div><div class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)))}</div></div>
-      <div class="soft-card"><div class="field-label">Data do concurso</div><div class="mono">${fmtDate(lookupFederal(m.federal_id)?.dt_sorteio)}</div></div>
-      <div class="soft-card"><div class="field-label">Carimbo</div><div class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</div></div>
-    </div>
-    <div class="card" style="margin-top:14px"><div class="field-label">Observação</div><div style="margin-top:8px">${m.observacao || '—'}</div></div>
-  `,[{label:'Editar',kind:'amber',onClick:()=>{closeDrawer(); editMov(id);}},{label:'Fechar',kind:'secondary',onClick:closeDrawer}]);
-};
-
-function openDrawer(title, sub, bodyHtml, actions=[]){
-  $('drawer-title').textContent=title; $('drawer-sub').textContent=sub; $('drawer-body').innerHTML=bodyHtml; $('drawer-foot').innerHTML='';
-  actions.forEach(a=>{ const b=document.createElement('button'); b.textContent=a.label; b.className = a.kind==='primary'?'btn-primary':a.kind==='amber'?'btn-amber':a.kind==='danger'?'btn-danger':'btn-secondary'; b.onclick=a.onClick; $('drawer-foot').appendChild(b); });
-  $('overlay').classList.add('show'); $('drawer').classList.add('open');
-}
-function closeDrawer(){ $('overlay').classList.remove('show'); $('drawer').classList.remove('open'); }
-window.closeDrawer=closeDrawer;
-
-function bindEvents(){
-  $('overlay').addEventListener('click', closeDrawer); $('btn-close-drawer').addEventListener('click', closeDrawer);
-  $('overlay-lanc').addEventListener('click', closeLancamento); $('btn-close-lanc').addEventListener('click', closeLancamento); $('btn-cancel-lanc').addEventListener('click', closeLancamento); $('btn-save-lanc').addEventListener('click', saveLancamento);
-  $('btn-filtrar-visao').addEventListener('click', renderVisao);
-  $('btn-limpar-visao').addEventListener('click', ()=>{ ['filtro-concurso','filtro-loja','filtro-dt-ini','filtro-dt-fim'].forEach(id=>$(id).value=''); renderVisao(); });
-  $('btn-recarregar-visao').addEventListener('click', refreshAll);
-
-  $('btn-cancelar-cadastro').addEventListener('click', setCadastroDefaults);
-  $('btn-salvar-cadastro').addEventListener('click', saveCadastro);
-  $('cad-tipo').addEventListener('change', e=>applyFederalType(e.target.value));
-  $('cad-dt-sorteio').addEventListener('change', fillQtdPadraoCadastro);
-  $('cad-data-prev').addEventListener('click', ()=>{ $('cad-dt-sorteio').value = nextQuaSabFrom($('cad-dt-sorteio').value || suggestNextSorteio(), -1); fillQtdPadraoCadastro(); });
-  $('cad-data-next').addEventListener('click', ()=>{ $('cad-dt-sorteio').value = nextQuaSabFrom($('cad-dt-sorteio').value || suggestNextSorteio(), 1); fillQtdPadraoCadastro(); });
-
-  $('btn-salvar-mov').addEventListener('click', saveMov);
-  $('btn-limpar-mov').addEventListener('click', clearMov);
-  $('btn-excluir-mov').addEventListener('click', deleteMov);
-  $('mov-modalidade').value = 'Federal';
-  $('mov-loteria-origem').addEventListener('change', applyDestinoFilter);
-  $('mov-federal').addEventListener('change', ()=>{
-    const f=lookupFederal($('mov-federal').value);
-    if(!f){ $('mov-resumo-selec').innerHTML='<div class="empty-title">Selecione um concurso</div>'; return; }
-    $('mov-modalidade').value='Federal';
-    $('mov-loteria-origem').value=f.loteria_id;
-    applyDestinoFilter();
-    $('mov-dt-concurso').value=f.dt_sorteio;
-    syncMovValorByTipo();
-    $('mov-resumo-selec').innerHTML=`<div class="inline-pills"><span class="pill">Modalidade Federal</span><span class="pill">Origem ${lookupLoteriaName(f.loteria_id)}</span><span class="pill">Concurso ${f.concurso}</span><span class="pill">Data ${fmtDate(f.dt_sorteio)}</span><span class="pill">Fração ${fmtMoney(f.valor_fracao)}</span><span class="pill">Custo ${fmtMoney(f.valor_custo)}</span></div>`;
-  });
-  ['mov-qtd','mov-valor'].forEach(id=>$(id).addEventListener('input', ()=>{
-    const qtd=Number($('mov-qtd').value||0), valor=Number($('mov-valor').value||0);
-    $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
-  }));
-  $('mov-tipo-evento').addEventListener('change', syncMovValorByTipo);
-
-  $('fec-data-ref').value=new Date().toISOString().slice(0,10);
-  $('fec-federal').addEventListener('change', ()=>{ const f=lookupFederal($('fec-federal').value); if(f) $('fec-valor-fracao').value=f.valor_fracao; });
-  ['fec-qtd-vendida','fec-valor-fracao'].forEach(id=>$(id).addEventListener('input', ()=>{ const q=Number($('fec-qtd-vendida').value||0), v=Number($('fec-valor-fracao').value||0); $('fec-total').value=q&&v?(q*v).toFixed(2):''; }));
-  $('btn-salvar-fechamento').addEventListener('click', saveFechamento);
-  $('btn-limpar-fechamento').addEventListener('click', ()=>{ $('fec-qtd-vendida').value=''; $('fec-total').value=''; });
-
-  $('btn-filtrar-auditoria').addEventListener('click', renderAuditoria);
-  $('btn-recarregar-auditoria').addEventListener('click', refreshAll);
-}
-
-function syncMovValorByTipo(){
-  const f=lookupFederal($('mov-federal').value); if(!f) return;
-  const tipo=$('mov-tipo-evento').value;
-  if(tipo==='DEVOLUCAO_CAIXA'){
-    $('mov-valor').value=f.valor_custo;
-  } else if(tipo==='VENDA_CAMBISTA'){
-    $('mov-valor').value='';
-  } else {
-    $('mov-valor').value=f.valor_fracao;
-  }
-  $('mov-status-acerto').value='PENDENTE';
-  const qtd=Number($('mov-qtd').value||0), valor=Number($('mov-valor').value||0);
-  $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
-}
-
-function applyDestinoFilter(){
-  const origem = $('mov-loteria-origem')?.value;
-  const sel = $('mov-loteria-destino');
-  if(!sel) return;
-  [...sel.options].forEach(opt => {
-    if(!opt.value){
-      opt.hidden = false;
-      return;
-    }
-    opt.hidden = !!origem && opt.value === origem;
-  });
-  if(origem && sel.value === origem) sel.value = '';
-}
-
-bootstrap().then(()=>setCadastroDefaults());
-</script>
+  <script src="./js/federal.js"></script>
 </body>
 </html>
