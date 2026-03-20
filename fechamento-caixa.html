@@ -49,88 +49,85 @@
 </div>
 
 <main class="main">
-
-  <div class="step-content active" id="step1">
-    <div class="page-header">
-      <div>
-        <div class="page-title">Entrada de Dados Externos</div>
-        <div class="page-sub">Preencha os valores conforme os relatórios físicos do dia</div>
-      </div>
-      <div class="step-badge">Tela 1 de 4</div>
+<div class="step-content active" id="step1">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Entrada de Dados Externos</div>
+      <div class="page-sub">Preencha os valores conforme os relatórios físicos do dia</div>
     </div>
+    <div class="step-badge">Tela 1 de 4</div>
+  </div>
 
-    <div class="section">
-      <div class="section-label">Identificação</div>
-      <div class="g3">
-        <div class="field">
-          <label class="field-label req">Funcionário</label>
-          <select id="funcionario" class="sel" onchange="onFuncChange()">
-            <option value="">Selecione...</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="field-label req">Data do Fechamento</label>
-          <input type="date" id="data-ref">
-        </div>
-        <div class="field">
-          <label class="field-label" style="opacity:0">.</label>
-          <button type="button" id="btn-buscar-fech" class="btn-back" style="justify-content:center;height:42px" onclick="buscarFechamentoExistente()">Buscar Fechamento</button>
-        </div>
+  <div class="section">
+    <div class="section-label">Identificação</div>
+    <div class="g3">
+      <div class="field">
+        <label class="field-label req">Funcionário</label>
+        <select id="funcionario" class="sel" onchange="onFuncChange()">
+          <option value="">Selecione...</option>
+        </select>
       </div>
-      <div class="status-chip" id="status-busca"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-label">Relatório e Movimentação Bancária</div>
-      <div class="g2">
-        <div class="field"><label class="field-label req">Valor do Relatório</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="relatorio" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
-        <div class="field"><label class="field-label req">Depósito Bancário</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="deposito" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      <div class="field">
+        <label class="field-label req">Data do Fechamento</label>
+        <input type="date" id="data-ref">
+      </div>
+      <div class="field">
+        <label class="field-label" style="opacity:0">.</label>
+        <button type="button" id="btn-buscar-fech" class="btn-back" style="justify-content:center;height:42px" onclick="buscarFechamentoExistente()">Buscar Fechamento</button>
       </div>
     </div>
+    <div class="status-chip" id="status-busca"></div>
+  </div>
 
-    <div class="section">
-      <div class="section-label">Controle de Troco</div>
-      <div class="g2">
-        <div class="field"><label class="field-label req">Troco Inicial (Fundo)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-ini" placeholder="0,00" step="0.01" oninput="calcTroco();autoFill(this)"></div></div>
-        <div class="field"><label class="field-label req">Troco Sobra (Final)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-sob" placeholder="0,00" step="0.01" oninput="calcTroco();autoFill(this)"></div></div>
-      </div>
-      <div class="chip chip-green" id="chip-troco" style="margin-top:8px">Diferença: <strong id="chip-troco-val">—</strong></div>
-    </div>
-
-    <div class="section">
-      <div class="section-label">PIX e Prêmios</div>
-      <div class="g3">
-        <div class="field"><label class="field-label req">PIX CNPJ Recebido</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-cnpj" placeholder="0,00" step="0.01" oninput="calcPix();autoFill(this)"></div></div>
-        <div class="field"><label class="field-label req">Diferença de PIX</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-dif" placeholder="0,00" step="0.01" oninput="calcPix();autoFill(this)"></div></div>
-        <div class="field"><label class="field-label req">Prêmio Raspadinha</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="premio-rasp" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
-      </div>
-      <div style="margin-top:12px;max-width:300px">
-        <div class="field"><label class="field-label req">Resgate Telesena</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="resgate-tele" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
-      </div>
-      <div class="chip chip-amber" id="chip-pix" style="margin-top:8px">PIX líquido: <strong id="chip-pix-val">—</strong></div>
-    </div>
-
-    <div class="section">
-      <div class="section-label">Dívidas de Clientes</div>
-      <div class="dividas-list" id="dividas-list"></div>
-      <div class="div-footer">
-        <div class="div-counter" id="div-counter">0 / 9 clientes</div>
-        <div class="chip chip-amber show" id="div-total-chip" style="opacity:0">Total: R$ 0,00</div>
-      </div>
-      <button type="button" class="btn-add" id="btn-add-div" onclick="addDivida()">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
-        Adicionar Cliente em Dívida
-      </button>
-    </div>
-
-    <div class="form-footer">
-      <div style="font-size:10px;color:var(--dim);font-style:italic"><span style="color:var(--accent)">*</span> Campos obrigatórios</div>
-      <button class="btn-next" onclick="avancarStep(2)">
-        Avançar para Tela 2
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-      </button>
+  <div class="section">
+    <div class="section-label">Relatório e Movimentação Bancária</div>
+    <div class="g2">
+      <div class="field"><label class="field-label req">Valor do Relatório</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="relatorio" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      <div class="field"><label class="field-label req">Depósito Bancário</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="deposito" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
     </div>
   </div>
+
+  <div class="section">
+    <div class="section-label">Controle de Troco</div>
+    <div class="g2">
+      <div class="field"><label class="field-label req">Troco Inicial (Fundo)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-ini" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      <div class="field"><label class="field-label req">Troco Sobra (Final)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-sob" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">PIX e Prêmios</div>
+    <div class="g3">
+      <div class="field"><label class="field-label req">PIX CNPJ Recebido</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-cnpj" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      <div class="field"><label class="field-label req">Diferença de PIX</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-dif" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+      <div class="field"><label class="field-label req">Prêmio Raspadinha</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="premio-rasp" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+    </div>
+    <div style="margin-top:12px;max-width:300px">
+      <div class="field"><label class="field-label req">Resgate Telesena</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="resgate-tele" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Dívidas de Clientes</div>
+    <div class="dividas-list" id="dividas-list"></div>
+    <div class="div-footer">
+      <div class="div-counter" id="div-counter">0 / 9 clientes</div>
+      <div class="chip chip-amber show" id="div-total-chip" style="opacity:0">Total: R$ 0,00</div>
+    </div>
+    <button type="button" class="btn-add" id="btn-add-div" onclick="addDivida()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+      Adicionar Cliente em Dívida
+    </button>
+  </div>
+
+  <div class="form-footer">
+    <div style="font-size:10px;color:var(--dim);font-style:italic"><span style="color:var(--accent)">*</span> Campos obrigatórios</div>
+    <button class="btn-next" onclick="avancarStep(2)">
+      Avançar para Tela 2
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+    </button>
+  </div>
+</div>
 
   <div class="step-content" id="step2">
     <div class="page-header">
