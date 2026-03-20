@@ -721,9 +721,6 @@ function preencherTela1(fech) {
   $('dividas-list').innerHTML = '';
   dividaCount = 0;
   (fech.fechamento_dividas || []).forEach(d => addDivida(d.cliente_nome, d.valor));
-
-  calcTroco();
-  calcPix();
 }
 
 function preencherTela2() {
