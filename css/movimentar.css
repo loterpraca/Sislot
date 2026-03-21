@@ -243,7 +243,6 @@ body {
   flex-wrap: wrap;
   animation: fadeIn 0.35s ease both;
   position: relative;
-  overflow: hidden;
 }
 
 /* Linha colorida superior */
@@ -255,14 +254,14 @@ body {
   background: linear-gradient(90deg, var(--t1), var(--t2));
   opacity: .35;
   transition: opacity var(--tr);
+  border-radius: 12px 12px 0 0;
 }
 
 /* ── Seção de data ──────────────────────────────────────── */
 .filter-date-section {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 6px;
 }
 
 .date-label {
@@ -398,6 +397,11 @@ body {
   max-width: 180px;
 }
 
+/* Data ref. — mesma coluna, sem crescer a mais */
+.filter-date-wrap {
+  flex: 0 0 auto;
+}
+
 .filter-label {
   font-family: var(--mono);
   font-size: 9px;
@@ -485,6 +489,7 @@ body {
   white-space: nowrap;
   height: 34px;
   flex-shrink: 0;
+  margin-left: auto;
   align-self: flex-end;
   opacity: 0.38;
   pointer-events: none;
