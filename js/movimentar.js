@@ -1,6 +1,6 @@
 /**
  * SISLOT - Movimentação de Cotas
- * Versão refatorada com utils
+ * Versão corrigida - sem erros de await
  */
 
 const sb = supabase.createClient(
@@ -8,15 +8,39 @@ const sb = supabase.createClient(
     window.SISLOT_CONFIG.anonKey
 );
 
-// Importa funções do utils com fallbacks
 const utils = window.SISLOT_UTILS || {};
 
 const $ = utils.$ || (id => document.getElementById(id));
 const fmtBRL = utils.fmtBRL || (v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','));
-const fmtData = utils.fmtData || (s => { if (!s) return '—'; const [y, m, d] = String(s).split('-'); return `${d}/${m}/${y}`; });
-const isoDate = utils.isoDate || (date => date ? date.toISOString().slice(0, 10) : '');
-const setStatus = utils.setStatus || ((id, msg, tipo) => { const el = $(id); if (el) { el.textContent = msg; el.className = `status-bar show ${tipo}`; } });
-const updateClock = utils.updateClock || (() => { const el = $('relogio'); if (!el) return; const now = new Date(); el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR'); });
+const fmtData = utils.fmtData || (s => { 
+    if (!s) return '—';
+    try {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        }
+    } catch(e) {}
+    return '—';
+});
+const isoDate = utils.isoDate || (date => {
+    if (!date) return '';
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
+});
+const setStatus = utils.setStatus || ((id, msg, tipo) => { 
+    const el = $(id); 
+    if (el) { 
+        el.textContent = msg; 
+        el.className = `status-bar show ${tipo || 'ok'}`; 
+    } 
+});
+const updateClock = utils.updateClock || (() => { 
+    const el = $('relogio'); 
+    if (!el) return; 
+    const now = new Date(); 
+    el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR'); 
+});
 const startClock = utils.startClock || (() => { updateClock(); setInterval(updateClock, 1000); });
 
 // Inicia o relógio
@@ -39,131 +63,72 @@ let bolaoSelecionado = null;
 let saldosPorLoja = {};
 let historicoPorLoja = {};
 
-async function init() {
-        // Diagnóstico
-    console.log('=== DIAGNÓSTICO MOVIMENTACAO ===');
-    console.log('utils disponível:', !!window.SISLOT_UTILS);
-    if (window.SISLOT_UTILS) {
-        console.log('fmtData disponível:', typeof window.SISLOT_UTILS.fmtData);
-        console.log('isoDate disponível:', typeof window.SISLOT_UTILS.isoDate);
+// =====================================================
+// FUNÇÃO DE DATA EMBUTIDA (FALLBACK SEGURO)
+// =====================================================
+
+function formatarDataSegura(data) {
+    if (!data) return '—';
+    
+    try {
+        let dia, mes, ano;
         
-        // Teste de formatação
-        const testDate = new Date();
-        console.log('Teste fmtData com Date:', window.SISLOT_UTILS.fmtData(testDate));
-        console.log('Teste fmtData com string ISO:', window.SISLOT_UTILS.fmtData('2026-03-21'));
-        console.log('Teste isoDate:', window.SISLOT_UTILS.isoDate(testDate));
-    }
-    updateClock();
-    setInterval(updateClock, 1000);
-
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user?.id) {
-        location.href = './login.html';
-        return;
-    }
-
-    const usr = await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
-    if (!usr) {
-        location.href = './login.html';
-        return;
-    }
-    usuario = usr;
-
-    const { data: lojas } = await sb
-        .from('loterias')
-        .select('id, nome, slug')
-        .eq('ativo', true)
-        .order('nome');
-
-    if (lojas) {
-        lojas.forEach(l => {
-            lojaIdPorSlug[l.slug] = l.id;
-            lojaSlugPorId[l.id] = l.slug;
-            lojaNomePorId[l.id] = l.nome;
-        });
-    }
-
-    bind();
-    dataAtual = new Date();
-    atualizarDateDisplay();
-    await buscarBoloes();
-}
-
-function bind() {
-    const btnMenu = $('btnMenu');
-    const btnLogout = $('btnLogout');
-    const btnDtPrev = $('btnDtPrev');
-    const btnDtNext = $('btnDtNext');
-    const btnHoje = $('btnHoje');
-    const btnFecharPanel = $('btnFecharPanel');
-    const btnZerarMov = $('btnZerarMov');
-    const btnMovimentar = $('btnMovimentar');
-    const confirmCancel = $('confirmCancel');
-    const confirmOverlay = $('confirmOverlay');
-    const confirmOk = $('confirmOk');
-
-    if (btnMenu) btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
-    if (btnLogout) btnLogout.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
-    if (btnDtPrev) btnDtPrev.addEventListener('click', () => mudarData(-1));
-    if (btnDtNext) btnDtNext.addEventListener('click', () => mudarData(1));
-    if (btnHoje) btnHoje.addEventListener('click', async () => {
-        dataAtual = new Date();
-        atualizarDateDisplay();
-        fecharPanel();
-        await buscarBoloes();
-    });
-    if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
-    if (btnZerarMov) btnZerarMov.addEventListener('click', () => zerarMov());
-    if (btnMovimentar) btnMovimentar.addEventListener('click', onMovimentar);
-    if (confirmCancel) confirmCancel.addEventListener('click', () => {
-        if (confirmOverlay) confirmOverlay.classList.remove('show');
-    });
-    if (confirmOverlay) confirmOverlay.addEventListener('click', (e) => {
-        if (e.target === confirmOverlay) {
-            confirmOverlay.classList.remove('show');
+        if (data instanceof Date && !isNaN(data.getTime())) {
+            dia = data.getDate();
+            mes = data.getMonth() + 1;
+            ano = data.getFullYear();
         }
-    });
-    if (confirmOk) confirmOk.addEventListener('click', async () => {
-        if (confirmOverlay) confirmOverlay.classList.remove('show');
-        if (!bolaoSelecionado) return;
-        const deltas = {};
-        LOJAS.forEach(l => {
-            const inp = $(`dest-${l.slug}`);
-            if (!inp || inp.disabled) return;
-            const qtd = parseInt(inp.value, 10) || 0;
-            if (qtd !== 0) deltas[l.slug] = qtd;
-        });
-        await doMovimentar(bolaoSelecionado, deltas);
-    });
+        else if (typeof data === 'string') {
+            const matchISO = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (matchISO) {
+                dia = parseInt(matchISO[3]);
+                mes = parseInt(matchISO[2]);
+                ano = parseInt(matchISO[1]);
+            } else {
+                const d = new Date(data);
+                if (!isNaN(d.getTime())) {
+                    dia = d.getDate();
+                    mes = d.getMonth() + 1;
+                    ano = d.getFullYear();
+                }
+            }
+        }
+        
+        if (dia && mes && ano) {
+            return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+        }
+        
+        return '—';
+    } catch (e) {
+        console.error('Erro formatar data:', e);
+        return '—';
+    }
 }
 
 function atualizarDateDisplay() {
     const displayEl = $('dateDisplay');
     if (displayEl) {
-        // Força a conversão para string ISO antes de formatar
-        const dataISO = isoDate(dataAtual);
-        displayEl.textContent = fmtData(dataISO);
+        displayEl.textContent = formatarDataSegura(dataAtual);
     }
 }
 
-async function mudarData(delta) {
-    dataAtual.setDate(dataAtual.getDate() + delta);
-    atualizarDateDisplay();
-    fecharPanel();
-    await buscarBoloes();
-}
+// =====================================================
+// FUNÇÕES ASSÍNCRONAS
+// =====================================================
 
 async function buscarBoloes() {
-    $('stLoading').style.display = 'flex';
-    $('stVazio').style.display = 'none';
-    $('stLista').style.display = 'none';
-    $('boloesCount').innerHTML = '';
-
-    // Garante que a data seja string ISO
-    const iso = isoDate(dataAtual);
+    const loadingEl = $('stLoading');
+    const vazioEl = $('stVazio');
+    const listaEl = $('stLista');
+    const countEl = $('boloesCount');
     
-    // Resto do código...
-}
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (vazioEl) vazioEl.style.display = 'none';
+    if (listaEl) listaEl.style.display = 'none';
+    if (countEl) countEl.innerHTML = '';
+
+    const iso = isoDate(dataAtual);
+
     const { data: boloes, error } = await sb
         .from('boloes')
         .select(`
@@ -178,11 +143,14 @@ async function buscarBoloes() {
         .order('modalidade')
         .order('loteria_id');
 
-    $('stLoading').style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'none';
 
     if (error || !boloes || !boloes.length) {
-        $('stVazioSub').textContent = `Nenhum bolão ativo para ${fmtData(dataAtual)}.`;
-        $('stVazio').style.display = 'flex';
+        if (vazioEl) {
+            const vazioSub = $('stVazioSub');
+            if (vazioSub) vazioSub.textContent = `Nenhum bolão ativo para ${formatarDataSegura(dataAtual)}.`;
+            vazioEl.style.display = 'flex';
+        }
         return;
     }
 
@@ -204,6 +172,8 @@ async function buscarBoloes() {
 
 function renderBoloes(boloes, posicoes, movs) {
     const lista = $('stLista');
+    if (!lista) return;
+    
     lista.innerHTML = '';
 
     const grupos = {};
@@ -286,13 +256,15 @@ function renderBoloes(boloes, posicoes, movs) {
         lista.appendChild(grid);
     });
 
-    $('stLista').style.display = 'block';
-    $('boloesCount').innerHTML = `<span>${totalCards}</span> bolões vigentes`;
+    lista.style.display = 'block';
+    const countEl = $('boloesCount');
+    if (countEl) countEl.innerHTML = `<span>${totalCards}</span> bolões vigentes`;
 }
 
 function selecionarBolao(b, posicoes, movs) {
     document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
-    document.querySelector(`.bolao-card[data-id="${b.id}"]`)?.classList.add('selected');
+    const card = document.querySelector(`.bolao-card[data-id="${b.id}"]`);
+    if (card) card.classList.add('selected');
 
     bolaoSelecionado = b;
     saldosPorLoja = {};
@@ -325,18 +297,24 @@ function selecionarBolao(b, posicoes, movs) {
 }
 
 function abrirPanel(b) {
-    setStatus('statusBar', '', 'ok'); // limpa status
+    setStatus('statusBar', '', 'ok');
 
-    $('panelNome').textContent = `${b.modalidade} — Concurso ${b.concurso}`;
-    $('panelTags').innerHTML = `
-        <span class="rtag-amber rtag">${b.loterias?.nome || '—'} (origem)</span>
-        <span class="rtag rtag-green">${fmtBRL(b.valor_cota)}/cota</span>
-        <span class="rtag">${b.qtd_jogos} jogos · ${b.qtd_dezenas} dez.</span>
-        <span class="rtag">${b.qtd_cotas_total} cotas total</span>
-    `;
+    const panelNome = $('panelNome');
+    const panelTags = $('panelTags');
+    if (panelNome) panelNome.textContent = `${b.modalidade} — Concurso ${b.concurso}`;
+    if (panelTags) {
+        panelTags.innerHTML = `
+            <span class="rtag-amber rtag">${b.loterias?.nome || '—'} (origem)</span>
+            <span class="rtag rtag-green">${fmtBRL(b.valor_cota)}/cota</span>
+            <span class="rtag">${b.qtd_jogos} jogos · ${b.qtd_dezenas} dez.</span>
+            <span class="rtag">${b.qtd_cotas_total} cotas total</span>
+        `;
+    }
 
     const saldoWrap = $('movSaldoAtual');
-    saldoWrap.innerHTML = '<div class="msa-label">Saldo atual por loja</div>';
+    if (saldoWrap) {
+        saldoWrap.innerHTML = '<div class="msa-label">Saldo atual por loja</div>';
+    }
 
     LOJAS.forEach(loja => {
         const id = lojaIdPorSlug[loja.slug];
@@ -346,11 +324,11 @@ function abrirPanel(b) {
         const item = document.createElement('div');
         item.className = 'msa-item' + (id === b.loteria_id ? ' origem' : '');
         item.innerHTML = `<div class="msa-loja">${loja.nome}</div><div class="msa-val">${qtd}</div>`;
-        saldoWrap.appendChild(item);
+        if (saldoWrap) saldoWrap.appendChild(item);
     });
 
     const grid = $('destinosGrid');
-    grid.innerHTML = '';
+    if (grid) grid.innerHTML = '';
 
     LOJAS.forEach(loja => {
         const id = lojaIdPorSlug[loja.slug];
@@ -372,7 +350,7 @@ function abrirPanel(b) {
             <div class="destino-hist" id="hist-${loja.slug}" title="Histórico">${ehOrigem ? '(origem)' : histStr}</div>
             <div class="destino-sub" id="sub-${loja.slug}">—</div>
         `;
-        grid.appendChild(field);
+        if (grid) grid.appendChild(field);
 
         const input = $(`dest-${loja.slug}`);
         if (input && !ehOrigem) {
@@ -382,36 +360,31 @@ function abrirPanel(b) {
 
     calcTotal();
 
-    $('movPanel').classList.add('open');
-    document.body.classList.add('panel-open');
-}
-
-function refreshPanelSelecionado() {
-    if (!bolaoSelecionado) return;
-    abrirPanel(bolaoSelecionado);
-}
-
-function fecharPanel() {
-    $('movPanel').classList.remove('open');
-    document.body.classList.remove('panel-open');
-    document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
-    bolaoSelecionado = null;
+    const panel = $('movPanel');
+    if (panel) {
+        panel.classList.add('open');
+        document.body.classList.add('panel-open');
+    }
 }
 
 function onDestInput(slug) {
     const inp = $(`dest-${slug}`);
     const sub = $(`sub-${slug}`);
-    const qtd = parseInt(inp.value, 10) || 0;
+    const qtd = parseInt(inp?.value, 10) || 0;
     const cota = bolaoSelecionado?.valor_cota || 0;
 
     if (qtd !== 0) {
-        sub.textContent = fmtBRL(Math.abs(qtd) * cota);
-        sub.className = 'destino-sub on';
-        inp.classList.add('filled');
+        if (sub) {
+            sub.textContent = fmtBRL(Math.abs(qtd) * cota);
+            sub.className = 'destino-sub on';
+        }
+        if (inp) inp.classList.add('filled');
     } else {
-        sub.textContent = '—';
-        sub.className = 'destino-sub';
-        inp.classList.remove('filled');
+        if (sub) {
+            sub.textContent = '—';
+            sub.className = 'destino-sub';
+        }
+        if (inp) inp.classList.remove('filled');
     }
     calcTotal();
 }
@@ -422,7 +395,8 @@ function calcTotal() {
         const inp = $(`dest-${l.slug}`);
         if (inp && !inp.disabled) total += Math.abs(parseInt(inp.value, 10) || 0);
     });
-    $('movTotal').textContent = total + ' cotas';
+    const totalEl = $('movTotal');
+    if (totalEl) totalEl.textContent = total + ' cotas';
 }
 
 function zerarMov(limparStatus = true) {
@@ -431,37 +405,23 @@ function zerarMov(limparStatus = true) {
         if (inp && !inp.disabled) {
             inp.value = '';
             inp.classList.remove('filled');
-            $(`sub-${l.slug}`).textContent = '—';
-            $(`sub-${l.slug}`).className = 'destino-sub';
+            const sub = $(`sub-${l.slug}`);
+            if (sub) {
+                sub.textContent = '—';
+                sub.className = 'destino-sub';
+            }
         }
     });
     calcTotal();
     if (limparStatus) setStatus('statusBar', '', 'ok');
 }
 
-function atualizarSaldosLocaisAposMovimentacao(deltas) {
-    if (!bolaoSelecionado) return;
-    const origemId = bolaoSelecionado.loteria_id;
-    if (saldosPorLoja[origemId] == null) {
-        saldosPorLoja[origemId] = 0;
-    }
-    Object.entries(deltas).forEach(([slug, qtdRaw]) => {
-        const qtd = Number(qtdRaw || 0);
-        const destId = lojaIdPorSlug[slug];
-        if (!destId || qtd === 0) return;
-        if (saldosPorLoja[destId] == null) {
-            saldosPorLoja[destId] = 0;
-        }
-        saldosPorLoja[destId] += qtd;
-        saldosPorLoja[origemId] -= qtd;
-        if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
-        historicoPorLoja[destId].push(qtd);
-        if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
-        historicoPorLoja[origemId].push(-qtd);
-    });
-    if (saldosPorLoja[origemId] < 0) {
-        saldosPorLoja[origemId] = 0;
-    }
+function fecharPanel() {
+    const panel = $('movPanel');
+    if (panel) panel.classList.remove('open');
+    document.body.classList.remove('panel-open');
+    document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
+    bolaoSelecionado = null;
 }
 
 function onMovimentar() {
@@ -469,6 +429,7 @@ function onMovimentar() {
     const b = bolaoSelecionado;
     const deltas = {};
     let temDelta = false;
+    
     LOJAS.forEach(l => {
         const inp = $(`dest-${l.slug}`);
         if (!inp || inp.disabled) return;
@@ -478,10 +439,12 @@ function onMovimentar() {
             temDelta = true;
         }
     });
+    
     if (!temDelta) {
         setStatus('statusBar', 'Informe ao menos um valor de destino.', 'err');
         return;
     }
+    
     const linhas = [
         `📍 Origem: ${b.loterias?.nome || '—'}`,
         `🎯 ${b.modalidade} — Concurso ${b.concurso}`,
@@ -490,6 +453,7 @@ function onMovimentar() {
         '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:',
         '(Histórico [Mov] → Final)',
     ];
+    
     const icones = {
         'boulevard': '🏢',
         'centro': '🏙️',
@@ -497,6 +461,7 @@ function onMovimentar() {
         'santa-tereza': '⛪',
         'via-brasil': '🛣️',
     };
+    
     LOJAS.forEach(l => {
         const id = lojaIdPorSlug[l.slug];
         const delta = deltas[l.slug] || 0;
@@ -512,16 +477,23 @@ function onMovimentar() {
             linhas.push(`${icones[l.slug] || '📍'} ${l.nome}: ${histStr} → ${saldo} (sem alteração)`);
         }
     });
+    
     linhas.push('', '⚠️ Confirma a movimentação?');
-    $('confirmBody').textContent = linhas.join('\n');
-    $('confirmOverlay').classList.add('show');
+    
+    const confirmBody = $('confirmBody');
+    if (confirmBody) confirmBody.textContent = linhas.join('\n');
+    const confirmOverlay = $('confirmOverlay');
+    if (confirmOverlay) confirmOverlay.classList.add('show');
 }
 
 async function doMovimentar(b, deltas) {
     const btn = $('btnMovimentar');
-    btn.disabled = true;
-    btn.textContent = 'Registrando…';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Registrando…';
+    }
     setStatus('statusBar', 'Registrando movimentação…', 'info');
+    
     try {
         const inserts = [];
         for (const [slug, qtd] of Object.entries(deltas)) {
@@ -539,37 +511,152 @@ async function doMovimentar(b, deltas) {
             });
         }
         if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
+        
         const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
         if (error) throw new Error(error.message);
+        
         const bolaoIdAtual = bolaoSelecionado?.id;
-        atualizarSaldosLocaisAposMovimentacao(deltas);
-        refreshPanelSelecionado();
+        
+        // Atualizar saldos locais
+        if (bolaoSelecionado) {
+            const origemId = bolaoSelecionado.loteria_id;
+            Object.entries(deltas).forEach(([slug, qtdRaw]) => {
+                const qtd = Number(qtdRaw || 0);
+                const destId = lojaIdPorSlug[slug];
+                if (!destId || qtd === 0) return;
+                if (saldosPorLoja[destId] == null) saldosPorLoja[destId] = 0;
+                saldosPorLoja[destId] += qtd;
+                saldosPorLoja[origemId] -= qtd;
+                if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
+                historicoPorLoja[destId].push(qtd);
+                if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
+                historicoPorLoja[origemId].push(-qtd);
+            });
+            if (saldosPorLoja[origemId] < 0) saldosPorLoja[origemId] = 0;
+            abrirPanel(bolaoSelecionado);
+        }
+        
         setStatus('statusBar', '✓ Movimentação registrada com sucesso!', 'ok');
         zerarMov(false);
         await buscarBoloes();
+        
         if (bolaoIdAtual) {
-            document.querySelector(`.bolao-card[data-id="${bolaoIdAtual}"]`)?.classList.add('selected');
+            const card = document.querySelector(`.bolao-card[data-id="${bolaoIdAtual}"]`);
+            if (card) card.classList.add('selected');
         }
     } catch (e) {
         setStatus('statusBar', e.message, 'err');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
-                <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-                <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-            </svg>
-            Movimentar`;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+                    <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
+                Movimentar`;
+        }
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    init().catch(async (err) => {
-        console.error(err);
-        try {
-            await window.SISLOT_SECURITY.sair();
-        } catch (_) {
-            location.href = './login.html';
-        }
+function bind() {
+    const btnMenu = $('btnMenu');
+    const btnLogout = $('btnLogout');
+    const btnDtPrev = $('btnDtPrev');
+    const btnDtNext = $('btnDtNext');
+    const btnHoje = $('btnHoje');
+    const btnFecharPanel = $('btnFecharPanel');
+    const btnZerarMov = $('btnZerarMov');
+    const btnMovimentar = $('btnMovimentar');
+    const confirmCancel = $('confirmCancel');
+    const confirmOverlay = $('confirmOverlay');
+    const confirmOk = $('confirmOk');
+    
+    if (btnMenu) btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
+    if (btnLogout) btnLogout.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
+    if (btnDtPrev) btnDtPrev.addEventListener('click', () => {
+        dataAtual.setDate(dataAtual.getDate() - 1);
+        atualizarDateDisplay();
+        fecharPanel();
+        buscarBoloes();
     });
-});
+    if (btnDtNext) btnDtNext.addEventListener('click', () => {
+        dataAtual.setDate(dataAtual.getDate() + 1);
+        atualizarDateDisplay();
+        fecharPanel();
+        buscarBoloes();
+    });
+    if (btnHoje) btnHoje.addEventListener('click', () => {
+        dataAtual = new Date();
+        atualizarDateDisplay();
+        fecharPanel();
+        buscarBoloes();
+    });
+    if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
+    if (btnZerarMov) btnZerarMov.addEventListener('click', () => zerarMov());
+    if (btnMovimentar) btnMovimentar.addEventListener('click', onMovimentar);
+    if (confirmCancel) confirmCancel.addEventListener('click', () => {
+        if (confirmOverlay) confirmOverlay.classList.remove('show');
+    });
+    if (confirmOverlay) confirmOverlay.addEventListener('click', (e) => {
+        if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
+    });
+    if (confirmOk) confirmOk.addEventListener('click', async () => {
+        if (confirmOverlay) confirmOverlay.classList.remove('show');
+        if (!bolaoSelecionado) return;
+        const deltas = {};
+        LOJAS.forEach(l => {
+            const inp = $(`dest-${l.slug}`);
+            if (!inp || inp.disabled) return;
+            const qtd = parseInt(inp.value, 10) || 0;
+            if (qtd !== 0) deltas[l.slug] = qtd;
+        });
+        await doMovimentar(bolaoSelecionado, deltas);
+    });
+}
+
+// =====================================================
+// INICIALIZAÇÃO (async)
+// =====================================================
+
+async function init() {
+    console.log('movimentar.js - init rodando!');
+    
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user?.id) {
+        location.href = './login.html';
+        return;
+    }
+
+    const usr = await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
+    if (!usr) {
+        location.href = './login.html';
+        return;
+    }
+    usuario = usr;
+
+    const { data: lojas } = await sb
+        .from('loterias')
+        .select('id, nome, slug')
+        .eq('ativo', true)
+        .order('nome');
+
+    if (lojas) {
+        lojas.forEach(l => {
+            lojaIdPorSlug[l.slug] = l.id;
+            lojaSlugPorId[l.id] = l.slug;
+            lojaNomePorId[l.id] = l.nome;
+        });
+    }
+
+    bind();
+    dataAtual = new Date();
+    atualizarDateDisplay();
+    await buscarBoloes();
+}
+
+// Inicia
+init();
