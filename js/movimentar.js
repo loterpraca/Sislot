@@ -125,7 +125,12 @@ function bind() {
 }
 
 function atualizarDateDisplay() {
-    $('dateDisplay').textContent = fmtData(dataAtual);
+    const displayEl = $('dateDisplay');
+    if (displayEl) {
+        // Força a conversão para string ISO antes de formatar
+        const dataISO = isoDate(dataAtual);
+        displayEl.textContent = fmtData(dataISO);
+    }
 }
 
 async function mudarData(delta) {
@@ -141,8 +146,11 @@ async function buscarBoloes() {
     $('stLista').style.display = 'none';
     $('boloesCount').innerHTML = '';
 
+    // Garante que a data seja string ISO
     const iso = isoDate(dataAtual);
-
+    
+    // Resto do código...
+}
     const { data: boloes, error } = await sb
         .from('boloes')
         .select(`
