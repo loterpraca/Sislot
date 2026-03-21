@@ -391,7 +391,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 130px;
+  min-width: 115px;
+  flex: 1;
+  max-width: 180px;
 }
 
 .filter-label {
@@ -1084,7 +1086,7 @@ body.panel-open .list-area { padding-bottom: 400px; }
   .filter-bar { gap: 10px; padding: 10px 12px; }
   .filter-date-section { gap: 6px; }
   .filter-selects { gap: 8px; }
-  .filter-select-wrap { min-width: 110px; }
+  .filter-select-wrap { min-width: 100px; max-width: none; flex: 1 1 calc(50% - 4px); }
   .date-display { min-width: 120px; font-size: 12px; }
 
   .destinos-grid { grid-template-columns: repeat(2, 1fr); }
