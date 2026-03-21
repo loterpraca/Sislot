@@ -139,36 +139,48 @@
 
   <!-- BARRA DE FILTROS -->
   <div class="filters-bar">
-    <div class="filter-group">
-      <label>Modalidade</label>
-      <select id="filtroModalidade">
-        <option value="">Todas</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Concurso</label>
-      <input type="text" id="filtroConcurso" placeholder="Número do concurso"/>
-    </div>
-    <div class="filter-group">
-      <label>Valor Cota (R$)</label>
-      <input type="number" id="filtroValorCota" step="0.01" placeholder="Valor"/>
-    </div>
-    <div class="filter-group">
-      <label>Data</label>
-      <input type="date" id="filtroData" placeholder="Data do concurso"/>
-    </div>
-    <div class="filter-actions">
-      <button class="btn-filter" id="btnFiltrar">Filtrar</button>
-      <button class="btn-clear" id="btnLimparFiltros">Limpar</button>
-    </div>
+  <div class="filter-group">
+    <label>Modalidade</label>
+    <select id="filtroModalidade">
+      <option value="">Todas</option>
+    </select>
   </div>
-
-  <!-- ATALHOS RÁPIDOS (Modelos Conhecidos) -->
-  <div class="quick-chips" id="quickChipsWrap" style="display:none;">
-    <div class="section-label">Atalhos rápidos</div>
-    <div id="quickChipsRow" class="quick-chips"></div>
+  <div class="filter-group">
+    <label>Concurso</label>
+    <input type="text" id="filtroConcurso" placeholder="Número do concurso"/>
   </div>
+  <div class="filter-group">
+    <label>Valor Cota (R$)</label>
+    <input type="number" id="filtroValorCota" step="0.01" placeholder="Valor"/>
+  </div>
+  <div class="filter-group">
+    <label>Qtd. Jogos</label>
+    <input type="number" id="filtroQtdJogos" placeholder="Ex: 10"/>
+  </div>
+  <div class="filter-group">
+    <label>Qtd. Dezenas</label>
+    <input type="number" id="filtroQtdDezenas" placeholder="Ex: 15"/>
+  </div>
+  <div class="filter-actions">
+    <button class="btn-clear" id="btnLimparFiltros">Limpar filtros</button>
+  </div>
+</div>
 
+<div class="date-bar">
+  <div class="date-label">Data de referência</div>
+  <div class="date-stepper">
+    <button class="btn-date" id="btnDtPrev" title="Dia anterior">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="date-display" id="dateDisplay">—</div>
+    <button class="btn-date" id="btnDtNext" title="Próximo dia">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+  <button class="btn-hoje" id="btnHoje">Hoje</button>
+  <div class="boloes-count" id="boloesCount"></div>
+</div>
+  
   <div class="date-bar">
     <div class="date-label">Data de referência</div>
     <div class="date-stepper">
