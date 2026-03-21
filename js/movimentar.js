@@ -1,6 +1,6 @@
 /**
  * SISLOT - Movimentação de Cotas
- * Versão com filtros, calendário, modelos conhecidos e troca de loja
+ * Versão corrigida - com filtros automáticos e data bonita
  */
 
 const sb = supabase.createClient(
@@ -12,16 +12,6 @@ const utils = window.SISLOT_UTILS || {};
 
 const $ = utils.$ || (id => document.getElementById(id));
 const fmtBRL = utils.fmtBRL || (v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','));
-const fmtData = utils.fmtData || (s => {
-    if (!s) return '—';
-    try {
-        const d = new Date(s);
-        if (!isNaN(d.getTime())) {
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-        }
-    } catch (e) { }
-    return '—';
-});
 const isoDate = utils.isoDate || (date => {
     if (!date) return '';
     const d = date instanceof Date ? date : new Date(date);
@@ -77,8 +67,7 @@ let dataAtual = new Date();
 let bolaoSelecionado = null;
 let saldosPorLoja = {};
 let historicoPorLoja = {};
-let boloesOriginais = []; // Armazena todos os bolões para filtro
-let modelosConhecidos = []; // Modelos salvos
+let boloesOriginais = [];
 
 // =====================================================
 // FUNÇÕES DE TEMA E LOJA
@@ -134,107 +123,7 @@ function trocarLojaPorOffset(offset) {
 }
 
 // =====================================================
-// CARREGAR MODELOS CONHECIDOS
-// =====================================================
-async function carregarModelosConhecidos() {
-    const { data } = await sb
-        .from('modelos_boloes')
-        .select('*')
-        .eq('ativo', true)
-        .order('ordem');
-
-    modelosConhecidos = data || [];
-    renderQuickChips();
-}
-
-function renderQuickChips() {
-    const wrap = $('quickChipsWrap');
-    const row = $('quickChipsRow');
-    if (!wrap || !row) return;
-
-    if (!modelosConhecidos.length) {
-        wrap.style.display = 'none';
-        return;
-    }
-
-    wrap.style.display = 'block';
-    row.innerHTML = '';
-
-    modelosConhecidos.forEach(modelo => {
-        const chip = document.createElement('button');
-        chip.className = 'quick-chip';
-        chip.textContent = modelo.nome;
-        chip.onclick = () => aplicarFiltroPorModelo(modelo);
-        row.appendChild(chip);
-    });
-}
-
-function aplicarFiltroPorModelo(modelo) {
-    const modalidadeEl = $('filtroModalidade');
-    const valorCotaEl = $('filtroValorCota');
-    if (modalidadeEl) modalidadeEl.value = modelo.modalidade || '';
-    if (valorCotaEl) valorCotaEl.value = modelo.valor_cota || '';
-    aplicarFiltros();
-}
-
-// =====================================================
-// FUNÇÕES DE FILTRO
-// =====================================================
-function aplicarFiltros() {
-    const modalidade = $('filtroModalidade')?.value?.trim() || '';
-    const concurso = $('filtroConcurso')?.value?.trim() || '';
-    const valorCota = parseFloat($('filtroValorCota')?.value) || 0;
-    const dataConcurso = $('filtroData')?.value || '';
-
-    let filtrados = [...boloesOriginais];
-
-    if (modalidade) {
-        filtrados = filtrados.filter(b => b.modalidade === modalidade);
-    }
-    if (concurso) {
-        filtrados = filtrados.filter(b => String(b.concurso).includes(concurso));
-    }
-    if (valorCota > 0) {
-        filtrados = filtrados.filter(b => Math.abs(b.valor_cota - valorCota) < 0.01);
-    }
-    if (dataConcurso) {
-        filtrados = filtrados.filter(b => b.dt_concurso === dataConcurso);
-    }
-
-    renderListaBoloes(filtrados);
-}
-
-function limparFiltros() {
-    const modalidadeEl = $('filtroModalidade');
-    const concursoEl = $('filtroConcurso');
-    const valorCotaEl = $('filtroValorCota');
-    const dataEl = $('filtroData');
-    if (modalidadeEl) modalidadeEl.value = '';
-    if (concursoEl) concursoEl.value = '';
-    if (valorCotaEl) valorCotaEl.value = '';
-    if (dataEl) dataEl.value = '';
-    renderListaBoloes(boloesOriginais);
-}
-
-function popularFiltroModalidade(boloes) {
-    const select = $('filtroModalidade');
-    if (!select) return;
-    const modalidades = [...new Set(boloes.map(b => b.modalidade))].sort();
-    const current = select.value;
-    select.innerHTML = '<option value="">Todas</option>';
-    modalidades.forEach(mod => {
-        const opt = document.createElement('option');
-        opt.value = mod;
-        opt.textContent = mod;
-        select.appendChild(opt);
-    });
-    if (current && [...select.options].some(o => o.value === current)) {
-        select.value = current;
-    }
-}
-
-// =====================================================
-// FUNÇÕES DE DATA
+// FUNÇÕES DE DATA (APENAS COM DISPLAY BONITO)
 // =====================================================
 function formatarDataSegura(data) {
     if (!data) return '—';
@@ -269,10 +158,10 @@ function formatarDataSegura(data) {
 }
 
 function atualizarDateDisplay() {
-    const datePicker = $('datePicker');
     const displayEl = $('dateDisplay');
-    if (datePicker) datePicker.value = isoDate(dataAtual);
-    if (displayEl) displayEl.textContent = formatarDataSegura(dataAtual);
+    if (displayEl) {
+        displayEl.textContent = formatarDataSegura(dataAtual);
+    }
 }
 
 function mudarData(delta) {
@@ -287,6 +176,70 @@ function irParaHoje() {
     atualizarDateDisplay();
     fecharPanel();
     buscarBoloes();
+}
+
+// =====================================================
+// FUNÇÕES DE FILTRO (AUTOMÁTICO)
+// =====================================================
+function popularFiltroModalidade(boloes) {
+    const select = $('filtroModalidade');
+    if (!select) return;
+    const modalidades = [...new Set(boloes.map(b => b.modalidade))].sort();
+    const current = select.value;
+    select.innerHTML = '<option value="">Todas</option>';
+    modalidades.forEach(mod => {
+        const opt = document.createElement('option');
+        opt.value = mod;
+        opt.textContent = mod;
+        select.appendChild(opt);
+    });
+    if (current && [...select.options].some(o => o.value === current)) {
+        select.value = current;
+    }
+}
+
+function aplicarFiltros() {
+    const modalidade = $('filtroModalidade')?.value?.trim() || '';
+    const concurso = $('filtroConcurso')?.value?.trim() || '';
+    const valorCota = parseFloat($('filtroValorCota')?.value) || 0;
+    const qtdJogos = parseInt($('filtroQtdJogos')?.value) || 0;
+    const qtdDezenas = parseInt($('filtroQtdDezenas')?.value) || 0;
+
+    let filtrados = [...boloesOriginais];
+
+    if (modalidade) {
+        filtrados = filtrados.filter(b => b.modalidade === modalidade);
+    }
+    if (concurso) {
+        filtrados = filtrados.filter(b => String(b.concurso).includes(concurso));
+    }
+    if (valorCota > 0) {
+        filtrados = filtrados.filter(b => Math.abs(b.valor_cota - valorCota) < 0.01);
+    }
+    if (qtdJogos > 0) {
+        filtrados = filtrados.filter(b => b.qtd_jogos === qtdJogos);
+    }
+    if (qtdDezenas > 0) {
+        filtrados = filtrados.filter(b => b.qtd_dezenas === qtdDezenas);
+    }
+
+    renderListaBoloes(filtrados);
+}
+
+function limparFiltros() {
+    const modalidadeEl = $('filtroModalidade');
+    const concursoEl = $('filtroConcurso');
+    const valorCotaEl = $('filtroValorCota');
+    const qtdJogosEl = $('filtroQtdJogos');
+    const qtdDezenasEl = $('filtroQtdDezenas');
+    
+    if (modalidadeEl) modalidadeEl.value = '';
+    if (concursoEl) concursoEl.value = '';
+    if (valorCotaEl) valorCotaEl.value = '';
+    if (qtdJogosEl) qtdJogosEl.value = '';
+    if (qtdDezenasEl) qtdDezenasEl.value = '';
+    
+    renderListaBoloes(boloesOriginais);
 }
 
 // =====================================================
@@ -768,33 +721,34 @@ function bind() {
     const btnDtPrev = $('btnDtPrev');
     const btnDtNext = $('btnDtNext');
     const btnHoje = $('btnHoje');
-    const datePicker = $('datePicker');
     const btnFecharPanel = $('btnFecharPanel');
     const btnZerarMov = $('btnZerarMov');
     const btnMovimentar = $('btnMovimentar');
     const confirmCancel = $('confirmCancel');
     const confirmOverlay = $('confirmOverlay');
     const confirmOk = $('confirmOk');
-    const btnFiltrar = $('btnFiltrar');
     const btnLimparFiltros = $('btnLimparFiltros');
     const lojaTreeWrap = $('lojaTreeWrap');
     const origemChip = $('origemChip');
+    
+    // Filtros com autofiltro (input/change)
+    const filtrosInputs = ['filtroModalidade', 'filtroConcurso', 'filtroValorCota', 'filtroQtdJogos', 'filtroQtdDezenas'];
+    filtrosInputs.forEach(id => {
+        const el = $(id);
+        if (el) {
+            el.addEventListener('input', aplicarFiltros);
+            el.addEventListener('change', aplicarFiltros);
+        }
+    });
 
     if (btnInicio) btnInicio.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
     if (btnSair) btnSair.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
     if (btnDtPrev) btnDtPrev.addEventListener('click', () => mudarData(-1));
     if (btnDtNext) btnDtNext.addEventListener('click', () => mudarData(1));
     if (btnHoje) btnHoje.addEventListener('click', irParaHoje);
-    if (datePicker) datePicker.addEventListener('change', (e) => {
-        dataAtual = new Date(e.target.value);
-        atualizarDateDisplay();
-        fecharPanel();
-        buscarBoloes();
-    });
     if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
     if (btnZerarMov) btnZerarMov.addEventListener('click', () => zerarMov());
     if (btnMovimentar) btnMovimentar.addEventListener('click', onMovimentar);
-    if (btnFiltrar) btnFiltrar.addEventListener('click', aplicarFiltros);
     if (btnLimparFiltros) btnLimparFiltros.addEventListener('click', limparFiltros);
     if (lojaTreeWrap) lojaTreeWrap.addEventListener('click', () => trocarLojaPorOffset(1));
     if (origemChip) origemChip.addEventListener('click', () => trocarLojaPorOffset(1));
@@ -840,7 +794,6 @@ async function init() {
 
     await carregarLojas();
     aplicarTemaLoja(loteriaAtiva.loteria_slug);
-    await carregarModelosConhecidos();
 
     const origemNome = $('origemNome');
     if (origemNome) origemNome.textContent = loteriaAtiva.loteria_nome;
