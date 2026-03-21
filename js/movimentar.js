@@ -40,6 +40,19 @@ let saldosPorLoja = {};
 let historicoPorLoja = {};
 
 async function init() {
+        // Diagnóstico
+    console.log('=== DIAGNÓSTICO MOVIMENTACAO ===');
+    console.log('utils disponível:', !!window.SISLOT_UTILS);
+    if (window.SISLOT_UTILS) {
+        console.log('fmtData disponível:', typeof window.SISLOT_UTILS.fmtData);
+        console.log('isoDate disponível:', typeof window.SISLOT_UTILS.isoDate);
+        
+        // Teste de formatação
+        const testDate = new Date();
+        console.log('Teste fmtData com Date:', window.SISLOT_UTILS.fmtData(testDate));
+        console.log('Teste fmtData com string ISO:', window.SISLOT_UTILS.fmtData('2026-03-21'));
+        console.log('Teste isoDate:', window.SISLOT_UTILS.isoDate(testDate));
+    }
     updateClock();
     setInterval(updateClock, 1000);
 
