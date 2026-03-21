@@ -1,6 +1,6 @@
 /**
- * SISLOT - Movimentação de Cotas
- * Versão corrigida - sem erros de await
+ * SISLOT — Movimentação de Cotas
+ * Refatorado: filtros inteligentes em cascata + calendário + loja-tree
  */
 
 const sb = supabase.createClient(
@@ -9,43 +9,30 @@ const sb = supabase.createClient(
 );
 
 const utils = window.SISLOT_UTILS || {};
-
 const $ = utils.$ || (id => document.getElementById(id));
 const fmtBRL = utils.fmtBRL || (v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','));
-const fmtData = utils.fmtData || (s => { 
-    if (!s) return '—';
-    try {
-        const d = new Date(s);
-        if (!isNaN(d.getTime())) {
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-        }
-    } catch(e) {}
-    return '—';
-});
 const isoDate = utils.isoDate || (date => {
     if (!date) return '';
     const d = date instanceof Date ? date : new Date(date);
     if (isNaN(d.getTime())) return '';
     return d.toISOString().slice(0, 10);
 });
-const setStatus = utils.setStatus || ((id, msg, tipo) => { 
-    const el = $(id); 
-    if (el) { 
-        el.textContent = msg; 
-        el.className = `status-bar show ${tipo || 'ok'}`; 
-    } 
+const setStatus = utils.setStatus || ((id, msg, tipo) => {
+    const el = $(id);
+    if (el) { el.textContent = msg; el.className = `status-bar show ${tipo || 'ok'}`; }
 });
-const updateClock = utils.updateClock || (() => { 
-    const el = $('relogio'); 
-    if (!el) return; 
-    const now = new Date(); 
-    el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR'); 
+const updateClock = utils.updateClock || (() => {
+    const el = $('relogio');
+    if (!el) return;
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR');
 });
-const startClock = utils.startClock || (() => { updateClock(); setInterval(updateClock, 1000); });
 
-// Inicia o relógio
-startClock();
+// ── Relógio ────────────────────────────────────────────────
+updateClock();
+setInterval(updateClock, 1000);
 
+// ── Configuração de lojas ──────────────────────────────────
 const LOJAS = [
     { slug: 'boulevard',    nome: 'Boulevard',    logo: './icons/boulevard.png'    },
     { slug: 'centro',       nome: 'Centro',       logo: './icons/loterpraca.png'   },
@@ -54,78 +41,326 @@ const LOJAS = [
     { slug: 'via-brasil',   nome: 'Via Brasil',   logo: './icons/via-brasil.png'   },
 ];
 
-let usuario = null;
-let lojaIdPorSlug = {};
-let lojaSlugPorId = {};
-let lojaNomePorId = {};
-let dataAtual = new Date();
+// ── Estado global ──────────────────────────────────────────
+let usuario        = null;
+let lojaIdPorSlug  = {};
+let lojaSlugPorId  = {};
+let lojaNomePorId  = {};
+let dataAtual      = new Date();
 let bolaoSelecionado = null;
-let saldosPorLoja = {};
+let saldosPorLoja  = {};
 let historicoPorLoja = {};
 
-// =====================================================
-// FUNÇÃO DE DATA EMBUTIDA (FALLBACK SEGURO)
-// =====================================================
+// Dados brutos (todos os bolões da data)
+let todosBoloes    = [];
+let todasPosicoes  = [];
+let todasMovs      = [];
 
+// Estado dos filtros
+let filtroOrigem     = '';   // loteria_id como string; '' = todas
+let filtroConcurso   = '';   // concurso como string; '' = todos
+let filtroModalidade = '';   // modalidade como string; '' = todas
+let filtroDestino    = '';   // loteria_id destino como string; '' = todos
+
+// Índice para cycling da loja-tree (−1 = todas)
+let lojaTreeIdx    = -1;
+
+// ══════════════════════════════════════════════════════════
+// FORMATAÇÃO DE DATA
+// ══════════════════════════════════════════════════════════
 function formatarDataSegura(data) {
     if (!data) return '—';
-    
     try {
         let dia, mes, ano;
-        
         if (data instanceof Date && !isNaN(data.getTime())) {
-            dia = data.getDate();
-            mes = data.getMonth() + 1;
-            ano = data.getFullYear();
-        }
-        else if (typeof data === 'string') {
-            const matchISO = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (matchISO) {
-                dia = parseInt(matchISO[3]);
-                mes = parseInt(matchISO[2]);
-                ano = parseInt(matchISO[1]);
-            } else {
+            dia = data.getDate(); mes = data.getMonth() + 1; ano = data.getFullYear();
+        } else if (typeof data === 'string') {
+            const m = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) { dia = +m[3]; mes = +m[2]; ano = +m[1]; }
+            else {
                 const d = new Date(data);
-                if (!isNaN(d.getTime())) {
-                    dia = d.getDate();
-                    mes = d.getMonth() + 1;
-                    ano = d.getFullYear();
-                }
+                if (!isNaN(d.getTime())) { dia = d.getDate(); mes = d.getMonth() + 1; ano = d.getFullYear(); }
             }
         }
-        
         if (dia && mes && ano) {
-            return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+            return `${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
         }
-        
-        return '—';
-    } catch (e) {
-        console.error('Erro formatar data:', e);
-        return '—';
-    }
+    } catch {}
+    return '—';
 }
 
 function atualizarDateDisplay() {
-    const displayEl = $('dateDisplay');
-    if (displayEl) {
-        displayEl.textContent = formatarDataSegura(dataAtual);
+    const textEl = $('dateDisplayText');
+    if (textEl) textEl.textContent = formatarDataSegura(dataAtual);
+
+    // Sincroniza o input de data oculto
+    const picker = $('calendarPicker');
+    if (picker) picker.value = isoDate(dataAtual);
+}
+
+// ══════════════════════════════════════════════════════════
+// HEADER — LOJA-TREE (ciclagem e visual)
+// ══════════════════════════════════════════════════════════
+function atualizarHeaderLoja() {
+    const logoImg   = $('logoImg');
+    const svgAll    = $('lojaTreeAll');
+    const headerNome = $('headerNome');
+
+    if (!filtroOrigem) {
+        // Estado "todas as lojas" — tema prata
+        if (svgAll)  svgAll.style.display  = '';
+        if (logoImg) logoImg.style.display  = 'none';
+        if (headerNome) headerNome.textContent = 'Todas as Lojas';
+        document.body.setAttribute('data-loja', 'todas');
+        return;
+    }
+
+    // Encontra a loja pelo ID
+    const slug = lojaSlugPorId[filtroOrigem] ||
+                 Object.keys(lojaIdPorSlug).find(s => String(lojaIdPorSlug[s]) === filtroOrigem);
+    const lojaInfo = LOJAS.find(l => l.slug === slug);
+
+    if (lojaInfo) {
+        if (svgAll)  svgAll.style.display  = 'none';
+        if (logoImg) {
+            logoImg.src          = lojaInfo.logo;
+            logoImg.style.display = '';
+        }
+        if (headerNome) headerNome.textContent = lojaInfo.nome;
+        document.body.setAttribute('data-loja', lojaInfo.slug);
     }
 }
 
-// =====================================================
-// FUNÇÕES ASSÍNCRONAS
-// =====================================================
+function ciclarLojaTree() {
+    // Monta ciclo: [null, ...lojas que aparecem nos bolões carregados]
+    const idsPresentes = [...new Set(todosBoloes.map(b => String(b.loteria_id)))];
+    const lojasPres = LOJAS.filter(l => {
+        const id = String(lojaIdPorSlug[l.slug] || '');
+        return idsPresentes.includes(id);
+    });
+    const ciclo = [null, ...lojasPres]; // null = "todas"
 
+    // Acha posição atual
+    const idxAtual = ciclo.findIndex(item =>
+        item === null ? !filtroOrigem : String(lojaIdPorSlug[item.slug]) === filtroOrigem
+    );
+    const proximo = ciclo[(idxAtual + 1) % ciclo.length];
+
+    if (!proximo) {
+        filtroOrigem = '';
+    } else {
+        filtroOrigem = String(lojaIdPorSlug[proximo.slug]);
+    }
+
+    // Sincroniza o select de origem
+    const fOrigem = $('filterOrigem');
+    if (fOrigem) {
+        fOrigem.value = filtroOrigem;
+        marcarSelectAtivo(fOrigem);
+    }
+
+    atualizarHeaderLoja();
+    renderFiltrosCascata();
+    aplicarFiltros();
+    fecharPanel();
+}
+// ══════════════════════════════════════════════════════════
+/**
+ * Reconstrói os dropdowns de Origem e Concurso
+ * com apenas as opções REAIS presentes nos dados carregados,
+ * aplicando cascade:
+ *   - filterOrigem  → restrito pelos bolões que têm o concurso selecionado
+ *   - filterConcurso → restrito pelos bolões da origem selecionada
+ */
+function renderFiltrosCascata() {
+    const fOrigem     = $('filterOrigem');
+    const fConcurso   = $('filterConcurso');
+    const fModalidade = $('filterModalidade');
+    const fDestino    = $('filterDestino');
+    if (!fOrigem || !fConcurso || !fModalidade || !fDestino) return;
+
+    // ── Base para cada dropdown (cascade: todos os outros filtros ativos, exceto o próprio) ──
+    const paraOrigem = todosBoloes.filter(b => {
+        if (filtroConcurso   && String(b.concurso)   !== filtroConcurso)   return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        if (filtroDestino    && !bolaoTemDestino(b.id, filtroDestino))     return false;
+        return true;
+    });
+
+    const paraConcurso = todosBoloes.filter(b => {
+        if (filtroOrigem     && String(b.loteria_id) !== filtroOrigem)     return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        if (filtroDestino    && !bolaoTemDestino(b.id, filtroDestino))     return false;
+        return true;
+    });
+
+    const paraModalidade = todosBoloes.filter(b => {
+        if (filtroOrigem   && String(b.loteria_id) !== filtroOrigem)   return false;
+        if (filtroConcurso && String(b.concurso)   !== filtroConcurso) return false;
+        if (filtroDestino  && !bolaoTemDestino(b.id, filtroDestino))   return false;
+        return true;
+    });
+
+    const paraDestino = todosBoloes.filter(b => {
+        if (filtroOrigem     && String(b.loteria_id) !== filtroOrigem)     return false;
+        if (filtroConcurso   && String(b.concurso)   !== filtroConcurso)   return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        return true;
+    });
+
+    // ── Monta opções de ORIGEM ────────────────────────────
+    const origensMap = new Map();
+    paraOrigem.forEach(b => {
+        if (!origensMap.has(String(b.loteria_id)))
+            origensMap.set(String(b.loteria_id), b.loterias?.nome || String(b.loteria_id));
+    });
+    populateSelect(fOrigem, [...origensMap.entries()].sort((a, b) => a[1].localeCompare(b[1])), filtroOrigem);
+
+    // ── Monta opções de CONCURSO ──────────────────────────
+    const concursosSet = new Set(paraConcurso.map(b => String(b.concurso)));
+    const concursos = [...concursosSet].sort((a, b) => Number(a) - Number(b)).map(c => [c, `#${c}`]);
+    populateSelect(fConcurso, concursos, filtroConcurso);
+
+    // ── Monta opções de MODALIDADE ────────────────────────
+    const modalidadesSet = new Set(paraModalidade.map(b => b.modalidade));
+    const modalidades = [...modalidadesSet].sort().map(m => [m, m]);
+    populateSelect(fModalidade, modalidades, filtroModalidade);
+
+    // ── Monta opções de DESTINO ───────────────────────────
+    // Destinos = lojas que têm posição (saldo > 0) em bolões do subconjunto
+    const destinosMap = new Map();
+    const idsBoloesPara = new Set(paraDestino.map(b => String(b.id)));
+    todasPosicoes.forEach(p => {
+        if (!idsBoloesPara.has(String(p.bolao_id))) return;
+        const qtd = Number(p.qtd_cotas_posicao || 0);
+        if (qtd <= 0) return;
+        const lojaId = String(p.loteria_id);
+        if (!destinosMap.has(lojaId))
+            destinosMap.set(lojaId, p.loteria_nome || lojaId);
+    });
+    const destinos = [...destinosMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+    populateSelect(fDestino, destinos, filtroDestino);
+
+    // ── Marca selects ativos ──────────────────────────────
+    [fOrigem, fConcurso, fModalidade, fDestino].forEach(marcarSelectAtivo);
+
+    // Botão de limpar
+    const btnClear = $('btnClearFilters');
+    if (btnClear) {
+        const temFiltro = filtroOrigem || filtroConcurso || filtroModalidade || filtroDestino;
+        btnClear.classList.toggle('active', !!temFiltro);
+    }
+
+    atualizarContador();
+}
+
+/** Helper: popula um <select> mantendo a opção "todos/todas" no topo */
+function populateSelect(sel, entries, valorAtivo) {
+    // Guarda o texto do primeiro item antes de limpar
+    const primeiroTexto = sel.options[0]?.textContent || 'Todos';
+    sel.innerHTML = '';
+
+    // Recria a opção padrão
+    const optPadrao = document.createElement('option');
+    optPadrao.value = '';
+    optPadrao.textContent = primeiroTexto;
+    sel.appendChild(optPadrao);
+
+    entries.forEach(([val, label]) => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = label;
+        if (val === valorAtivo) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+/** Verifica se um bolão tem posição (saldo > 0) em uma determinada loja destino */
+function bolaoTemDestino(bolaoId, lojaId) {
+    return todasPosicoes.some(p =>
+        String(p.bolao_id) === String(bolaoId) &&
+        String(p.loteria_id) === String(lojaId) &&
+        Number(p.qtd_cotas_posicao || 0) > 0
+    );
+}
+
+function marcarSelectAtivo(sel) {
+    if (!sel) return;
+    sel.dataset.active = sel.value ? 'true' : 'false';
+}
+
+function atualizarContador() {
+    const countEl = $('boloesCount');
+    if (!countEl) return;
+
+    const total = todosBoloes.length;
+    const filtrado = getBoloesFiltrados().length;
+
+    if (!total) {
+        countEl.innerHTML = '';
+        return;
+    }
+
+    if (filtrado === total) {
+        countEl.innerHTML = `<span>${total}</span> bolões vigentes`;
+    } else {
+        countEl.innerHTML = `<span>${filtrado}</span> de ${total} bolões`;
+    }
+}
+
+function getBoloesFiltrados() {
+    return todosBoloes.filter(b => {
+        if (filtroOrigem     && String(b.loteria_id) !== filtroOrigem)     return false;
+        if (filtroConcurso   && String(b.concurso)   !== filtroConcurso)   return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        if (filtroDestino    && !bolaoTemDestino(b.id, filtroDestino))     return false;
+        return true;
+    });
+}
+
+/**
+ * Aplica os filtros atuais e chama renderBoloes()
+ * NÃO faz chamada de rede — opera sobre todosBoloes em memória.
+ */
+function aplicarFiltros() {
+    const loadingEl = $('stLoading');
+    const vazioEl   = $('stVazio');
+    const listaEl   = $('stLista');
+
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const resultado = getBoloesFiltrados();
+
+    if (!resultado.length) {
+        if (vazioEl) {
+            const sub = $('stVazioSub');
+            const temFiltro = filtroOrigem || filtroConcurso;
+            if (sub) sub.textContent = temFiltro
+                ? 'Nenhum bolão para os filtros selecionados.'
+                : `Nenhum bolão ativo para ${formatarDataSegura(dataAtual)}.`;
+            vazioEl.style.display = 'flex';
+        }
+        if (listaEl) listaEl.style.display = 'none';
+        atualizarContador();
+        return;
+    }
+
+    if (vazioEl) vazioEl.style.display = 'none';
+    renderBoloes(resultado, todasPosicoes, todasMovs);
+    atualizarContador();
+}
+
+// ══════════════════════════════════════════════════════════
+// BUSCA NO BANCO (só quando muda a DATA)
+// ══════════════════════════════════════════════════════════
 async function buscarBoloes() {
     const loadingEl = $('stLoading');
-    const vazioEl = $('stVazio');
-    const listaEl = $('stLista');
-    const countEl = $('boloesCount');
-    
+    const vazioEl   = $('stVazio');
+    const listaEl   = $('stLista');
+
     if (loadingEl) loadingEl.style.display = 'flex';
-    if (vazioEl) vazioEl.style.display = 'none';
-    if (listaEl) listaEl.style.display = 'none';
-    if (countEl) countEl.innerHTML = '';
+    if (vazioEl)   vazioEl.style.display   = 'none';
+    if (listaEl)   listaEl.style.display   = 'none';
 
     const iso = isoDate(dataAtual);
 
@@ -133,8 +368,7 @@ async function buscarBoloes() {
         .from('boloes')
         .select(`
             id, modalidade, concurso, valor_cota, qtd_jogos, qtd_dezenas,
-            qtd_cotas_total, dt_inicial, dt_concurso, status,
-            loteria_id,
+            qtd_cotas_total, dt_inicial, dt_concurso, status, loteria_id,
             loterias(id, nome, slug)
         `)
         .eq('status', 'ATIVO')
@@ -146,34 +380,42 @@ async function buscarBoloes() {
     if (loadingEl) loadingEl.style.display = 'none';
 
     if (error || !boloes || !boloes.length) {
-        if (vazioEl) {
-            const vazioSub = $('stVazioSub');
-            if (vazioSub) vazioSub.textContent = `Nenhum bolão ativo para ${formatarDataSegura(dataAtual)}.`;
-            vazioEl.style.display = 'flex';
-        }
+        todosBoloes   = [];
+        todasPosicoes = [];
+        todasMovs     = [];
+        atualizarHeaderLoja();
+        renderFiltrosCascata();
+        aplicarFiltros();
         return;
     }
 
     const ids = boloes.map(b => b.id);
 
-    const { data: posicoes } = await sb
-        .from('view_posicao_bolao_lojas')
-        .select('*')
-        .in('bolao_id', ids);
+    // Carrega posições e movimentações em paralelo
+    const [{ data: posicoes }, { data: movs }] = await Promise.all([
+        sb.from('view_posicao_bolao_lojas').select('*').in('bolao_id', ids),
+        sb.from('movimentacoes_cotas')
+          .select('bolao_id, loteria_origem, loteria_destino, qtd_cotas')
+          .in('bolao_id', ids)
+          .eq('status', 'ATIVO'),
+    ]);
 
-    const { data: movs } = await sb
-        .from('movimentacoes_cotas')
-        .select('bolao_id, loteria_origem, loteria_destino, qtd_cotas')
-        .in('bolao_id', ids)
-        .eq('status', 'ATIVO');
+    todosBoloes   = boloes;
+    todasPosicoes = posicoes || [];
+    todasMovs     = movs    || [];
 
-    renderBoloes(boloes, posicoes || [], movs || []);
+    // Reconstrói dropdowns, aplica filtros e sincroniza header/tema
+    atualizarHeaderLoja();
+    renderFiltrosCascata();
+    aplicarFiltros();
 }
 
+// ══════════════════════════════════════════════════════════
+// RENDER DE BOLÕES (inalterado, recebe subconjunto filtrado)
+// ══════════════════════════════════════════════════════════
 function renderBoloes(boloes, posicoes, movs) {
     const lista = $('stLista');
     if (!lista) return;
-    
     lista.innerHTML = '';
 
     const grupos = {};
@@ -195,7 +437,7 @@ function renderBoloes(boloes, posicoes, movs) {
 
         const sep = document.createElement('div');
         sep.className = 'section-sep';
-        sep.style.marginTop = totalCards > 0 ? '20px' : '0';
+        sep.style.marginTop = totalCards > 0 ? '18px' : '0';
         sep.innerHTML = `
             <div class="section-sep-label">${mod}</div>
             <div class="section-sep-line"></div>
@@ -209,24 +451,23 @@ function renderBoloes(boloes, posicoes, movs) {
         listaMod.forEach((b, i) => {
             const pos = posicoes.filter(p => p.bolao_id === b.id);
             let saldoPills = '';
-            if (pos.length) {
-                pos.forEach(p => {
-                    const qtd = Number(p.qtd_cotas_posicao || 0);
-                    if (qtd > 0) {
-                        saldoPills += `<div class="saldo-pill">
-                            <span class="sp-loja">${p.loteria_nome || '—'}</span>
-                            <span class="sp-val">${qtd}</span>
-                        </div>`;
-                    }
-                });
-            }
+            pos.forEach(p => {
+                const qtd = Number(p.qtd_cotas_posicao || 0);
+                if (qtd > 0) {
+                    saldoPills += `<div class="saldo-pill">
+                        <span class="sp-loja">${p.loteria_nome || '—'}</span>
+                        <span class="sp-val">${qtd}</span>
+                    </div>`;
+                }
+            });
             if (!saldoPills) {
                 saldoPills = '<div class="saldo-pill"><span class="sp-loja">Sem distribuição</span></div>';
             }
+
             const card = document.createElement('div');
             card.className = 'bolao-card';
             card.dataset.id = b.id;
-            card.style.animationDelay = (i * 0.04) + 's';
+            card.style.animationDelay = (i * 0.035) + 's';
             card.innerHTML = `
                 <div class="bolao-main">
                     <div class="bolao-header">
@@ -243,7 +484,8 @@ function renderBoloes(boloes, posicoes, movs) {
                     <div class="bolao-saldos">${saldoPills}</div>
                 </div>
                 <div class="bolao-select-ind">
-                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"
+                         stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="2 6 5 9 10 3"/>
                     </svg>
                 </div>
@@ -257,22 +499,23 @@ function renderBoloes(boloes, posicoes, movs) {
     });
 
     lista.style.display = 'block';
-    const countEl = $('boloesCount');
-    if (countEl) countEl.innerHTML = `<span>${totalCards}</span> bolões vigentes`;
 }
 
+// ══════════════════════════════════════════════════════════
+// PANEL DE MOVIMENTAÇÃO (lógica original intacta)
+// ══════════════════════════════════════════════════════════
 function selecionarBolao(b, posicoes, movs) {
     document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
     const card = document.querySelector(`.bolao-card[data-id="${b.id}"]`);
     if (card) card.classList.add('selected');
 
     bolaoSelecionado = b;
-    saldosPorLoja = {};
+    saldosPorLoja    = {};
     historicoPorLoja = {};
 
     LOJAS.forEach(loja => {
-        const lojaId = lojaIdPorSlug[loja.slug];
-        saldosPorLoja[lojaId] = 0;
+        const id = lojaIdPorSlug[loja.slug];
+        saldosPorLoja[id] = 0;
     });
 
     posicoes.forEach(p => {
@@ -280,16 +523,13 @@ function selecionarBolao(b, posicoes, movs) {
     });
 
     const movsBolao = movs.filter(m => m.bolao_id === b.id);
-
     movsBolao.forEach(m => {
         const origemId = m.loteria_origem;
-        const destId = m.loteria_destino;
-        const qtd = Number(m.qtd_cotas || 0);
-
-        if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
-        historicoPorLoja[destId].push(qtd);
-
+        const destId   = m.loteria_destino;
+        const qtd      = Number(m.qtd_cotas || 0);
+        if (!historicoPorLoja[destId])   historicoPorLoja[destId]   = [];
         if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
+        historicoPorLoja[destId].push(qtd);
         historicoPorLoja[origemId].push(-qtd);
     });
 
@@ -314,26 +554,24 @@ function abrirPanel(b) {
     const saldoWrap = $('movSaldoAtual');
     if (saldoWrap) {
         saldoWrap.innerHTML = '<div class="msa-label">Saldo atual por loja</div>';
+        LOJAS.forEach(loja => {
+            const id  = lojaIdPorSlug[loja.slug];
+            const qtd = Number(saldosPorLoja[id] || 0);
+            if (qtd === 0 && id !== b.loteria_id) return;
+            const item = document.createElement('div');
+            item.className = 'msa-item' + (id === b.loteria_id ? ' origem' : '');
+            item.innerHTML = `<div class="msa-loja">${loja.nome}</div><div class="msa-val">${qtd}</div>`;
+            saldoWrap.appendChild(item);
+        });
     }
-
-    LOJAS.forEach(loja => {
-        const id = lojaIdPorSlug[loja.slug];
-        const qtd = Number(saldosPorLoja[id] || 0);
-        if (qtd === 0 && id !== b.loteria_id) return;
-
-        const item = document.createElement('div');
-        item.className = 'msa-item' + (id === b.loteria_id ? ' origem' : '');
-        item.innerHTML = `<div class="msa-loja">${loja.nome}</div><div class="msa-val">${qtd}</div>`;
-        if (saldoWrap) saldoWrap.appendChild(item);
-    });
 
     const grid = $('destinosGrid');
     if (grid) grid.innerHTML = '';
 
     LOJAS.forEach(loja => {
-        const id = lojaIdPorSlug[loja.slug];
-        const ehOrigem = id === b.loteria_id;
-        const hist = historicoPorLoja[id] || [];
+        const id      = lojaIdPorSlug[loja.slug];
+        const ehOrig  = id === b.loteria_id;
+        const hist    = historicoPorLoja[id] || [];
         const histStr = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '—';
 
         const field = document.createElement('div');
@@ -341,49 +579,36 @@ function abrirPanel(b) {
         field.innerHTML = `
             <div class="destino-label">
                 <img src="${loja.logo}" alt="${loja.nome}"/>
-                ${loja.nome}${ehOrigem ? ' ★' : ''}
+                ${loja.nome}${ehOrig ? ' ★' : ''}
             </div>
             <div class="destino-input-wrap">
                 <input type="number" class="destino-input" id="dest-${loja.slug}"
-                    placeholder="0" min="-999" step="1" ${ehOrigem ? 'disabled' : ''}/>
+                       placeholder="0" min="-999" step="1" ${ehOrig ? 'disabled' : ''}/>
             </div>
-            <div class="destino-hist" id="hist-${loja.slug}" title="Histórico">${ehOrigem ? '(origem)' : histStr}</div>
+            <div class="destino-hist" id="hist-${loja.slug}">${ehOrig ? '(origem)' : histStr}</div>
             <div class="destino-sub" id="sub-${loja.slug}">—</div>
         `;
         if (grid) grid.appendChild(field);
 
         const input = $(`dest-${loja.slug}`);
-        if (input && !ehOrigem) {
-            input.addEventListener('input', () => onDestInput(loja.slug));
-        }
+        if (input && !ehOrig) input.addEventListener('input', () => onDestInput(loja.slug));
     });
 
     calcTotal();
-
     const panel = $('movPanel');
-    if (panel) {
-        panel.classList.add('open');
-        document.body.classList.add('panel-open');
-    }
+    if (panel) { panel.classList.add('open'); document.body.classList.add('panel-open'); }
 }
 
 function onDestInput(slug) {
     const inp = $(`dest-${slug}`);
     const sub = $(`sub-${slug}`);
-    const qtd = parseInt(inp?.value, 10) || 0;
+    const qtd  = parseInt(inp?.value, 10) || 0;
     const cota = bolaoSelecionado?.valor_cota || 0;
-
     if (qtd !== 0) {
-        if (sub) {
-            sub.textContent = fmtBRL(Math.abs(qtd) * cota);
-            sub.className = 'destino-sub on';
-        }
+        if (sub) { sub.textContent = fmtBRL(Math.abs(qtd) * cota); sub.className = 'destino-sub on'; }
         if (inp) inp.classList.add('filled');
     } else {
-        if (sub) {
-            sub.textContent = '—';
-            sub.className = 'destino-sub';
-        }
+        if (sub) { sub.textContent = '—'; sub.className = 'destino-sub'; }
         if (inp) inp.classList.remove('filled');
     }
     calcTotal();
@@ -406,10 +631,7 @@ function zerarMov(limparStatus = true) {
             inp.value = '';
             inp.classList.remove('filled');
             const sub = $(`sub-${l.slug}`);
-            if (sub) {
-                sub.textContent = '—';
-                sub.className = 'destino-sub';
-            }
+            if (sub) { sub.textContent = '—'; sub.className = 'destino-sub'; }
         }
     });
     calcTotal();
@@ -424,62 +646,48 @@ function fecharPanel() {
     bolaoSelecionado = null;
 }
 
+// ── Modal de confirmação ───────────────────────────────────
 function onMovimentar() {
     if (!bolaoSelecionado) return;
     const b = bolaoSelecionado;
     const deltas = {};
     let temDelta = false;
-    
+
     LOJAS.forEach(l => {
         const inp = $(`dest-${l.slug}`);
         if (!inp || inp.disabled) return;
         const qtd = parseInt(inp.value, 10) || 0;
-        if (qtd !== 0) {
-            deltas[l.slug] = qtd;
-            temDelta = true;
-        }
+        if (qtd !== 0) { deltas[l.slug] = qtd; temDelta = true; }
     });
-    
-    if (!temDelta) {
-        setStatus('statusBar', 'Informe ao menos um valor de destino.', 'err');
-        return;
-    }
-    
+
+    if (!temDelta) { setStatus('statusBar', 'Informe ao menos um valor de destino.', 'err'); return; }
+
+    const icones = { boulevard:'🏢', centro:'🏙️', lotobel:'🏛️', 'santa-tereza':'⛪', 'via-brasil':'🛣️' };
+
     const linhas = [
         `📍 Origem: ${b.loterias?.nome || '—'}`,
         `🎯 ${b.modalidade} — Concurso ${b.concurso}`,
         `💰 Cota: ${fmtBRL(b.valor_cota)}`,
-        '',
-        '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:',
-        '(Histórico [Mov] → Final)',
+        '', '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:', '(Histórico [Mov] → Final)',
     ];
-    
-    const icones = {
-        'boulevard': '🏢',
-        'centro': '🏙️',
-        'lotobel': '🏛️',
-        'santa-tereza': '⛪',
-        'via-brasil': '🛣️',
-    };
-    
+
     LOJAS.forEach(l => {
-        const id = lojaIdPorSlug[l.slug];
+        const id    = lojaIdPorSlug[l.slug];
         const delta = deltas[l.slug] || 0;
-        const hist = historicoPorLoja[id] || [];
+        const hist  = historicoPorLoja[id] || [];
         const saldo = Number(saldosPorLoja[id] || 0);
         const final = saldo + delta;
         if (delta === 0 && hist.length === 0) return;
-        const histStr = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
+        const histStr  = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
         const deltaStr = delta > 0 ? `[+${delta}]` : delta < 0 ? `[${delta}]` : '';
         if (delta !== 0) {
-            linhas.push(`${icones[l.slug] || '📍'} ${l.nome}: ${histStr} ${deltaStr} → ${final}`);
+            linhas.push(`${icones[l.slug]||'📍'} ${l.nome}: ${histStr} ${deltaStr} → ${final}`);
         } else {
-            linhas.push(`${icones[l.slug] || '📍'} ${l.nome}: ${histStr} → ${saldo} (sem alteração)`);
+            linhas.push(`${icones[l.slug]||'📍'} ${l.nome}: ${histStr} → ${saldo} (sem alteração)`);
         }
     });
-    
     linhas.push('', '⚠️ Confirma a movimentação?');
-    
+
     const confirmBody = $('confirmBody');
     if (confirmBody) confirmBody.textContent = linhas.join('\n');
     const confirmOverlay = $('confirmOverlay');
@@ -488,12 +696,9 @@ function onMovimentar() {
 
 async function doMovimentar(b, deltas) {
     const btn = $('btnMovimentar');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Registrando…';
-    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Registrando…'; }
     setStatus('statusBar', 'Registrando movimentação…', 'info');
-    
+
     try {
         const inserts = [];
         for (const [slug, qtd] of Object.entries(deltas)) {
@@ -501,45 +706,45 @@ async function doMovimentar(b, deltas) {
             const destId = lojaIdPorSlug[slug];
             if (!destId) throw new Error(`Loja não encontrada: ${slug}`);
             inserts.push({
-                bolao_id: b.id,
+                bolao_id:       b.id,
                 loteria_origem: b.loteria_id,
                 loteria_destino: destId,
-                qtd_cotas: qtd,
+                qtd_cotas:      qtd,
                 valor_unitario: b.valor_cota,
-                status: 'ATIVO',
-                criado_por: usuario.id,
+                status:         'ATIVO',
+                criado_por:     usuario.id,
             });
         }
         if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
-        
+
         const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
         if (error) throw new Error(error.message);
-        
+
         const bolaoIdAtual = bolaoSelecionado?.id;
-        
-        // Atualizar saldos locais
+
+        // Atualiza saldos localmente sem nova busca
         if (bolaoSelecionado) {
             const origemId = bolaoSelecionado.loteria_id;
             Object.entries(deltas).forEach(([slug, qtdRaw]) => {
-                const qtd = Number(qtdRaw || 0);
+                const qtd    = Number(qtdRaw || 0);
                 const destId = lojaIdPorSlug[slug];
                 if (!destId || qtd === 0) return;
-                if (saldosPorLoja[destId] == null) saldosPorLoja[destId] = 0;
-                saldosPorLoja[destId] += qtd;
+                if (saldosPorLoja[destId] == null)   saldosPorLoja[destId]   = 0;
+                saldosPorLoja[destId]   += qtd;
                 saldosPorLoja[origemId] -= qtd;
-                if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
-                historicoPorLoja[destId].push(qtd);
+                if (!historicoPorLoja[destId])   historicoPorLoja[destId]   = [];
                 if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
+                historicoPorLoja[destId].push(qtd);
                 historicoPorLoja[origemId].push(-qtd);
             });
             if (saldosPorLoja[origemId] < 0) saldosPorLoja[origemId] = 0;
             abrirPanel(bolaoSelecionado);
         }
-        
+
         setStatus('statusBar', '✓ Movimentação registrada com sucesso!', 'ok');
         zerarMov(false);
         await buscarBoloes();
-        
+
         if (bolaoIdAtual) {
             const card = document.querySelector(`.bolao-card[data-id="${bolaoIdAtual}"]`);
             if (card) card.classList.add('selected');
@@ -550,7 +755,8 @@ async function doMovimentar(b, deltas) {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
                     <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
                     <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                 </svg>
@@ -559,50 +765,149 @@ async function doMovimentar(b, deltas) {
     }
 }
 
+// ══════════════════════════════════════════════════════════
+// BINDINGS
+// ══════════════════════════════════════════════════════════
 function bind() {
-    const btnMenu = $('btnMenu');
-    const btnLogout = $('btnLogout');
-    const btnDtPrev = $('btnDtPrev');
-    const btnDtNext = $('btnDtNext');
-    const btnHoje = $('btnHoje');
-    const btnFecharPanel = $('btnFecharPanel');
-    const btnZerarMov = $('btnZerarMov');
-    const btnMovimentar = $('btnMovimentar');
-    const confirmCancel = $('confirmCancel');
-    const confirmOverlay = $('confirmOverlay');
-    const confirmOk = $('confirmOk');
-    
-    if (btnMenu) btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
+    // ── Header ──────────────────────────────────────────
+    const btnMenu    = $('btnMenu');
+    const btnLogout  = $('btnLogout');
+    if (btnMenu)   btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
     if (btnLogout) btnLogout.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
+
+    // Loja-tree: cicla e filtra por origem
+    const lojaTree = $('lojaTreeWrap');
+    if (lojaTree) lojaTree.addEventListener('click', ciclarLojaTree);
+
+    // ── Data de referência ───────────────────────────────
+    const btnDtPrev      = $('btnDtPrev');
+    const btnDtNext      = $('btnDtNext');
+    const btnHoje        = $('btnHoje');
+    const dateDisplayBtn = $('dateDisplay');
+    const calPicker      = $('calendarPicker');
+
     if (btnDtPrev) btnDtPrev.addEventListener('click', () => {
         dataAtual.setDate(dataAtual.getDate() - 1);
         atualizarDateDisplay();
         fecharPanel();
         buscarBoloes();
     });
+
     if (btnDtNext) btnDtNext.addEventListener('click', () => {
         dataAtual.setDate(dataAtual.getDate() + 1);
         atualizarDateDisplay();
         fecharPanel();
         buscarBoloes();
     });
+
     if (btnHoje) btnHoje.addEventListener('click', () => {
         dataAtual = new Date();
         atualizarDateDisplay();
         fecharPanel();
         buscarBoloes();
     });
-    if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
-    if (btnZerarMov) btnZerarMov.addEventListener('click', () => zerarMov());
-    if (btnMovimentar) btnMovimentar.addEventListener('click', onMovimentar);
-    if (confirmCancel) confirmCancel.addEventListener('click', () => {
-        if (confirmOverlay) confirmOverlay.classList.remove('show');
+
+    // Clique na data → abre calendário nativo
+    if (dateDisplayBtn && calPicker) {
+        dateDisplayBtn.addEventListener('click', () => {
+            calPicker.value = isoDate(dataAtual);
+            calPicker.style.pointerEvents = 'auto';
+            try {
+                calPicker.showPicker();
+            } catch {
+                calPicker.click();
+            }
+        });
+
+        calPicker.addEventListener('change', () => {
+            calPicker.style.pointerEvents = 'none';
+            if (!calPicker.value) return;
+            // Força parse correto sem timezone offset
+            const [y, m, d] = calPicker.value.split('-').map(Number);
+            dataAtual = new Date(y, m - 1, d);
+            atualizarDateDisplay();
+            fecharPanel();
+            filtroOrigem     = '';
+            filtroConcurso   = '';
+            filtroModalidade = '';
+            filtroDestino    = '';
+            atualizarHeaderLoja();
+            buscarBoloes();
+        });
+    }
+
+    // ── Filtros em cascata ───────────────────────────────
+    const fOrigem     = $('filterOrigem');
+    const fConcurso   = $('filterConcurso');
+    const fModalidade = $('filterModalidade');
+    const fDestino    = $('filterDestino');
+    const btnClear    = $('btnClearFilters');
+
+    if (fOrigem) fOrigem.addEventListener('change', () => {
+        filtroOrigem = fOrigem.value;
+        marcarSelectAtivo(fOrigem);
+        atualizarHeaderLoja();
+        renderFiltrosCascata();
+        aplicarFiltros();
+        fecharPanel();
     });
-    if (confirmOverlay) confirmOverlay.addEventListener('click', (e) => {
+
+    if (fConcurso) fConcurso.addEventListener('change', () => {
+        filtroConcurso = fConcurso.value;
+        marcarSelectAtivo(fConcurso);
+        renderFiltrosCascata();
+        aplicarFiltros();
+        fecharPanel();
+    });
+
+    if (fModalidade) fModalidade.addEventListener('change', () => {
+        filtroModalidade = fModalidade.value;
+        marcarSelectAtivo(fModalidade);
+        renderFiltrosCascata();
+        aplicarFiltros();
+        fecharPanel();
+    });
+
+    if (fDestino) fDestino.addEventListener('change', () => {
+        filtroDestino = fDestino.value;
+        marcarSelectAtivo(fDestino);
+        renderFiltrosCascata();
+        aplicarFiltros();
+        fecharPanel();
+    });
+
+    if (btnClear) btnClear.addEventListener('click', () => {
+        filtroOrigem     = '';
+        filtroConcurso   = '';
+        filtroModalidade = '';
+        filtroDestino    = '';
+        atualizarHeaderLoja();
+        [fOrigem, fConcurso, fModalidade, fDestino].forEach(sel => {
+            if (sel) { sel.value = ''; marcarSelectAtivo(sel); }
+        });
+        renderFiltrosCascata();
+        aplicarFiltros();
+    });
+
+    // ── Panel ────────────────────────────────────────────
+    const btnFecharPanel = $('btnFecharPanel');
+    const btnZerarMov   = $('btnZerarMov');
+    const btnMovimentar = $('btnMovimentar');
+    if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
+    if (btnZerarMov)    btnZerarMov.addEventListener('click', () => zerarMov());
+    if (btnMovimentar)  btnMovimentar.addEventListener('click', onMovimentar);
+
+    // ── Modal de confirmação ─────────────────────────────
+    const confirmCancel  = $('confirmCancel');
+    const confirmOverlay = $('confirmOverlay');
+    const confirmOk      = $('confirmOk');
+
+    if (confirmCancel)  confirmCancel.addEventListener('click', () => confirmOverlay?.classList.remove('show'));
+    if (confirmOverlay) confirmOverlay.addEventListener('click', e => {
         if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
     });
     if (confirmOk) confirmOk.addEventListener('click', async () => {
-        if (confirmOverlay) confirmOverlay.classList.remove('show');
+        confirmOverlay?.classList.remove('show');
         if (!bolaoSelecionado) return;
         const deltas = {};
         LOJAS.forEach(l => {
@@ -615,27 +920,17 @@ function bind() {
     });
 }
 
-// =====================================================
-// INICIALIZAÇÃO (async)
-// =====================================================
-
+// ══════════════════════════════════════════════════════════
+// INICIALIZAÇÃO
+// ══════════════════════════════════════════════════════════
 async function init() {
-    console.log('movimentar.js - init rodando!');
-    
-    updateClock();
-    setInterval(updateClock, 1000);
+    console.log('movimentar.js — init');
 
     const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user?.id) {
-        location.href = './login.html';
-        return;
-    }
+    if (!session?.user?.id) { location.href = './login.html'; return; }
 
     const usr = await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
-    if (!usr) {
-        location.href = './login.html';
-        return;
-    }
+    if (!usr) { location.href = './login.html'; return; }
     usuario = usr;
 
     const { data: lojas } = await sb
@@ -647,16 +942,19 @@ async function init() {
     if (lojas) {
         lojas.forEach(l => {
             lojaIdPorSlug[l.slug] = l.id;
-            lojaSlugPorId[l.id] = l.slug;
-            lojaNomePorId[l.id] = l.nome;
+            lojaSlugPorId[l.id]   = l.slug;
+            lojaNomePorId[l.id]   = l.nome;
         });
     }
 
     bind();
+
+    // Data de referência padrão = hoje
     dataAtual = new Date();
     atualizarDateDisplay();
+    atualizarHeaderLoja();
+
     await buscarBoloes();
 }
 
-// Inicia
 init();
