@@ -467,13 +467,14 @@ function renderBoloes(boloes, posicoes, movs) {
             const card = document.createElement('div');
             card.className = 'bolao-card';
             card.dataset.id = b.id;
+            card.dataset.origem = b.loterias?.slug || '';
             card.style.animationDelay = (i * 0.035) + 's';
             card.innerHTML = `
                 <div class="bolao-main">
                     <div class="bolao-header">
                         <span class="bolao-modal">${b.modalidade}</span>
                         <span class="bolao-concurso">#${b.concurso}</span>
-                        <span class="bolao-origem">${b.loterias?.nome || '—'}</span>
+                        <span class="bolao-origem" data-origem="${b.loterias?.slug || ''}">${b.loterias?.nome || '—'}</span>
                     </div>
                     <div class="bolao-tags">
                         <span class="btag">${b.qtd_jogos} jogos</span>
@@ -543,8 +544,9 @@ function abrirPanel(b) {
     const panelTags = $('panelTags');
     if (panelNome) panelNome.textContent = `${b.modalidade} — Concurso ${b.concurso}`;
     if (panelTags) {
+        const slugOrigem = b.loterias?.slug || '';
         panelTags.innerHTML = `
-            <span class="rtag-amber rtag">${b.loterias?.nome || '—'} (origem)</span>
+            <span class="rtag rtag-origem" data-origem="${slugOrigem}">${b.loterias?.nome || '—'} (origem)</span>
             <span class="rtag rtag-green">${fmtBRL(b.valor_cota)}/cota</span>
             <span class="rtag">${b.qtd_jogos} jogos · ${b.qtd_dezenas} dez.</span>
             <span class="rtag">${b.qtd_cotas_total} cotas total</span>
