@@ -42,39 +42,69 @@
     }
 
     // Função de formatação de data mais robusta
+    // =====================================================
+    // FORMATAÇÃO DE DATA - VERSÃO SUPER DEFENSIVA
+    // =====================================================
+
     function fmtData(data) {
+        // Se for null, undefined ou vazio
         if (!data) return '—';
 
-        let date;
+        let dia, mes, ano;
 
-        // Se já for um objeto Date, usa diretamente
-        if (data instanceof Date) {
-            date = data;
+        // CASO 1: Já é um objeto Date
+        if (data instanceof Date && !isNaN(data.getTime())) {
+            dia = data.getDate();
+            mes = data.getMonth() + 1;
+            ano = data.getFullYear();
         }
-        // Se for string, tenta extrair ISO primeiro
+
+        // CASO 2: É uma string
         else if (typeof data === 'string') {
-            const isoMatch = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (isoMatch) {
-                // É uma string ISO: retorna imediatamente
-                return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+            // Tenta extrair padrão YYYY-MM-DD
+            let match = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                ano = parseInt(match[1]);
+                mes = parseInt(match[2]);
+                dia = parseInt(match[3]);
             }
-            // Tenta converter qualquer outra string em Date
-            date = new Date(data);
-        }
-        // Qualquer outro tipo, retorna '—'
-        else {
-            return '—';
+            // Tenta extrair padrão DD/MM/YYYY
+            else {
+                match = data.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+                if (match) {
+                    dia = parseInt(match[1]);
+                    mes = parseInt(match[2]);
+                    ano = parseInt(match[3]);
+                }
+                // Último recurso: tenta converter para Date
+                else {
+                    const d = new Date(data);
+                    if (!isNaN(d.getTime())) {
+                        dia = d.getDate();
+                        mes = d.getMonth() + 1;
+                        ano = d.getFullYear();
+                    }
+                }
+            }
         }
 
-        // Se não conseguiu obter uma data válida
-        if (!date || isNaN(date.getTime())) {
-            return '—';
+        // CASO 3: É número (timestamp)
+        else if (typeof data === 'number' && !isNaN(data)) {
+            const d = new Date(data);
+            if (!isNaN(d.getTime())) {
+                dia = d.getDate();
+                mes = d.getMonth() + 1;
+                ano = d.getFullYear();
+            }
         }
 
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        // Se conseguiu extrair os valores
+        if (dia && mes && ano) {
+            return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+        }
+
+        // Fallback: retorna o que recebeu (ou '—' se for inválido)
+        return data && data !== '[object Object]' ? String(data) : '—';
     }
 
     function fmtDataInput(date) {
