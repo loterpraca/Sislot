@@ -6,91 +6,6 @@
   <title>SISLOT — Movimentar Cotas</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="./css/movimentar.css"/>
-  <style>
-    /* Estilos adicionais para filtros */
-    .filters-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 20px;
-      padding: 12px;
-      background: var(--panel);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-    }
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 140px;
-    }
-    .filter-group label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 9px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--dim);
-    }
-    .filter-group input,
-    .filter-group select {
-      padding: 8px 10px;
-      font-size: 12px;
-      background: var(--input);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--bright);
-    }
-    .filter-actions {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-    }
-    .btn-filter {
-      padding: 8px 14px;
-      background: var(--accent);
-      border: none;
-      border-radius: 8px;
-      color: var(--deep);
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-clear {
-      padding: 8px 14px;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-    .quick-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 12px 0;
-    }
-    .quick-chip {
-      padding: 6px 12px;
-      background: var(--t3);
-      border: 1px solid var(--t4);
-      border-radius: 20px;
-      font-size: 11px;
-      font-family: 'IBM Plex Mono', monospace;
-      cursor: pointer;
-      transition: all 0.2s;
-      color: var(--t1);
-    }
-    .quick-chip:hover {
-      background: var(--t5);
-      border-color: var(--t1);
-      transform: translateY(-1px);
-    }
-    .quick-chip.active {
-      background: var(--t1);
-      color: var(--deep);
-      border-color: var(--t1);
-    }
-  </style>
 </head>
 <body data-loja="centro">
 
@@ -107,14 +22,14 @@
   <div class="topbar-right">
     <div class="clock" id="relogio">--:--:--</div>
     <button class="btn-topbar" id="btnInicio">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
         <polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
       Menu
     </button>
     <button class="btn-topbar btn-topbar-sair" id="btnSair">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
         <polyline points="16 17 21 12 16 7"/>
         <line x1="21" y1="12" x2="9" y2="12"/>
@@ -139,55 +54,41 @@
 
   <!-- BARRA DE FILTROS -->
   <div class="filters-bar">
-  <div class="filter-group">
-    <label>Modalidade</label>
-    <select id="filtroModalidade">
-      <option value="">Todas</option>
-    </select>
+    <div class="filter-group">
+      <label>Modalidade</label>
+      <select id="filtroModalidade">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Concurso</label>
+      <input type="text" id="filtroConcurso" placeholder="Número do concurso"/>
+    </div>
+    <div class="filter-group">
+      <label>Valor Cota (R$)</label>
+      <input type="number" id="filtroValorCota" step="0.01" placeholder="Valor"/>
+    </div>
+    <div class="filter-group">
+      <label>Qtd. Jogos</label>
+      <input type="number" id="filtroQtdJogos" placeholder="Ex: 10"/>
+    </div>
+    <div class="filter-group">
+      <label>Qtd. Dezenas</label>
+      <input type="number" id="filtroQtdDezenas" placeholder="Ex: 15"/>
+    </div>
+    <div class="filter-actions">
+      <button class="btn-clear" id="btnLimparFiltros">Limpar filtros</button>
+    </div>
   </div>
-  <div class="filter-group">
-    <label>Concurso</label>
-    <input type="text" id="filtroConcurso" placeholder="Número do concurso"/>
-  </div>
-  <div class="filter-group">
-    <label>Valor Cota (R$)</label>
-    <input type="number" id="filtroValorCota" step="0.01" placeholder="Valor"/>
-  </div>
-  <div class="filter-group">
-    <label>Qtd. Jogos</label>
-    <input type="number" id="filtroQtdJogos" placeholder="Ex: 10"/>
-  </div>
-  <div class="filter-group">
-    <label>Qtd. Dezenas</label>
-    <input type="number" id="filtroQtdDezenas" placeholder="Ex: 15"/>
-  </div>
-  <div class="filter-actions">
-    <button class="btn-clear" id="btnLimparFiltros">Limpar filtros</button>
-  </div>
-</div>
 
-<div class="date-bar">
-  <div class="date-label">Data de referência</div>
-  <div class="date-stepper">
-    <button class="btn-date" id="btnDtPrev" title="Dia anterior">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <div class="date-display" id="dateDisplay">—</div>
-    <button class="btn-date" id="btnDtNext" title="Próximo dia">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-  </div>
-  <button class="btn-hoje" id="btnHoje">Hoje</button>
-  <div class="boloes-count" id="boloesCount"></div>
-</div>
-  
+  <!-- BARRA DE DATA (APENAS UMA, COM DISPLAY BONITO) -->
   <div class="date-bar">
     <div class="date-label">Data de referência</div>
     <div class="date-stepper">
       <button class="btn-date" id="btnDtPrev" title="Dia anterior">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
-      <input type="date" class="date-input" id="datePicker" value="">
+      <div class="date-display" id="dateDisplay">—</div>
       <button class="btn-date" id="btnDtNext" title="Próximo dia">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
