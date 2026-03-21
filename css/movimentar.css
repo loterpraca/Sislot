@@ -383,15 +383,15 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  flex-wrap: wrap;
   flex: 1;
+  flex-wrap: nowrap;
 }
 
 .filter-select-wrap {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 115px;
+  min-width: 105px;
   flex: 1;
   max-width: 180px;
 }
@@ -463,15 +463,15 @@ body {
 .filter-select[data-active="true"] + .filter-select-icon,
 .filter-select-inner:has(.filter-select[data-active="true"]) .filter-select-icon { stroke: var(--t1); }
 
-/* Botão limpar filtros */
+/* Botão limpar filtros — inline com os selects */
 .btn-filter-clear {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 6px;
   background: rgba(255,79,79,.06);
   border: 1px solid rgba(255,79,79,.18);
   border-radius: 7px;
-  padding: 7px 12px;
+  padding: 0 12px;
   cursor: pointer;
   color: #ff8080;
   font-family: var(--mono);
@@ -480,9 +480,10 @@ body {
   letter-spacing: .08em;
   text-transform: uppercase;
   transition: all 0.2s;
-  align-self: flex-end;
   white-space: nowrap;
-  height: 34px;
+  height: 34px;       /* mesma altura dos selects */
+  flex-shrink: 0;
+  align-self: flex-end;
 }
 
 .btn-filter-clear:hover {
@@ -493,14 +494,15 @@ body {
 
 .btn-filter-clear svg { width: 11px; height: 11px; }
 
-/* Contador de bolões */
+/* Contador de bolões — rodapé direito do card */
 .boloes-count {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text3);
-  margin-left: auto;
+  position: absolute;
+  bottom: 10px;
+  right: 16px;
   white-space: nowrap;
-  align-self: center;
 }
 
 .boloes-count span { color: var(--t1); font-weight: 600; }
@@ -1083,10 +1085,11 @@ body.panel-open .list-area { padding-bottom: 400px; }
   .btn-menu span { display: none; }
   .clock { display: none; }
 
-  .filter-bar { gap: 10px; padding: 10px 12px; }
+  .filter-bar { gap: 10px; padding: 10px 12px 24px; }   /* padding-bottom para o contador absoluto */
   .filter-date-section { gap: 6px; }
-  .filter-selects { gap: 8px; }
-  .filter-select-wrap { min-width: 100px; max-width: none; flex: 1 1 calc(50% - 4px); }
+  .filter-selects { gap: 6px; flex-wrap: wrap; }
+  .filter-select-wrap { min-width: calc(50% - 12px); max-width: none; flex: 1 1 calc(50% - 12px); }
+  .btn-filter-clear { align-self: flex-end; }
   .date-display { min-width: 120px; font-size: 12px; }
 
   .destinos-grid { grid-template-columns: repeat(2, 1fr); }
