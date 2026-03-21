@@ -633,12 +633,20 @@ body {
 .bolao-origem {
   font-family: var(--mono);
   font-size: 10px;
-  color: var(--amber);
-  background: rgba(245,166,35,.07);
-  border: 1px solid rgba(245,166,35,.2);
   border-radius: 4px;
   padding: 1px 7px;
+  /* cor padrão — prata (sem origem conhecida) */
+  color: #94a3b8;
+  background: rgba(148,163,184,.07);
+  border: 1px solid rgba(148,163,184,.22);
 }
+
+/* Cor de origem por loja — independente do tema global */
+.bolao-origem[data-origem="boulevard"]    { color:#3b82f6; background:rgba(59,130,246,.08);  border-color:rgba(59,130,246,.25);  }
+.bolao-origem[data-origem="centro"]       { color:#00c896; background:rgba(0,200,150,.08);   border-color:rgba(0,200,150,.25);   }
+.bolao-origem[data-origem="lotobel"]      { color:#ef4444; background:rgba(239,68,68,.08);   border-color:rgba(239,68,68,.25);   }
+.bolao-origem[data-origem="santa-tereza"] { color:#a855f7; background:rgba(168,85,247,.08);  border-color:rgba(168,85,247,.25);  }
+.bolao-origem[data-origem="via-brasil"]   { color:#eab308; background:rgba(234,179,8,.08);   border-color:rgba(234,179,8,.25);   }
 
 .bolao-tags { display: flex; gap: 5px; flex-wrap: wrap; }
 
@@ -757,7 +765,14 @@ body {
 }
 
 .rtag-green { color: var(--t1); background: var(--t5); border-color: var(--t4); }
-.rtag-amber { color: var(--amber); background: rgba(245,166,35,.07); border-color: rgba(245,166,35,.2); }
+
+/* Tag de origem no panel — cor da loja, não do tema global */
+.rtag-origem { color:#94a3b8; background:rgba(148,163,184,.07); border-color:rgba(148,163,184,.22); }
+.rtag-origem[data-origem="boulevard"]    { color:#3b82f6; background:rgba(59,130,246,.08);  border-color:rgba(59,130,246,.25);  }
+.rtag-origem[data-origem="centro"]       { color:#00c896; background:rgba(0,200,150,.08);   border-color:rgba(0,200,150,.25);   }
+.rtag-origem[data-origem="lotobel"]      { color:#ef4444; background:rgba(239,68,68,.08);   border-color:rgba(239,68,68,.25);   }
+.rtag-origem[data-origem="santa-tereza"] { color:#a855f7; background:rgba(168,85,247,.08);  border-color:rgba(168,85,247,.25);  }
+.rtag-origem[data-origem="via-brasil"]   { color:#eab308; background:rgba(234,179,8,.08);   border-color:rgba(234,179,8,.25);   }
 
 .btn-fechar-panel {
   background: transparent;
