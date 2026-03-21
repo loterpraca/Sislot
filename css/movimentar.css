@@ -24,12 +24,12 @@
   --success: #00d4a0;
   --amber:   #f5a623;
 
-  /* Cor de tema padrão (verde accent) */
-  --t1: #00c896;
-  --t2: #00a07a;
-  --t3: rgba(0,200,150,0.10);
-  --t4: rgba(0,200,150,0.25);
-  --t5: rgba(0,200,150,0.05);
+  /* Cor de tema padrão — prata "Todas as Lojas" */
+  --t1: #94a3b8;
+  --t2: #64748b;
+  --t3: rgba(148,163,184,0.10);
+  --t4: rgba(148,163,184,0.25);
+  --t5: rgba(148,163,184,0.05);
 
   /* Aliases de compatibilidade com o JS antigo */
   --blue-deep:   var(--bg);
@@ -45,18 +45,14 @@
   --tr: 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 
-/* ── Temas por loja (ativados via data-loja no body) ─────── */
-
-/* Prata — estado "Todas as Lojas" (sem data-loja ou data-loja="todas") */
-:root,
-body:not([data-loja]),
-[data-loja="todas"]        { --t1:#94a3b8; --t2:#64748b; --t3:rgba(148,163,184,.10); --t4:rgba(148,163,184,.25); --t5:rgba(148,163,184,.05); }
-
-[data-loja="boulevard"]    { --t1:#3b82f6; --t2:#1d4ed8; --t3:rgba(59,130,246,.10);  --t4:rgba(59,130,246,.25);  --t5:rgba(59,130,246,.05);  }
-[data-loja="centro"]       { --t1:#00c896; --t2:#00a07a; --t3:rgba(0,200,150,.10);   --t4:rgba(0,200,150,.25);   --t5:rgba(0,200,150,.05);   }
-[data-loja="lotobel"]      { --t1:#ef4444; --t2:#b91c1c; --t3:rgba(239,68,68,.10);   --t4:rgba(239,68,68,.25);   --t5:rgba(239,68,68,.05);   }
-[data-loja="santa-tereza"] { --t1:#a855f7; --t2:#7e22ce; --t3:rgba(168,85,247,.10);  --t4:rgba(168,85,247,.25);  --t5:rgba(168,85,247,.05);  }
-[data-loja="via-brasil"]   { --t1:#eab308; --t2:#a16207; --t3:rgba(234,179,8,.10);   --t4:rgba(234,179,8,.25);   --t5:rgba(234,179,8,.05);   }
+/* ── Temas por loja — body[data-loja] garante especificidade sobre :root ── */
+body[data-loja="boulevard"]    { --t1:#3b82f6; --t2:#1d4ed8; --t3:rgba(59,130,246,.10);  --t4:rgba(59,130,246,.25);  --t5:rgba(59,130,246,.05);  }
+body[data-loja="centro"]       { --t1:#00c896; --t2:#00a07a; --t3:rgba(0,200,150,.10);   --t4:rgba(0,200,150,.25);   --t5:rgba(0,200,150,.05);   }
+body[data-loja="lotobel"]      { --t1:#ef4444; --t2:#b91c1c; --t3:rgba(239,68,68,.10);   --t4:rgba(239,68,68,.25);   --t5:rgba(239,68,68,.05);   }
+body[data-loja="santa-tereza"] { --t1:#a855f7; --t2:#7e22ce; --t3:rgba(168,85,247,.10);  --t4:rgba(168,85,247,.25);  --t5:rgba(168,85,247,.05);  }
+body[data-loja="via-brasil"]   { --t1:#eab308; --t2:#a16207; --t3:rgba(234,179,8,.10);   --t4:rgba(234,179,8,.25);   --t5:rgba(234,179,8,.05);   }
+/* prata explícito para "todas" (herda :root mas declaramos pra garantir) */
+body[data-loja="todas"]        { --t1:#94a3b8; --t2:#64748b; --t3:rgba(148,163,184,.10); --t4:rgba(148,163,184,.25); --t5:rgba(148,163,184,.05); }
 
 /* ── Body ───────────────────────────────────────────────── */
 body {
