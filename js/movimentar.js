@@ -57,8 +57,10 @@ let todasPosicoes  = [];
 let todasMovs      = [];
 
 // Estado dos filtros
-let filtroOrigem   = '';   // loteria_id como string; '' = todas
-let filtroConcurso = '';   // concurso como string; '' = todos
+let filtroOrigem     = '';   // loteria_id como string; '' = todas
+let filtroConcurso   = '';   // concurso como string; '' = todos
+let filtroModalidade = '';   // modalidade como string; '' = todas
+let filtroDestino    = '';   // loteria_id destino como string; '' = todos
 
 // Índice para cycling da loja-tree (−1 = todas)
 let lojaTreeIdx    = -1;
@@ -162,9 +164,6 @@ function ciclarLojaTree() {
     aplicarFiltros();
     fecharPanel();
 }
-
-// ══════════════════════════════════════════════════════════
-// FILTROS INTELIGENTES EM CASCATA
 // ══════════════════════════════════════════════════════════
 /**
  * Reconstrói os dropdowns de Origem e Concurso
@@ -174,62 +173,108 @@ function ciclarLojaTree() {
  *   - filterConcurso → restrito pelos bolões da origem selecionada
  */
 function renderFiltrosCascata() {
-    const fOrigem   = $('filterOrigem');
-    const fConcurso = $('filterConcurso');
-    if (!fOrigem || !fConcurso) return;
+    const fOrigem     = $('filterOrigem');
+    const fConcurso   = $('filterConcurso');
+    const fModalidade = $('filterModalidade');
+    const fDestino    = $('filterDestino');
+    if (!fOrigem || !fConcurso || !fModalidade || !fDestino) return;
 
-    // Base para cada dropdown (cascade bidirecional)
-    const paraOrigem = filtroConcurso
-        ? todosBoloes.filter(b => String(b.concurso) === filtroConcurso)
-        : todosBoloes;
+    // ── Base para cada dropdown (cascade: todos os outros filtros ativos, exceto o próprio) ──
+    const paraOrigem = todosBoloes.filter(b => {
+        if (filtroConcurso   && String(b.concurso)   !== filtroConcurso)   return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        if (filtroDestino    && !bolaoTemDestino(b.id, filtroDestino))     return false;
+        return true;
+    });
 
-    const paraConcurso = filtroOrigem
-        ? todosBoloes.filter(b => String(b.loteria_id) === filtroOrigem)
-        : todosBoloes;
+    const paraConcurso = todosBoloes.filter(b => {
+        if (filtroOrigem     && String(b.loteria_id) !== filtroOrigem)     return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        if (filtroDestino    && !bolaoTemDestino(b.id, filtroDestino))     return false;
+        return true;
+    });
+
+    const paraModalidade = todosBoloes.filter(b => {
+        if (filtroOrigem   && String(b.loteria_id) !== filtroOrigem)   return false;
+        if (filtroConcurso && String(b.concurso)   !== filtroConcurso) return false;
+        if (filtroDestino  && !bolaoTemDestino(b.id, filtroDestino))   return false;
+        return true;
+    });
+
+    const paraDestino = todosBoloes.filter(b => {
+        if (filtroOrigem     && String(b.loteria_id) !== filtroOrigem)     return false;
+        if (filtroConcurso   && String(b.concurso)   !== filtroConcurso)   return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        return true;
+    });
 
     // ── Monta opções de ORIGEM ────────────────────────────
     const origensMap = new Map();
     paraOrigem.forEach(b => {
-        if (!origensMap.has(String(b.loteria_id))) {
+        if (!origensMap.has(String(b.loteria_id)))
             origensMap.set(String(b.loteria_id), b.loterias?.nome || String(b.loteria_id));
-        }
     });
-    const origens = [...origensMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-
-    fOrigem.innerHTML = '<option value="">Todas</option>';
-    origens.forEach(([id, nome]) => {
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = nome;
-        if (id === filtroOrigem) opt.selected = true;
-        fOrigem.appendChild(opt);
-    });
+    populateSelect(fOrigem, [...origensMap.entries()].sort((a, b) => a[1].localeCompare(b[1])), filtroOrigem);
 
     // ── Monta opções de CONCURSO ──────────────────────────
     const concursosSet = new Set(paraConcurso.map(b => String(b.concurso)));
-    const concursos = [...concursosSet].sort((a, b) => Number(a) - Number(b));
+    const concursos = [...concursosSet].sort((a, b) => Number(a) - Number(b)).map(c => [c, `#${c}`]);
+    populateSelect(fConcurso, concursos, filtroConcurso);
 
-    fConcurso.innerHTML = '<option value="">Todos</option>';
-    concursos.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c;
-        opt.textContent = `#${c}`;
-        if (c === filtroConcurso) opt.selected = true;
-        fConcurso.appendChild(opt);
+    // ── Monta opções de MODALIDADE ────────────────────────
+    const modalidadesSet = new Set(paraModalidade.map(b => b.modalidade));
+    const modalidades = [...modalidadesSet].sort().map(m => [m, m]);
+    populateSelect(fModalidade, modalidades, filtroModalidade);
+
+    // ── Monta opções de DESTINO ───────────────────────────
+    // Destinos = lojas que têm posição (saldo > 0) em bolões do subconjunto
+    const destinosMap = new Map();
+    const idsBoloesPara = new Set(paraDestino.map(b => String(b.id)));
+    todasPosicoes.forEach(p => {
+        if (!idsBoloesPara.has(String(p.bolao_id))) return;
+        const qtd = Number(p.qtd_cotas_posicao || 0);
+        if (qtd <= 0) return;
+        const lojaId = String(p.loteria_id);
+        if (!destinosMap.has(lojaId))
+            destinosMap.set(lojaId, p.loteria_nome || lojaId);
     });
+    const destinos = [...destinosMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+    populateSelect(fDestino, destinos, filtroDestino);
 
-    // Marca visualmente os selects com valor ativo
-    marcarSelectAtivo(fOrigem);
-    marcarSelectAtivo(fConcurso);
+    // ── Marca selects ativos ──────────────────────────────
+    [fOrigem, fConcurso, fModalidade, fDestino].forEach(marcarSelectAtivo);
 
     // Botão de limpar
     const btnClear = $('btnClearFilters');
     if (btnClear) {
-        btnClear.style.display = (filtroOrigem || filtroConcurso) ? 'flex' : 'none';
+        const temFiltro = filtroOrigem || filtroConcurso || filtroModalidade || filtroDestino;
+        btnClear.style.display = temFiltro ? 'flex' : 'none';
     }
 
-    // Contador de resultados
     atualizarContador();
+}
+
+/** Helper: popula um <select> mantendo a opção "todos" no topo */
+function populateSelect(sel, entries, valorAtivo) {
+    const firstOption = sel.options[0]; // "Todas / Todos"
+    sel.innerHTML = '';
+    sel.appendChild(firstOption);
+    entries.forEach(([val, label]) => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = label;
+        if (val === valorAtivo) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+/** Verifica se um bolão tem posição (saldo > 0) em uma determinada loja destino */
+function bolaoTemDestino(bolaoId, lojaId) {
+    return todasPosicoes.some(p =>
+        String(p.bolao_id) === String(bolaoId) &&
+        String(p.loteria_id) === String(lojaId) &&
+        Number(p.qtd_cotas_posicao || 0) > 0
+    );
 }
 
 function marcarSelectAtivo(sel) {
@@ -257,10 +302,13 @@ function atualizarContador() {
 }
 
 function getBoloesFiltrados() {
-    let resultado = todosBoloes;
-    if (filtroOrigem)   resultado = resultado.filter(b => String(b.loteria_id) === filtroOrigem);
-    if (filtroConcurso) resultado = resultado.filter(b => String(b.concurso)   === filtroConcurso);
-    return resultado;
+    return todosBoloes.filter(b => {
+        if (filtroOrigem     && String(b.loteria_id) !== filtroOrigem)     return false;
+        if (filtroConcurso   && String(b.concurso)   !== filtroConcurso)   return false;
+        if (filtroModalidade && b.modalidade          !== filtroModalidade) return false;
+        if (filtroDestino    && !bolaoTemDestino(b.id, filtroDestino))     return false;
+        return true;
+    });
 }
 
 /**
@@ -770,22 +818,25 @@ function bind() {
             dataAtual = new Date(y, m - 1, d);
             atualizarDateDisplay();
             fecharPanel();
-            filtroOrigem   = '';
-            filtroConcurso = '';
+            filtroOrigem     = '';
+            filtroConcurso   = '';
+            filtroModalidade = '';
+            filtroDestino    = '';
             atualizarHeaderLoja();
             buscarBoloes();
         });
     }
 
     // ── Filtros em cascata ───────────────────────────────
-    const fOrigem   = $('filterOrigem');
-    const fConcurso = $('filterConcurso');
-    const btnClear  = $('btnClearFilters');
+    const fOrigem     = $('filterOrigem');
+    const fConcurso   = $('filterConcurso');
+    const fModalidade = $('filterModalidade');
+    const fDestino    = $('filterDestino');
+    const btnClear    = $('btnClearFilters');
 
     if (fOrigem) fOrigem.addEventListener('change', () => {
         filtroOrigem = fOrigem.value;
         marcarSelectAtivo(fOrigem);
-        // Sincroniza o visual do header com o select
         atualizarHeaderLoja();
         renderFiltrosCascata();
         aplicarFiltros();
@@ -800,12 +851,31 @@ function bind() {
         fecharPanel();
     });
 
+    if (fModalidade) fModalidade.addEventListener('change', () => {
+        filtroModalidade = fModalidade.value;
+        marcarSelectAtivo(fModalidade);
+        renderFiltrosCascata();
+        aplicarFiltros();
+        fecharPanel();
+    });
+
+    if (fDestino) fDestino.addEventListener('change', () => {
+        filtroDestino = fDestino.value;
+        marcarSelectAtivo(fDestino);
+        renderFiltrosCascata();
+        aplicarFiltros();
+        fecharPanel();
+    });
+
     if (btnClear) btnClear.addEventListener('click', () => {
-        filtroOrigem   = '';
-        filtroConcurso = '';
+        filtroOrigem     = '';
+        filtroConcurso   = '';
+        filtroModalidade = '';
+        filtroDestino    = '';
         atualizarHeaderLoja();
-        if (fOrigem)   { fOrigem.value   = ''; marcarSelectAtivo(fOrigem);   }
-        if (fConcurso) { fConcurso.value = ''; marcarSelectAtivo(fConcurso); }
+        [fOrigem, fConcurso, fModalidade, fDestino].forEach(sel => {
+            if (sel) { sel.value = ''; marcarSelectAtivo(sel); }
+        });
         renderFiltrosCascata();
         aplicarFiltros();
     });
