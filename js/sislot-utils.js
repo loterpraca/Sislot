@@ -1,6 +1,5 @@
 /**
- * SISLOT - Utilitários Compartilhados
- * Versão: 1.0 (corrigida formatação de data)
+ * SISLOT - Utilitários Compartilhados (Versão robusta)
  */
 
 (function() {
@@ -9,15 +8,12 @@
     // =====================================================
     // DOM HELPERS
     // =====================================================
-    
     function $(id) {
         return document.getElementById(id);
     }
-
     function $q(selector) {
         return document.querySelector(selector);
     }
-
     function $qa(selector) {
         return document.querySelectorAll(selector);
     }
@@ -25,7 +21,6 @@
     // =====================================================
     // FORMATAÇÃO
     // =====================================================
-    
     function parseCota(v) {
         if (!v) return 0;
         const s = String(v).replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
@@ -46,37 +41,40 @@
         });
     }
 
-    // CORRIGIDO: aceita string YYYY-MM-DD ou Date
+    // Função de formatação de data mais robusta
     function fmtData(data) {
         if (!data) return '—';
-        
-        let ano, mes, dia;
-        
+
+        let date;
+
+        // Se já for um objeto Date, usa diretamente
         if (data instanceof Date) {
-            ano = data.getFullYear();
-            mes = data.getMonth() + 1;
-            dia = data.getDate();
-        } else if (typeof data === 'string') {
-            const match = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (match) {
-                ano = parseInt(match[1]);
-                mes = parseInt(match[2]);
-                dia = parseInt(match[3]);
-            } else {
-                const d = new Date(data);
-                if (!isNaN(d.getTime())) {
-                    ano = d.getFullYear();
-                    mes = d.getMonth() + 1;
-                    dia = d.getDate();
-                } else {
-                    return '—';
-                }
+            date = data;
+        }
+        // Se for string, tenta extrair ISO primeiro
+        else if (typeof data === 'string') {
+            const isoMatch = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (isoMatch) {
+                // É uma string ISO: retorna imediatamente
+                return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
             }
-        } else {
+            // Tenta converter qualquer outra string em Date
+            date = new Date(data);
+        }
+        // Qualquer outro tipo, retorna '—'
+        else {
             return '—';
         }
-        
-        return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+
+        // Se não conseguiu obter uma data válida
+        if (!date || isNaN(date.getTime())) {
+            return '—';
+        }
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
     }
 
     function fmtDataInput(date) {
@@ -84,8 +82,8 @@
         const d = date instanceof Date ? date : new Date(date);
         if (isNaN(d.getTime())) return '';
         return d.getFullYear() + '-' +
-            String(d.getMonth() + 1).padStart(2, '0') + '-' +
-            String(d.getDate()).padStart(2, '0');
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
     }
 
     function isoDate(date) {
@@ -124,15 +122,14 @@
     // =====================================================
     // UI HELPERS
     // =====================================================
-    
     function setStatus(elOrId, msg, tipo = 'ok', icone = null) {
         const el = typeof elOrId === 'string' ? $(elOrId) : elOrId;
         if (!el) return;
 
         const tipoClass = {
             'ok': 'ok', 'err': 'err', 'error': 'err',
-            'warn': 'warn', 'warning': 'warn', 'muted': 'ok',
-            'success': 'ok', 'danger': 'err'
+ 'warn': 'warn', 'warning': 'warn', 'muted': 'ok',
+ 'success': 'ok', 'danger': 'err'
         }[tipo] || 'ok';
 
         el.className = `status-bar show ${tipoClass}`;
@@ -181,13 +178,13 @@
             container = document.createElement('div');
             container.id = 'toastContainer';
             container.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                z-index: 9999;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             `;
             document.body.appendChild(container);
         }
@@ -195,22 +192,22 @@
         const toast = document.createElement('div');
         const colors = {
             success: 'rgba(0,200,150,0.95)',
-            error: 'rgba(255,82,82,0.95)',
-            warning: 'rgba(245,166,35,0.95)',
-            info: 'rgba(56,189,248,0.95)'
+ error: 'rgba(255,82,82,0.95)',
+ warning: 'rgba(245,166,35,0.95)',
+ info: 'rgba(56,189,248,0.95)'
         };
 
         toast.style.cssText = `
-            background: ${colors[type] || colors.info};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            opacity: 0;
-            transition: opacity 0.3s;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        background: ${colors[type] || colors.info};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.3s;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         `;
         toast.textContent = message;
         container.appendChild(toast);
@@ -232,12 +229,12 @@
         if (!el) return;
         const now = new Date();
         el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' +
-            now.toLocaleDateString('pt-BR', {
-                weekday: 'short',
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
+        now.toLocaleDateString('pt-BR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     }
 
     function startClock(elementId = 'relogio') {
@@ -248,21 +245,20 @@
     // =====================================================
     // SELECT HELPERS
     // =====================================================
-    
     function fillSelect(selectId, items, placeholder = 'Selecione...', valueKey = 'id', labelFn = (x) => x.nome) {
         const sel = $(selectId);
         if (!sel) return;
-        
+
         const current = sel.value;
         sel.innerHTML = `<option value="">${placeholder}</option>`;
-        
+
         items.forEach(item => {
             const opt = document.createElement('option');
             opt.value = item[valueKey];
             opt.textContent = labelFn(item);
             sel.appendChild(opt);
         });
-        
+
         if ([...sel.options].some(o => o.value === current)) {
             sel.value = current;
         }
@@ -271,7 +267,6 @@
     // =====================================================
     // VALIDAÇÕES
     // =====================================================
-    
     function validarCPF(cpf) {
         cpf = String(cpf).replace(/[^\d]/g, '');
         if (cpf.length !== 11) return false;
@@ -279,7 +274,6 @@
 
         let soma = 0;
         let resto;
-        
         for (let i = 1; i <= 9; i++) {
             soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
         }
@@ -337,7 +331,6 @@
     // =====================================================
     // API HELPERS
     // =====================================================
-    
     async function apiRequest(url, options = {}) {
         try {
             const response = await fetch(url, {
@@ -363,17 +356,16 @@
     // =====================================================
     // EXPORT
     // =====================================================
-    
     const SISLOT_UTILS = {
         $, $q, $$,
-        parseCota, fmtBR, fmtBRL, fmtData, fmtDataInput, isoDate, getDataAtual, addDias,
-        setStatus, showStatus, hideStatus, setBtnLoading, showModal, showToast, updateClock, startClock,
-        fillSelect,
-        validarCPF, validarCNPJ, validarEmail,
-        apiRequest
+ parseCota, fmtBR, fmtBRL, fmtData, fmtDataInput, isoDate, getDataAtual, addDias,
+ setStatus, showStatus, hideStatus, setBtnLoading, showModal, showToast, updateClock, startClock,
+ fillSelect,
+ validarCPF, validarCNPJ, validarEmail,
+ apiRequest
     };
 
-    // Aliases para compatibilidade com código existente
+    // Aliases para compatibilidade
     if (typeof window.fmtMoney === 'undefined') window.fmtMoney = SISLOT_UTILS.fmtBRL;
     if (typeof window.fmtDate === 'undefined') window.fmtDate = SISLOT_UTILS.fmtData;
     if (typeof window.showStatus === 'undefined') window.showStatus = SISLOT_UTILS.showStatus;
@@ -384,5 +376,5 @@
     if (typeof window.addDias === 'undefined') window.addDias = SISLOT_UTILS.addDias;
 
     window.SISLOT_UTILS = SISLOT_UTILS;
-    console.log('✓ SISLOT_UTILS carregado (data fix)');
+    console.log('✓ SISLOT_UTILS carregado (versão robusta)');
 })();
