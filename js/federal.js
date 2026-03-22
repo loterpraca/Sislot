@@ -574,8 +574,9 @@ function renderMovimentacoes() {
                   (Number(m.valor_fracao_real || m.valor_fracao || 0) - Number(m.valor_cambista))
                 : 0;
 
-            const cel = (val, extra = '') => isTrans
-                ? `<td class="mono">${val > 0 ? val + extra : '—'}</td>`
+            // Helper: célula só relevante em TRANSFERENCIA
+            const cel = val => isTrans
+                ? `<td class="mono">${Number(val) > 0 ? val : '—'}</td>`
                 : `<td class="mono" style="color:var(--dim)">—</td>`;
 
             return `<tr>
@@ -588,14 +589,16 @@ function renderMovimentacoes() {
                 ${cel(m.qtd_vendida)}
                 ${cel(m.qtd_devolucao_caixa)}
                 ${cel(m.qtd_venda_cambista)}
-                <td class="mono ${desconto > 0 ? 'neg' : ''}">${desconto > 0 ? fmtMoney(desconto) : '—'}</td>
+                <td class="money ${desconto > 0 ? 'neg' : ''}">${isTrans && desconto > 0 ? fmtMoney(desconto) : '—'}</td>
                 ${cel(m.qtd_retorno_origem)}
                 <td class="money">${fmtMoney(total)}</td>
                 <td><span class="badge ${statusClass}">${m.status_acerto || '—'}</span></td>
                 <td><div class="flex" style="gap:6px;flex-wrap:nowrap">
-                    <button class="btn-amber" style="padding:5px 10px;font-size:11px"
+                    <button class="btn-amber"
+                        style="padding:5px 10px;font-size:11px"
                         onclick="editMov('${m.id}')">Editar</button>
-                    <button class="btn-danger" style="padding:5px 10px;font-size:11px"
+                    <button class="btn-danger"
+                        style="padding:5px 10px;font-size:11px"
                         onclick="deleteMovDirect('${m.id}')">Excluir</button>
                 </div></td>
             </tr>`;
@@ -974,6 +977,7 @@ async function saveMov() {
             valor_fracao:         valor,
             valor_fracao_ref:     Number(federal?.valor_fracao || 0),
             valor_fracao_real:    valor,
+            valor_total:          valorTotal,
             valor_total_real:     valorTotal,
             valor_a_acertar:      0,
             qtd_vendida:          qtdVendida,
