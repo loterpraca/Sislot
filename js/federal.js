@@ -563,17 +563,20 @@ function renderCadastro() {
 function renderMovimentacoes() {
     $('tbody-mov').innerHTML = state.movimentos.length
         ? state.movimentos.map(m => {
-            const total = Number(
-                m.valor_total_real || m.valor_total ||
-                (Number(m.qtd_fracoes||0) * Number(m.valor_fracao_real||m.valor_fracao||0))
-            );
+            const total       = Number(m.valor_total_real || m.valor_total ||
+                (Number(m.qtd_fracoes||0) * Number(m.valor_fracao_real||m.valor_fracao||0)));
             const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
-            const dist = m.tipo_evento === 'TRANSFERENCIA' ? [
-                m.qtd_vendida         > 0 ? `V:${m.qtd_vendida}`         : null,
-                m.qtd_devolucao_caixa > 0 ? `DC:${m.qtd_devolucao_caixa}`: null,
-                m.qtd_venda_cambista  > 0 ? `C:${m.qtd_venda_cambista}`  : null,
-                m.qtd_retorno_origem  > 0 ? `R:${m.qtd_retorno_origem}`  : null
-            ].filter(Boolean).join(' | ') || '—' : '—';
+            const isTrans     = m.tipo_evento === 'TRANSFERENCIA';
+
+            // Desconto cambista = qtd × (fração normal − valor negociado)
+            const desconto = isTrans && m.qtd_venda_cambista > 0 && m.valor_cambista > 0
+                ? Number(m.qtd_venda_cambista) *
+                  (Number(m.valor_fracao_real || m.valor_fracao || 0) - Number(m.valor_cambista))
+                : 0;
+
+            const cel = (val, extra = '') => isTrans
+                ? `<td class="mono">${val > 0 ? val + extra : '—'}</td>`
+                : `<td class="mono" style="color:var(--dim)">—</td>`;
 
             return `<tr>
                 <td class="mono">${new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
@@ -582,20 +585,22 @@ function renderMovimentacoes() {
                 <td>${lookupLoteriaName(m.loteria_origem)}</td>
                 <td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td>
                 <td class="mono">${m.qtd_fracoes}</td>
-                <td class="mono" style="font-size:11px">${dist}</td>
+                ${cel(m.qtd_vendida)}
+                ${cel(m.qtd_devolucao_caixa)}
+                ${cel(m.qtd_venda_cambista)}
+                <td class="mono ${desconto > 0 ? 'neg' : ''}">${desconto > 0 ? fmtMoney(desconto) : '—'}</td>
+                ${cel(m.qtd_retorno_origem)}
                 <td class="money">${fmtMoney(total)}</td>
                 <td><span class="badge ${statusClass}">${m.status_acerto || '—'}</span></td>
                 <td><div class="flex" style="gap:6px;flex-wrap:nowrap">
-                    <button class="btn-amber"
-                        style="padding:5px 10px;font-size:11px"
+                    <button class="btn-amber" style="padding:5px 10px;font-size:11px"
                         onclick="editMov('${m.id}')">Editar</button>
-                    <button class="btn-danger"
-                        style="padding:5px 10px;font-size:11px"
+                    <button class="btn-danger" style="padding:5px 10px;font-size:11px"
                         onclick="deleteMovDirect('${m.id}')">Excluir</button>
                 </div></td>
             </tr>`;
         }).join('')
-        : `<tr><td colspan="10"><div class="empty">
+        : `<tr><td colspan="14"><div class="empty">
             <div class="empty-title">Sem movimentações</div>
            </div></td></tr>`;
 
