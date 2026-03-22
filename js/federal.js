@@ -563,15 +563,23 @@ function renderCadastro() {
 function renderMovimentacoes() {
     $('tbody-mov').innerHTML = state.movimentos.length
         ? state.movimentos.map(m => {
-            const total       = Number(m.valor_total_real || m.valor_total ||
-                (Number(m.qtd_fracoes||0) * Number(m.valor_fracao_real||m.valor_fracao||0)));
-            const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
+            const federal     = lookupFederal(m.federal_id);
             const isTrans     = m.tipo_evento === 'TRANSFERENCIA';
+
+            // Valor acerto: TRANSFERENCIA usa distribuição real, outros usam valor_fracao
+            const total = isTrans
+                ? (Number(m.qtd_vendida         || 0) * Number(federal?.valor_fracao || m.valor_fracao_ref || 0))
+                + (Number(m.qtd_devolucao_caixa || 0) * Number(federal?.valor_custo  || 0))
+                + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista      || 0))
+                : Number(m.valor_total_real || m.valor_total ||
+                    (Number(m.qtd_fracoes||0) * Number(m.valor_fracao_real||m.valor_fracao||0)));
+
+            const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
 
             // Desconto cambista = qtd × (fração normal − valor negociado)
             const desconto = isTrans && m.qtd_venda_cambista > 0 && m.valor_cambista > 0
                 ? Number(m.qtd_venda_cambista) *
-                  (Number(m.valor_fracao_real || m.valor_fracao || 0) - Number(m.valor_cambista))
+                  (Number(federal?.valor_fracao || m.valor_fracao_ref || 0) - Number(m.valor_cambista))
                 : 0;
 
             // Helper: célula só relevante em TRANSFERENCIA
@@ -606,7 +614,6 @@ function renderMovimentacoes() {
         : `<tr><td colspan="14"><div class="empty">
             <div class="empty-title">Sem movimentações</div>
            </div></td></tr>`;
-
     applyDestinoFilter();
 }
 
