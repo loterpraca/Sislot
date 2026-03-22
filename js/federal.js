@@ -40,7 +40,7 @@ const LOJA_LOGOS = {
 };
 
 // ══════════════════════════════════════════════════════════
-// LOJA TREE — tema e ciclagem
+// LOJA TREE
 // ══════════════════════════════════════════════════════════
 function atualizarHeaderLoja() {
     const logoImg    = $('logoImg');
@@ -227,11 +227,9 @@ async function loadResumo() {
 }
 
 async function loadMovs() {
-    // Usa LEFT JOIN (sem !inner) para não perder movimentações
-    // Especifica FK criado_por para evitar ambiguidade com editado_por
     const { data, error } = await sb
         .from('federal_movimentacoes')
-        .select('*, federais(concurso,dt_sorteio,modalidade), usuarios!federal_movimentacoes_criado_por_fkey(nome)')
+        .select('*, federais(concurso,dt_sorteio,modalidade,valor_fracao,valor_custo), usuarios!federal_movimentacoes_criado_por_fkey(nome)')
         .order('created_at', { ascending: false });
     state.movimentos = error ? [] : (data || []);
     if (error) console.error('loadMovs error:', error);
@@ -275,8 +273,9 @@ function updateFecFederal() {
         'id',
         x => `${x.concurso} — ${fmtDate(x.dt_sorteio)}`
     );
-    $('fec-valor-fracao').value = '';
-    $('fec-total').value        = '';
+    $('fec-valor-fracao').value  = '';
+    $('fec-valor-cambista').value = '';
+    $('fec-total').value         = '';
 }
 
 // ══════════════════════════════════════════════════════════
@@ -347,24 +346,24 @@ function fmtMesRef(mesIso) {
 // RENDER — KPIs
 // ══════════════════════════════════════════════════════════
 function renderKPIs(rows) {
-    const totalInicial  = rows.reduce((a,x) => a + Number(x.qtd_inicial              || 0), 0);
-    const totalVendida  = rows.reduce((a,x) => a + Number(x.qtd_vendida_funcionarios || 0)
-                                                 + Number(x.qtd_vendida_whatsapp     || 0)
-                                                 + Number(x.qtd_vendida_balcao       || 0)
-                                                 + Number(x.qtd_venda_externa        || 0), 0);
-    const totalDev      = rows.reduce((a,x) => a + Number(x.qtd_devolvida_interna    || 0)
-                                                 + Number(x.qtd_dev_caixa_externa    || 0), 0);
-    const totalEnc      = rows.reduce((a,x) => a + Number(x.qtd_encalhe              || 0), 0);
-    const totalPrem     = rows.reduce((a,x) => a + Number(x.premio_encalhe_total     || 0), 0);
-    const totalRes      = rows.reduce((a,x) => a + Number(x.resultado                || 0), 0);
+    const totalInicial = rows.reduce((a,x) => a + Number(x.qtd_inicial || 0), 0);
+    const totalVendInt = rows.reduce((a,x) => a + Number(x.qtd_venda_interna_total || 0), 0);
+    const totalVendExt = rows.reduce((a,x) => a + Number(x.qtd_venda_externa || 0), 0);
+    const totalDevInt  = rows.reduce((a,x) => a + Number(x.qtd_dev_cx_interna || 0), 0);
+    const totalDevExt  = rows.reduce((a,x) => a + Number(x.qtd_dev_cx_externa || 0), 0);
+    const totalEnc     = rows.reduce((a,x) => a + Number(x.qtd_encalhe || 0), 0);
+    const totalPrem    = rows.reduce((a,x) => a + Number(x.premio_encalhe_total || 0), 0);
+    const totalRes     = rows.reduce((a,x) => a + Number(x.resultado || 0), 0);
 
     $('kpis-visao').innerHTML = [
-        ['Qtd Inicial', totalInicial,       'Carga base'],
-        ['Vendida',     totalVendida,        'Interna + externa'],
-        ['Devolvida',   totalDev,            'Interna + terceiros'],
-        ['Encalhe',     totalEnc,            'Qtd restante'],
-        ['Prêmio',      fmtMoney(totalPrem), 'Total de prêmio'],
-        ['Resultado',   fmtMoney(totalRes),  'Apuração geral']
+        ['Qtd Inicial',  totalInicial,        'Carga base'],
+        ['Venda Int.',   totalVendInt,         'Todos os canais internos'],
+        ['Venda Ext.',   totalVendExt,         'Enviadas para outras lojas'],
+        ['Dev. CX Int.', totalDevInt,          'Devolução interna'],
+        ['Dev. CX Ext.', totalDevExt,          'Devolução nos destinos'],
+        ['Encalhe',      totalEnc,             'Frações não vendidas'],
+        ['Prêmio',       fmtMoney(totalPrem),  'Prêmio encalhe'],
+        ['Resultado',    fmtMoney(totalRes),   'Apuração geral']
     ].map(([l,v,s]) =>
         `<div class="kpi">
             <div class="kpi-label">${l}</div>
@@ -375,7 +374,7 @@ function renderKPIs(rows) {
 }
 
 // ══════════════════════════════════════════════════════════
-// RENDER — EXIBIÇÃO (tabela dinâmica)
+// RENDER — EXIBIÇÃO
 // ══════════════════════════════════════════════════════════
 function renderVisao() {
     let rows   = [...state.resumo];
@@ -402,27 +401,27 @@ function renderVisao() {
 function renderVisaoTodas(rows) {
     const thead = `<tr>
         <th>Loja</th><th>Concurso</th><th>Data</th>
-        <th>Ini.</th><th>Total Func</th><th>Canais</th>
-        <th>Dev. Int.</th><th>Dev. Ext.</th>
-        <th>Venda Ext.</th><th>Retorno</th>
+        <th>Ini.</th>
+        <th>Venda Int.</th><th>Venda Ext.</th>
+        <th>Dev.CX Int.</th><th>Dev.CX Ext.</th>
+        <th>Encalhe</th><th>Enviadas</th><th>Retorno</th>
         <th>Estoque</th><th>Resultado</th><th>Ações</th>
     </tr>`;
 
     const tbody = rows.length ? rows.map(r => {
-        const res    = Number(r.resultado || 0);
-        const canais = Number(r.qtd_vendida_whatsapp || 0)
-                     + Number(r.qtd_vendida_balcao   || 0);
+        const res = Number(r.resultado || 0);
         return `<tr>
             <td>${r.loja_origem}</td>
             <td class="mono">${r.concurso}</td>
             <td class="mono">${fmtDate(r.dt_sorteio)}</td>
             <td class="mono">${r.qtd_inicial}</td>
-            <td class="mono">${r.qtd_vendida_funcionarios || '—'}</td>
-            <td class="mono">${canais || '—'}</td>
-            <td class="mono">${r.qtd_devolvida_interna  || '—'}</td>
-            <td class="mono">${r.qtd_dev_caixa_externa  || '—'}</td>
-            <td class="mono">${r.qtd_venda_externa      || '—'}</td>
-            <td class="mono">${r.qtd_retorno_recebido   || '—'}</td>
+            <td class="mono">${r.qtd_venda_interna_total || '—'}</td>
+            <td class="mono">${r.qtd_venda_externa       || '—'}</td>
+            <td class="mono">${r.qtd_dev_cx_interna      || '—'}</td>
+            <td class="mono">${r.qtd_dev_cx_externa      || '—'}</td>
+            <td class="mono">${r.qtd_encalhe             || '—'}</td>
+            <td class="mono">${r.qtd_enviada             || '—'}</td>
+            <td class="mono">${r.qtd_retorno_recebido    || '—'}</td>
             <td class="mono">${r.estoque_atual}</td>
             <td class="money ${res >= 0 ? 'pos' : 'neg'}">${fmtMoney(res)}</td>
             <td><div class="flex" style="gap:6px;flex-wrap:nowrap">
@@ -435,7 +434,7 @@ function renderVisaoTodas(rows) {
             </div></td>
         </tr>`;
     }).join('')
-    : `<tr><td colspan="13"><div class="empty">
+    : `<tr><td colspan="14"><div class="empty">
         <div class="empty-title">Nada encontrado</div>
         <div class="empty-sub">Ajuste os filtros ou cadastre o primeiro concurso.</div>
        </div></td></tr>`;
@@ -444,25 +443,25 @@ function renderVisaoTodas(rows) {
     $('tbody-visao').innerHTML = tbody;
 }
 
-// ── Modo: loja específica — colunas dinâmicas ─────────────
+// ── Modo: loja específica — colunas dinâmicas por funcionário ──
 function renderVisaoLoja(rows, lojaId) {
+    // Funcionários caixa
     const funcMap = {};
     state.vendasFuncionario
-        .filter(v => String(v.loteria_id) === String(lojaId)
-                  && (v.canal_venda === 'CAIXA' || !v.canal_venda))
+        .filter(v => String(v.loteria_id) === String(lojaId) && v.canal_venda === 'CAIXA')
         .forEach(v => { funcMap[String(v.usuario_id)] = v.funcionario_nome; });
     const funcs = Object.entries(funcMap).map(([id, nome]) => ({ id, nome }));
 
-    const thFuncs  = funcs.map(f =>
-        `<th>${f.nome.split(' ')[0]}</th>`).join('');
-    const colSpan  = 8 + funcs.length + 4;
+    const thFuncs = funcs.map(f => `<th>${f.nome.split(' ')[0]}</th>`).join('');
+    const colSpan = 8 + funcs.length + 4;
 
     const thead = `<tr>
         <th>Concurso</th><th>Data</th><th>Ini.</th>
         ${thFuncs}
-        <th>WA</th><th>Balcão</th>
-        <th>Dev. Int.</th><th>Dev. Ext.</th>
-        <th>Venda Ext.</th><th>Retorno</th>
+        <th>WA</th><th>Balcão</th><th>Cambista</th>
+        <th>Dev.CX Int.</th><th>Dev.CX Ext.</th>
+        <th>Venda Ext.</th><th>Encalhe</th>
+        <th>Enviadas</th><th>Retorno</th>
         <th>Estoque</th><th>Resultado</th><th>Ações</th>
     </tr>`;
 
@@ -473,7 +472,7 @@ function renderVisaoLoja(rows, lojaId) {
             const v = state.vendasFuncionario.find(x =>
                 String(x.federal_id) === String(r.federal_id) &&
                 String(x.usuario_id) === f.id &&
-                (x.canal_venda === 'CAIXA' || !x.canal_venda)
+                x.canal_venda === 'CAIXA'
             );
             return `<td class="mono">${v?.qtd_vendida || '—'}</td>`;
         }).join('');
@@ -483,12 +482,15 @@ function renderVisaoLoja(rows, lojaId) {
             <td class="mono">${fmtDate(r.dt_sorteio)}</td>
             <td class="mono">${r.qtd_inicial}</td>
             ${tdFuncs}
-            <td class="mono">${r.qtd_vendida_whatsapp  || '—'}</td>
-            <td class="mono">${r.qtd_vendida_balcao    || '—'}</td>
-            <td class="mono">${r.qtd_devolvida_interna || '—'}</td>
-            <td class="mono">${r.qtd_dev_caixa_externa || '—'}</td>
-            <td class="mono">${r.qtd_venda_externa     || '—'}</td>
-            <td class="mono">${r.qtd_retorno_recebido  || '—'}</td>
+            <td class="mono">${r.qtd_vendida_whatsapp         || '—'}</td>
+            <td class="mono">${r.qtd_vendida_balcao           || '—'}</td>
+            <td class="mono">${r.qtd_vendida_cambista_interno || '—'}</td>
+            <td class="mono">${r.qtd_dev_cx_interna           || '—'}</td>
+            <td class="mono">${r.qtd_dev_cx_externa           || '—'}</td>
+            <td class="mono">${r.qtd_venda_externa            || '—'}</td>
+            <td class="mono">${r.qtd_encalhe                  || '—'}</td>
+            <td class="mono">${r.qtd_enviada                  || '—'}</td>
+            <td class="mono">${r.qtd_retorno_recebido         || '—'}</td>
             <td class="mono">${r.estoque_atual}</td>
             <td class="money ${res >= 0 ? 'pos' : 'neg'}">${fmtMoney(res)}</td>
             <td><div class="flex" style="gap:6px;flex-wrap:nowrap">
@@ -560,10 +562,8 @@ function renderMovimentacoes() {
         ? state.movimentos.map(m => {
             const federal     = lookupFederal(m.federal_id);
             const isTrans     = m.tipo_evento === 'TRANSFERENCIA';
-
-            // Valores com fallback seguro caso federal não esteja no state
-            const valorFracao = Number(federal?.valor_fracao || m.valor_fracao_ref || m.valor_fracao || 0);
-            const valorCusto  = Number(federal?.valor_custo  || 0);
+            const valorFracao = Number(federal?.valor_fracao || m.federais?.valor_fracao || m.valor_fracao_ref || 0);
+            const valorCusto  = Number(federal?.valor_custo  || m.federais?.valor_custo  || 0);
 
             const total = isTrans
                 ? (Number(m.qtd_vendida         || 0) * valorFracao)
@@ -574,13 +574,12 @@ function renderMovimentacoes() {
 
             const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
 
-            const desconto = isTrans && m.qtd_venda_cambista > 0 && m.valor_cambista > 0
-                ? Number(m.qtd_venda_cambista) * (valorFracao - Number(m.valor_cambista))
-                : 0;
-
-            const cel = val => isTrans
-                ? `<td class="mono">${Number(val) > 0 ? val : '—'}</td>`
-                : `<td class="mono" style="color:var(--dim)">—</td>`;
+            const distrib = isTrans ? [
+                m.qtd_vendida        > 0 ? `${m.qtd_vendida} venda`         : null,
+                m.qtd_devolucao_caixa> 0 ? `${m.qtd_devolucao_caixa} dev.cx`: null,
+                m.qtd_venda_cambista > 0 ? `${m.qtd_venda_cambista} camb.`  : null,
+                m.qtd_retorno_origem > 0 ? `${m.qtd_retorno_origem} retorno` : null,
+            ].filter(Boolean).join(' · ') || '—' : '—';
 
             return `<tr>
                 <td class="mono">${new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
@@ -589,11 +588,7 @@ function renderMovimentacoes() {
                 <td>${lookupLoteriaName(m.loteria_origem)}</td>
                 <td>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</td>
                 <td class="mono">${m.qtd_fracoes}</td>
-                ${cel(m.qtd_vendida)}
-                ${cel(m.qtd_devolucao_caixa)}
-                ${cel(m.qtd_venda_cambista)}
-                <td class="money ${desconto > 0 ? 'neg' : ''}">${isTrans && desconto > 0 ? fmtMoney(desconto) : '—'}</td>
-                ${cel(m.qtd_retorno_origem)}
+                <td class="mono" style="font-size:11px">${distrib}</td>
                 <td class="money">${fmtMoney(total)}</td>
                 <td><span class="badge ${statusClass}">${m.status_acerto || 'PENDENTE'}</span></td>
                 <td><div class="flex" style="gap:6px;flex-wrap:nowrap">
@@ -606,7 +601,7 @@ function renderMovimentacoes() {
                 </div></td>
             </tr>`;
         }).join('')
-        : `<tr><td colspan="14"><div class="empty">
+        : `<tr><td colspan="10"><div class="empty">
             <div class="empty-title">Sem movimentações</div>
            </div></td></tr>`;
     applyDestinoFilter();
@@ -659,8 +654,16 @@ function renderAuditoria() {
     if (df) rows = rows.filter(x => String(x.data_mov) <= df);
 
     $('tbody-auditoria').innerHTML = rows.length ? rows.map(m => {
-        const total       = Number(m.valor_total_real || m.valor_total ||
-            (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)));
+        const federal     = lookupFederal(m.federal_id);
+        const valorFracao = Number(federal?.valor_fracao || m.federais?.valor_fracao || m.valor_fracao_ref || 0);
+        const valorCusto  = Number(federal?.valor_custo  || m.federais?.valor_custo  || 0);
+        const isTrans     = m.tipo_evento === 'TRANSFERENCIA';
+        const total       = isTrans
+            ? (Number(m.qtd_vendida         || 0) * valorFracao)
+            + (Number(m.qtd_devolucao_caixa || 0) * valorCusto)
+            + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista || 0))
+            : Number(m.valor_total_real || m.valor_total ||
+                (Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)));
         const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
         return `<tr>
             <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
@@ -704,11 +707,11 @@ function setCadastroDefaults() {
 
 async function saveCadastro() {
     try {
-        const concurso         = $('cad-concurso').value.trim();
-        const dt_sorteio       = $('cad-dt-sorteio').value;
-        const valor_fracao     = Number($('cad-valor-fracao').value    || 0);
-        const valor_custo      = Number($('cad-valor-custo').value     || 0);
-        const qt_fracoes       = Number($('cad-fracoes-bilhete').value || 10);
+        const concurso     = $('cad-concurso').value.trim();
+        const dt_sorteio   = $('cad-dt-sorteio').value;
+        const valor_fracao = Number($('cad-valor-fracao').value    || 0);
+        const valor_custo  = Number($('cad-valor-custo').value     || 0);
+        const qt_fracoes   = Number($('cad-fracoes-bilhete').value || 10);
 
         if (!concurso || !dt_sorteio) {
             showStatus('st-cadastro', 'Preencha concurso e data.', 'err'); return;
@@ -850,7 +853,7 @@ async function saveMov() {
             qtd_venda_cambista:   qtdCambista,
             qtd_retorno_origem:   qtdRetornoOrigem,
             valor_cambista:       valorCambista,
-            status_acerto:        'PENDENTE',   // sempre fixo — acerto é gerido pelo módulo de controle
+            status_acerto:        'PENDENTE',
             data_mov:             dataHoje,
             observacao:           $('mov-observacao').value.trim() || null,
             criado_por:           state.usuario?.id || null,
@@ -886,24 +889,6 @@ async function saveMov() {
             if (error) throw error;
             movId = mov.id;
             showStatus('st-mov', 'Movimentação registrada.', 'ok');
-        }
-
-        // Atualiza qtd_devolvidas da ORIGEM automaticamente
-        if (tipoEvento === 'TRANSFERENCIA') {
-            const delta = qtdDevCaixa - oldQtdDevCaixa;
-            if (delta !== 0) {
-                const { data: fedOrig } = await sb
-                    .from('federais')
-                    .select('id,qtd_devolvidas')
-                    .eq('id', $('mov-federal').value)
-                    .single();
-                if (fedOrig) {
-                    await sb.from('federais').update({
-                        qtd_devolvidas: Math.max(0, Number(fedOrig.qtd_devolvidas||0) + delta),
-                        updated_at: new Date().toISOString()
-                    }).eq('id', fedOrig.id);
-                }
-            }
         }
 
         state.editingMovId = null;
@@ -953,7 +938,7 @@ window.editMov = function(id) {
     $('mov-qtd-dev-caixa').value        = m.qtd_devolucao_caixa || 0;
     $('mov-qtd-cambista').value         = m.qtd_venda_cambista  || 0;
     $('mov-qtd-retorno-origem').value   = m.qtd_retorno_origem  || 0;
-    $('mov-valor-cambista').value       = m.valor_cambista       || '';
+    $('mov-valor-cambista').value       = m.valor_cambista      || '';
 
     toggleDistribuicaoFields();
     syncMovValorByTipo();
@@ -1013,14 +998,19 @@ async function saveFechamento() {
             return;
         }
 
-        const qtdVendida  = Number($('fec-qtd-vendida').value  || 0);
-        const valorFracao = Number($('fec-valor-fracao').value || 0);
-        const totalFed    = Number($('fec-total').value        || 0);
+        const qtdVendida   = Number($('fec-qtd-vendida').value   || 0);
+        const valorFracao  = Number($('fec-valor-fracao').value  || 0);
+        const valorCambista = Number($('fec-valor-cambista').value || 0);
+        const totalFed     = Number($('fec-total').value         || 0);
 
         if (qtdVendida <= 0) {
             showStatus('st-fechamento', 'Informe a quantidade vendida.', 'err');
             return;
         }
+
+        // Para cambista: valor negociado livre; para outros: valor_fracao padrão
+        const valorUnitario = canal === 'CAMBISTA' ? valorCambista : valorFracao;
+        const totalCalculado = qtdVendida * valorUnitario;
 
         const usuario = state.usuarios.find(x => String(x.id) === String(usuarioId));
 
@@ -1030,7 +1020,7 @@ async function saveFechamento() {
             funcionario_nome: usuario?.nome || 'Funcionário',
             data_ref:         dataRef,
             canal_venda:      canal,
-            total_federais:   totalFed,
+            total_federais:   totalCalculado,
             troco_inicial: 0, troco_sobra: 0, relatorio: 0,
             deposito: 0, pix_cnpj: 0, diferenca_pix: 0,
             premio_raspadinha: 0, resgate_telesena: 0,
@@ -1050,16 +1040,17 @@ async function saveFechamento() {
             modalidade:    'Federal',
             concurso:      federal.concurso,
             dt_sorteio:    federal.dt_sorteio || null,
-            valor_fracao:  valorFracao,
+            valor_fracao:  valorUnitario,
             qtd_vendida:   qtdVendida,
-            total:         totalFed
+            total:         totalCalculado
         });
         if (eItem) throw eItem;
 
         showStatus('st-fechamento',
             `Venda registrada — ${qtdVendida} fração(ões) via ${canal}.`, 'ok');
-        $('fec-qtd-vendida').value = '';
-        $('fec-total').value       = '';
+        $('fec-qtd-vendida').value    = '';
+        $('fec-valor-cambista').value = '';
+        $('fec-total').value          = '';
         await refreshAll();
 
     } catch(e) { showStatus('st-fechamento', e.message, 'err'); }
@@ -1092,8 +1083,8 @@ function closeLancamento() {
 async function saveLancamento() {
     try {
         if (!state.lancFederalId) return;
-        const qtdDev = Number($('lanc-qtd-dev').value   || 0);
-        const qtdEnc = Number($('lanc-qtd-enc').value   || 0);
+        const qtdDev = Number($('lanc-qtd-dev').value    || 0);
+        const qtdEnc = Number($('lanc-qtd-enc').value    || 0);
         const premio = Number($('lanc-vlr-premio').value || 0);
         const obs    = $('lanc-obs').value.trim() || null;
 
@@ -1152,93 +1143,101 @@ window.openFederalDetail = function(federalId) {
     const vendas     = state.vendasFuncionario
         .filter(x => String(x.federal_id) === String(federalId));
 
-    const secVendaInterna = vendas.length ? `
+    // ── Venda Interna detalhada por canal ──────────────────
+    const vendasCaixa     = vendas.filter(v => v.canal_venda === 'CAIXA' || !v.canal_venda);
+    const vendasWhatsapp  = vendas.filter(v => v.canal_venda === 'WHATSAPP');
+    const vendasBalcao    = vendas.filter(v => v.canal_venda === 'BALCAO');
+    const vendasCambista  = vendas.filter(v => v.canal_venda === 'CAMBISTA');
+
+    const rowsVendaInterna = [
+        ...vendasCaixa.map(v =>
+            `<tr><td>${v.funcionario_nome}</td>
+             <td><span class="badge b-info">Caixa</span></td>
+             <td class="mono">${v.qtd_vendida}</td>
+             <td class="money">${fmtMoney(v.total_vendido)}</td></tr>`),
+        ...vendasWhatsapp.map(v =>
+            `<tr><td>${v.funcionario_nome}</td>
+             <td><span class="badge b-info">WhatsApp</span></td>
+             <td class="mono">${v.qtd_vendida}</td>
+             <td class="money">${fmtMoney(v.total_vendido)}</td></tr>`),
+        ...vendasBalcao.map(v =>
+            `<tr><td>${v.funcionario_nome}</td>
+             <td><span class="badge b-info">Balcão</span></td>
+             <td class="mono">${v.qtd_vendida}</td>
+             <td class="money">${fmtMoney(v.total_vendido)}</td></tr>`),
+        ...vendasCambista.map(v =>
+            `<tr><td>${v.funcionario_nome}</td>
+             <td><span class="badge b-warn">Cambista</span></td>
+             <td class="mono">${v.qtd_vendida}</td>
+             <td class="money">${fmtMoney(v.total_vendido)}</td></tr>`),
+    ];
+
+    const secVendaInterna = rowsVendaInterna.length ? `
         <div class="table-wrap"><table class="table">
-            <thead><tr>
-                <th>Funcionário</th><th>Canal</th><th>Qtd</th><th>Total</th>
-            </tr></thead><tbody>
-            ${vendas.map(v => `<tr>
-                <td>${v.funcionario_nome}</td>
-                <td><span class="badge b-info">${v.canal_venda || 'CAIXA'}</span></td>
-                <td class="mono">${v.qtd_vendida}</td>
-                <td class="money">${fmtMoney(v.total_vendido)}</td>
-            </tr>`).join('')}
-            </tbody>
+            <thead><tr><th>Funcionário</th><th>Canal</th><th>Qtd</th><th>Total</th></tr></thead>
+            <tbody>${rowsVendaInterna.join('')}</tbody>
         </table></div>`
     : '<div class="muted" style="padding:8px 0">Sem vendas internas</div>';
 
-    const secVendaExterna = detOrigem.length ? `
+    // ── Dev CX Externa — por loja destino ─────────────────
+    const secDevCxExterna = detOrigem.filter(d => d.qtd_devolucao_caixa > 0).length ? `
+        <div class="table-wrap"><table class="table">
+            <thead><tr><th>Loja destino</th><th>Qtd dev. CX</th><th>Valor</th></tr></thead>
+            <tbody>
+            ${detOrigem.filter(d => d.qtd_devolucao_caixa > 0).map(d => `<tr>
+                <td>${d.loja_destino_nome}</td>
+                <td class="mono">${d.qtd_devolucao_caixa}</td>
+                <td class="money">${fmtMoney(Number(d.qtd_devolucao_caixa) * Number(r.valor_custo))}</td>
+            </tr>`).join('')}
+            </tbody>
+        </table></div>`
+    : '<div class="muted" style="padding:8px 0">Sem devoluções externas</div>';
+
+    // ── Venda Externa — por loja destino ──────────────────
+    const secVendaExterna = detOrigem.filter(d => d.qtd_vendida > 0 || d.qtd_venda_cambista > 0).length ? `
         <div class="table-wrap"><table class="table">
             <thead><tr>
-                <th>Loja destino</th><th>Enviadas</th><th>Vendidas</th>
-                <th>Dev. Caixa</th><th>Cambista</th><th>Retorno</th><th>Valor acerto</th>
-            </tr></thead><tbody>
+                <th>Loja destino</th>
+                <th>Venda normal</th><th>Cambista</th>
+                <th>Retorno</th><th>Valor acerto</th>
+            </tr></thead>
+            <tbody>
             ${detOrigem.map(d => `<tr>
                 <td>${d.loja_destino_nome}</td>
-                <td class="mono">${d.qtd_enviada}</td>
-                <td class="mono">${d.qtd_vendida         || '—'}</td>
-                <td class="mono">${d.qtd_devolucao_caixa || '—'}</td>
-                <td class="mono">${d.qtd_venda_cambista  || '—'}
-                    ${d.qtd_venda_cambista
-                        ? `<span class="muted" style="font-size:11px">
-                           ×${fmtMoney(d.valor_cambista)}</span>` : ''}</td>
-                <td class="mono">${d.qtd_retorno_origem  || '—'}</td>
+                <td class="mono">${d.qtd_vendida         > 0 ? `${d.qtd_vendida} × ${fmtMoney(r.valor_fracao)}`                       : '—'}</td>
+                <td class="mono">${d.qtd_venda_cambista  > 0 ? `${d.qtd_venda_cambista} × ${fmtMoney(d.valor_cambista)}`               : '—'}</td>
+                <td class="mono">${d.qtd_retorno_origem  > 0 ? d.qtd_retorno_origem                                                    : '—'}</td>
                 <td class="money">${fmtMoney(d.valor_acerto)}</td>
             </tr>`).join('')}
             </tbody>
         </table></div>`
-    : '<div class="muted" style="padding:8px 0">Sem envios para outras lojas</div>';
-
-    const secRecebimentos = detDestino.length ? `
-        <div class="table-wrap"><table class="table">
-            <thead><tr>
-                <th>Loja origem</th><th>Recebidas</th><th>Vendidas</th>
-                <th>Dev. Caixa</th><th>Cambista</th><th>Retornadas</th><th>A pagar</th>
-            </tr></thead><tbody>
-            ${detDestino.map(d => `<tr>
-                <td>${d.loja_origem_nome}</td>
-                <td class="mono">${d.qtd_enviada}</td>
-                <td class="mono">${d.qtd_vendida         || '—'}</td>
-                <td class="mono">${d.qtd_devolucao_caixa || '—'}</td>
-                <td class="mono">${d.qtd_venda_cambista  || '—'}</td>
-                <td class="mono">${d.qtd_retorno_origem  || '—'}</td>
-                <td class="money">${fmtMoney(d.valor_acerto)}</td>
-            </tr>`).join('')}
-            </tbody>
-        </table></div>`
-    : '<div class="muted" style="padding:8px 0">Sem recebimentos de outras lojas</div>';
+    : '<div class="muted" style="padding:8px 0">Sem vendas externas</div>';
 
     const body = `
         <div class="card" style="margin-bottom:14px">
             <div class="inline-pills">
-                <span class="pill">Qtd inicial ${r.qtd_inicial}</span>
-                <span class="pill">Func ${r.qtd_vendida_funcionarios}</span>
-                <span class="pill">WA ${r.qtd_vendida_whatsapp}</span>
-                <span class="pill">Balcão ${r.qtd_vendida_balcao}</span>
-                <span class="pill">Dev. int. ${r.qtd_devolvida_interna}</span>
-                <span class="pill">Dev. ext. ${r.qtd_dev_caixa_externa}</span>
-                <span class="pill">Venda ext. ${r.qtd_venda_externa}</span>
+                <span class="pill">Inicial ${r.qtd_inicial}</span>
+                <span class="pill">Venda Int. ${r.qtd_venda_interna_total}</span>
+                <span class="pill">Venda Ext. ${r.qtd_venda_externa}</span>
+                <span class="pill">Dev.CX Int. ${r.qtd_dev_cx_interna}</span>
+                <span class="pill">Dev.CX Ext. ${r.qtd_dev_cx_externa}</span>
+                <span class="pill">Enviadas ${r.qtd_enviada}</span>
                 <span class="pill">Retorno ${r.qtd_retorno_recebido}</span>
                 <span class="pill">Encalhe ${r.qtd_encalhe}</span>
                 <span class="pill">Estoque ${r.estoque_atual}</span>
-                <span class="pill">Rec. terceiros ${fmtMoney(r.receitas_terceiros)}</span>
+                <span class="pill">Prêmio ${fmtMoney(r.premio_encalhe_total)}</span>
                 <span class="pill">Resultado ${fmtMoney(r.resultado)}</span>
             </div>
         </div>
 
-        <div class="sep"><span class="sep-label">Venda interna — funcionários e canais</span>
-            <div class="sep-line"></div></div>
+        <div class="sep"><span class="sep-label">Venda interna</span><div class="sep-line"></div></div>
         ${secVendaInterna}
 
-        <div class="sep" style="margin-top:16px">
-            <span class="sep-label">Venda externa — enviou para outras lojas</span>
-            <div class="sep-line"></div></div>
-        ${secVendaExterna}
+        <div class="sep" style="margin-top:16px"><span class="sep-label">Devolução CX externa — por loja</span><div class="sep-line"></div></div>
+        ${secDevCxExterna}
 
-        <div class="sep" style="margin-top:16px">
-            <span class="sep-label">Recebimentos — chegou de outras lojas</span>
-            <div class="sep-line"></div></div>
-        ${secRecebimentos}`;
+        <div class="sep" style="margin-top:16px"><span class="sep-label">Venda externa — por loja</span><div class="sep-line"></div></div>
+        ${secVendaExterna}`;
 
     openDrawer(
         `Federal ${r.concurso} — ${r.loja_origem}`,
@@ -1250,6 +1249,14 @@ window.openFederalDetail = function(federalId) {
 
 window.openMovDetail = function(id) {
     const m = state.movimentos.find(x => String(x.id) === String(id)); if (!m) return;
+    const federal     = lookupFederal(m.federal_id);
+    const valorFracao = Number(federal?.valor_fracao || m.federais?.valor_fracao || 0);
+    const valorCusto  = Number(federal?.valor_custo  || m.federais?.valor_custo  || 0);
+    const total =
+        (Number(m.qtd_vendida         || 0) * valorFracao)
+      + (Number(m.qtd_devolucao_caixa || 0) * valorCusto)
+      + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista || 0));
+
     openDrawer(
         `Movimentação ${m.tipo_evento || m.tipo}`,
         `${m.federais?.modalidade || 'Federal'} • Concurso ${m.federais?.concurso || '—'}`,
@@ -1258,22 +1265,21 @@ window.openMovDetail = function(id) {
                 <div>${lookupLoteriaName(m.loteria_origem)}</div></div>
             <div class="soft-card"><div class="field-label">Destino</div>
                 <div>${m.loteria_destino ? lookupLoteriaName(m.loteria_destino) : '—'}</div></div>
-            <div class="soft-card"><div class="field-label">Quantidade</div>
+            <div class="soft-card"><div class="field-label">Qtd transferida</div>
                 <div class="mono">${m.qtd_fracoes}</div></div>
             <div class="soft-card"><div class="field-label">Status</div>
                 <div>${m.status_acerto || 'PENDENTE'}</div></div>
-            <div class="soft-card"><div class="field-label">Valor fração</div>
-                <div class="money">${fmtMoney(m.valor_fracao_real||m.valor_fracao)}</div></div>
-            <div class="soft-card"><div class="field-label">Data mov.</div>
-                <div class="mono">${fmtDate(m.data_mov)}</div></div>
          </div>
          <div class="card" style="margin-top:14px">
-            <div class="field-label">Distribuição</div>
+            <div class="field-label">Distribuição no destino</div>
             <div class="inline-pills" style="margin-top:8px">
-                ${m.qtd_vendida        >0 ? `<span class="pill">Vendida ${m.qtd_vendida}</span>`       :''}
-                ${m.qtd_devolucao_caixa>0 ? `<span class="pill">Dev. caixa ${m.qtd_devolucao_caixa}</span>`:''}
-                ${m.qtd_venda_cambista >0 ? `<span class="pill">Cambista ${m.qtd_venda_cambista} × ${fmtMoney(m.valor_cambista)}</span>`:''}
-                ${m.qtd_retorno_origem >0 ? `<span class="pill">Retorno origem ${m.qtd_retorno_origem}</span>`:''}
+                ${m.qtd_vendida        >0 ? `<span class="pill">Venda normal ${m.qtd_vendida} × ${fmtMoney(valorFracao)} = ${fmtMoney(m.qtd_vendida * valorFracao)}</span>` :''}
+                ${m.qtd_devolucao_caixa>0 ? `<span class="pill">Dev. caixa ${m.qtd_devolucao_caixa} × ${fmtMoney(valorCusto)} = ${fmtMoney(m.qtd_devolucao_caixa * valorCusto)}</span>` :''}
+                ${m.qtd_venda_cambista >0 ? `<span class="pill">Cambista ${m.qtd_venda_cambista} × ${fmtMoney(m.valor_cambista)} = ${fmtMoney(m.qtd_venda_cambista * Number(m.valor_cambista||0))}</span>` :''}
+                ${m.qtd_retorno_origem >0 ? `<span class="pill">Retorno origem ${m.qtd_retorno_origem} (sem débito)</span>` :''}
+            </div>
+            <div style="margin-top:10px;font-weight:600">
+                Total pendência: ${fmtMoney(total)}
             </div>
          </div>
          <div class="card" style="margin-top:14px">
@@ -1298,11 +1304,11 @@ function openDrawer(title, sub, bodyHtml, actions = []) {
     actions.forEach(a => {
         const b = document.createElement('button');
         b.textContent = a.label;
-        b.className   = a.kind === 'primary'    ? 'btn-primary'
-                      : a.kind === 'amber'      ? 'btn-amber'
-                      : a.kind === 'danger'     ? 'btn-danger'
+        b.className   = a.kind === 'primary' ? 'btn-primary'
+                      : a.kind === 'amber'   ? 'btn-amber'
+                      : a.kind === 'danger'  ? 'btn-danger'
                       : 'btn-secondary';
-        b.onclick     = a.onClick;
+        b.onclick = a.onClick;
         $('drawer-foot').appendChild(b);
     });
     $('overlay').classList.add('show');
@@ -1349,6 +1355,16 @@ function toggleDistribuicaoFields() {
     if (bloco) bloco.style.display = isTrans ? '' : 'none';
 }
 
+// Mostra/oculta campo valor cambista na aba Venda
+function toggleCambistaField() {
+    const canal    = $('fec-canal').value;
+    const bloco    = $('fec-bloco-cambista');
+    const fracaoLb = $('fec-label-fracao');
+    if (bloco)    bloco.style.display    = canal === 'CAMBISTA' ? '' : 'none';
+    if (fracaoLb) fracaoLb.style.display = canal === 'CAMBISTA' ? 'none' : '';
+    $('fec-total').value = '';
+}
+
 // ══════════════════════════════════════════════════════════
 // BIND EVENTS
 // ══════════════════════════════════════════════════════════
@@ -1367,8 +1383,8 @@ function bindEvents() {
 
     // Exibição
     $('btn-limpar-visao').addEventListener('click', () => {
-        ['filtro-concurso','filtro-loja',
-         'filtro-dt-ini','filtro-dt-fim'].forEach(id => $(id).value = '');
+        ['filtro-concurso','filtro-loja','filtro-dt-ini','filtro-dt-fim']
+            .forEach(id => $(id).value = '');
         atualizarHeaderLoja();
         renderVisao();
     });
@@ -1440,9 +1456,9 @@ function bindEvents() {
     ['mov-qtd-vendida','mov-qtd-dev-caixa',
      'mov-qtd-cambista','mov-qtd-retorno-origem'].forEach(id => {
         $(id)?.addEventListener('input', () => {
-            const total  = Number($('mov-qtd').value || 0);
-            const soma   = ['mov-qtd-vendida','mov-qtd-dev-caixa',
-                            'mov-qtd-cambista','mov-qtd-retorno-origem']
+            const total = Number($('mov-qtd').value || 0);
+            const soma  = ['mov-qtd-vendida','mov-qtd-dev-caixa',
+                           'mov-qtd-cambista','mov-qtd-retorno-origem']
                 .reduce((a,i) => a + Number($(i)?.value || 0), 0);
             const resto  = total - soma;
             const status = $('mov-distribuicao-status');
@@ -1458,13 +1474,18 @@ function bindEvents() {
     });
 
     $('mov-valor-cambista').addEventListener('input', () => {
-        const qtd   = Number($('mov-qtd-cambista').value  || 0);
+        const qtd   = Number($('mov-qtd-cambista').value   || 0);
         const valor = Number($('mov-valor-cambista').value || 0);
         const el    = $('mov-cambista-total');
         if (el) el.textContent = qtd && valor ? `= ${fmtMoney(qtd*valor)}` : '';
     });
 
-    // Fechamento
+    // Fechamento — canal
+    $('fec-canal').addEventListener('change', () => {
+        toggleCambistaField();
+        updateFecTotal();
+    });
+
     $('fec-data-ref').value = new Date().toISOString().slice(0, 10);
 
     $('fec-loteria').addEventListener('change', () => {
@@ -1475,26 +1496,36 @@ function bindEvents() {
     $('fec-federal').addEventListener('change', () => {
         const f = lookupFederal($('fec-federal').value);
         $('fec-valor-fracao').value = f ? f.valor_fracao : '';
-        $('fec-total').value        = '';
+        $('fec-valor-cambista').value = '';
+        $('fec-total').value = '';
     });
 
-    ['fec-qtd-vendida','fec-valor-fracao'].forEach(id =>
-        $(id).addEventListener('input', () => {
-            const q = Number($('fec-qtd-vendida').value  || 0);
-            const v = Number($('fec-valor-fracao').value || 0);
-            $('fec-total').value = q && v ? (q*v).toFixed(2) : '';
-        })
+    ['fec-qtd-vendida','fec-valor-fracao','fec-valor-cambista'].forEach(id =>
+        $(id)?.addEventListener('input', updateFecTotal)
     );
 
     $('btn-salvar-fechamento').addEventListener('click', saveFechamento);
     $('btn-limpar-fechamento').addEventListener('click', () => {
-        $('fec-qtd-vendida').value = '';
-        $('fec-total').value       = '';
+        $('fec-qtd-vendida').value    = '';
+        $('fec-valor-cambista').value = '';
+        $('fec-total').value          = '';
     });
 
     // Auditoria
     $('btn-filtrar-auditoria').addEventListener('click', renderAuditoria);
     $('btn-recarregar-auditoria').addEventListener('click', refreshAll);
+
+    // Init canal fechamento
+    toggleCambistaField();
+}
+
+function updateFecTotal() {
+    const canal  = $('fec-canal').value;
+    const qtd    = Number($('fec-qtd-vendida').value    || 0);
+    const vFracao = Number($('fec-valor-fracao').value  || 0);
+    const vCamb  = Number($('fec-valor-cambista').value || 0);
+    const valor  = canal === 'CAMBISTA' ? vCamb : vFracao;
+    $('fec-total').value = qtd && valor ? (qtd * valor).toFixed(2) : '';
 }
 
 // ══════════════════════════════════════════════════════════
