@@ -977,7 +977,6 @@ async function saveMov() {
             valor_fracao:         valor,
             valor_fracao_ref:     Number(federal?.valor_fracao || 0),
             valor_fracao_real:    valor,
-            valor_total:          valorTotal,
             valor_total_real:     valorTotal,
             valor_a_acertar:      0,
             qtd_vendida:          qtdVendida,
