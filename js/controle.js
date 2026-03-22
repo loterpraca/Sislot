@@ -196,7 +196,7 @@ async function loadFederal() {
             qtd_fracoes, valor_fracao, valor_fracao_ref,
             qtd_vendida, qtd_devolucao_caixa, qtd_venda_cambista,
             valor_cambista, qtd_retorno_origem,
-            status_acerto, data_acerto, data_mov, created_at,
+            status_acerto, data_mov, created_at,
             federais(concurso, dt_sorteio, valor_fracao, valor_custo)
         `)
         .eq('status_acerto', 'PENDENTE')
@@ -594,7 +594,7 @@ async function pagarTudo() {
 
         if (fedPendentes.length) {
             const { error } = await sb.from('federal_movimentacoes')
-                .update({ status_acerto:'PAGO', data_acerto:dataHoje })
+                .update({ status_acerto:'PAGO' })
                 .in('id', fedPendentes);
             if (error) throw error;
         }
@@ -628,7 +628,7 @@ async function quitarMovimentacoes(lojas, mes, produto) {
 
     if (produto === 'FEDERAL') {
         const { error } = await sb.from('federal_movimentacoes')
-            .update({ status_acerto:'PAGO', data_acerto:dataHoje })
+            .update({ status_acerto:'PAGO' })
             .in('id', movsPar);
         if (error) throw error;
     } else {
