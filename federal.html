@@ -241,75 +241,156 @@
       </div>
     </section>
 
-    <!-- ── MOVIMENTAÇÃO ──────────────────────────────── -->
-    <section class="tab-panel" id="panel-movimentacao">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Movimentação Operacional</div>
-          <div class="page-sub">Registre transferência, devolução na Caixa e venda cambista.</div>
+    <!-- ══════════════════════════════════════════════════════
+     PANEL MOVIMENTAÇÃO
+     Substitui o conteúdo do div#panel-movimentacao
+     ══════════════════════════════════════════════════════ -->
+<div id="panel-movimentacao" class="tab-panel">
+  <div class="grid-2" style="gap:20px;align-items:start">
+
+    <!-- FORMULÁRIO -->
+    <div class="card">
+      <div class="card-title">Registrar movimentação</div>
+
+      <div class="field-group">
+        <label class="field-label">Concurso</label>
+        <select id="mov-federal" class="input"></select>
+      </div>
+
+      <div id="mov-resumo-selec"
+           class="soft-card"
+           style="margin-bottom:12px;font-size:12px">
+        <div class="empty-title">Selecione um concurso</div>
+      </div>
+
+      <div class="grid-2" style="gap:10px">
+        <div class="field-group">
+          <label class="field-label">Modalidade</label>
+          <input id="mov-modalidade" class="input" value="Federal" readonly>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Data concurso</label>
+          <input id="mov-dt-concurso" type="date" class="input" readonly>
         </div>
       </div>
 
-      <div class="status-bar" id="st-mov"></div>
+      <div class="grid-2" style="gap:10px">
+        <div class="field-group">
+          <label class="field-label">Loja origem</label>
+          <select id="mov-loteria-origem" class="input"></select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Loja destino</label>
+          <select id="mov-loteria-destino" class="input"></select>
+        </div>
+      </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="sep" style="margin-top:0"><span class="sep-label">Nova movimentação</span><div class="sep-line"></div></div>
-          <div class="grid-3">
-            <div class="field"><label class="field-label">Modalidade</label><input id="mov-modalidade" value="Federal" readonly></div>
-            <div class="field"><label class="field-label req">Concurso</label><select id="mov-federal"></select></div>
-            <div class="field"><label class="field-label">Data do concurso</label><input type="date" id="mov-dt-concurso" readonly></div>
-          </div>
-          <div class="grid-3" style="margin-top:14px">
-            <div class="field"><label class="field-label req">Loteria origem</label><select id="mov-loteria-origem"></select></div>
-            <div class="field"><label class="field-label req">Loteria destino</label><select id="mov-loteria-destino"></select></div>
-            <div class="field"><label class="field-label req">Tipo de evento</label>
-              <select id="mov-tipo-evento">
-                <option value="TRANSFERENCIA">Transferência</option>
-                <option value="DEVOLUCAO_CAIXA">Devolução Caixa</option>
-                <option value="VENDA_CAMBISTA">Venda Cambista</option>
-              </select>
-            </div>
-          </div>
-          <div class="grid-3" style="margin-top:14px">
-            <div class="field"><label class="field-label req">Qtd de frações</label><input type="number" id="mov-qtd"></div>
-            <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="mov-valor"></div>
-            <div class="field"><label class="field-label">Valor total</label><input type="number" step="0.01" id="mov-total" readonly></div>
-          </div>
-          <div class="grid-1" style="margin-top:14px">
-            <div class="field"><label class="field-label">Status</label><input id="mov-status-acerto" value="PENDENTE" readonly></div>
-          </div>
-          <div class="field" style="margin-top:14px"><label class="field-label">Observação</label><textarea id="mov-observacao" placeholder="Detalhes da operação"></textarea></div>
-          <div class="flex" style="margin-top:18px">
-            <button class="btn-primary" id="btn-salvar-mov">Salvar movimentação</button>
-            <button class="btn-secondary" id="btn-limpar-mov">Limpar</button>
-            <button class="btn-danger" id="btn-excluir-mov" style="display:none">Apagar linha</button>
-          </div>
+      <div class="grid-2" style="gap:10px">
+        <div class="field-group">
+          <label class="field-label">Tipo de evento</label>
+          <select id="mov-tipo-evento" class="input">
+            <option value="TRANSFERENCIA">Transferência</option>
+            <option value="DEVOLUCAO_CAIXA">Devolução caixa</option>
+            <option value="VENDA_CAMBISTA">Venda cambista</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Status acerto</label>
+          <select id="mov-status-acerto" class="input">
+            <option value="PENDENTE">Pendente</option>
+            <option value="PAGO">Pago</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:10px">
+        <div class="field-group">
+          <label class="field-label">Qtd total transferida</label>
+          <input id="mov-qtd" type="number" min="0" class="input" placeholder="0">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Valor por fração (R$)</label>
+          <input id="mov-valor" type="number" step="0.01" class="input" placeholder="0,00">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Total (R$)</label>
+        <input id="mov-total" class="input" readonly placeholder="calculado automaticamente">
+      </div>
+
+      <!-- BLOCO DISTRIBUIÇÃO — só aparece em TRANSFERENCIA -->
+      <div id="bloco-distribuicao" style="display:none;margin-top:4px">
+        <div class="sep">
+          <span class="sep-label">
+            Distribuição no destino
+            <span id="mov-distribuicao-status"
+                  style="margin-left:8px;font-size:12px"></span>
+          </span>
+          <div class="sep-line"></div>
         </div>
 
-        <div class="card">
-          <div class="sep" style="margin-top:0"><span class="sep-label">Resumo do concurso selecionado</span><div class="sep-line"></div></div>
-          <div id="mov-resumo-selec" class="empty">
-            <div class="empty-title">Selecione um concurso</div>
-            <div class="empty-sub">O sistema mostra saldo, valores base e últimos eventos da origem escolhida.</div>
+        <div class="grid-2" style="gap:10px">
+          <div class="field-group">
+            <label class="field-label">Qtd vendida (preço normal)</label>
+            <input id="mov-qtd-vendida" type="number" min="0" value="0" class="input">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Qtd devolução caixa (custo)</label>
+            <input id="mov-qtd-dev-caixa" type="number" min="0" value="0" class="input">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Qtd venda cambista</label>
+            <input id="mov-qtd-cambista" type="number" min="0" value="0" class="input">
+            <span id="mov-cambista-total"
+                  style="font-size:12px;color:var(--color-text-secondary);
+                         margin-top:4px;display:block"></span>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Valor fração cambista (R$)</label>
+            <input id="mov-valor-cambista" type="number" step="0.01" min="0"
+                   class="input" placeholder="valor negociado livre">
+          </div>
+          <div class="field-group" style="grid-column:1/-1">
+            <label class="field-label">Qtd retorno origem</label>
+            <input id="mov-qtd-retorno-origem" type="number" min="0" value="0" class="input">
+            <span style="font-size:11px;color:var(--color-text-secondary);
+                         margin-top:4px;display:block">
+              frações físicas que voltam para a loja de origem — sem débito financeiro
+            </span>
           </div>
         </div>
       </div>
 
-      <div class="sep"><span class="sep-label">Histórico operacional</span><div class="sep-line"></div></div>
+      <div class="field-group" style="margin-top:8px">
+        <label class="field-label">Observação</label>
+        <textarea id="mov-observacao" class="input" rows="2"
+                  placeholder="Opcional..."></textarea>
+      </div>
+
+      <div id="st-mov" class="status-bar"></div>
+
+      <div class="flex" style="gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button id="btn-salvar-mov"  class="btn-primary">Salvar</button>
+        <button id="btn-limpar-mov"  class="btn-secondary">Limpar</button>
+        <button id="btn-excluir-mov" class="btn-danger" style="display:none">Excluir</button>
+      </div>
+    </div>
+
+    <!-- TABELA DE MOVIMENTAÇÕES -->
+    <div>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>Carimbo</th>
-              <th>Modalidade</th>
+              <th>Data</th>
               <th>Concurso</th>
               <th>Evento</th>
               <th>Origem</th>
               <th>Destino</th>
               <th>Qtd</th>
-              <th>Valor</th>
-              <th>Total</th>
+              <th>Distribuição</th>
+              <th>Valor acerto</th>
               <th>Status</th>
               <th>Ações</th>
             </tr>
@@ -317,174 +398,120 @@
           <tbody id="tbody-mov"></tbody>
         </table>
       </div>
-    </section>
+    </div>
 
-    <!-- ── FECHAMENTO ────────────────────────────────── -->
-    <section class="tab-panel" id="panel-fechamento">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Fechamento de Caixa · Federal</div>
-          <div class="page-sub">Lançamento de vendas dos funcionários por concurso e dia de fechamento.</div>
+  </div>
+</div>
+
+   <!-- ══════════════════════════════════════════════════════
+     PANEL FECHAMENTO
+     Substitui o conteúdo do div#panel-fechamento
+     ══════════════════════════════════════════════════════ -->
+<div id="panel-fechamento" class="tab-panel">
+  <div class="grid-2" style="gap:20px;align-items:start">
+
+    <!-- FORMULÁRIO -->
+    <div class="card">
+      <div class="card-title">Venda direta</div>
+
+      <div class="grid-2" style="gap:10px">
+        <div class="field-group">
+          <label class="field-label">Loja</label>
+          <select id="fec-loteria" class="input"></select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Funcionário / Sócio</label>
+          <select id="fec-usuario" class="input"></select>
         </div>
       </div>
 
-      <div class="status-bar" id="st-fechamento"></div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="sep" style="margin-top:0"><span class="sep-label">Novo lançamento</span><div class="sep-line"></div></div>
-          <div class="grid-3">
-            <div class="field"><label class="field-label req">Loja</label><select id="fec-loteria"></select></div>
-            <div class="field"><label class="field-label req">Funcionário</label><select id="fec-usuario"></select></div>
-            <div class="field"><label class="field-label req">Data fechamento</label><input type="date" id="fec-data-ref"></div>
-          </div>
-          <div class="grid-4" style="margin-top:14px">
-            <div class="field"><label class="field-label req">Concurso</label><select id="fec-federal"></select></div>
-            <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="fec-valor-fracao"></div>
-            <div class="field"><label class="field-label req">Qtd vendida</label><input type="number" id="fec-qtd-vendida"></div>
-            <div class="field"><label class="field-label req">Total</label><input type="number" step="0.01" id="fec-total"></div>
-          </div>
-          <div class="flex" style="margin-top:18px">
-            <button class="btn-primary" id="btn-salvar-fechamento">Salvar venda do funcionário</button>
-            <button class="btn-secondary" id="btn-limpar-fechamento">Limpar</button>
-          </div>
+      <div class="grid-2" style="gap:10px">
+        <div class="field-group">
+          <label class="field-label">Data</label>
+          <input id="fec-data-ref" type="date" class="input">
         </div>
-        <div class="card">
-          <div class="sep" style="margin-top:0"><span class="sep-label">Conferência por funcionário</span><div class="sep-line"></div></div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Funcionário</th><th>Concurso</th><th>Qtd Vendida</th><th>Total</th></tr></thead>
-              <tbody id="tbody-fechamento-resumo"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── AUDITORIA ─────────────────────────────────── -->
-    <section class="tab-panel" id="panel-auditoria">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Auditoria e Edição Segura</div>
-          <div class="page-sub">Filtre e visualize as movimentações com foco em pendências e acertos.</div>
+        <div class="field-group">
+          <label class="field-label">Canal de venda</label>
+          <select id="fec-canal" class="input">
+            <option value="CAIXA">Fechamento de caixa</option>
+            <option value="WHATSAPP">WhatsApp</option>
+            <option value="BALCAO">Balcão</option>
+          </select>
         </div>
       </div>
 
-      <div class="status-bar" id="st-auditoria"></div>
+      <div class="field-group">
+        <label class="field-label">Concurso</label>
+        <select id="fec-federal" class="input">
+          <option value="">Selecione a loja primeiro...</option>
+        </select>
+      </div>
 
-      <!-- Filter bar — padrão movimentar -->
-      <div class="filter-bar">
-        <div class="filter-group">
-          <div class="filter-select-wrap">
-            <label class="filter-label" for="aud-tipo">Evento</label>
-            <div class="filter-select-inner">
-              <svg class="filter-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-              </svg>
-              <select id="aud-tipo" class="filter-select">
-                <option value="">Todos</option>
-                <option>TRANSFERENCIA</option>
-                <option>DEVOLUCAO_CAIXA</option>
-                <option>VENDA_CAMBISTA</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="filter-select-wrap">
-            <label class="filter-label" for="aud-status">Status</label>
-            <div class="filter-select-inner">
-              <svg class="filter-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <select id="aud-status" class="filter-select">
-                <option value="">Todos</option>
-                <option>PENDENTE</option>
-                <option>PAGO</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="filter-select-wrap" style="max-width:150px">
-            <label class="filter-label" for="aud-concurso">Concurso</label>
-            <div class="filter-select-inner">
-              <svg class="filter-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-              </svg>
-              <input id="aud-concurso" class="filter-input" placeholder="Nº">
-            </div>
-          </div>
-
-          <div class="filter-select-wrap" style="max-width:165px">
-            <label class="filter-label" for="aud-dt-ini">Carimbo de</label>
-            <div class="filter-select-inner">
-              <svg class="filter-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              <input type="date" id="aud-dt-ini" class="filter-select">
-            </div>
-          </div>
-
-          <div class="filter-select-wrap" style="max-width:165px">
-            <label class="filter-label" for="aud-dt-fim">Carimbo até</label>
-            <div class="filter-select-inner">
-              <svg class="filter-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              <input type="date" id="aud-dt-fim" class="filter-select">
-            </div>
-          </div>
+      <div class="grid-2" style="gap:10px">
+        <div class="field-group">
+          <label class="field-label">Qtd vendida</label>
+          <input id="fec-qtd-vendida" type="number" min="0"
+                 class="input" placeholder="0">
         </div>
-
-        <div class="filter-actions">
-          <button class="btn-filter-apply" id="btn-filtrar-auditoria">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-            </svg>
-            Filtrar
-          </button>
-          <button class="btn-filter-apply" id="btn-recarregar-auditoria">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            Atualizar
-          </button>
+        <div class="field-group">
+          <label class="field-label">Valor por fração (R$)</label>
+          <input id="fec-valor-fracao" type="number" step="0.01"
+                 class="input" placeholder="0,00" readonly>
         </div>
       </div>
 
+      <div class="field-group">
+        <label class="field-label">Total (R$)</label>
+        <input id="fec-total" class="input" readonly
+               placeholder="calculado automaticamente">
+      </div>
+
+      <div id="st-fechamento" class="status-bar"></div>
+
+      <div class="flex" style="gap:8px;margin-top:12px">
+        <button id="btn-salvar-fechamento" class="btn-primary">Registrar venda</button>
+        <button id="btn-limpar-fechamento" class="btn-secondary">Limpar</button>
+      </div>
+    </div>
+
+    <!-- RESUMO DE VENDAS -->
+    <div>
+      <div class="flex" style="justify-content:space-between;
+                               align-items:center;margin-bottom:10px">
+        <span id="titulo-fechamento-resumo"
+              class="card-title" style="margin:0">Vendas</span>
+      </div>
       <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>Carimbo</th>
-              <th>Modalidade</th>
+              <th>Funcionário</th>
+              <th>Loja</th>
+              <th>Canal</th>
               <th>Concurso</th>
-              <th>Evento</th>
-              <th>Origem</th>
-              <th>Destino</th>
               <th>Qtd</th>
-              <th>Valor</th>
               <th>Total</th>
-              <th>Status</th>
-              <th>Ações</th>
             </tr>
           </thead>
-          <tbody id="tbody-auditoria"></tbody>
+          <tbody id="tbody-fechamento-resumo"></tbody>
         </table>
       </div>
-    </section>
+    </div>
 
-  </main>
+  </div>
+</div>
+<!-- ══════════════════════════════════════════════════════
+     PANEL CONTROLE (nova aba — adicionar ao HTML)
+     Adiciona um novo tab-btn e este panel após os outros
+     ══════════════════════════════════════════════════════ -->
 
-  <div class="overlay" id="overlay"></div>
-  <div class="overlay" id="overlay-lanc"></div>
+<!-- Botão da aba (adicionar junto com os outros tab-btn): -->
+<!-- <button class="tab-btn" data-tab="controle">Controle</button> -->
+
+<div id="panel-controle" class="tab-panel">
+  <!-- conteúdo preenchido dinamicamente por renderControle() -->
+</div>
+
 
   <!-- ── DRAWER: Lançamento ────────────────────────── -->
   <div class="drawer" id="drawer-lanc">
