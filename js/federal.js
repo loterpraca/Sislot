@@ -228,9 +228,10 @@ async function loadResumo() {
 
 async function loadMovs() {
     // Usa LEFT JOIN (sem !inner) para não perder movimentações
+    // Especifica FK criado_por para evitar ambiguidade com editado_por
     const { data, error } = await sb
         .from('federal_movimentacoes')
-        .select('*, federais(concurso,dt_sorteio,modalidade), usuarios(nome)')
+        .select('*, federais(concurso,dt_sorteio,modalidade), usuarios!federal_movimentacoes_criado_por_fkey(nome)')
         .order('created_at', { ascending: false });
     state.movimentos = error ? [] : (data || []);
     if (error) console.error('loadMovs error:', error);
