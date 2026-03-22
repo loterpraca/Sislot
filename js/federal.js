@@ -1002,34 +1002,36 @@ async function saveMov() {
             editado_em:           state.editingMovId ? new Date().toISOString() : null
         };
 
-        let movId;
-        let oldQtdDevCaixa = 0;
+// Dentro de saveMov(), substitui o trecho que faz insert/update:
 
-        if (state.editingMovId) {
-            const { data: antigo } = await sb
-                .from('federal_movimentacoes')
-                .select('qtd_devolucao_caixa')
-                .eq('id', state.editingMovId)
-                .single();
-            oldQtdDevCaixa = Number(antigo?.qtd_devolucao_caixa || 0);
+let movId;
+let oldQtdDevCaixa = 0;
 
-            const { error } = await sb
-                .from('federal_movimentacoes')
-                .update(payload)
-                .eq('id', state.editingMovId);
-            if (error) throw error;
-            movId = state.editingMovId;
-            showStatus('st-mov', 'Movimentação atualizada.', 'ok');
-        } else {
-            const { data: mov, error } = await sb
-                .from('federal_movimentacoes')
-                .insert(payload)
-                .select('id')
-                .single();
-            if (error) throw error;
-            movId = mov.id;
-            showStatus('st-mov', 'Movimentação registrada.', 'ok');
-        }
+if (state.editingMovId) {
+    const { data: antigo } = await sb
+        .from('federal_movimentacoes')
+        .select('qtd_devolucao_caixa')
+        .eq('id', state.editingMovId)
+        .single();
+    oldQtdDevCaixa = Number(antigo?.qtd_devolucao_caixa || 0);
+
+    const { error } = await sb
+        .from('federal_movimentacoes')
+        .update(payload)
+        .eq('id', state.editingMovId);
+    if (error) throw error;
+    movId = state.editingMovId;
+    showStatus('st-mov', 'Movimentação atualizada.', 'ok');
+} else {
+    const { data: mov, error } = await sb
+        .from('federal_movimentacoes')
+        .insert(payload)
+        .select('id')
+        .single();
+    if (error) throw error;
+    movId = mov.id;   // agora é bigint — funciona igual no JS
+    showStatus('st-mov', 'Movimentação registrada.', 'ok');
+}
 
         // Atualiza qtd_devolvidas da ORIGEM automaticamente
         if (tipoEvento === 'TRANSFERENCIA') {
