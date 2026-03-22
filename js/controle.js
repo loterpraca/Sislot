@@ -341,12 +341,12 @@ function renderSaldo() {
         .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
 
     // KPIs
-    const totalPendente = movs
-        .filter(m => m.status_acerto === 'PENDENTE' && m.valor_acerto > 0)
-        .reduce((a, m) => a + m.valor_acerto, 0);
+   const totalPendente = movs
+    .filter(m => m.status_acerto === 'PENDENTE')
+    .reduce((a, m) => a + m.valor_acerto, 0);
     const totalPago = movs
-        .filter(m => m.status_acerto === 'PAGO' && m.valor_acerto > 0)
-        .reduce((a, m) => a + m.valor_acerto, 0);
+    .filter(m => m.status_acerto === 'PAGO')
+    .reduce((a, m) => a + m.valor_acerto, 0);
     const qtdPendente = cards.filter(p => p.temPendente).length;
     const qtdQuitado  = cards.filter(p => !p.temPendente && p.temPago).length;
 
