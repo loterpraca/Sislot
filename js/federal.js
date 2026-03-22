@@ -1,6 +1,6 @@
 /**
  * SISLOT — Federal
- * Versão final completa
+ * Versão final completa (corrigida)
  */
 
 const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
@@ -21,7 +21,6 @@ const state = {
     movimentos:              [],
     vendasFuncionario:       [],
     detalhesFederais:        [],
-    controle:                [],
     editingCadastroConcurso: null,
     editingMovId:            null,
     lancFederalId:           null
@@ -194,15 +193,13 @@ async function refreshAll() {
         loadResumo(),
         loadMovs(),
         loadVendasFuncionario(),
-        loadDetalhesFederais(),
-        loadControleFinanceiro()
+        loadDetalhesFederais()
     ]);
     renderCadastro();
     renderVisao();
     renderMovimentacoes();
     renderFechamentoResumo();
     renderAuditoria();
-    renderControle();
     fillFederalSelectors();
 }
 
@@ -226,14 +223,17 @@ async function loadResumo() {
         .order('dt_sorteio', { ascending: false })
         .order('concurso',   { ascending: false });
     state.resumo = error ? [] : (data || []);
+    if (error) console.error('loadResumo error:', error);
 }
 
 async function loadMovs() {
-    const { data } = await sb
+    // Usa LEFT JOIN (sem !inner) para não perder movimentações
+    const { data, error } = await sb
         .from('federal_movimentacoes')
-        .select('*, federais!inner(concurso,dt_sorteio,modalidade), usuarios(nome)')
+        .select('*, federais(concurso,dt_sorteio,modalidade), usuarios(nome)')
         .order('created_at', { ascending: false });
-    state.movimentos = data || [];
+    state.movimentos = error ? [] : (data || []);
+    if (error) console.error('loadMovs error:', error);
 }
 
 async function loadVendasFuncionario() {
@@ -251,14 +251,6 @@ async function loadDetalhesFederais() {
         .select('*')
         .order('concurso', { ascending: false });
     state.detalhesFederais = data || [];
-}
-
-async function loadControleFinanceiro() {
-    const { data } = await sb
-        .from('view_saldo_controle')
-        .select('*')
-        .order('mes_ref', { ascending: false });
-    state.controle = data || [];
 }
 
 // ══════════════════════════════════════════════════════════
@@ -355,12 +347,14 @@ function fmtMesRef(mesIso) {
 // ══════════════════════════════════════════════════════════
 function renderKPIs(rows) {
     const totalInicial  = rows.reduce((a,x) => a + Number(x.qtd_inicial              || 0), 0);
-    const totalVendida  = rows.reduce((a,x) => a + Number(x.qtd_vendida_interna_total || 0)
-                                                 + Number(x.qtd_venda_externa         || 0), 0);
-    const totalDev      = rows.reduce((a,x) => a + Number(x.qtd_devolvida_interna     || 0)
-                                                 + Number(x.qtd_dev_caixa_externa      || 0), 0);
+    const totalVendida  = rows.reduce((a,x) => a + Number(x.qtd_vendida_funcionarios || 0)
+                                                 + Number(x.qtd_vendida_whatsapp     || 0)
+                                                 + Number(x.qtd_vendida_balcao       || 0)
+                                                 + Number(x.qtd_venda_externa        || 0), 0);
+    const totalDev      = rows.reduce((a,x) => a + Number(x.qtd_devolvida_interna    || 0)
+                                                 + Number(x.qtd_dev_caixa_externa    || 0), 0);
     const totalEnc      = rows.reduce((a,x) => a + Number(x.qtd_encalhe              || 0), 0);
-    const totalPrem     = rows.reduce((a,x) => a + Number(x.premio_encalhe_total      || 0), 0);
+    const totalPrem     = rows.reduce((a,x) => a + Number(x.premio_encalhe_total     || 0), 0);
     const totalRes      = rows.reduce((a,x) => a + Number(x.resultado                || 0), 0);
 
     $('kpis-visao').innerHTML = [
@@ -566,23 +560,23 @@ function renderMovimentacoes() {
             const federal     = lookupFederal(m.federal_id);
             const isTrans     = m.tipo_evento === 'TRANSFERENCIA';
 
-            // Valor acerto: TRANSFERENCIA usa distribuição real, outros usam valor_fracao
+            // Valores com fallback seguro caso federal não esteja no state
+            const valorFracao = Number(federal?.valor_fracao || m.valor_fracao_ref || m.valor_fracao || 0);
+            const valorCusto  = Number(federal?.valor_custo  || 0);
+
             const total = isTrans
-                ? (Number(m.qtd_vendida         || 0) * Number(federal?.valor_fracao || m.valor_fracao_ref || 0))
-                + (Number(m.qtd_devolucao_caixa || 0) * Number(federal?.valor_custo  || 0))
-                + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista      || 0))
+                ? (Number(m.qtd_vendida         || 0) * valorFracao)
+                + (Number(m.qtd_devolucao_caixa || 0) * valorCusto)
+                + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista || 0))
                 : Number(m.valor_total_real || m.valor_total ||
                     (Number(m.qtd_fracoes||0) * Number(m.valor_fracao_real||m.valor_fracao||0)));
 
             const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
 
-            // Desconto cambista = qtd × (fração normal − valor negociado)
             const desconto = isTrans && m.qtd_venda_cambista > 0 && m.valor_cambista > 0
-                ? Number(m.qtd_venda_cambista) *
-                  (Number(federal?.valor_fracao || m.valor_fracao_ref || 0) - Number(m.valor_cambista))
+                ? Number(m.qtd_venda_cambista) * (valorFracao - Number(m.valor_cambista))
                 : 0;
 
-            // Helper: célula só relevante em TRANSFERENCIA
             const cel = val => isTrans
                 ? `<td class="mono">${Number(val) > 0 ? val : '—'}</td>`
                 : `<td class="mono" style="color:var(--dim)">—</td>`;
@@ -600,7 +594,7 @@ function renderMovimentacoes() {
                 <td class="money ${desconto > 0 ? 'neg' : ''}">${isTrans && desconto > 0 ? fmtMoney(desconto) : '—'}</td>
                 ${cel(m.qtd_retorno_origem)}
                 <td class="money">${fmtMoney(total)}</td>
-                <td><span class="badge ${statusClass}">${m.status_acerto || '—'}</span></td>
+                <td><span class="badge ${statusClass}">${m.status_acerto || 'PENDENTE'}</span></td>
                 <td><div class="flex" style="gap:6px;flex-wrap:nowrap">
                     <button class="btn-amber"
                         style="padding:5px 10px;font-size:11px"
@@ -677,7 +671,7 @@ function renderAuditoria() {
             <td class="mono">${m.qtd_fracoes}</td>
             <td class="money">${fmtMoney(m.valor_fracao_real || m.valor_fracao)}</td>
             <td class="money">${fmtMoney(total)}</td>
-            <td><span class="badge ${statusClass}">${m.status_acerto || '—'}</span></td>
+            <td><span class="badge ${statusClass}">${m.status_acerto || 'PENDENTE'}</span></td>
             <td><div class="flex" style="gap:6px;flex-wrap:nowrap">
                 <button class="btn-amber"     style="padding:5px 10px;font-size:11px"
                     onclick="editMov('${m.id}')">Editar</button>
@@ -692,138 +686,6 @@ function renderAuditoria() {
         <div class="empty-title">Sem registros para os filtros</div>
        </div></td></tr>`;
 }
-
-// ══════════════════════════════════════════════════════════
-// RENDER — CONTROLE (aba Federal — acesso sócio/admin)
-// ══════════════════════════════════════════════════════════
-function renderControle() {
-    const panel = $('panel-controle');
-    if (!panel) return;
-
-    const perfil = state.usuario?.perfil;
-    if (!['ADMIN','SOCIO'].includes(perfil)) {
-        panel.innerHTML = `<div class="empty">
-            <div class="empty-title">Acesso restrito</div>
-            <div class="empty-sub">Disponível apenas para sócios e administradores.</div>
-           </div>`;
-        return;
-    }
-
-    const meses    = [...new Set(state.controle.map(x => x.mes_ref))].sort().reverse();
-    const mesAtual = $('ctrl-mes-ref')?.value || meses[0] || '';
-    const linhas   = state.controle.filter(x =>
-        (!mesAtual || x.mes_ref === mesAtual));
-
-    // Calcula saldo líquido por par
-    const mapaLiquido = {};
-    linhas.forEach(r => {
-        const [a, b] = [r.loja_devedora_id, r.loja_credora_id].sort((x,y) => x-y);
-        const chave  = `${a}_${b}`;
-        if (!mapaLiquido[chave]) mapaLiquido[chave] = { a, b, saldo: 0 };
-        mapaLiquido[chave].saldo +=
-            r.loja_devedora_id === a ? Number(r.saldo_bruto) : -Number(r.saldo_bruto);
-    });
-
-    const liquidos = Object.values(mapaLiquido)
-        .filter(x => Math.abs(x.saldo) > 0.001)
-        .map(x => ({
-            pagador:   x.saldo > 0 ? x.a : x.b,
-            recebedor: x.saldo > 0 ? x.b : x.a,
-            valor:     Math.abs(x.saldo)
-        }))
-        .sort((a,b) => b.valor - a.valor);
-
-    const opsMes = meses.map(m =>
-        `<option value="${m}" ${m === mesAtual ? 'selected' : ''}>${fmtMesRef(m)}</option>`
-    ).join('');
-
-    panel.innerHTML = `
-        <div class="card" style="margin-bottom:16px">
-            <div class="flex" style="gap:12px;align-items:center;flex-wrap:wrap">
-                <label class="field-label">Mês de referência</label>
-                <select id="ctrl-mes-ref" onchange="renderControle()">
-                    <option value="">Todos</option>${opsMes}
-                </select>
-            </div>
-        </div>
-
-        <div class="sep">
-            <span class="sep-label">Saldo líquido — ${fmtMesRef(mesAtual) || 'todos os meses'}</span>
-            <div class="sep-line"></div>
-        </div>
-        <div class="table-wrap">
-            <table class="table">
-                <thead><tr>
-                    <th>Quem paga</th><th>Quem recebe</th>
-                    <th>Saldo líquido</th><th>Ação</th>
-                </tr></thead>
-                <tbody>
-                ${liquidos.length
-                    ? liquidos.map(l => `<tr>
-                        <td><strong>${lookupLoteriaName(l.pagador)}</strong></td>
-                        <td>${lookupLoteriaName(l.recebedor)}</td>
-                        <td class="money">${fmtMoney(l.valor)}</td>
-                        <td><button class="btn-primary"
-                            style="padding:5px 12px;font-size:12px"
-                            onclick="quitarAcerto(${l.pagador},${l.recebedor},'${mesAtual}')">
-                            Marcar pago
-                        </button></td>
-                      </tr>`).join('')
-                    : `<tr><td colspan="4"><div class="empty">
-                        <div class="empty-title">Nenhuma pendência em aberto</div>
-                       </div></td></tr>`
-                }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="sep" style="margin-top:24px">
-            <span class="sep-label">Detalhamento por par de lojas</span>
-            <div class="sep-line"></div>
-        </div>
-        <div class="table-wrap">
-            <table class="table">
-                <thead><tr>
-                    <th>Devedor</th><th>Credor</th>
-                    <th>Movimentações</th><th>Total bruto</th><th>Status</th>
-                </tr></thead>
-                <tbody>
-                ${linhas.length
-                    ? linhas.map(r => `<tr>
-                        <td>${lookupLoteriaName(r.loja_devedora_id)}</td>
-                        <td>${lookupLoteriaName(r.loja_credora_id)}</td>
-                        <td class="mono">${r.qtd_movimentacoes}</td>
-                        <td class="money">${fmtMoney(r.saldo_bruto)}</td>
-                        <td><span class="badge ${r.quitado ? 'b-ok' : 'b-warn'}">
-                            ${r.quitado ? 'PAGO' : 'PENDENTE'}
-                        </span></td>
-                      </tr>`).join('')
-                    : `<tr><td colspan="5" class="muted">Sem movimentações no período</td></tr>`
-                }
-                </tbody>
-            </table>
-        </div>`;
-}
-
-window.quitarAcerto = async function(pagadorId, recebedorId, mesRef) {
-    const nomePag = lookupLoteriaName(pagadorId);
-    const nomeRec = lookupLoteriaName(recebedorId);
-    if (!confirm(`Confirma acerto de ${nomePag} com ${nomeRec} em ${fmtMesRef(mesRef)}?`)) return;
-    try {
-        const { error } = await sb
-            .from('controle_financeiro')
-            .update({ status: 'PAGO', data_acerto: new Date().toISOString().slice(0,10) })
-            .eq('mes_ref', mesRef)
-            .eq('produto', 'FEDERAL')
-            .or([
-                `and(loja_devedora_id.eq.${pagadorId},loja_credora_id.eq.${recebedorId})`,
-                `and(loja_devedora_id.eq.${recebedorId},loja_credora_id.eq.${pagadorId})`
-            ].join(','));
-        if (error) throw error;
-        showStatus('st-mov', `Acerto ${nomePag} × ${nomeRec} marcado como pago.`, 'ok');
-        await refreshAll();
-    } catch(e) { showStatus('st-mov', e.message, 'err'); }
-};
 
 // ══════════════════════════════════════════════════════════
 // CADASTRO — CRUD
@@ -917,10 +779,6 @@ window.deleteCadastro = async function(concurso) {
         if (idsFederais.length) {
             const { error: e1 } = await sb.from('federal_encalhe_premio').delete().in('federal_id', idsFederais);
             if (e1) throw e1;
-            const { error: e2 } = await sb.from('controle_financeiro').delete()
-                .in('movimentacao_id',
-                    (await sb.from('federal_movimentacoes').select('id').in('federal_id', idsFederais)).data?.map(x=>x.id) || []
-                );
             const { error: e3 } = await sb.from('federal_movimentacoes').delete().in('federal_id', idsFederais);
             if (e3) throw e3;
             const { error: e4 } = await sb.from('fechamento_federais').delete().in('federal_id', idsFederais);
@@ -991,9 +849,7 @@ async function saveMov() {
             qtd_venda_cambista:   qtdCambista,
             qtd_retorno_origem:   qtdRetornoOrigem,
             valor_cambista:       valorCambista,
-            status_acerto:        state.editingMovId
-                                    ? ($('mov-status-acerto').value || 'PENDENTE')
-                                    : 'PENDENTE',
+            status_acerto:        'PENDENTE',   // sempre fixo — acerto é gerido pelo módulo de controle
             data_mov:             dataHoje,
             observacao:           $('mov-observacao').value.trim() || null,
             criado_por:           state.usuario?.id || null,
@@ -1002,36 +858,34 @@ async function saveMov() {
             editado_em:           state.editingMovId ? new Date().toISOString() : null
         };
 
-// Dentro de saveMov(), substitui o trecho que faz insert/update:
+        let movId;
+        let oldQtdDevCaixa = 0;
 
-let movId;
-let oldQtdDevCaixa = 0;
+        if (state.editingMovId) {
+            const { data: antigo } = await sb
+                .from('federal_movimentacoes')
+                .select('qtd_devolucao_caixa')
+                .eq('id', state.editingMovId)
+                .single();
+            oldQtdDevCaixa = Number(antigo?.qtd_devolucao_caixa || 0);
 
-if (state.editingMovId) {
-    const { data: antigo } = await sb
-        .from('federal_movimentacoes')
-        .select('qtd_devolucao_caixa')
-        .eq('id', state.editingMovId)
-        .single();
-    oldQtdDevCaixa = Number(antigo?.qtd_devolucao_caixa || 0);
-
-    const { error } = await sb
-        .from('federal_movimentacoes')
-        .update(payload)
-        .eq('id', state.editingMovId);
-    if (error) throw error;
-    movId = state.editingMovId;
-    showStatus('st-mov', 'Movimentação atualizada.', 'ok');
-} else {
-    const { data: mov, error } = await sb
-        .from('federal_movimentacoes')
-        .insert(payload)
-        .select('id')
-        .single();
-    if (error) throw error;
-    movId = mov.id;   // agora é bigint — funciona igual no JS
-    showStatus('st-mov', 'Movimentação registrada.', 'ok');
-}
+            const { error } = await sb
+                .from('federal_movimentacoes')
+                .update(payload)
+                .eq('id', state.editingMovId);
+            if (error) throw error;
+            movId = state.editingMovId;
+            showStatus('st-mov', 'Movimentação atualizada.', 'ok');
+        } else {
+            const { data: mov, error } = await sb
+                .from('federal_movimentacoes')
+                .insert(payload)
+                .select('id')
+                .single();
+            if (error) throw error;
+            movId = mov.id;
+            showStatus('st-mov', 'Movimentação registrada.', 'ok');
+        }
 
         // Atualiza qtd_devolvidas da ORIGEM automaticamente
         if (tipoEvento === 'TRANSFERENCIA') {
@@ -1051,55 +905,11 @@ if (state.editingMovId) {
             }
         }
 
-        // Sincroniza controle_financeiro
-        if (tipoEvento === 'TRANSFERENCIA' && destinoId && origemId !== destinoId) {
-            await sincronizarControleFinanceiro({
-                movId, federal, origemId, destinoId,
-                qtdVendida, qtdDevCaixa, qtdCambista,
-                valorCambista, dataRef: dataHoje
-            });
-        }
-
         state.editingMovId = null;
         clearMov();
         await refreshAll();
 
     } catch(e) { showStatus('st-mov', e.message, 'err'); }
-}
-
-async function sincronizarControleFinanceiro({
-    movId, federal, origemId, destinoId,
-    qtdVendida, qtdDevCaixa, qtdCambista, valorCambista, dataRef
-}) {
-    await sb.from('controle_financeiro').delete().eq('movimentacao_id', movId);
-
-    const valorVenda  = qtdVendida  * Number(federal?.valor_fracao || 0);
-    const valorDev    = qtdDevCaixa * Number(federal?.valor_custo  || 0);
-    const valorCamb   = qtdCambista * (valorCambista || 0);
-    const totalDevido = valorVenda + valorDev + valorCamb;
-
-    if (totalDevido <= 0) return;
-
-    const mesRef = dataRef.slice(0,7) + '-01';
-    const obs    = [
-        qtdVendida  > 0 ? `${qtdVendida}×${fmtMoney(federal?.valor_fracao)} (venda)`    : null,
-        qtdDevCaixa > 0 ? `${qtdDevCaixa}×${fmtMoney(federal?.valor_custo)} (dev.caixa)`: null,
-        qtdCambista > 0 ? `${qtdCambista}×${fmtMoney(valorCambista)} (cambista)`         : null
-    ].filter(Boolean).join(' + ');
-
-    const { error } = await sb.from('controle_financeiro').insert({
-        movimentacao_id:  movId,
-        produto:          'FEDERAL',
-        loja_devedora_id: destinoId,
-        loja_credora_id:  origemId,
-        valor:            totalDevido,
-        mes_ref:          mesRef,
-        status:           'PENDENTE',
-        observacao:       obs,
-        criado_por:       state.usuario?.id || null,
-        updated_at:       new Date().toISOString()
-    });
-    if (error) throw error;
 }
 
 function clearMov() {
@@ -1109,7 +919,6 @@ function clearMov() {
      'mov-observacao'].forEach(id => { const el=$(id); if(el) el.value=''; });
     $('mov-modalidade').value         = 'Federal';
     $('mov-tipo-evento').value        = 'TRANSFERENCIA';
-    $('mov-status-acerto').value      = 'PENDENTE';
     $('mov-qtd-vendida').value        = 0;
     $('mov-qtd-dev-caixa').value      = 0;
     $('mov-qtd-cambista').value       = 0;
@@ -1138,7 +947,6 @@ window.editMov = function(id) {
     $('mov-qtd').value                  = m.qtd_fracoes;
     $('mov-valor').value                = m.valor_fracao_real || m.valor_fracao || '';
     $('mov-total').value                = Number(m.valor_total_real||m.valor_total||0).toFixed(2);
-    $('mov-status-acerto').value        = m.status_acerto || 'PENDENTE';
     $('mov-observacao').value           = m.observacao || '';
     $('mov-qtd-vendida').value          = m.qtd_vendida         || 0;
     $('mov-qtd-dev-caixa').value        = m.qtd_devolucao_caixa || 0;
@@ -1452,7 +1260,7 @@ window.openMovDetail = function(id) {
             <div class="soft-card"><div class="field-label">Quantidade</div>
                 <div class="mono">${m.qtd_fracoes}</div></div>
             <div class="soft-card"><div class="field-label">Status</div>
-                <div>${m.status_acerto || '—'}</div></div>
+                <div>${m.status_acerto || 'PENDENTE'}</div></div>
             <div class="soft-card"><div class="field-label">Valor fração</div>
                 <div class="money">${fmtMoney(m.valor_fracao_real||m.valor_fracao)}</div></div>
             <div class="soft-card"><div class="field-label">Data mov.</div>
@@ -1472,8 +1280,8 @@ window.openMovDetail = function(id) {
             <div style="margin-top:8px">${m.observacao || '—'}</div>
          </div>`,
         [
-            { label: 'Editar', kind: 'amber',     onClick: () => { closeDrawer(); editMov(id); } },
-            { label: 'Fechar', kind: 'secondary',  onClick: closeDrawer }
+            { label: 'Editar', kind: 'amber',    onClick: () => { closeDrawer(); editMov(id); } },
+            { label: 'Fechar', kind: 'secondary', onClick: closeDrawer }
         ]
     );
 };
@@ -1518,7 +1326,6 @@ function syncMovValorByTipo() {
     } else {
         $('mov-valor').value = f.valor_fracao;
     }
-    $('mov-status-acerto').value = 'PENDENTE';
     const qtd   = Number($('mov-qtd').value   || 0);
     const valor = Number($('mov-valor').value || 0);
     $('mov-total').value = qtd && valor ? (qtd*valor).toFixed(2) : '';
