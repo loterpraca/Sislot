@@ -233,12 +233,13 @@ async function loadBolao() {
             boloes(modalidade, concurso)
         `)
         .eq('status', 'ATIVO')
+        .not('loteria_destino', 'is', null)
         .order('created_at', { ascending: false });
 
     state.bolaoMovs = (data || []).map(m => ({
         ...m,
         produto:      'BOLAO',
-        valor_acerto: Number(m.qtd_cotas || 0) * Number(m.valor_unitario || 0),
+        valor_acerto: Number(m.qtd_cotas) * Number(m.valor_unitario || 0),
         mes_ref:      mesDeData(m.created_at?.slice(0,10)),
         ref_label:    `${m.boloes?.modalidade || 'Bolão'} #${m.boloes?.concurso || '—'}`,
     }));
@@ -314,7 +315,7 @@ function renderSaldo() {
     // Agrupa por par de lojas (+ mês se modo "por mês", + produto)
     const pares = {};
     movs.forEach(m => {
-        if (!m.valor_acerto || m.valor_acerto <= 0) return;
+        if (m.valor_acerto === 0) return;
 
         const [a, b] = [m.loteria_origem, m.loteria_destino].map(Number).sort((x,y) => x-y);
         const mes    = periodo === 'mes' ? m.mes_ref : 'total';
@@ -498,7 +499,10 @@ function renderMovimentacoes() {
             <td>${lookupLoja(m.loteria_destino)}</td>
             <td class="mono">${qtd || '—'}</td>
             <td class="money">${fmtMoney(unit)}</td>
-            <td class="money ${m.valor_acerto > 0 ? '' : 'muted'}">${fmtMoney(m.valor_acerto)}</td>
+            <td class="money ${m.valor_acerto < 0 ? 'neg' : ''}">
+                ${fmtMoney(Math.abs(m.valor_acerto))}
+                ${m.valor_acerto < 0 ? '<span style="font-size:10px;color:var(--accent);margin-left:4px">crédito</span>' : ''}
+            </td>
             <td><span class="badge ${statusClass}">${m.status_acerto}</span></td>
             <td class="mono">${fmtDate(m.data_acerto)}</td>
         </tr>`;
