@@ -25,6 +25,57 @@ const QTD_PADRAO = {
     sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 0, via: 0 }
 };
 
+// ── Mapeamento slug → logo (mesmos slugs do banco) ─────────
+const LOJA_LOGOS = {
+    'boulevard':    './icons/boulevard.png',
+    'centro':       './icons/loterpraca.png',
+    'lotobel':      './icons/lotobel.png',
+    'santa-tereza': './icons/santa-tereza.png',
+    'via-brasil':   './icons/via-brasil.png',
+};
+
+// ══════════════════════════════════════════════════════════
+// LOJA-TREE — ciclagem e tema
+// ══════════════════════════════════════════════════════════
+function atualizarHeaderLoja() {
+    const logoImg    = $('logoImg');
+    const svgAll     = $('lojaTreeAll');
+    const headerNome = $('headerNome');
+    const lojaId     = $('filtro-loja').value;
+
+    if (!lojaId) {
+        if (svgAll)     svgAll.style.display  = '';
+        if (logoImg)    logoImg.style.display  = 'none';
+        if (headerNome) headerNome.textContent = 'Todas as Lojas';
+        document.body.setAttribute('data-loja', 'todas');
+        return;
+    }
+
+    const loteria = state.loterias.find(x => String(x.id) === String(lojaId));
+    const slug    = loteria?.slug || '';
+    const logo    = LOJA_LOGOS[slug];
+
+    if (svgAll)     svgAll.style.display  = 'none';
+    if (logoImg) {
+        logoImg.src           = logo || '';
+        logoImg.style.display = logo ? '' : 'none';
+    }
+    if (!logo && svgAll) svgAll.style.display = ''; // fallback se não tiver logo
+    if (headerNome) headerNome.textContent = loteria?.nome || 'Loja';
+    document.body.setAttribute('data-loja', slug || 'todas');
+}
+
+function ciclarLojaTree() {
+    const lojaId  = $('filtro-loja').value;
+    const options = [...$('filtro-loja').options].map(o => o.value); // ['', '1', '2', ...]
+    const idx     = options.indexOf(lojaId);
+    const proximo = options[(idx + 1) % options.length];
+
+    $('filtro-loja').value = proximo;
+    atualizarHeaderLoja();
+    renderVisao();
+}
+
 // ── Relógio ────────────────────────────────────────────────
 function setClock() {
     const el = $('relogio');
@@ -95,6 +146,7 @@ function fillStaticSelects() {
     const lotLabel = x => `${x.id} • ${x.nome}`;
     ['filtro-loja', 'mov-loteria-origem', 'mov-loteria-destino', 'fec-loteria'].forEach(id => fillSelect(id, state.loterias, 'Todas / selecione...', 'id', lotLabel));
     fillSelect('fec-usuario', state.usuarios, 'Selecione...', 'id', x => x.nome);
+    atualizarHeaderLoja(); // sincroniza tema após lojas carregadas
 }
 
 async function refreshAll() {
@@ -770,14 +822,23 @@ function bindEvents() {
     $('btn-cancel-lanc').addEventListener('click', closeLancamento);
     $('btn-save-lanc').addEventListener('click', saveLancamento);
 
+    // Loja-tree — cicla e troca tema
+    const lojaTree = $('lojaTreeWrap');
+    if (lojaTree) lojaTree.addEventListener('click', ciclarLojaTree);
+
     // Exibição — filtros
-    // NOTA: btn-filtrar-visao foi removido do layout (unified no Atualizar).
-    // Mantemos apenas Limpar e Atualizar.
     $('btn-limpar-visao').addEventListener('click', () => {
         ['filtro-concurso', 'filtro-loja', 'filtro-dt-ini', 'filtro-dt-fim'].forEach(id => $(id).value = '');
+        atualizarHeaderLoja();
         renderVisao();
     });
     $('btn-recarregar-visao').addEventListener('click', refreshAll);
+
+    // Sincroniza tema quando filtro-loja muda manualmente pelo select
+    $('filtro-loja').addEventListener('change', () => {
+        atualizarHeaderLoja();
+        renderVisao();
+    });
 
     // Cadastro
     $('btn-cancelar-cadastro').addEventListener('click', setCadastroDefaults);
