@@ -1,31 +1,43 @@
 /**
  * SISLOT — Controle Financeiro
- * Acertos entre lojas por produto e mês
+ * Lê direto de federal_movimentacoes e movimentacoes_cotas
+ * sem tabela intermediária — status_acerto em cada tabela
  */
 
 const sb  = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
 const $   = id => document.getElementById(id);
-const fmtMoney = v => 'R$ ' + (Number(v || 0).toFixed(2)).replace('.', ',');
-const fmtDate  = v => { if (!v) return '—'; const [y,m,d] = String(v).split('-'); return `${d}/${m}/${y}`; };
-const fmtMesRef = mesIso => {
+const fmtMoney = v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');
+const fmtDate  = v => {
+    if (!v) return '—';
+    const [y,m,d] = String(v).split('-');
+    return `${d}/${m}/${y}`;
+};
+const fmtMes = mesIso => {
     if (!mesIso) return '—';
     const [y, m] = mesIso.split('-');
-    const nomes  = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    return `${nomes[parseInt(m,10)-1]}/${y}`;
+    const n = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return `${n[parseInt(m,10)-1]}/${y}`;
 };
+const mesDeData = iso => iso ? iso.slice(0,7) + '-01' : '';
 
-// Cores por produto
-const PRODUTO_COR = {
-    FEDERAL:    '#38bdf8',
-    BOLAO:      '#a78bfa',
-    RASPADINHA: '#fb7185',
-    TELESENA:   '#f5a623',
-};
+// ── Lojas ────────────────────────────────────────────────
+const LOJAS = [
+    { slug:'boulevard',    nome:'Boulevard',    logo:'./icons/boulevard.png'    },
+    { slug:'centro',       nome:'Centro',       logo:'./icons/loterpraca.png'   },
+    { slug:'lotobel',      nome:'Lotobel',      logo:'./icons/lotobel.png'      },
+    { slug:'santa-tereza', nome:'Santa Tereza', logo:'./icons/santa-tereza.png' },
+    { slug:'via-brasil',   nome:'Via Brasil',   logo:'./icons/via-brasil.png'   },
+];
 
+const PRODUTO_COR = { FEDERAL:'#38bdf8', BOLAO:'#a78bfa' };
+
+// ── Estado ───────────────────────────────────────────────
 const state = {
-    usuario:  null,
-    loterias: [],
-    controle: [],  // view_saldo_controle
+    usuario:       null,
+    loterias:      [],
+    fedMovs:       [],   // federal_movimentacoes (TRANSFERENCIA entre lojas)
+    bolaoMovs:     [],   // movimentacoes_cotas (ATIVO)
+    lojaFiltro:    '',   // id da loja filtrada pela loja-tree
 };
 
 // ══════════════════════════════════════════════════════════
@@ -48,24 +60,71 @@ function switchTab(tab) {
         b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.tab-panel').forEach(p =>
         p.classList.toggle('active', p.id === `panel-${tab}`));
+    if (tab === 'movimentacoes') renderMovimentacoes();
 }
 document.querySelectorAll('.tab-btn').forEach(btn =>
     btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
 // ══════════════════════════════════════════════════════════
+// LOJA-TREE — ciclagem e tema
+// ══════════════════════════════════════════════════════════
+function atualizarHeaderLoja() {
+    const logoImg    = $('logoImg');
+    const svgAll     = $('lojaTreeAll');
+    const headerNome = $('headerNome');
+    const lojaId     = state.lojaFiltro;
+
+    if (!lojaId) {
+        if (svgAll)     svgAll.style.display  = '';
+        if (logoImg)    logoImg.style.display  = 'none';
+        if (headerNome) headerNome.textContent = 'Todas as Lojas';
+        document.body.setAttribute('data-loja', 'todas');
+        return;
+    }
+
+    const loteria  = state.loterias.find(x => String(x.id) === String(lojaId));
+    const slug     = loteria?.slug || '';
+    const lojaInfo = LOJAS.find(l => l.slug === slug);
+
+    if (lojaInfo) {
+        if (svgAll)  svgAll.style.display  = 'none';
+        if (logoImg) { logoImg.src = lojaInfo.logo; logoImg.style.display = ''; }
+        if (headerNome) headerNome.textContent = lojaInfo.nome;
+        document.body.setAttribute('data-loja', slug);
+    }
+}
+
+function ciclarLojaTree() {
+    // Lojas presentes nas movimentações
+    const idsPresentes = new Set([
+        ...state.fedMovs.map(m => String(m.loteria_origem)),
+        ...state.fedMovs.map(m => String(m.loteria_destino)).filter(Boolean),
+        ...state.bolaoMovs.map(m => String(m.loteria_origem)),
+        ...state.bolaoMovs.map(m => String(m.loteria_destino)).filter(Boolean),
+    ]);
+    const lojasPres = state.loterias.filter(l => idsPresentes.has(String(l.id)));
+    const ciclo     = [null, ...lojasPres];
+    const idxAtual  = ciclo.findIndex(l =>
+        l === null ? !state.lojaFiltro : String(l.id) === state.lojaFiltro
+    );
+    const proximo    = ciclo[(idxAtual + 1) % ciclo.length];
+    state.lojaFiltro = proximo ? String(proximo.id) : '';
+
+    atualizarHeaderLoja();
+    renderSaldo();
+    renderMovimentacoes();
+}
+
+// ══════════════════════════════════════════════════════════
 // BOOTSTRAP
 // ══════════════════════════════════════════════════════════
 async function bootstrap() {
-    // Verifica sessão
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { location.href = './login.html'; return; }
 
     const { data: user } = await sb
-        .from('usuarios')
-        .select('id,nome,perfil,ativo')
-        .eq('auth_user_id', session.user.id)
-        .eq('ativo', true)
-        .maybeSingle();
+        .from('usuarios').select('id,nome,perfil,ativo')
+        .eq('auth_user_id', session.user.id).eq('ativo', true).maybeSingle();
 
     if (!user || !['ADMIN','SOCIO'].includes(user.perfil)) {
         document.body.innerHTML = `
@@ -84,107 +143,249 @@ async function bootstrap() {
     }
     state.usuario = user;
 
-    // Carrega loterias
     const { data: lojas } = await sb
-        .from('loterias')
-        .select('id,nome,slug')
-        .eq('ativo', true)
-        .order('nome');
+        .from('loterias').select('id,nome,slug').eq('ativo',true).order('nome');
     state.loterias = lojas || [];
 
-    // Preenche selects de loja no histórico
-    fillSelect('hist-loja', state.loterias, 'Todas as lojas');
+    // Loja-tree
+    const lojaTree = $('lojaTreeWrap');
+    if (lojaTree) lojaTree.addEventListener('click', ciclarLojaTree);
+
+    // Filtros da aba Saldo
+    ['saldo-periodo','saldo-mes','saldo-produto','saldo-status'].forEach(id => {
+        $(id)?.addEventListener('change', () => {
+            if (id === 'saldo-periodo') {
+                const wrap = $('wrap-saldo-mes');
+                if (wrap) wrap.style.display = $(id).value === 'total' ? 'none' : '';
+            }
+            renderSaldo();
+        });
+    });
+
+    // Botão pagar tudo
+    $('btn-pagar-tudo')?.addEventListener('click', pagarTudo);
+
+    // Filtros da aba Movimentações
+    ['mov-produto','mov-origem','mov-destino','mov-mes','mov-status'].forEach(id => {
+        $(id)?.addEventListener('change', renderMovimentacoes);
+    });
+    $('btn-limpar-mov')?.addEventListener('click', () => {
+        ['mov-produto','mov-origem','mov-destino','mov-mes','mov-status']
+            .forEach(id => { const el=$(id); if(el) el.value=''; });
+        renderMovimentacoes();
+    });
 
     await refreshAll();
-}
-
-function fillSelect(id, items, placeholder = 'Selecione...') {
-    const sel = $(id); if (!sel) return;
-    sel.innerHTML = `<option value="">${placeholder}</option>`;
-    items.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value       = item.id;
-        opt.textContent = item.nome;
-        sel.appendChild(opt);
-    });
 }
 
 // ══════════════════════════════════════════════════════════
 // LOAD
 // ══════════════════════════════════════════════════════════
 async function refreshAll() {
-    const { data, error } = await sb
-        .from('view_saldo_controle')
-        .select('*')
-        .order('mes_ref', { ascending: false });
-    state.controle = error ? [] : (data || []);
-
+    await Promise.all([loadFederal(), loadBolao()]);
     preencherSelectsMes();
-    renderGeral();
-    renderModalidade('FEDERAL');
-    renderHistorico();
+    preencherSelectsLojas();
+    renderSaldo();
+    renderMovimentacoes();
+}
+
+async function loadFederal() {
+    // Só TRANSFERENCIA entre lojas distintas gera acerto financeiro
+    const { data } = await sb
+        .from('federal_movimentacoes')
+        .select(`
+            id, tipo_evento, loteria_origem, loteria_destino,
+            qtd_fracoes, valor_fracao, valor_fracao_ref, valor_custo,
+            qtd_vendida, qtd_devolucao_caixa, qtd_venda_cambista,
+            valor_cambista, qtd_retorno_origem,
+            status_acerto, data_acerto, data_mov, created_at,
+            federais!inner(concurso, dt_sorteio, valor_fracao, valor_custo)
+        `)
+        .eq('tipo_evento', 'TRANSFERENCIA')
+        .not('loteria_destino', 'is', null)
+        .order('created_at', { ascending: false });
+
+    state.fedMovs = (data || []).map(m => ({
+        ...m,
+        produto:      'FEDERAL',
+        // Valor real do acerto = distribuição × valores corretos
+        valor_acerto: calcValorAcertoFederal(m),
+        mes_ref:      mesDeData(m.data_mov || m.created_at?.slice(0,10)),
+        ref_label:    `Concurso ${m.federais?.concurso || '—'}`,
+    }));
+}
+
+function calcValorAcertoFederal(m) {
+    const fracao = Number(m.federais?.valor_fracao || m.valor_fracao || 0);
+    const custo  = Number(m.federais?.valor_custo  || m.valor_custo  || 0);
+    return (Number(m.qtd_vendida         || 0) * fracao)
+         + (Number(m.qtd_devolucao_caixa || 0) * custo)
+         + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista || 0));
+}
+
+async function loadBolao() {
+    const { data } = await sb
+        .from('movimentacoes_cotas')
+        .select(`
+            id, bolao_id, loteria_origem, loteria_destino,
+            qtd_cotas, valor_unitario,
+            status_acerto, data_acerto, created_at,
+            boloes(modalidade, concurso)
+        `)
+        .eq('status', 'ATIVO')
+        .order('created_at', { ascending: false });
+
+    state.bolaoMovs = (data || []).map(m => ({
+        ...m,
+        produto:      'BOLAO',
+        valor_acerto: Number(m.qtd_cotas || 0) * Number(m.valor_unitario || 0),
+        mes_ref:      mesDeData(m.created_at?.slice(0,10)),
+        ref_label:    `${m.boloes?.modalidade || 'Bolão'} #${m.boloes?.concurso || '—'}`,
+    }));
+}
+
+// ══════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════
+function lookupLoja(id) {
+    return state.loterias.find(x => String(x.id) === String(id))?.nome || `Loja ${id}`;
+}
+
+function todasMovs() {
+    return [...state.fedMovs, ...state.bolaoMovs];
 }
 
 function preencherSelectsMes() {
-    const meses = [...new Set(state.controle.map(x => x.mes_ref))].sort().reverse();
-    const sels  = ['geral-mes','fed-mes','bol-mes','prod-mes'];
+    const meses = [...new Set(todasMovs().map(m => m.mes_ref).filter(Boolean))].sort().reverse();
+    const sels  = ['saldo-mes','mov-mes'];
     sels.forEach(id => {
         const sel = $(id); if (!sel) return;
         const cur = sel.value;
-        sel.innerHTML = `<option value="">Todos os meses</option>`;
+        sel.innerHTML = `<option value="">${id === 'saldo-mes' ? 'Todos os meses' : 'Todos'}</option>`;
         meses.forEach(m => {
             const opt = document.createElement('option');
-            opt.value       = m;
-            opt.textContent = fmtMesRef(m);
-            if (m === cur || (!cur && m === meses[0])) opt.selected = true;
+            opt.value = m; opt.textContent = fmtMes(m);
+            if (m === cur || (!cur && m === meses[0] && id === 'saldo-mes')) opt.selected = true;
             sel.appendChild(opt);
         });
     });
 }
 
-function lookupLoja(id) {
-    return state.loterias.find(x => String(x.id) === String(id))?.nome || `Loja ${id}`;
+function preencherSelectsLojas() {
+    const ids = new Set(todasMovs().flatMap(m =>
+        [String(m.loteria_origem), String(m.loteria_destino)].filter(Boolean)
+    ));
+    const lojas = state.loterias.filter(l => ids.has(String(l.id)));
+    ['mov-origem','mov-destino'].forEach(id => {
+        const sel = $(id); if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = `<option value="">Todas</option>`;
+        lojas.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.id; opt.textContent = l.nome;
+            if (String(l.id) === cur) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    });
 }
 
 // ══════════════════════════════════════════════════════════
-// HELPER: agrupa linhas em pares com saldo líquido
+// RENDER — ABA SALDO
 // ══════════════════════════════════════════════════════════
-function calcularPares(linhas) {
-    const pares = {};
+function renderSaldo() {
+    const periodo = $('saldo-periodo')?.value || 'mes';
+    const mesRef  = $('saldo-mes')?.value     || '';
+    const produto = $('saldo-produto')?.value || '';
+    const status  = $('saldo-status')?.value  || 'PENDENTE';
 
-    linhas.forEach(r => {
-        const [a, b] = [r.loja_devedora_id, r.loja_credora_id].sort((x,y) => x - y);
-        const chave  = `${a}_${b}_${r.produto}`;
-
-        if (!pares[chave]) pares[chave] = {
-            a, b,
-            produto:     r.produto,
-            saldo:       0,
-            movs:        0,
-            temPendente: false,
-            temPago:     false,
-            mes_ref:     r.mes_ref,
-        };
-
-        pares[chave].saldo += r.loja_devedora_id === a
-            ? Number(r.saldo_bruto)
-            : -Number(r.saldo_bruto);
-        pares[chave].movs        += Number(r.qtd_movimentacoes || 0);
-        if (!r.quitado) pares[chave].temPendente = true;
-        else            pares[chave].temPago     = true;
+    // Filtra movimentações
+    let movs = todasMovs().filter(m => {
+        if (produto && m.produto !== produto) return false;
+        if (status  && m.status_acerto !== status) return false;
+        if (mesRef  && m.mes_ref !== mesRef) return false;
+        // Filtro de loja-tree — aparece se é origem ou destino da loja selecionada
+        if (state.lojaFiltro) {
+            const id = String(state.lojaFiltro);
+            if (String(m.loteria_origem) !== id && String(m.loteria_destino) !== id) return false;
+        }
+        return true;
     });
 
-    return Object.values(pares)
-        .filter(p => Math.abs(p.saldo) > 0.001 || p.temPago)
+    // Agrupa por par de lojas (+ mês se modo "por mês", + produto)
+    const pares = {};
+    movs.forEach(m => {
+        if (!m.valor_acerto || m.valor_acerto <= 0) return;
+
+        const [a, b] = [m.loteria_origem, m.loteria_destino].map(Number).sort((x,y) => x-y);
+        const mes    = periodo === 'mes' ? m.mes_ref : 'total';
+        const chave  = `${a}_${b}_${mes}_${m.produto}`;
+
+        if (!pares[chave]) pares[chave] = {
+            a, b, mes, produto: m.produto,
+            saldo:       0,
+            qtdMovs:     0,
+            temPendente: false,
+            temPago:     false,
+        };
+
+        // Se origem === a: a enviou para b → b deve para a → saldo positivo
+        pares[chave].saldo   += m.loteria_origem === a ? m.valor_acerto : -m.valor_acerto;
+        pares[chave].qtdMovs += 1;
+        if (m.status_acerto === 'PENDENTE') pares[chave].temPendente = true;
+        else                                pares[chave].temPago     = true;
+    });
+
+    const cards = Object.values(pares)
+        .filter(p => Math.abs(p.saldo) > 0.001)
         .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+
+    // KPIs
+    const totalPendente = movs
+        .filter(m => m.status_acerto === 'PENDENTE' && m.valor_acerto > 0)
+        .reduce((a, m) => a + m.valor_acerto, 0);
+    const totalPago = movs
+        .filter(m => m.status_acerto === 'PAGO' && m.valor_acerto > 0)
+        .reduce((a, m) => a + m.valor_acerto, 0);
+    const qtdPendente = cards.filter(p => p.temPendente).length;
+    const qtdQuitado  = cards.filter(p => !p.temPendente && p.temPago).length;
+
+    $('kpis-saldo').innerHTML = [
+        { l:'Total pendente', v:fmtMoney(totalPendente), s:`${qtdPendente} relação(ões)`,    cor:'var(--amber)' },
+        { l:'Total quitado',  v:fmtMoney(totalPago),     s:`${qtdQuitado} relação(ões)`,     cor:'var(--accent)' },
+        { l:'Pares',          v:cards.length,             s:'com movimentação',               cor:'var(--sky)' },
+        { l:'Referência',     v:mesRef ? fmtMes(mesRef) : periodo === 'total' ? 'Acumulado' : 'Todos', s:'período', cor:'var(--purple)' },
+    ].map(({ l, v, s, cor }) => `
+        <div class="kpi" style="--kpi-color:${cor}">
+            <div class="kpi-label">${l}</div>
+            <div class="kpi-value">${v}</div>
+            <div class="kpi-sub">${s}</div>
+        </div>`
+    ).join('');
+
+    // Label do sep
+    const sepLabel = $('sep-label-saldo');
+    if (sepLabel) {
+        sepLabel.textContent = periodo === 'total'
+            ? 'Saldo total acumulado por par de lojas'
+            : mesRef
+                ? `Saldo de ${fmtMes(mesRef)} por par de lojas`
+                : 'Saldo por par de lojas — todos os meses';
+    }
+    const sepCount = $('saldo-count');
+    if (sepCount) sepCount.textContent = cards.length;
+
+    // Cards
+    $('cards-saldo').innerHTML = cards.length
+        ? cards.map(p => buildCard(p, mesRef)).join('')
+        : `<div class="empty">
+            <div class="empty-title">Nenhum registro encontrado</div>
+            <div class="empty-sub">Ajuste os filtros ou aguarde novas movimentações.</div>
+           </div>`;
 }
 
-// ══════════════════════════════════════════════════════════
-// HELPER: monta um card de relacionamento
-// ══════════════════════════════════════════════════════════
-function buildRelCard(p, mesRef, breakdown = null) {
-    const pagador   = p.saldo > 0 ? p.a : p.b;
-    const recebedor = p.saldo > 0 ? p.b : p.a;
+function buildCard(p, mesRef) {
+    const pagador   = p.saldo > 0 ? p.b : p.a;   // quem deve pagar (devedor)
+    const recebedor = p.saldo > 0 ? p.a : p.b;   // quem vai receber (credor)
     const valor     = Math.abs(p.saldo);
     const quitado   = !p.temPendente && p.temPago;
     const parcial   = p.temPendente && p.temPago;
@@ -195,49 +396,34 @@ function buildRelCard(p, mesRef, breakdown = null) {
             ? `<span class="badge b-info">PARCIAL</span>`
             : `<span class="badge b-warn">PENDENTE</span>`;
 
+    const corCard = quitado ? 'var(--accent)' : parcial ? 'var(--sky)' : 'var(--amber)';
+
+    const corProduto = PRODUTO_COR[p.produto] || 'var(--muted)';
+    const produtoBadge = `<div class="rel-card-produto"
+        style="background:${corProduto}18;color:${corProduto};border:1px solid ${corProduto}40">
+        ${p.produto}
+    </div>`;
+
+    const mesLabel = p.mes !== 'total' ? `· ${fmtMes(p.mes)}` : '· Acumulado';
+
     const btnAction = !quitado
         ? `<button class="btn-primary"
-                onclick="quitarPar(${pagador},${recebedor},'${mesRef || p.mes_ref}',
-                                   '${p.produto || ''}')">
+               onclick="pagarPar(${pagador},${recebedor},'${p.mes}','${p.produto}')">
                Marcar como pago
            </button>`
         : `<button class="btn-secondary" disabled>Quitado ✓</button>`;
 
-    // Breakdown por produto (só no resumo geral)
-    const breakdownHtml = breakdown && breakdown.length > 1 ? `
-        <div class="rel-card-breakdown">
-            ${breakdown.map(b => `
-                <div class="rel-breakdown-row">
-                    <span class="rel-breakdown-label">
-                        <span class="produto-dot"
-                              style="background:${PRODUTO_COR[b.produto]||'var(--muted)'}"></span>
-                        ${b.produto}
-                    </span>
-                    <span class="rel-breakdown-valor" style="color:${PRODUTO_COR[b.produto]||'var(--muted)'}">
-                        ${fmtMoney(Math.abs(b.saldo))}
-                    </span>
-                </div>
-            `).join('')}
-        </div>` : '';
-
-    const corCard = quitado ? 'var(--accent)' : parcial ? 'var(--sky)' : 'var(--amber)';
-
     return `
-    <div class="rel-card ${quitado ? 'pago' : parcial ? 'parcial' : 'pendente'}"
-         style="--card-color:${corCard}">
-
+    <div class="rel-card" style="--card-color:${corCard}">
         <div class="rel-card-head">
             <div>
                 <div class="rel-card-lojas">
                     ${lookupLoja(pagador)}
-                    <span class="seta">→</span>
+                    <span class="rel-card-seta">→</span>
                     ${lookupLoja(recebedor)}
                 </div>
-                <div class="rel-card-meta">
-                    ${p.movs} movimentação(ões)
-                    ${mesRef ? '· ' + fmtMesRef(mesRef) : ''}
-                    ${p.produto ? `· <span style="color:${PRODUTO_COR[p.produto]||'var(--muted)'}">${p.produto}</span>` : ''}
-                </div>
+                <div class="rel-card-meta">${p.qtdMovs} movimentação(ões) ${mesLabel}</div>
+                ${produtoBadge}
             </div>
             ${statusBadge}
         </div>
@@ -247,331 +433,203 @@ function buildRelCard(p, mesRef, breakdown = null) {
                 <div class="rel-card-valor-label">
                     ${lookupLoja(pagador)} paga ${lookupLoja(recebedor)}
                 </div>
-                <div class="rel-card-valor-num"
-                     style="color:${quitado ? 'var(--accent)' : 'var(--amber)'}">
+                <div class="rel-card-valor-num" style="color:${quitado ? 'var(--accent)' : 'var(--amber)'}">
                     ${fmtMoney(valor)}
                 </div>
             </div>
-        </div>
-
-        ${breakdownHtml}
-
-        <div class="rel-card-foot">
-            ${btnAction}
+            <div class="rel-card-foot">${btnAction}</div>
         </div>
     </div>`;
 }
 
 // ══════════════════════════════════════════════════════════
-// RENDER — RESUMO GERAL
-// agrupa todos os produtos por par de lojas no mês
+// RENDER — ABA MOVIMENTAÇÕES
 // ══════════════════════════════════════════════════════════
-function renderGeral() {
-    const mesAtual = $('geral-mes')?.value || '';
-    const linhas   = state.controle.filter(x => !mesAtual || x.mes_ref === mesAtual);
+function renderMovimentacoes() {
+    const produto  = $('mov-produto')?.value  || '';
+    const origemId = $('mov-origem')?.value   || '';
+    const destId   = $('mov-destino')?.value  || '';
+    const mesRef   = $('mov-mes')?.value      || '';
+    const status   = $('mov-status')?.value   || '';
 
-    // Agrupa por par de lojas ignorando produto (soma tudo)
-    const paresGeral = {};
-    linhas.forEach(r => {
-        const [a, b] = [r.loja_devedora_id, r.loja_credora_id].sort((x,y) => x - y);
-        const chave  = `${a}_${b}`;
-
-        if (!paresGeral[chave]) paresGeral[chave] = {
-            a, b, saldo: 0, movs: 0,
-            temPendente: false, temPago: false,
-            produtos: [], mes_ref: r.mes_ref,
-        };
-
-        const saldoDir = r.loja_devedora_id === a
-            ? Number(r.saldo_bruto)
-            : -Number(r.saldo_bruto);
-
-        paresGeral[chave].saldo += saldoDir;
-        paresGeral[chave].movs  += Number(r.qtd_movimentacoes || 0);
-        if (!r.quitado) paresGeral[chave].temPendente = true;
-        else            paresGeral[chave].temPago     = true;
-
-        // Guarda breakdown por produto
-        const existing = paresGeral[chave].produtos.find(p => p.produto === r.produto);
-        if (existing) {
-            existing.saldo += saldoDir;
-        } else {
-            paresGeral[chave].produtos.push({ produto: r.produto, saldo: saldoDir });
+    let movs = todasMovs().filter(m => {
+        if (produto  && m.produto         !== produto)          return false;
+        if (origemId && String(m.loteria_origem) !== String(origemId)) return false;
+        if (destId   && String(m.loteria_destino) !== String(destId))  return false;
+        if (mesRef   && m.mes_ref         !== mesRef)           return false;
+        if (status   && m.status_acerto   !== status)           return false;
+        if (state.lojaFiltro) {
+            const id = String(state.lojaFiltro);
+            if (String(m.loteria_origem) !== id && String(m.loteria_destino) !== id) return false;
         }
+        return true;
     });
 
-    const cards = Object.values(paresGeral)
-        .filter(p => Math.abs(p.saldo) > 0.001 || p.temPago)
-        .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+    const totalPendente = movs.filter(m => m.status_acerto === 'PENDENTE')
+        .reduce((a, m) => a + m.valor_acerto, 0);
+    const totalPago     = movs.filter(m => m.status_acerto === 'PAGO')
+        .reduce((a, m) => a + m.valor_acerto, 0);
 
-    // KPIs
-    const totalPendente = cards
-        .filter(p => p.temPendente)
-        .reduce((a, p) => a + Math.abs(p.saldo), 0);
-    const totalPago = linhas
-        .filter(r => r.quitado)
-        .reduce((a, r) => a + Number(r.saldo_bruto || 0), 0);
-    const qtdPendente = cards.filter(p => p.temPendente).length;
-    const qtdQuitado  = cards.filter(p => !p.temPendente && p.temPago).length;
-
-    $('kpis-geral').innerHTML = [
-        { l: 'Pendente',    v: fmtMoney(totalPendente), s: `${qtdPendente} relação(ões)`,      cor: 'var(--amber)' },
-        { l: 'Quitado',     v: fmtMoney(totalPago),     s: `${qtdQuitado} relação(ões)`,       cor: 'var(--accent)' },
-        { l: 'Pares ativos',v: cards.length,             s: 'lojas com movimentação',           cor: 'var(--sky)' },
-        { l: 'Mês ref.',    v: fmtMesRef(mesAtual) || 'Todos', s: 'período selecionado',        cor: 'var(--purple)' },
-    ].map(({ l, v, s, cor }) => `
-        <div class="kpi" style="--kpi-color:${cor}">
-            <div class="kpi-label">${l}</div>
-            <div class="kpi-value">${v}</div>
-            <div class="kpi-sub">${s}</div>
-        </div>`
-    ).join('');
-
-    // Info pill
-    const pendentes = cards.filter(p => p.temPendente).length;
-    $('geral-resumo-pill').innerHTML = pendentes > 0
-        ? `<span>${pendentes} par(es) com pendência</span>
-           <span style="color:var(--amber);font-weight:600">${fmtMoney(totalPendente)} a acertar</span>`
-        : `<span style="color:var(--accent)">Todas as pendências quitadas ✓</span>`;
-
-    // Cards
-    $('cards-geral').innerHTML = cards.length
-        ? cards.map(p => buildRelCard(p, mesAtual, p.produtos)).join('')
-        : `<div class="empty-produto">
-            <div class="empty-title">Nenhuma pendência encontrada</div>
-            <div class="empty-sub">Não há movimentações entre lojas no período selecionado.</div>
-           </div>`;
-}
-
-// ══════════════════════════════════════════════════════════
-// RENDER — POR MODALIDADE (Federal, Bolão, etc.)
-// ══════════════════════════════════════════════════════════
-function renderModalidade(produto) {
-    const mesSelId = produto === 'FEDERAL'    ? 'fed-mes'
-                   : produto === 'BOLAO'      ? 'bol-mes'
-                   : 'prod-mes';
-    const cardsId  = `cards-${produto === 'FEDERAL' ? 'federal' : produto === 'BOLAO' ? 'boloes' : 'produtos'}`;
-    const emptyId  = produto === 'BOLAO'      ? 'boloes-empty'
-                   : produto !== 'FEDERAL'    ? 'produtos-empty'
-                   : null;
-    const tbodyId  = produto === 'FEDERAL'    ? 'tbody-federal' : null;
-
-    const mesAtual = $(mesSelId)?.value || '';
-    const linhas   = state.controle.filter(x =>
-        x.produto === produto &&
-        (!mesAtual || x.mes_ref === mesAtual)
-    );
-
-    const pares = calcularPares(linhas);
-
-    // Controle de empty state para módulos futuros
-    if (emptyId) {
-        const emptyEl  = $(emptyId);
-        const cardsEl  = $(cardsId);
-        if (emptyEl && cardsEl) {
-            emptyEl.style.display  = pares.length ? 'none' : '';
-            cardsEl.style.display  = pares.length ? '' : 'none';
-        }
-    }
-
-    const cardsEl = $(cardsId);
-    if (cardsEl) {
-        cardsEl.innerHTML = pares.length
-            ? pares.map(p => buildRelCard(p, mesAtual)).join('')
-            : '';
-    }
-
-    // Tabela detalhada (só Federal por enquanto)
-    if (tbodyId) {
-        const tbody = $(tbodyId);
-        if (tbody) {
-            tbody.innerHTML = linhas.length
-                ? linhas.map(r => `<tr>
-                    <td class="mono">${fmtMesRef(r.mes_ref)}</td>
-                    <td>${lookupLoja(r.loja_devedora_id)}</td>
-                    <td>${lookupLoja(r.loja_credora_id)}</td>
-                    <td class="mono">${r.qtd_movimentacoes}</td>
-                    <td class="money">${fmtMoney(r.saldo_bruto)}</td>
-                    <td><span class="badge ${r.quitado ? 'b-ok' : 'b-warn'}">
-                        ${r.quitado ? 'PAGO' : 'PENDENTE'}
-                    </span></td>
-                  </tr>`).join('')
-                : `<tr><td colspan="6" style="padding:32px;text-align:center;color:var(--dim)">
-                    Sem movimentações no período
-                   </td></tr>`;
-        }
-    }
-}
-
-// ══════════════════════════════════════════════════════════
-// RENDER — HISTÓRICO
-// ══════════════════════════════════════════════════════════
-function renderHistorico() {
-    const lojaId  = $('hist-loja')?.value;
-    const produto = $('hist-produto')?.value;
-    const status  = $('hist-status')?.value;
-
-    let rows = [...state.controle];
-    if (produto) rows = rows.filter(x => x.produto === produto);
-    if (status === 'PAGO')     rows = rows.filter(x => x.quitado);
-    if (status === 'PENDENTE') rows = rows.filter(x => !x.quitado);
-    if (lojaId)  rows = rows.filter(x =>
-        String(x.loja_devedora_id) === String(lojaId) ||
-        String(x.loja_credora_id)  === String(lojaId)
-    );
-
-    const tbody = $('tbody-historico');
+    const tbody = $('tbody-movimentacoes');
     if (!tbody) return;
 
-    tbody.innerHTML = rows.length
-        ? rows.map(r => `<tr>
-            <td class="mono">${fmtMesRef(r.mes_ref)}</td>
+    tbody.innerHTML = movs.length ? movs.map(m => {
+        const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
+        const corProd     = PRODUTO_COR[m.produto] || 'var(--muted)';
+
+        // Qtd e valor unit variam por produto
+        const qtd   = m.produto === 'FEDERAL'
+            ? (m.qtd_vendida || 0) + (m.qtd_devolucao_caixa || 0) + (m.qtd_venda_cambista || 0)
+            : m.qtd_cotas || 0;
+        const unit  = m.produto === 'FEDERAL'
+            ? `${m.federais?.valor_fracao || m.valor_fracao || '—'}`
+            : `${m.valor_unitario || '—'}`;
+
+        return `<tr>
+            <td class="mono">${fmtDate(m.data_mov || m.created_at?.slice(0,10))}</td>
             <td>
-                <span class="badge b-dim"
-                      style="border-color:${PRODUTO_COR[r.produto]||'var(--border)'};
-                             color:${PRODUTO_COR[r.produto]||'var(--muted)'}">
-                    ${r.produto}
+                <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;
+                             background:${corProd}18;color:${corProd};border:1px solid ${corProd}40">
+                    ${m.produto}
                 </span>
             </td>
-            <td>${lookupLoja(r.loja_devedora_id)}</td>
-            <td>${lookupLoja(r.loja_credora_id)}</td>
-            <td class="mono">${r.qtd_movimentacoes}</td>
-            <td class="money">${fmtMoney(r.saldo_bruto)}</td>
-            <td><span class="badge ${r.quitado ? 'b-ok' : 'b-warn'}">
-                ${r.quitado ? 'PAGO' : 'PENDENTE'}
-            </span></td>
-            <td class="mono">${r.data_acerto ? fmtDate(r.data_acerto) : '—'}</td>
-          </tr>`).join('')
-        : `<tr><td colspan="8" style="padding:32px;text-align:center;color:var(--dim)">
-            Nenhum registro encontrado para os filtros selecionados.
-           </td></tr>`;
+            <td class="mono" style="font-size:11px">${m.ref_label}</td>
+            <td>${lookupLoja(m.loteria_origem)}</td>
+            <td>${lookupLoja(m.loteria_destino)}</td>
+            <td class="mono">${qtd || '—'}</td>
+            <td class="money">${fmtMoney(unit)}</td>
+            <td class="money ${m.valor_acerto > 0 ? '' : 'muted'}">${fmtMoney(m.valor_acerto)}</td>
+            <td><span class="badge ${statusClass}">${m.status_acerto}</span></td>
+            <td class="mono">${fmtDate(m.data_acerto)}</td>
+        </tr>`;
+    }).join('')
+    : `<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--dim)">
+        Nenhum registro para os filtros selecionados.
+       </td></tr>`;
+
+    // Totalizador
+    const totais = $('mov-totais');
+    if (totais) {
+        totais.innerHTML = `
+            <span>${movs.length} movimentação(ões)</span>
+            <span>Pendente: <strong style="color:var(--amber)">${fmtMoney(totalPendente)}</strong></span>
+            <span>Pago: <strong style="color:var(--accent)">${fmtMoney(totalPago)}</strong></span>
+            <span>Total: <strong>${fmtMoney(totalPendente + totalPago)}</strong></span>`;
+    }
 }
 
 // ══════════════════════════════════════════════════════════
-// AÇÕES — Quitar par específico
+// AÇÕES — Pagar par específico
 // ══════════════════════════════════════════════════════════
-window.quitarPar = async function(pagadorId, recebedorId, mesRef, produto) {
+window.pagarPar = async function(pagadorId, recebedorId, mes, produto) {
     const nomePag = lookupLoja(pagadorId);
     const nomeRec = lookupLoja(recebedorId);
-    const msg     = produto
-        ? `Confirma pagamento de ${nomePag} para ${nomeRec}?\n\nProduto: ${produto}\nMês: ${fmtMesRef(mesRef)}\n\nTodas as pendências deste par serão marcadas como PAGAS.`
-        : `Confirma pagamento de ${nomePag} para ${nomeRec} em ${fmtMesRef(mesRef)}?\n\nTodos os produtos pendentes deste par serão quitados.`;
+    const mesLabel = mes !== 'total' ? fmtMes(mes) : 'todo o período';
 
-    if (!confirm(msg)) return;
+    if (!confirm(
+        `Confirma pagamento de ${nomePag} para ${nomeRec}?\n\n` +
+        `Produto: ${produto}\nPeríodo: ${mesLabel}\n\n` +
+        `Todas as movimentações PENDENTES deste par serão marcadas como PAGAS.`
+    )) return;
 
     try {
-        let query = sb
-            .from('controle_financeiro')
-            .update({ status: 'PAGO', data_acerto: new Date().toISOString().slice(0,10) })
-            .eq('mes_ref', mesRef)
-            .or([
-                `and(loja_devedora_id.eq.${pagadorId},loja_credora_id.eq.${recebedorId})`,
-                `and(loja_devedora_id.eq.${recebedorId},loja_credora_id.eq.${pagadorId})`
-            ].join(','));
-
-        if (produto) query = query.eq('produto', produto);
-
-        const { error } = await query;
-        if (error) throw error;
-
-        mostrarStatus('st-controle', `Acerto ${nomePag} × ${nomeRec} quitado com sucesso.`, 'ok');
+        await quitarMovimentacoes([pagadorId, recebedorId], mes, produto);
+        mostrarStatus('st-saldo', `Acerto ${nomePag} × ${nomeRec} quitado.`, 'ok');
         await refreshAll();
     } catch(e) {
-        mostrarStatus('st-controle', e.message, 'err');
+        mostrarStatus('st-saldo', e.message, 'err');
     }
 };
 
 // ══════════════════════════════════════════════════════════
-// AÇÕES — Pagar tudo do mês (resumo geral)
+// AÇÕES — Pagar tudo (filtro atual)
 // ══════════════════════════════════════════════════════════
-window.pagarTudoMes = async function() {
-    const mesAtual = $('geral-mes')?.value;
-    if (!mesAtual) {
-        alert('Selecione um mês específico antes de quitar tudo.');
+async function pagarTudo() {
+    const mesRef  = $('saldo-mes')?.value    || '';
+    const produto = $('saldo-produto')?.value || '';
+
+    if (!mesRef) {
+        alert('Selecione um mês específico para quitar tudo de uma vez.');
         return;
     }
 
-    const pendentes = state.controle.filter(x =>
-        x.mes_ref === mesAtual && !x.quitado
+    const pendentes = todasMovs().filter(m =>
+        m.status_acerto === 'PENDENTE' &&
+        m.valor_acerto  > 0 &&
+        (!mesRef  || m.mes_ref  === mesRef) &&
+        (!produto || m.produto  === produto)
     );
 
     if (!pendentes.length) {
-        mostrarStatus('st-controle', 'Não há pendências no mês selecionado.', 'ok');
+        mostrarStatus('st-saldo', 'Não há pendências para os filtros selecionados.', 'ok');
         return;
     }
 
-    const totalPendente = pendentes.reduce((a, r) => a + Number(r.saldo_bruto || 0), 0);
+    const totalPendente = pendentes.reduce((a, m) => a + m.valor_acerto, 0);
 
     if (!confirm(
-        `Confirma quitação de TODAS as pendências de ${fmtMesRef(mesAtual)}?\n\n` +
-        `${pendentes.length} registro(s) · ${fmtMoney(totalPendente)} total\n\n` +
+        `Confirma quitação de TODAS as pendências?\n\n` +
+        `Mês: ${fmtMes(mesRef)}\n` +
+        `${produto ? 'Produto: ' + produto + '\n' : ''}` +
+        `${pendentes.length} movimentação(ões) · ${fmtMoney(totalPendente)}\n\n` +
         `Esta ação não pode ser desfeita.`
     )) return;
 
     try {
-        const { error } = await sb
-            .from('controle_financeiro')
-            .update({ status: 'PAGO', data_acerto: new Date().toISOString().slice(0,10) })
-            .eq('mes_ref', mesAtual)
-            .eq('status', 'PENDENTE');
+        const dataHoje = new Date().toISOString().slice(0,10);
 
-        if (error) throw error;
-        mostrarStatus('st-controle', `Todas as pendências de ${fmtMesRef(mesAtual)} foram quitadas.`, 'ok');
+        // Separa federal de bolão
+        const fedPendentes   = pendentes.filter(m => m.produto === 'FEDERAL').map(m => m.id);
+        const bolaoPendentes = pendentes.filter(m => m.produto === 'BOLAO').map(m => m.id);
+
+        if (fedPendentes.length) {
+            const { error } = await sb.from('federal_movimentacoes')
+                .update({ status_acerto:'PAGO', data_acerto:dataHoje })
+                .in('id', fedPendentes);
+            if (error) throw error;
+        }
+        if (bolaoPendentes.length) {
+            const { error } = await sb.from('movimentacoes_cotas')
+                .update({ status_acerto:'PAGO', data_acerto:dataHoje })
+                .in('id', bolaoPendentes);
+            if (error) throw error;
+        }
+
+        mostrarStatus('st-saldo', `${pendentes.length} movimentação(ões) quitadas.`, 'ok');
         await refreshAll();
     } catch(e) {
-        mostrarStatus('st-controle', e.message, 'err');
+        mostrarStatus('st-saldo', e.message, 'err');
     }
-};
+}
 
-// ══════════════════════════════════════════════════════════
-// AÇÕES — Pagar tudo por produto
-// ══════════════════════════════════════════════════════════
-window.pagarTudoProduto = async function(produto) {
-    const mesSelId = produto === 'FEDERAL' ? 'fed-mes'
-                   : produto === 'BOLAO'   ? 'bol-mes'
-                   : 'prod-mes';
-    const mesAtual = $(mesSelId)?.value;
+// ── Helper: quita movimentações de um par específico ──────
+async function quitarMovimentacoes(lojas, mes, produto) {
+    const dataHoje = new Date().toISOString().slice(0,10);
 
-    if (!mesAtual) {
-        alert('Selecione um mês específico antes de quitar tudo.');
-        return;
-    }
+    // IDs das movimentações PENDENTES do par
+    const movsPar = todasMovs().filter(m => {
+        if (m.status_acerto !== 'PENDENTE') return false;
+        if (m.produto        !== produto)   return false;
+        if (mes !== 'total'  && m.mes_ref  !== mes) return false;
+        // Par: origem e destino devem ser as duas lojas (qualquer ordem)
+        const lojasM = [String(m.loteria_origem), String(m.loteria_destino)];
+        return lojas.every(id => lojasM.includes(String(id)));
+    }).map(m => m.id);
 
-    const pendentes = state.controle.filter(x =>
-        x.produto === produto && x.mes_ref === mesAtual && !x.quitado
-    );
+    if (!movsPar.length) return;
 
-    if (!pendentes.length) {
-        alert('Não há pendências de ' + produto + ' no mês selecionado.');
-        return;
-    }
-
-    const total = pendentes.reduce((a, r) => a + Number(r.saldo_bruto || 0), 0);
-
-    if (!confirm(
-        `Confirma quitação de todas as pendências de ${produto} em ${fmtMesRef(mesAtual)}?\n\n` +
-        `${pendentes.length} registro(s) · ${fmtMoney(total)} total`
-    )) return;
-
-    try {
-        const { error } = await sb
-            .from('controle_financeiro')
-            .update({ status: 'PAGO', data_acerto: new Date().toISOString().slice(0,10) })
-            .eq('mes_ref', mesAtual)
-            .eq('produto', produto)
-            .eq('status', 'PENDENTE');
-
+    if (produto === 'FEDERAL') {
+        const { error } = await sb.from('federal_movimentacoes')
+            .update({ status_acerto:'PAGO', data_acerto:dataHoje })
+            .in('id', movsPar);
         if (error) throw error;
-
-        const stId = produto === 'FEDERAL' ? 'st-federal'
-                   : produto === 'BOLAO'   ? 'st-boloes'
-                   : 'st-produtos';
-        mostrarStatus(stId, `Todas as pendências de ${produto} em ${fmtMesRef(mesAtual)} foram quitadas.`, 'ok');
-        await refreshAll();
-    } catch(e) {
-        mostrarStatus('st-controle', e.message, 'err');
+    } else {
+        const { error } = await sb.from('movimentacoes_cotas')
+            .update({ status_acerto:'PAGO', data_acerto:dataHoje })
+            .in('id', movsPar);
+        if (error) throw error;
     }
-};
+}
 
 // ══════════════════════════════════════════════════════════
 // HELPER STATUS
