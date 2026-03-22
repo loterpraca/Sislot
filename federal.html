@@ -531,6 +531,7 @@
           <div class="flex" style="gap:8px;margin-top:12px">
             <button id="btn-salvar-fechamento" class="btn-primary">Registrar venda</button>
             <button id="btn-limpar-fechamento" class="btn-secondary">Limpar</button>
+            <button id="btn-cancelar-fechamento" class="btn-secondary" style="display:none">Cancelar edição</button>
           </div>
         </div>
 
@@ -538,14 +539,15 @@
         <div>
           <div class="flex" style="justify-content:space-between;
                                    align-items:center;margin-bottom:10px">
-            <span id="titulo-fechamento-resumo" class="card-title" style="margin:0">Vendas</span>
+            <span id="titulo-fechamento-resumo" class="card-title" style="margin:0">Vendas registradas</span>
           </div>
           <div class="table-wrap">
             <table class="table">
               <thead>
                 <tr>
                   <th>Funcionário</th><th>Loja</th><th>Canal</th>
-                  <th>Concurso</th><th>Qtd</th><th>Total</th>
+                  <th>Data</th><th>Concurso</th><th>Qtd</th>
+                  <th>Valor unit.</th><th>Total</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tbody-fechamento-resumo"></tbody>
