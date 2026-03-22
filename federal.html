@@ -479,19 +479,46 @@
           </div>
 
           <div class="grid-2" style="gap:10px">
-            <div class="field-group">
-              <label class="field-label">Data</label>
-              <input id="fec-data-ref" type="date" class="input">
-            </div>
-            <div class="field-group">
-              <label class="field-label">Canal de venda</label>
-              <select id="fec-canal" class="input">
-                <option value="CAIXA">Fechamento de caixa</option>
-                <option value="WHATSAPP">WhatsApp</option>
-                <option value="BALCAO">Balcão</option>
-              </select>
-            </div>
-          </div>
+  <div class="field-group">
+    <label class="field-label">Data</label>
+    <input id="fec-data-ref" type="date" class="input">
+  </div>
+  <div class="field-group">
+    <label class="field-label">Canal de venda</label>
+    <select id="fec-canal" class="input">
+      <option value="CAIXA">Fechamento de caixa</option>
+      <option value="WHATSAPP">WhatsApp</option>
+      <option value="BALCAO">Balcão</option>
+      <option value="CAMBISTA">Cambista</option>
+    </select>
+  </div>
+</div>
+
+<!-- Valor fração padrão — oculto quando canal = CAMBISTA -->
+<div id="fec-label-fracao" class="grid-2" style="gap:10px">
+  <div class="field-group">
+    <label class="field-label">Qtd vendida</label>
+    <input id="fec-qtd-vendida" type="number" min="0" class="input" placeholder="0">
+  </div>
+  <div class="field-group">
+    <label class="field-label">Valor por fração (R$)</label>
+    <input id="fec-valor-fracao" type="number" step="0.01"
+           class="input" placeholder="0,00" readonly>
+  </div>
+</div>
+
+<!-- Valor cambista — aparece só quando canal = CAMBISTA -->
+<div id="fec-bloco-cambista" style="display:none" class="grid-2" style="gap:10px">
+  <div class="field-group">
+    <label class="field-label">Qtd vendida</label>
+    <input id="fec-qtd-vendida" type="number" min="0" class="input" placeholder="0">
+  </div>
+  <div class="field-group">
+    <label class="field-label">Valor por fração cambista (R$)</label>
+    <input id="fec-valor-cambista" type="number" step="0.01" min="0"
+           class="input" placeholder="valor negociado livre">
+  </div>
+</div>
 
           <div class="field-group">
             <label class="field-label">Concurso</label>
