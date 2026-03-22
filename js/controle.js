@@ -36,7 +36,7 @@ const state = {
     usuario:       null,
     loterias:      [],
     fedMovs:       [],   // federal_movimentacoes (TRANSFERENCIA entre lojas)
-    bolaoMovs:     [],   // movimentacoes_cotas (ATIVO)
+    bolaoMovs:     [],   // movimentacoes_cotas (entre lojas distintas)
     lojaFiltro:    '',   // id da loja filtrada pela loja-tree
 };
 
@@ -95,7 +95,6 @@ function atualizarHeaderLoja() {
 }
 
 function ciclarLojaTree() {
-    // Lojas presentes nas movimentações
     const idsPresentes = new Set([
         ...state.fedMovs.map(m => String(m.loteria_origem)),
         ...state.fedMovs.map(m => String(m.loteria_destino)).filter(Boolean),
@@ -190,25 +189,25 @@ async function refreshAll() {
 }
 
 async function loadFederal() {
-    // Só TRANSFERENCIA entre lojas distintas gera acerto financeiro
-    const { data } = await sb
+    const { data, error } = await sb
         .from('federal_movimentacoes')
         .select(`
             id, tipo_evento, loteria_origem, loteria_destino,
-            qtd_fracoes, valor_fracao, valor_fracao_ref, valor_custo,
+            qtd_fracoes, valor_fracao, valor_fracao_ref,
             qtd_vendida, qtd_devolucao_caixa, qtd_venda_cambista,
             valor_cambista, qtd_retorno_origem,
             status_acerto, data_acerto, data_mov, created_at,
-            federais!inner(concurso, dt_sorteio, valor_fracao, valor_custo)
+            federais(concurso, dt_sorteio, valor_fracao, valor_custo)
         `)
-        .eq('tipo_evento', 'TRANSFERENCIA')
+        .eq('status_acerto', 'PENDENTE')
         .not('loteria_destino', 'is', null)
         .order('created_at', { ascending: false });
+
+    if (error) console.error('loadFederal error:', error);
 
     state.fedMovs = (data || []).map(m => ({
         ...m,
         produto:      'FEDERAL',
-        // Valor real do acerto = distribuição × valores corretos
         valor_acerto: calcValorAcertoFederal(m),
         mes_ref:      mesDeData(m.data_mov || m.created_at?.slice(0,10)),
         ref_label:    `Concurso ${m.federais?.concurso || '—'}`,
@@ -217,29 +216,50 @@ async function loadFederal() {
 
 function calcValorAcertoFederal(m) {
     const fracao = Number(m.federais?.valor_fracao || m.valor_fracao || 0);
-    const custo  = Number(m.federais?.valor_custo  || m.valor_custo  || 0);
-    return (Number(m.qtd_vendida         || 0) * fracao)
-         + (Number(m.qtd_devolucao_caixa || 0) * custo)
-         + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista || 0));
+    const custo  = Number(m.federais?.valor_custo  || 0);
+
+    const comDistribuicao =
+        (Number(m.qtd_vendida         || 0) * fracao)
+      + (Number(m.qtd_devolucao_caixa || 0) * custo)
+      + (Number(m.qtd_venda_cambista  || 0) * Number(m.valor_cambista || 0));
+
+    // Se distribuição ainda não foi preenchida, usa qtd total × valor_fracao
+    // como estimativa provisória (será recalculado quando editarem a movimentação)
+    const semDistribuicao =
+        Number(m.qtd_vendida || 0) === 0 &&
+        Number(m.qtd_devolucao_caixa || 0) === 0 &&
+        Number(m.qtd_venda_cambista  || 0) === 0 &&
+        Number(m.qtd_retorno_origem  || 0) === 0;
+
+    if (semDistribuicao) {
+        return Number(m.qtd_fracoes || 0) * fracao;
+    }
+
+    return comDistribuicao;
 }
 
 async function loadBolao() {
-    const { data } = await sb
+    // FIX: removido .eq('status','ATIVO') — coluna não existe
+    // Filtra apenas movimentações entre lojas distintas (loteria_destino preenchido)
+    const { data, error } = await sb
         .from('movimentacoes_cotas')
         .select(`
             id, bolao_id, loteria_origem, loteria_destino,
-            qtd_cotas, valor_unitario,
+            qtd_cotas, valor_unitario, valor_total,
             status_acerto, data_acerto, created_at,
             boloes(modalidade, concurso)
         `)
-        .eq('status', 'ATIVO')
         .not('loteria_destino', 'is', null)
         .order('created_at', { ascending: false });
+
+    if (error) console.error('loadBolao error:', error);
 
     state.bolaoMovs = (data || []).map(m => ({
         ...m,
         produto:      'BOLAO',
-        valor_acerto: Number(m.qtd_cotas) * Number(m.valor_unitario || 0),
+        // Usa valor_total se disponível, senão calcula
+        valor_acerto: Number(m.valor_total || 0) ||
+                      (Number(m.qtd_cotas || 0) * Number(m.valor_unitario || 0)),
         mes_ref:      mesDeData(m.created_at?.slice(0,10)),
         ref_label:    `${m.boloes?.modalidade || 'Bolão'} #${m.boloes?.concurso || '—'}`,
     }));
@@ -299,12 +319,10 @@ function renderSaldo() {
     const produto = $('saldo-produto')?.value || '';
     const status  = $('saldo-status')?.value  || 'PENDENTE';
 
-    // Filtra movimentações
     let movs = todasMovs().filter(m => {
         if (produto && m.produto !== produto) return false;
         if (status  && m.status_acerto !== status) return false;
         if (mesRef  && m.mes_ref !== mesRef) return false;
-        // Filtro de loja-tree — aparece se é origem ou destino da loja selecionada
         if (state.lojaFiltro) {
             const id = String(state.lojaFiltro);
             if (String(m.loteria_origem) !== id && String(m.loteria_destino) !== id) return false;
@@ -312,7 +330,6 @@ function renderSaldo() {
         return true;
     });
 
-    // Agrupa por par de lojas (+ mês se modo "por mês", + produto)
     const pares = {};
     movs.forEach(m => {
         if (m.valor_acerto === 0) return;
@@ -329,7 +346,6 @@ function renderSaldo() {
             temPago:     false,
         };
 
-        // Se origem === a: a enviou para b → b deve para a → saldo positivo
         pares[chave].saldo   += m.loteria_origem === a ? m.valor_acerto : -m.valor_acerto;
         pares[chave].qtdMovs += 1;
         if (m.status_acerto === 'PENDENTE') pares[chave].temPendente = true;
@@ -340,20 +356,19 @@ function renderSaldo() {
         .filter(p => Math.abs(p.saldo) > 0.001)
         .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
 
-    // KPIs
-   const totalPendente = movs
-    .filter(m => m.status_acerto === 'PENDENTE')
-    .reduce((a, m) => a + m.valor_acerto, 0);
+    const totalPendente = movs
+        .filter(m => m.status_acerto === 'PENDENTE')
+        .reduce((a, m) => a + m.valor_acerto, 0);
     const totalPago = movs
-    .filter(m => m.status_acerto === 'PAGO')
-    .reduce((a, m) => a + m.valor_acerto, 0);
+        .filter(m => m.status_acerto === 'PAGO')
+        .reduce((a, m) => a + m.valor_acerto, 0);
     const qtdPendente = cards.filter(p => p.temPendente).length;
     const qtdQuitado  = cards.filter(p => !p.temPendente && p.temPago).length;
 
     $('kpis-saldo').innerHTML = [
-        { l:'Total pendente', v:fmtMoney(totalPendente), s:`${qtdPendente} relação(ões)`,    cor:'var(--amber)' },
-        { l:'Total quitado',  v:fmtMoney(totalPago),     s:`${qtdQuitado} relação(ões)`,     cor:'var(--accent)' },
-        { l:'Pares',          v:cards.length,             s:'com movimentação',               cor:'var(--sky)' },
+        { l:'Total pendente', v:fmtMoney(totalPendente), s:`${qtdPendente} relação(ões)`, cor:'var(--amber)'  },
+        { l:'Total quitado',  v:fmtMoney(totalPago),     s:`${qtdQuitado} relação(ões)`, cor:'var(--accent)' },
+        { l:'Pares',          v:cards.length,             s:'com movimentação',           cor:'var(--sky)'    },
         { l:'Referência',     v:mesRef ? fmtMes(mesRef) : periodo === 'total' ? 'Acumulado' : 'Todos', s:'período', cor:'var(--purple)' },
     ].map(({ l, v, s, cor }) => `
         <div class="kpi" style="--kpi-color:${cor}">
@@ -363,7 +378,6 @@ function renderSaldo() {
         </div>`
     ).join('');
 
-    // Label do sep
     const sepLabel = $('sep-label-saldo');
     if (sepLabel) {
         sepLabel.textContent = periodo === 'total'
@@ -375,18 +389,17 @@ function renderSaldo() {
     const sepCount = $('saldo-count');
     if (sepCount) sepCount.textContent = cards.length;
 
-    // Cards
     $('cards-saldo').innerHTML = cards.length
-        ? cards.map(p => buildCard(p, mesRef)).join('')
+        ? cards.map(p => buildCard(p)).join('')
         : `<div class="empty">
             <div class="empty-title">Nenhum registro encontrado</div>
             <div class="empty-sub">Ajuste os filtros ou aguarde novas movimentações.</div>
            </div>`;
 }
 
-function buildCard(p, mesRef) {
-    const pagador   = p.saldo > 0 ? p.b : p.a;   // quem deve pagar (devedor)
-    const recebedor = p.saldo > 0 ? p.a : p.b;   // quem vai receber (credor)
+function buildCard(p) {
+    const pagador   = p.saldo > 0 ? p.b : p.a;
+    const recebedor = p.saldo > 0 ? p.a : p.b;
     const valor     = Math.abs(p.saldo);
     const quitado   = !p.temPendente && p.temPago;
     const parcial   = p.temPendente && p.temPago;
@@ -397,9 +410,9 @@ function buildCard(p, mesRef) {
             ? `<span class="badge b-info">PARCIAL</span>`
             : `<span class="badge b-warn">PENDENTE</span>`;
 
-    const corCard = quitado ? 'var(--accent)' : parcial ? 'var(--sky)' : 'var(--amber)';
-
+    const corCard    = quitado ? 'var(--accent)' : parcial ? 'var(--sky)' : 'var(--amber)';
     const corProduto = PRODUTO_COR[p.produto] || 'var(--muted)';
+
     const produtoBadge = `<div class="rel-card-produto"
         style="background:${corProduto}18;color:${corProduto};border:1px solid ${corProduto}40">
         ${p.produto}
@@ -428,7 +441,6 @@ function buildCard(p, mesRef) {
             </div>
             ${statusBadge}
         </div>
-
         <div class="rel-card-valor">
             <div>
                 <div class="rel-card-valor-label">
@@ -454,11 +466,11 @@ function renderMovimentacoes() {
     const status   = $('mov-status')?.value   || '';
 
     let movs = todasMovs().filter(m => {
-        if (produto  && m.produto         !== produto)          return false;
-        if (origemId && String(m.loteria_origem) !== String(origemId)) return false;
-        if (destId   && String(m.loteria_destino) !== String(destId))  return false;
-        if (mesRef   && m.mes_ref         !== mesRef)           return false;
-        if (status   && m.status_acerto   !== status)           return false;
+        if (produto  && m.produto                        !== produto)          return false;
+        if (origemId && String(m.loteria_origem)         !== String(origemId)) return false;
+        if (destId   && String(m.loteria_destino)        !== String(destId))   return false;
+        if (mesRef   && m.mes_ref                        !== mesRef)           return false;
+        if (status   && m.status_acerto                  !== status)           return false;
         if (state.lojaFiltro) {
             const id = String(state.lojaFiltro);
             if (String(m.loteria_origem) !== id && String(m.loteria_destino) !== id) return false;
@@ -468,7 +480,7 @@ function renderMovimentacoes() {
 
     const totalPendente = movs.filter(m => m.status_acerto === 'PENDENTE')
         .reduce((a, m) => a + m.valor_acerto, 0);
-    const totalPago     = movs.filter(m => m.status_acerto === 'PAGO')
+    const totalPago = movs.filter(m => m.status_acerto === 'PAGO')
         .reduce((a, m) => a + m.valor_acerto, 0);
 
     const tbody = $('tbody-movimentacoes');
@@ -478,13 +490,13 @@ function renderMovimentacoes() {
         const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
         const corProd     = PRODUTO_COR[m.produto] || 'var(--muted)';
 
-        // Qtd e valor unit variam por produto
-        const qtd   = m.produto === 'FEDERAL'
-            ? (m.qtd_vendida || 0) + (m.qtd_devolucao_caixa || 0) + (m.qtd_venda_cambista || 0)
-            : m.qtd_cotas || 0;
-        const unit  = m.produto === 'FEDERAL'
-            ? `${m.federais?.valor_fracao || m.valor_fracao || '—'}`
-            : `${m.valor_unitario || '—'}`;
+        const qtd = m.produto === 'FEDERAL'
+            ? (Number(m.qtd_vendida || 0) + Number(m.qtd_devolucao_caixa || 0) + Number(m.qtd_venda_cambista || 0))
+            : Number(m.qtd_cotas || 0);
+
+        const unit = m.produto === 'FEDERAL'
+            ? fmtMoney(m.federais?.valor_fracao || m.valor_fracao || 0)
+            : fmtMoney(m.valor_unitario || 0);
 
         return `<tr>
             <td class="mono">${fmtDate(m.data_mov || m.created_at?.slice(0,10))}</td>
@@ -498,12 +510,9 @@ function renderMovimentacoes() {
             <td>${lookupLoja(m.loteria_origem)}</td>
             <td>${lookupLoja(m.loteria_destino)}</td>
             <td class="mono">${qtd || '—'}</td>
-            <td class="money">${fmtMoney(unit)}</td>
-            <td class="money ${m.valor_acerto < 0 ? 'neg' : ''}">
-                ${fmtMoney(Math.abs(m.valor_acerto))}
-                ${m.valor_acerto < 0 ? '<span style="font-size:10px;color:var(--accent);margin-left:4px">crédito</span>' : ''}
-            </td>
-            <td><span class="badge ${statusClass}">${m.status_acerto}</span></td>
+            <td class="money">${unit}</td>
+            <td class="money">${fmtMoney(m.valor_acerto)}</td>
+            <td><span class="badge ${statusClass}">${m.status_acerto || 'PENDENTE'}</span></td>
             <td class="mono">${fmtDate(m.data_acerto)}</td>
         </tr>`;
     }).join('')
@@ -511,7 +520,6 @@ function renderMovimentacoes() {
         Nenhum registro para os filtros selecionados.
        </td></tr>`;
 
-    // Totalizador
     const totais = $('mov-totais');
     if (totais) {
         totais.innerHTML = `
@@ -526,8 +534,8 @@ function renderMovimentacoes() {
 // AÇÕES — Pagar par específico
 // ══════════════════════════════════════════════════════════
 window.pagarPar = async function(pagadorId, recebedorId, mes, produto) {
-    const nomePag = lookupLoja(pagadorId);
-    const nomeRec = lookupLoja(recebedorId);
+    const nomePag  = lookupLoja(pagadorId);
+    const nomeRec  = lookupLoja(recebedorId);
     const mesLabel = mes !== 'total' ? fmtMes(mes) : 'todo o período';
 
     if (!confirm(
@@ -549,7 +557,7 @@ window.pagarPar = async function(pagadorId, recebedorId, mes, produto) {
 // AÇÕES — Pagar tudo (filtro atual)
 // ══════════════════════════════════════════════════════════
 async function pagarTudo() {
-    const mesRef  = $('saldo-mes')?.value    || '';
+    const mesRef  = $('saldo-mes')?.value     || '';
     const produto = $('saldo-produto')?.value || '';
 
     if (!mesRef) {
@@ -580,9 +588,7 @@ async function pagarTudo() {
     )) return;
 
     try {
-        const dataHoje = new Date().toISOString().slice(0,10);
-
-        // Separa federal de bolão
+        const dataHoje       = new Date().toISOString().slice(0,10);
         const fedPendentes   = pendentes.filter(m => m.produto === 'FEDERAL').map(m => m.id);
         const bolaoPendentes = pendentes.filter(m => m.produto === 'BOLAO').map(m => m.id);
 
@@ -610,12 +616,10 @@ async function pagarTudo() {
 async function quitarMovimentacoes(lojas, mes, produto) {
     const dataHoje = new Date().toISOString().slice(0,10);
 
-    // IDs das movimentações PENDENTES do par
     const movsPar = todasMovs().filter(m => {
         if (m.status_acerto !== 'PENDENTE') return false;
         if (m.produto        !== produto)   return false;
         if (mes !== 'total'  && m.mes_ref  !== mes) return false;
-        // Par: origem e destino devem ser as duas lojas (qualquer ordem)
         const lojasM = [String(m.loteria_origem), String(m.loteria_destino)];
         return lojas.every(id => lojasM.includes(String(id)));
     }).map(m => m.id);
