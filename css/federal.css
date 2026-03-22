@@ -22,7 +22,22 @@
   --err:#ff5252;
   --ok:#00c896;
   --tr: 0.25s cubic-bezier(0.4,0,0.2,1);
+
+  /* Tema padrão — prata "Todas as Lojas" */
+  --t1:#94a3b8;
+  --t2:#64748b;
+  --t3:rgba(148,163,184,.10);
+  --t4:rgba(148,163,184,.25);
+  --t5:rgba(148,163,184,.05);
 }
+
+/* ── Temas por loja ───────────────────────────────────────── */
+body[data-loja="boulevard"]    { --t1:#3b82f6; --t2:#1d4ed8; --t3:rgba(59,130,246,.10);  --t4:rgba(59,130,246,.25);  --t5:rgba(59,130,246,.05);  }
+body[data-loja="centro"]       { --t1:#00c896; --t2:#00a07a; --t3:rgba(0,200,150,.10);   --t4:rgba(0,200,150,.25);   --t5:rgba(0,200,150,.05);   }
+body[data-loja="lotobel"]      { --t1:#ef4444; --t2:#b91c1c; --t3:rgba(239,68,68,.10);   --t4:rgba(239,68,68,.25);   --t5:rgba(239,68,68,.05);   }
+body[data-loja="santa-tereza"] { --t1:#a855f7; --t2:#7e22ce; --t3:rgba(168,85,247,.10);  --t4:rgba(168,85,247,.25);  --t5:rgba(168,85,247,.05);  }
+body[data-loja="via-brasil"]   { --t1:#eab308; --t2:#a16207; --t3:rgba(234,179,8,.10);   --t4:rgba(234,179,8,.25);   --t5:rgba(234,179,8,.05);   }
+body[data-loja="todas"]        { --t1:#94a3b8; --t2:#64748b; --t3:rgba(148,163,184,.10); --t4:rgba(148,163,184,.25); --t5:rgba(148,163,184,.05); }
 
 body{
   background:var(--deep);
@@ -32,9 +47,10 @@ body{
   display:flex;
   flex-direction:column;
   background-image:
-    radial-gradient(ellipse 80% 40% at 50% -10%,rgba(0,200,150,.07) 0%,transparent 70%),
+    radial-gradient(ellipse 80% 40% at 50% -10%, var(--t3) 0%, transparent 70%),
     repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(30,58,110,.3) 39px,rgba(30,58,110,.3) 40px),
     repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(30,58,110,.15) 39px,rgba(30,58,110,.15) 40px);
+  transition: background-image var(--tr);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -59,7 +75,7 @@ body{
   position:absolute;
   bottom:0;left:0;right:0;
   height:1px;
-  background:linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  background:linear-gradient(90deg, transparent 0%, var(--t1) 50%, transparent 100%);
   opacity:0.4;
 }
 
@@ -72,22 +88,47 @@ body{
   gap:14px;
 }
 
-/* Ícone da marca */
-.header-brand-icon{
-  width:40px;
-  height:40px;
-  flex:0 0 40px;
-  background:linear-gradient(135deg, var(--accent), rgba(0,200,150,.5));
-  border-radius:10px;
+/* ── Loja-tree ─────────────────────────────────────────────── */
+.loja-tree{
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-family:"IBM Plex Mono",monospace;
-  font-size:16px;
-  font-weight:600;
-  color:var(--deep);
-  box-shadow:0 0 16px rgba(0,200,150,.2);
+  background:var(--t5);
+  border-radius:50%;
+  border:1.5px solid var(--t4);
+  overflow:hidden;
+  transition:var(--tr);
+  box-shadow:0 0 14px var(--t3);
+  cursor:pointer;
   flex-shrink:0;
+}
+
+.loja-tree:hover{
+  transform:translateY(-1px) scale(1.05);
+  border-color:var(--t1);
+  box-shadow:0 0 20px var(--t3);
+}
+
+.loja-tree-all{
+  width:20px;
+  height:20px;
+  color:var(--t1);
+  opacity:.75;
+  transition:var(--tr);
+  flex-shrink:0;
+}
+
+.loja-tree:hover .loja-tree-all{ opacity:1; }
+
+.loja-tree img{
+  width:110%;
+  height:110%;
+  object-fit:cover;
+  object-position:center;
+  transition:var(--tr);
 }
 
 .header-info{flex:1;min-width:0;}
@@ -202,7 +243,7 @@ body{
   position:absolute;
   top:0;left:0;right:0;
   height:1.5px;
-  background:linear-gradient(90deg, var(--accent), rgba(0,200,150,.3));
+  background:linear-gradient(90deg, var(--t1), var(--t2));
   opacity:.35;
   border-radius:12px 12px 0 0;
 }
@@ -279,8 +320,8 @@ body{
 
 .filter-select:focus,
 .filter-input:focus{
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(0,200,150,.1);
+  border-color:var(--t1);
+  box-shadow:0 0 0 3px var(--t3);
 }
 
 .filter-select option{
@@ -323,12 +364,12 @@ body{
   display:flex;
   align-items:center;
   gap:6px;
-  background:rgba(0,200,150,.07);
-  border:1px solid rgba(0,200,150,.25);
+  background:var(--t5);
+  border:1px solid var(--t4);
   border-radius:8px;
   padding:8px 14px;
   cursor:pointer;
-  color:var(--accent);
+  color:var(--t1);
   font-family:"IBM Plex Mono",monospace;
   font-size:10px;
   font-weight:600;
@@ -339,8 +380,8 @@ body{
 }
 
 .btn-filter-apply:hover{
-  background:rgba(0,200,150,.14);
-  border-color:var(--accent);
+  background:var(--t3);
+  border-color:var(--t1);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -472,7 +513,7 @@ input[readonly]{opacity:.7}
 ════════════════════════════════════════════════════════════ */
 .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;overflow:hidden}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,var(--accent),transparent);opacity:.3}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,var(--t1),transparent);opacity:.3}
 .kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)}
 .kpi-value{margin-top:8px;font-size:22px;font-weight:700}
 .kpi-sub{margin-top:3px;font-size:11px;color:var(--muted)}
