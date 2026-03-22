@@ -21,11 +21,21 @@
   <header class="header">
     <div class="header-inner">
 
-      <div class="header-brand-icon">F</div>
+      <!-- Loja-tree: clicável, troca filtro de origem e tema -->
+      <div class="loja-tree" id="lojaTreeWrap" title="Clique para filtrar por loja">
+        <svg class="loja-tree-all" id="lojaTreeAll" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+        <img src="" alt="Logo" id="logoImg" style="display:none"/>
+      </div>
 
       <div class="header-info">
-        <div class="header-nome">Federal</div>
-        <div class="header-sub">Controle Completo · SISLOT</div>
+        <div class="header-nome" id="headerNome">Todas as Lojas</div>
+        <div class="header-sub">Federal · SISLOT</div>
       </div>
 
       <div class="header-clock" id="relogio">--:--:--</div>
