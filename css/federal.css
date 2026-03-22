@@ -175,7 +175,6 @@ body{
 .btn-danger{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.24);color:#ffb3b3;padding:6px 10px;font-size:11px;font-weight:600}
 .btn-danger:hover{background:rgba(255,82,82,.16)}
 
-/* Botão ícone — fechar drawer */
 .btn-icon{
   background:transparent;border:1px solid var(--border);
   color:var(--muted);padding:6px 10px;font-size:14px;
@@ -247,13 +246,14 @@ input[readonly],.input[readonly]{opacity:.7}
 
 /* ═══════════════════════════════════════════════════════════
    KPIs — linha horizontal
+   Agora com 8 colunas (eram 6) para acomodar os novos KPIs:
+   Inicial, Venda Int., Venda Ext., Dev.CX Int.,
+   Dev.CX Ext., Encalhe, Prêmio, Resultado
 ════════════════════════════════════════════════════════════ */
-
-/* Classe usada pelo JS (kpi-row) e pelo CSS antigo (kpis) — ambas funcionam */
 .kpis,
 .kpi-row{
   display:grid;
-  grid-template-columns:repeat(6,1fr);
+  grid-template-columns:repeat(8,1fr);
   gap:10px;
   margin-bottom:16px;
 }
@@ -262,7 +262,7 @@ input[readonly],.input[readonly]{opacity:.7}
   background:var(--panel);
   border:1px solid var(--border);
   border-radius:12px;
-  padding:14px 16px;
+  padding:12px 14px;
   position:relative;overflow:hidden;
 }
 
@@ -273,11 +273,13 @@ input[readonly],.input[readonly]{opacity:.7}
 }
 
 .kpi-label{
-  font-size:10px;font-weight:600;letter-spacing:.08em;
+  font-size:9px;font-weight:600;letter-spacing:.08em;
   text-transform:uppercase;color:var(--dim);margin-bottom:6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.kpi-value{font-size:20px;font-weight:700;line-height:1.1}
-.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.kpi-value{font-size:17px;font-weight:700;line-height:1.1}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* ═══════════════════════════════════════════════════════════
    BADGES
@@ -304,7 +306,6 @@ input[readonly],.input[readonly]{opacity:.7}
 .drawer.open{transform:translateX(0)}
 .drawer-right{right:0;left:auto}
 
-/* Suporte aos dois nomes de classe: drawer-head e drawer-header */
 .drawer-head,
 .drawer-header{
   display:flex;align-items:flex-start;justify-content:space-between;
@@ -316,7 +317,6 @@ input[readonly],.input[readonly]{opacity:.7}
 .drawer-sub{font-size:12px;color:var(--muted);margin-top:4px}
 .drawer-body{padding:18px 20px;overflow:auto;flex:1}
 
-/* Suporte aos dois nomes de classe: drawer-foot e drawer-footer */
 .drawer-foot,
 .drawer-footer{
   padding:16px 20px;border-top:1px solid var(--border);
@@ -347,7 +347,6 @@ input[readonly],.input[readonly]{opacity:.7}
 .right{margin-left:auto}
 .w-100{width:100%}
 
-/* Grid especial para o resumo de detalhes do drawer */
 .grid-2.drawer-grid{gap:10px}
 .soft-card .field-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
 
@@ -369,18 +368,20 @@ input[readonly],.input[readonly]{opacity:.7}
 /* ═══════════════════════════════════════════════════════════
    RESPONSIVO
 ════════════════════════════════════════════════════════════ */
-@media(max-width:1200px){
+@media(max-width:1400px){
   .kpis,
-  .kpi-row{grid-template-columns:repeat(3,1fr)}
+  .kpi-row{grid-template-columns:repeat(4,1fr)}
+}
+
+@media(max-width:1100px){
+  .kpis,
+  .kpi-row{grid-template-columns:repeat(4,1fr)}
+  .grid-5,.grid-4,.grid-3{grid-template-columns:repeat(2,1fr)}
 }
 
 @media(max-width:900px){
   .kpis,
   .kpi-row{grid-template-columns:repeat(2,1fr)}
-}
-
-@media(max-width:1100px){
-  .grid-5,.grid-4,.grid-3{grid-template-columns:repeat(2,1fr)}
 }
 
 @media(max-width:700px){
@@ -403,7 +404,7 @@ input[readonly],.input[readonly]{opacity:.7}
 @media(max-width:500px){
   .kpis,
   .kpi-row{grid-template-columns:1fr 1fr}
-  .kpi-value{font-size:18px}
+  .kpi-value{font-size:16px}
 }
 
 @keyframes fadeUp{
