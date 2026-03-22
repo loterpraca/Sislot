@@ -69,6 +69,7 @@ function aplicarPermissoesMenu(perfil) {
         esconder('.card-whatsapp');
         esconder('.card-marketplace');
         esconder('.card-caixa');
+        esconder('.card-controle');
         esconder('.card-config');
         const adminWrap = $('adminWrap');
         if (adminWrap) adminWrap.style.display = 'none';
