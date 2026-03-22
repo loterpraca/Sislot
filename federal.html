@@ -310,161 +310,153 @@
 
     <!-- ── MOVIMENTAÇÃO ──────────────────────────────── -->
     <div id="panel-movimentacao" class="tab-panel">
-      <div class="grid-2" style="gap:20px;align-items:start">
 
-        <!-- Formulário -->
-        <div class="card">
-          <div class="card-title">Registrar movimentação</div>
+      <!-- FORMULÁRIO — topo, horizontal -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Registrar movimentação</div>
 
+        <!-- Linha 1: Concurso + resumo -->
+        <div class="grid-2" style="gap:12px;margin-bottom:4px">
           <div class="field-group">
             <label class="field-label">Concurso</label>
             <select id="mov-federal" class="input"></select>
           </div>
-
-          <div id="mov-resumo-selec" class="soft-card" style="margin-bottom:12px;font-size:12px">
-            <div class="empty-title">Selecione um concurso</div>
+          <div id="mov-resumo-selec" class="soft-card"
+               style="font-size:12px;display:flex;align-items:center;min-height:38px">
+            <span style="color:var(--dim)">Selecione um concurso para ver os detalhes</span>
           </div>
+        </div>
 
-          <div class="grid-2" style="gap:10px">
-            <div class="field-group">
-              <label class="field-label">Modalidade</label>
-              <input id="mov-modalidade" class="input" value="Federal" readonly>
-            </div>
-            <div class="field-group">
-              <label class="field-label">Data concurso</label>
-              <input id="mov-dt-concurso" type="date" class="input" readonly>
-            </div>
+        <!-- Linha 2: campos base — 6 colunas -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:10px;margin-top:10px">
+          <div class="field-group">
+            <label class="field-label">Modalidade</label>
+            <input id="mov-modalidade" class="input" value="Federal" readonly>
           </div>
-
-          <div class="grid-2" style="gap:10px">
-            <div class="field-group">
-              <label class="field-label">Loja origem</label>
-              <select id="mov-loteria-origem" class="input"></select>
-            </div>
-            <div class="field-group">
-              <label class="field-label">Loja destino</label>
-              <select id="mov-loteria-destino" class="input"></select>
-            </div>
+          <div class="field-group">
+            <label class="field-label">Data concurso</label>
+            <input id="mov-dt-concurso" type="date" class="input" readonly>
           </div>
-
-          <div class="grid-2" style="gap:10px">
-            <div class="field-group">
-              <label class="field-label">Tipo de evento</label>
-              <select id="mov-tipo-evento" class="input">
-                <option value="TRANSFERENCIA">Transferência</option>
-                <option value="DEVOLUCAO_CAIXA">Devolução caixa</option>
-                <option value="VENDA_CAMBISTA">Venda cambista</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label class="field-label">Status acerto</label>
-              <select id="mov-status-acerto" class="input">
-                <option value="PENDENTE">Pendente</option>
-                <option value="PAGO">Pago</option>
-              </select>
-            </div>
+          <div class="field-group">
+            <label class="field-label">Loja origem</label>
+            <select id="mov-loteria-origem" class="input"></select>
           </div>
-
-          <div class="grid-2" style="gap:10px">
-            <div class="field-group">
-              <label class="field-label">Qtd total transferida</label>
-              <input id="mov-qtd" type="number" min="0" class="input" placeholder="0">
-            </div>
-            <div class="field-group">
-              <label class="field-label">Valor por fração (R$)</label>
-              <input id="mov-valor" type="number" step="0.01" class="input" placeholder="0,00">
-            </div>
+          <div class="field-group">
+            <label class="field-label">Loja destino</label>
+            <select id="mov-loteria-destino" class="input"></select>
           </div>
+          <div class="field-group">
+            <label class="field-label">Tipo de evento</label>
+            <select id="mov-tipo-evento" class="input">
+              <option value="TRANSFERENCIA">Transferência</option>
+              <option value="DEVOLUCAO_CAIXA">Devolução caixa</option>
+              <option value="VENDA_CAMBISTA">Venda cambista</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Status acerto</label>
+            <select id="mov-status-acerto" class="input">
+              <option value="PENDENTE">Pendente</option>
+              <option value="PAGO">Pago</option>
+            </select>
+          </div>
+        </div>
 
+        <!-- Linha 3: qtd, valor, total, observação -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:10px;margin-top:10px">
+          <div class="field-group">
+            <label class="field-label">Qtd transferida</label>
+            <input id="mov-qtd" type="number" min="0" class="input" placeholder="0">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Valor / fração (R$)</label>
+            <input id="mov-valor" type="number" step="0.01" class="input" placeholder="0,00">
+          </div>
           <div class="field-group">
             <label class="field-label">Total (R$)</label>
-            <input id="mov-total" class="input" readonly placeholder="calculado automaticamente">
+            <input id="mov-total" class="input" readonly placeholder="automático">
           </div>
-
-          <!-- Bloco distribuição — só aparece em TRANSFERENCIA -->
-          <div id="bloco-distribuicao" style="display:none;margin-top:4px">
-            <div class="sep">
-              <span class="sep-label">
-                Distribuição no destino
-                <span id="mov-distribuicao-status" style="margin-left:8px;font-size:12px"></span>
-              </span>
-              <div class="sep-line"></div>
-            </div>
-
-            <div class="grid-2" style="gap:10px">
-              <div class="field-group">
-                <label class="field-label">Qtd vendida (preço normal)</label>
-                <input id="mov-qtd-vendida" type="number" min="0" value="0" class="input">
-              </div>
-              <div class="field-group">
-                <label class="field-label">Qtd devolução caixa (custo)</label>
-                <input id="mov-qtd-dev-caixa" type="number" min="0" value="0" class="input">
-              </div>
-              <div class="field-group">
-                <label class="field-label">Qtd venda cambista</label>
-                <input id="mov-qtd-cambista" type="number" min="0" value="0" class="input">
-                <span id="mov-cambista-total"
-                      style="font-size:12px;color:var(--color-text-secondary);
-                             margin-top:4px;display:block"></span>
-              </div>
-              <div class="field-group">
-                <label class="field-label">Valor fração cambista (R$)</label>
-                <input id="mov-valor-cambista" type="number" step="0.01" min="0"
-                       class="input" placeholder="valor negociado livre">
-              </div>
-              <div class="field-group" style="grid-column:1/-1">
-                <label class="field-label">Qtd retorno origem</label>
-                <input id="mov-qtd-retorno-origem" type="number" min="0" value="0" class="input">
-                <span style="font-size:11px;color:var(--color-text-secondary);
-                             margin-top:4px;display:block">
-                  frações físicas que voltam para a loja de origem — sem débito financeiro
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div class="field-group" style="margin-top:8px">
+          <div class="field-group">
             <label class="field-label">Observação</label>
-            <textarea id="mov-observacao" class="input" rows="2" placeholder="Opcional..."></textarea>
-          </div>
-
-          <div id="st-mov" class="status-bar"></div>
-
-          <div class="flex" style="gap:8px;margin-top:12px;flex-wrap:wrap">
-            <button id="btn-salvar-mov"  class="btn-primary">Salvar</button>
-            <button id="btn-limpar-mov"  class="btn-secondary">Limpar</button>
-            <button id="btn-excluir-mov" class="btn-danger" style="display:none">Excluir</button>
+            <input id="mov-observacao" class="input" placeholder="Opcional...">
           </div>
         </div>
 
-        <!-- Tabela de movimentações -->
-        <div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Data</th>
-<th>Concurso</th>
-<th>Evento</th>
-<th>Origem</th>
-<th>Destino</th>
-<th>Qtd</th>
-<th>Vendida</th>
-<th>Dev. Caixa</th>
-<th>Cambista</th>
-<th>Desconto</th>  ← nova
-<th>Retorno</th>
-<th>Valor acerto</th>
-<th>Status</th>
-<th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-mov"></tbody>
-            </table>
+        <!-- Linha 4: Distribuição — só aparece em TRANSFERENCIA -->
+        <div id="bloco-distribuicao" style="display:none;margin-top:12px">
+          <div class="sep">
+            <span class="sep-label">
+              Distribuição no destino
+              <span id="mov-distribuicao-status"
+                    style="margin-left:8px;font-size:12px;font-family:'IBM Plex Mono',monospace"></span>
+            </span>
+            <div class="sep-line"></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px">
+            <div class="field-group">
+              <label class="field-label">Qtd vendida</label>
+              <input id="mov-qtd-vendida" type="number" min="0" value="0" class="input">
+              <span style="font-size:10px;color:var(--dim);margin-top:2px">preço normal</span>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Qtd dev. caixa</label>
+              <input id="mov-qtd-dev-caixa" type="number" min="0" value="0" class="input">
+              <span style="font-size:10px;color:var(--dim);margin-top:2px">valor de custo</span>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Qtd cambista</label>
+              <input id="mov-qtd-cambista" type="number" min="0" value="0" class="input">
+              <span id="mov-cambista-total"
+                    style="font-size:10px;color:var(--amber);margin-top:2px;display:block"></span>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Valor / fração cambista</label>
+              <input id="mov-valor-cambista" type="number" step="0.01" min="0"
+                     class="input" placeholder="negociado livre">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Qtd retorno origem</label>
+              <input id="mov-qtd-retorno-origem" type="number" min="0" value="0" class="input">
+              <span style="font-size:10px;color:var(--dim);margin-top:2px">sem débito financeiro</span>
+            </div>
           </div>
         </div>
 
+        <div id="st-mov" class="status-bar" style="margin-top:12px"></div>
+
+        <div class="flex" style="gap:8px;margin-top:12px">
+          <button id="btn-salvar-mov"  class="btn-primary">Salvar</button>
+          <button id="btn-limpar-mov"  class="btn-secondary">Limpar</button>
+          <button id="btn-excluir-mov" class="btn-danger" style="display:none">Excluir</button>
+        </div>
       </div>
+
+      <!-- TABELA — embaixo, colunas desmembradas -->
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Concurso</th>
+              <th>Evento</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Qtd</th>
+              <th>Vendida</th>
+              <th>Dev. Caixa</th>
+              <th>Cambista</th>
+              <th>Desconto</th>
+              <th>Retorno</th>
+              <th>Valor acerto</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-mov"></tbody>
+        </table>
+      </div>
+
     </div>
 
     <!-- ── VENDA (Fechamento) ────────────────────────── -->
