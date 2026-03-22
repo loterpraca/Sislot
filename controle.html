@@ -14,23 +14,30 @@
 <body>
 
   <!-- ══════════════════════════════════════════════
-       HEADER
+       HEADER — loja-tree igual movimentar
   ═══════════════════════════════════════════════ -->
   <header class="header">
     <div class="header-inner">
-      <div class="header-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
+
+      <div class="loja-tree" id="lojaTreeWrap" title="Clique para filtrar por loja">
+        <svg class="loja-tree-all" id="lojaTreeAll" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3"  y="3"  width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3"  width="7" height="7" rx="1.5"/>
+          <rect x="3"  y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
         </svg>
+        <img src="" alt="Logo" id="logoImg" style="display:none"/>
       </div>
+
       <div class="header-info">
-        <div class="header-nome">Controle Financeiro</div>
-        <div class="header-sub">SISLOT · Acertos entre lojas</div>
+        <div class="header-nome" id="headerNome">Todas as Lojas</div>
+        <div class="header-sub">Controle Financeiro · SISLOT</div>
       </div>
+
       <div class="header-clock" id="relogio">--:--:--</div>
+
       <button class="btn-header" onclick="location.href='./menu.html'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -47,238 +54,157 @@
        TABS
   ═══════════════════════════════════════════════ -->
   <nav class="tabs-bar">
-    <button class="tab-btn active" data-tab="geral">
-      <span class="tab-dot" style="background:#00c896"></span>Resumo Geral
+    <button class="tab-btn active" data-tab="saldo">
+      <span class="tab-dot" style="background:#00c896"></span>Saldo
     </button>
-    <button class="tab-btn" data-tab="federal">
-      <span class="tab-dot" style="background:#38bdf8"></span>Federal
+    <button class="tab-btn" data-tab="movimentacoes">
+      <span class="tab-dot" style="background:#38bdf8"></span>Movimentações
     </button>
-    <button class="tab-btn" data-tab="boloes">
-      <span class="tab-dot" style="background:#a78bfa"></span>Bolões
-    </button>
-    <button class="tab-btn" data-tab="produtos">
-      <span class="tab-dot" style="background:#f5a623"></span>Produtos
-    </button>
-    <button class="tab-btn" data-tab="historico">Histórico</button>
   </nav>
 
-  <!-- ══════════════════════════════════════════════
-       MAIN
-  ═══════════════════════════════════════════════ -->
   <main class="main">
 
-    <!-- ── RESUMO GERAL ─────────────────────────── -->
-    <div id="panel-geral" class="tab-panel active">
+    <!-- ── ABA SALDO ─────────────────────────────── -->
+    <div id="panel-saldo" class="tab-panel active">
 
-      <!-- Filtros + ação global -->
-      <div class="topbar">
-        <div class="flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="field-group">
-            <label class="field-label">Mês de referência</label>
-            <select id="geral-mes" class="input" onchange="renderGeral()">
+      <div class="filter-bar">
+        <div class="flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap;flex:1">
+
+          <div class="filter-wrap">
+            <label class="filter-label">Visualização</label>
+            <select id="saldo-periodo" class="filter-select">
+              <option value="mes">Por mês</option>
+              <option value="total">Total acumulado</option>
+            </select>
+          </div>
+
+          <div class="filter-wrap" id="wrap-saldo-mes">
+            <label class="filter-label">Mês</label>
+            <select id="saldo-mes" class="filter-select">
               <option value="">Todos os meses</option>
             </select>
           </div>
-          <div id="geral-resumo-pill" class="info-pill"></div>
-        </div>
-        <button id="btn-pagar-tudo" class="btn-pagar" onclick="pagarTudoMes()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-               width="14" height="14">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          Pagar tudo do mês
-        </button>
-      </div>
 
-      <div id="st-controle" class="status-bar"></div>
-
-      <!-- KPIs do mês -->
-      <div id="kpis-geral" class="kpi-row" style="margin-bottom:20px"></div>
-
-      <!-- Cards de relacionamento entre lojas -->
-      <div class="sep">
-        <span class="sep-label">Saldo líquido por par de lojas</span>
-        <div class="sep-line"></div>
-      </div>
-      <div id="cards-geral" class="cards-grid"></div>
-
-    </div>
-
-    <!-- ── FEDERAL ───────────────────────────────── -->
-    <div id="panel-federal" class="tab-panel">
-
-      <div class="topbar">
-        <div class="flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="field-group">
-            <label class="field-label">Mês de referência</label>
-            <select id="fed-mes" class="input" onchange="renderModalidade('FEDERAL')">
-              <option value="">Todos os meses</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn-pagar" onclick="pagarTudoProduto('FEDERAL')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-               width="14" height="14">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          Pagar tudo · Federal
-        </button>
-      </div>
-
-      <div id="st-federal" class="status-bar"></div>
-      <div id="cards-federal" class="cards-grid"></div>
-
-      <div class="sep" style="margin-top:24px">
-        <span class="sep-label">Movimentações detalhadas</span>
-        <div class="sep-line"></div>
-      </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Data</th><th>Devedor</th><th>Credor</th>
-              <th>Movimentações</th><th>Valor bruto</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-federal"></tbody>
-        </table>
-      </div>
-
-    </div>
-
-    <!-- ── BOLÕES ─────────────────────────────────── -->
-    <div id="panel-boloes" class="tab-panel">
-
-      <div class="topbar">
-        <div class="flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="field-group">
-            <label class="field-label">Mês de referência</label>
-            <select id="bol-mes" class="input" onchange="renderModalidade('BOLAO')">
-              <option value="">Todos os meses</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn-pagar" onclick="pagarTudoProduto('BOLAO')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-               width="14" height="14">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          Pagar tudo · Bolões
-        </button>
-      </div>
-
-      <div id="st-boloes" class="status-bar"></div>
-
-      <div class="empty-produto" id="boloes-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.5" width="32" height="32" style="opacity:.3">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div class="empty-title">Módulo Bolões</div>
-        <div class="empty-sub">Sem registros de bolões no controle_financeiro ainda.<br>Os lançamentos aparecerão aqui automaticamente quando cadastrados.</div>
-      </div>
-      <div id="cards-boloes" class="cards-grid" style="display:none"></div>
-
-    </div>
-
-    <!-- ── PRODUTOS ───────────────────────────────── -->
-    <div id="panel-produtos" class="tab-panel">
-
-      <div class="topbar">
-        <div class="flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="field-group">
-            <label class="field-label">Mês de referência</label>
-            <select id="prod-mes" class="input" onchange="renderModalidade('RASPADINHA')">
-              <option value="">Todos os meses</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Tipo</label>
-            <select id="prod-tipo" class="input" onchange="renderModalidade($('prod-tipo').value)">
-              <option value="RASPADINHA">Raspadinha</option>
-              <option value="TELESENA">Telesena</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn-pagar" onclick="pagarTudoProduto($('prod-tipo').value)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-               width="14" height="14">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          Pagar tudo · Produtos
-        </button>
-      </div>
-
-      <div id="st-produtos" class="status-bar"></div>
-
-      <div class="empty-produto" id="produtos-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.5" width="32" height="32" style="opacity:.3">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div class="empty-title">Módulo Produtos</div>
-        <div class="empty-sub">Sem registros de Raspadinha/Telesena ainda.<br>Os lançamentos aparecerão aqui automaticamente quando cadastrados.</div>
-      </div>
-      <div id="cards-produtos" class="cards-grid" style="display:none"></div>
-
-    </div>
-
-    <!-- ── HISTÓRICO ─────────────────────────────── -->
-    <div id="panel-historico" class="tab-panel">
-
-      <div class="topbar">
-        <div class="flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap">
-          <div class="field-group">
-            <label class="field-label">Loja</label>
-            <select id="hist-loja" class="input" onchange="renderHistorico()">
-              <option value="">Todas as lojas</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Produto</label>
-            <select id="hist-produto" class="input" onchange="renderHistorico()">
+          <div class="filter-wrap">
+            <label class="filter-label">Produto</label>
+            <select id="saldo-produto" class="filter-select">
               <option value="">Todos</option>
               <option value="FEDERAL">Federal</option>
               <option value="BOLAO">Bolão</option>
-              <option value="RASPADINHA">Raspadinha</option>
-              <option value="TELESENA">Telesena</option>
             </select>
           </div>
-          <div class="field-group">
-            <label class="field-label">Status</label>
-            <select id="hist-status" class="input" onchange="renderHistorico()">
+
+          <div class="filter-wrap">
+            <label class="filter-label">Status</label>
+            <select id="saldo-status" class="filter-select">
+              <option value="PENDENTE">Pendentes</option>
+              <option value="PAGO">Pagos</option>
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+        </div>
+
+        <button id="btn-pagar-tudo" class="btn-pagar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               width="14" height="14">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          Pagar tudo
+        </button>
+      </div>
+
+      <div id="st-saldo" class="status-bar"></div>
+
+      <!-- KPIs -->
+      <div id="kpis-saldo" class="kpi-row" style="margin-bottom:20px"></div>
+
+      <!-- Cards -->
+      <div class="sep">
+        <span class="sep-label" id="sep-label-saldo">Saldo líquido por par de lojas</span>
+        <div class="sep-line"></div>
+        <span id="saldo-count" class="sep-count">0</span>
+      </div>
+
+      <div id="cards-saldo" class="cards-grid"></div>
+
+    </div>
+
+    <!-- ── ABA MOVIMENTAÇÕES ──────────────────────── -->
+    <div id="panel-movimentacoes" class="tab-panel">
+
+      <div class="filter-bar">
+        <div class="flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap;flex:1">
+
+          <div class="filter-wrap">
+            <label class="filter-label">Produto</label>
+            <select id="mov-produto" class="filter-select">
+              <option value="">Todos</option>
+              <option value="FEDERAL">Federal</option>
+              <option value="BOLAO">Bolão</option>
+            </select>
+          </div>
+
+          <div class="filter-wrap">
+            <label class="filter-label">Origem</label>
+            <select id="mov-origem" class="filter-select">
+              <option value="">Todas</option>
+            </select>
+          </div>
+
+          <div class="filter-wrap">
+            <label class="filter-label">Destino</label>
+            <select id="mov-destino" class="filter-select">
+              <option value="">Todas</option>
+            </select>
+          </div>
+
+          <div class="filter-wrap">
+            <label class="filter-label">Mês</label>
+            <select id="mov-mes" class="filter-select">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-wrap">
+            <label class="filter-label">Status</label>
+            <select id="mov-status" class="filter-select">
               <option value="">Todos</option>
               <option value="PENDENTE">Pendente</option>
               <option value="PAGO">Pago</option>
             </select>
           </div>
+
+          <button class="btn-limpar" id="btn-limpar-mov">Limpar</button>
+
         </div>
       </div>
 
-      <div class="table-wrap" style="margin-top:4px">
+      <div id="st-mov" class="status-bar"></div>
+
+      <div class="table-wrap">
         <table class="table">
           <thead>
             <tr>
-              <th>Mês ref.</th><th>Produto</th><th>Devedor</th>
-              <th>Credor</th><th>Movimentações</th>
-              <th>Valor bruto</th><th>Status</th><th>Data acerto</th>
+              <th>Data</th>
+              <th>Produto</th>
+              <th>Referência</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Qtd</th>
+              <th>Valor unit.</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Data acerto</th>
             </tr>
           </thead>
-          <tbody id="tbody-historico"></tbody>
+          <tbody id="tbody-movimentacoes"></tbody>
         </table>
       </div>
+
+      <div id="mov-totais" class="totais-bar"></div>
 
     </div>
 
