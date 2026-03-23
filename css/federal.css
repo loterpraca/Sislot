@@ -1,413 +1,1154 @@
-/* ═══════════════════════════════════════════════════════════
-   SISLOT — Federal · CSS
-   Padrão visual unificado com movimentar.css
-════════════════════════════════════════════════════════════ */
+/**
+ * SISLOT — Federal (v3.0)
+ * Lógica de tema e clock delegadas ao SISLOT_THEME.
+ * Status/toast delegados ao SISLOT_UTILS.
+ * Toda a lógica de negócio preservada integralmente.
+ */
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
+const $  = id => document.getElementById(id);
 
-:root{
-  --deep:#0a1628;
-  --mid:#0f2244;
-  --panel:#132952;
-  --border:#1e3a6e;
-  --accent:#00c896;
-  --amber:#f5a623;
-  --purple:#a78bfa;
-  --sky:#38bdf8;
-  --coral:#fb7185;
-  --bright:#e8eef8;
-  --muted:#8fa3c8;
-  --dim:#4a6491;
-  --input:#0d1e3a;
-  --err:#ff5252;
-  --ok:#00c896;
-  --tr:0.25s cubic-bezier(0.4,0,0.2,1);
+// Usa formatters do SISLOT_UTILS com fallback local
+const fmtMoney = window.SISLOT_UTILS?.fmtBRL
+  || (v => 'R$ ' + Number(v||0).toFixed(2).replace('.', ','));
+const fmtDate  = window.SISLOT_UTILS?.fmtData
+  || (v => { if (!v) return '—'; const [y,m,d]=String(v).split('-'); return `${d}/${m}/${y}`; });
 
-  --t1:#94a3b8;
-  --t2:#64748b;
-  --t3:rgba(148,163,184,.10);
-  --t4:rgba(148,163,184,.25);
-  --t5:rgba(148,163,184,.05);
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+const state = {
+  usuario:                 null,
+  lojaPrincipalId:         null,
+  loterias:                [],
+  usuarios:                [],
+  federais:                [],
+  resumo:                  [],
+  movimentos:              [],
+  vendasFuncionario:       [],
+  detalhesFederais:        [],
+  editingCadastroConcurso: null,
+  editingMovId:            null,
+  lancFederalId:           null
+};
+
+const QTD_PADRAO = {
+  qua: { centro: 80, boulevard: 80, lotobel: 60, santa: 0, via: 0 },
+  sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 0, via: 0 }
+};
+
+// ══════════════════════════════════════════════════════════
+// STATUS — usa sl-status-bar do design system
+// ══════════════════════════════════════════════════════════
+function showStatus(id, msg, t = 'ok') {
+  const el = $(id); if (!el) return;
+  el.textContent = msg;
+  el.className = `sl-status-bar show ${t}`;
+}
+function hideStatus(id) {
+  const el = $(id); if (!el) return;
+  el.className = 'sl-status-bar';
 }
 
-/* ── Temas por loja ─────────────────────────────────────── */
-body[data-loja="boulevard"]    { --t1:#3b82f6; --t2:#1d4ed8; --t3:rgba(59,130,246,.10);  --t4:rgba(59,130,246,.25);  --t5:rgba(59,130,246,.05);  }
-body[data-loja="centro"]       { --t1:#00c896; --t2:#00a07a; --t3:rgba(0,200,150,.10);   --t4:rgba(0,200,150,.25);   --t5:rgba(0,200,150,.05);   }
-body[data-loja="lotobel"]      { --t1:#ef4444; --t2:#b91c1c; --t3:rgba(239,68,68,.10);   --t4:rgba(239,68,68,.25);   --t5:rgba(239,68,68,.05);   }
-body[data-loja="santa-tereza"] { --t1:#a855f7; --t2:#7e22ce; --t3:rgba(168,85,247,.10);  --t4:rgba(168,85,247,.25);  --t5:rgba(168,85,247,.05);  }
-body[data-loja="via-brasil"]   { --t1:#eab308; --t2:#a16207; --t3:rgba(234,179,8,.10);   --t4:rgba(234,179,8,.25);   --t5:rgba(234,179,8,.05);   }
-body[data-loja="todas"]        { --t1:#94a3b8; --t2:#64748b; --t3:rgba(148,163,184,.10); --t4:rgba(148,163,184,.25); --t5:rgba(148,163,184,.05); }
-
-body{
-  background:var(--deep);
-  font-family:"IBM Plex Sans",sans-serif;
-  color:var(--bright);
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
-  background-image:
-    radial-gradient(ellipse 80% 40% at 50% -10%, var(--t3) 0%, transparent 70%),
-    repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(30,58,110,.3) 39px,rgba(30,58,110,.3) 40px),
-    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(30,58,110,.15) 39px,rgba(30,58,110,.15) 40px);
-  transition:background-image var(--tr);
+// ══════════════════════════════════════════════════════════
+// TABS — classes atualizadas para fed-tab-btn / fed-panel
+// ══════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.fed-tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.fed-panel').forEach(p =>
+    p.classList.toggle('active', p.id === `panel-${tab}`));
 }
 
-/* ═══════════════════════════════════════════════════════════
-   HEADER
-════════════════════════════════════════════════════════════ */
-.header{
-  position:sticky;top:0;z-index:500;
-  background:rgba(10,22,40,0.95);
-  border-bottom:1px solid var(--border);
-  backdrop-filter:blur(14px);
-  padding:0 20px;height:62px;
-  display:flex;align-items:center;
+document.querySelectorAll('.fed-tab-btn').forEach(btn =>
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+// ══════════════════════════════════════════════════════════
+// TEMA — delegado ao SISLOT_THEME
+// Ao trocar loja no filtro, atualiza header e re-renderiza
+// ══════════════════════════════════════════════════════════
+function sincronizarTemaComFiltro() {
+  const lojaId = $('filtro-loja')?.value;
+  if (!lojaId) {
+    SISLOT_THEME.aplicarTema('todas');
+    return;
+  }
+  const loteria = state.loterias.find(x => String(x.id) === String(lojaId));
+  if (loteria?.slug) SISLOT_THEME.aplicarTema(loteria.slug);
 }
 
-.header::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 0%,var(--t1) 50%,transparent 100%);
-  opacity:.4;
+// ══════════════════════════════════════════════════════════
+// FILL SELECT HELPER
+// ══════════════════════════════════════════════════════════
+function fillSelect(selectId, items, placeholder = 'Selecione...', valueKey = 'id', labelFn = x => x.nome) {
+  const sel = $(selectId); if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  items.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value       = item[valueKey];
+    opt.textContent = labelFn(item);
+    sel.appendChild(opt);
+  });
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
 }
 
-.header-inner{
-  max-width:1400px;width:100%;margin:0 auto;
-  display:flex;align-items:center;gap:14px;
+// ══════════════════════════════════════════════════════════
+// BOOTSTRAP
+// ══════════════════════════════════════════════════════════
+async function bootstrap() {
+  SISLOT_THEME.init();
+  await loadSession();
+  await loadBaseData();
+  bindEvents();
+  await refreshAll();
+  setCadastroDefaults();
 }
 
-.loja-tree{
-  width:44px;height:44px;flex:0 0 44px;
-  display:flex;align-items:center;justify-content:center;
-  background:var(--t5);border-radius:50%;
-  border:1.5px solid var(--t4);overflow:hidden;
-  transition:var(--tr);box-shadow:0 0 14px var(--t3);
-  cursor:pointer;flex-shrink:0;
-}
-.loja-tree:hover{transform:translateY(-1px) scale(1.05);border-color:var(--t1);box-shadow:0 0 20px var(--t3)}
-.loja-tree-all{width:20px;height:20px;color:var(--t1);opacity:.75;transition:var(--tr);flex-shrink:0}
-.loja-tree:hover .loja-tree-all{opacity:1}
-.loja-tree img{width:110%;height:110%;object-fit:cover;object-position:center;transition:var(--tr)}
+async function loadSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = './login.html'; return; }
 
-.header-info{flex:1;min-width:0}
-.header-nome{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600;color:var(--bright);line-height:1;margin-bottom:3px}
-.header-sub{font-family:"IBM Plex Mono",monospace;font-size:9px;font-weight:400;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
-.header-clock{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--dim);white-space:nowrap}
+  const { data: user } = await sb
+    .from('usuarios')
+    .select('id,nome,perfil,ativo')
+    .eq('auth_user_id', session.user.id)
+    .eq('ativo', true)
+    .maybeSingle();
+  state.usuario = user;
 
-.btn-header{
-  display:flex;align-items:center;gap:6px;
-  background:var(--panel);border:1px solid var(--border);border-radius:8px;
-  padding:7px 13px;cursor:pointer;
-  font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;
-  letter-spacing:.10em;text-transform:uppercase;color:var(--muted);
-  transition:var(--tr);flex-shrink:0;white-space:nowrap;
-}
-.btn-header:hover{border-color:rgba(0,200,150,.35);color:var(--accent);background:rgba(0,200,150,.05)}
-
-/* ═══════════════════════════════════════════════════════════
-   TABS
-════════════════════════════════════════════════════════════ */
-.tabs-bar{
-  display:flex;align-items:flex-end;padding:0 24px;
-  border-bottom:1px solid var(--border);
-  background:rgba(15,34,68,.6);
-  position:sticky;top:62px;z-index:400;overflow:auto;
+  if (user) {
+    const { data: vinculo } = await sb
+      .from('usuarios_loterias')
+      .select('loteria_id')
+      .eq('usuario_id', user.id)
+      .eq('principal', true)
+      .maybeSingle();
+    state.lojaPrincipalId = vinculo?.loteria_id || null;
+  }
 }
 
-.tab-btn{
-  display:flex;align-items:center;gap:8px;
-  padding:14px 18px;font-size:12px;font-weight:500;
-  letter-spacing:.06em;text-transform:uppercase;
-  background:transparent;border:none;cursor:pointer;
-  color:var(--dim);border-bottom:2px solid transparent;
-  transition:all .2s;white-space:nowrap;
-}
-.tab-btn:hover{color:var(--muted)}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-
-/* ═══════════════════════════════════════════════════════════
-   LAYOUT GERAL
-════════════════════════════════════════════════════════════ */
-.main{flex:1;padding:16px 12px 40px;max-width:1400px;width:100%;margin:0 auto}
-
-.tab-panel{display:none}
-.tab-panel.active{display:block;animation:fadeUp .25s ease both}
-
-.page-header{
-  display:flex;align-items:flex-end;justify-content:space-between;
-  gap:12px;margin-bottom:16px;padding-bottom:12px;
-  border-bottom:1px solid var(--border);
-}
-.page-title{font-size:22px;font-weight:700;letter-spacing:-.01em}
-.page-sub{font-size:13px;color:var(--muted);margin-top:4px;font-weight:300}
-
-/* ── Separadores ──────────────────────────────────────── */
-.sep{display:flex;align-items:center;gap:10px;margin:14px 0 10px}
-.sep-label{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
-.sep-line{flex:1;height:1px;background:var(--border)}
-.sep-count{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--accent);background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);border-radius:4px;padding:2px 8px}
-
-/* ── Grids ────────────────────────────────────────────── */
-.grid-1{display:grid;grid-template-columns:1fr;gap:14px}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
-
-/* ═══════════════════════════════════════════════════════════
-   BOTÕES
-════════════════════════════════════════════════════════════ */
-.btn-primary,.btn-secondary,.btn-amber,.btn-danger,.btn-icon{
-  display:inline-flex;align-items:center;gap:7px;
-  border-radius:8px;cursor:pointer;transition:all .2s;
-  font-family:"IBM Plex Sans",sans-serif;
+async function loadBaseData() {
+  const [lotRes, usuRes] = await Promise.all([
+    sb.from('loterias').select('id,nome,slug,ativo').eq('ativo', true).order('id'),
+    sb.from('usuarios').select('id,nome,ativo').eq('ativo', true).order('nome')
+  ]);
+  state.loterias = lotRes.data || [];
+  state.usuarios = usuRes.data || [];
+  fillStaticSelects();
 }
 
-.btn-primary{background:var(--accent);color:var(--deep);border:none;padding:8px 14px;font-size:12px;font-weight:600}
-.btn-primary:hover:not(:disabled){background:#00e8ad;transform:translateY(-1px);box-shadow:0 5px 18px rgba(0,200,150,.25)}
-
-.btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border);padding:8px 12px;font-size:12px}
-.btn-secondary:hover{color:var(--bright);border-color:var(--muted)}
-
-.btn-amber{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.24);color:var(--amber);padding:6px 10px;font-size:11px;font-weight:600}
-.btn-amber:hover{background:rgba(245,166,35,.16)}
-
-.btn-danger{background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.24);color:#ffb3b3;padding:6px 10px;font-size:11px;font-weight:600}
-.btn-danger:hover{background:rgba(255,82,82,.16)}
-
-.btn-icon{
-  background:transparent;border:1px solid var(--border);
-  color:var(--muted);padding:6px 10px;font-size:14px;
-  line-height:1;flex-shrink:0;
-}
-.btn-icon:hover{color:var(--bright);border-color:var(--muted)}
-
-/* ═══════════════════════════════════════════════════════════
-   CAMPOS DE FORMULÁRIO
-════════════════════════════════════════════════════════════ */
-.field,.field-group{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.field-group:last-child{margin-bottom:0}
-
-.field-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.field-label.req::after{content:" *";color:var(--accent)}
-
-input,.input,select,textarea{
-  width:100%;
-  background:var(--input);
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:8px 10px;
-  font-family:"IBM Plex Mono",monospace;
-  font-size:12px;
-  color:var(--bright);
-  outline:none;
-  transition:border-color .2s,box-shadow .2s;
-  -webkit-appearance:none;
+function fillStaticSelects() {
+  const lotLabel = x => `${x.id} • ${x.nome}`;
+  // filtro-loja já está no header (seletor explícito)
+  ['filtro-loja', 'mov-loteria-origem', 'mov-loteria-destino', 'fec-loteria']
+    .forEach(id => fillSelect(id, state.loterias, 'Selecione...', 'id', lotLabel));
+  fillSelect('fec-usuario', state.usuarios, 'Selecione...', 'id', x => x.nome);
+  sincronizarTemaComFiltro();
 }
 
-textarea{resize:vertical;min-height:74px;font-family:"IBM Plex Sans",sans-serif}
-input:focus,.input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,150,.1)}
-input::placeholder,textarea::placeholder{color:var(--dim)}
-input[readonly],.input[readonly]{opacity:.7}
-
-/* ═══════════════════════════════════════════════════════════
-   CARDS E PAINÉIS
-════════════════════════════════════════════════════════════ */
-.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
-.card-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--bright)}
-.soft-card{background:rgba(19,41,82,.74);border:1px solid var(--border);border-radius:12px;padding:14px}
-
-/* ── Status bar ───────────────────────────────────────── */
-.status-bar{display:none;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.4;border:1px solid transparent;margin-bottom:10px}
-.status-bar.show{display:block}
-.status-bar.ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--bright)}
-.status-bar.err{background:rgba(255,82,82,.08);border-color:rgba(255,82,82,.2);color:#ffb3b3}
-.status-bar.warn{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2);color:var(--amber)}
-
-/* ═══════════════════════════════════════════════════════════
-   TABELAS
-════════════════════════════════════════════════════════════ */
-.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px}
-.table{width:100%;border-collapse:collapse;background:var(--panel)}
-.table thead tr{background:var(--mid)}
-.table th{
-  font-family:"IBM Plex Mono",monospace;
-  font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--dim);padding:10px 12px;text-align:left;
-  position:sticky;top:0;z-index:2;white-space:nowrap;
-}
-.table td{padding:10px 12px;font-size:12px;border-top:1px solid rgba(30,58,110,.55);vertical-align:middle}
-.table tr:hover td{background:rgba(255,255,255,.02)}
-.mono{font-family:"IBM Plex Mono",monospace}
-.money{font-family:"IBM Plex Mono",monospace;font-weight:600}
-.pos{color:var(--accent)}
-.neg{color:#ffb3b3}
-.muted{color:var(--muted)}
-
-/* ═══════════════════════════════════════════════════════════
-   KPIs — linha horizontal
-   Agora com 8 colunas (eram 6) para acomodar os novos KPIs:
-   Inicial, Venda Int., Venda Ext., Dev.CX Int.,
-   Dev.CX Ext., Encalhe, Prêmio, Resultado
-════════════════════════════════════════════════════════════ */
-.kpis,
-.kpi-row{
-  display:grid;
-  grid-template-columns:repeat(8,1fr);
-  gap:10px;
-  margin-bottom:16px;
+// ══════════════════════════════════════════════════════════
+// REFRESH ALL
+// ══════════════════════════════════════════════════════════
+async function refreshAll() {
+  await Promise.all([
+    loadFederais(), loadResumo(), loadMovs(),
+    loadVendasFuncionario(), loadDetalhesFederais()
+  ]);
+  renderCadastro();
+  renderVisao();
+  renderMovimentacoes();
+  renderFechamentoResumo();
+  renderAuditoria();
+  fillFederalSelectors();
 }
 
-.kpi{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:12px 14px;
-  position:relative;overflow:hidden;
+// ══════════════════════════════════════════════════════════
+// LOAD FUNCTIONS
+// ══════════════════════════════════════════════════════════
+async function loadFederais() {
+  const { data } = await sb.from('federais').select('*')
+    .order('dt_sorteio', { ascending: false })
+    .order('concurso',   { ascending: false })
+    .order('loteria_id');
+  state.federais = data || [];
 }
 
-.kpi::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1.5px;
-  background:linear-gradient(90deg,var(--t1),transparent);opacity:.35;
-  border-radius:12px 12px 0 0;
+async function loadResumo() {
+  const { data, error } = await sb.from('view_resumo_federal').select('*')
+    .order('dt_sorteio', { ascending: false })
+    .order('concurso',   { ascending: false });
+  state.resumo = error ? [] : (data || []);
+  if (error) console.error('loadResumo:', error);
 }
 
-.kpi-label{
-  font-size:9px;font-weight:600;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--dim);margin-bottom:6px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.kpi-value{font-size:17px;font-weight:700;line-height:1.1}
-.kpi-sub{font-size:10px;color:var(--muted);margin-top:4px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-
-/* ═══════════════════════════════════════════════════════════
-   BADGES
-════════════════════════════════════════════════════════════ */
-.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid transparent}
-.b-ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--accent)}
-.b-warn{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2);color:var(--amber)}
-.b-info{background:rgba(56,189,248,.08);border-color:rgba(56,189,248,.2);color:var(--sky)}
-.b-cor{background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.2);color:var(--coral)}
-
-/* ═══════════════════════════════════════════════════════════
-   DRAWER (lateral)
-════════════════════════════════════════════════════════════ */
-.drawer{
-  position:fixed;top:0;right:0;
-  width:min(720px,100vw);height:100vh;
-  background:rgba(10,22,40,.98);
-  border-left:1px solid var(--border);
-  z-index:800;
-  transform:translateX(100%);
-  transition:transform .25s ease;
-  display:flex;flex-direction:column;
-}
-.drawer.open{transform:translateX(0)}
-.drawer-right{right:0;left:auto}
-
-.drawer-head,
-.drawer-header{
-  display:flex;align-items:flex-start;justify-content:space-between;
-  gap:12px;padding:18px 20px;border-bottom:1px solid var(--border);
-  flex-shrink:0;
+async function loadMovs() {
+  const { data, error } = await sb.from('federal_movimentacoes')
+    .select('*, federais(concurso,dt_sorteio,modalidade,valor_fracao,valor_custo), usuarios!federal_movimentacoes_criado_por_fkey(nome)')
+    .order('created_at', { ascending: false });
+  state.movimentos = error ? [] : (data || []);
+  if (error) console.error('loadMovs:', error);
 }
 
-.drawer-title{font-size:16px;font-weight:700}
-.drawer-sub{font-size:12px;color:var(--muted);margin-top:4px}
-.drawer-body{padding:18px 20px;overflow:auto;flex:1}
-
-.drawer-foot,
-.drawer-footer{
-  padding:16px 20px;border-top:1px solid var(--border);
-  display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;
-  flex-shrink:0;
+async function loadVendasFuncionario() {
+  const { data } = await sb.from('view_federal_vendas_funcionario').select('*')
+    .order('dt_sorteio', { ascending: false }).order('funcionario_nome');
+  state.vendasFuncionario = data || [];
 }
 
-/* ── Overlay ──────────────────────────────────────────── */
-.overlay{display:none;position:fixed;inset:0;background:rgba(3,9,18,.6);backdrop-filter:blur(4px);z-index:700}
-.overlay.show{display:block}
-
-/* ═══════════════════════════════════════════════════════════
-   EMPTY STATE
-════════════════════════════════════════════════════════════ */
-.empty{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;padding:48px 24px;text-align:center;
-}
-.empty-title{font-size:14px;font-weight:700;color:var(--muted)}
-.empty-sub{font-size:12px;color:var(--dim);max-width:420px}
-
-/* ═══════════════════════════════════════════════════════════
-   UTILITÁRIOS
-════════════════════════════════════════════════════════════ */
-.inline-pills{display:flex;gap:8px;flex-wrap:wrap}
-.pill{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--border);font-size:10px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
-.flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.right{margin-left:auto}
-.w-100{width:100%}
-
-.grid-2.drawer-grid{gap:10px}
-.soft-card .field-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
-
-/* ═══════════════════════════════════════════════════════════
-   FILTER BAR
-════════════════════════════════════════════════════════════ */
-.filter-bar{
-  display:flex;align-items:flex-end;gap:16px;
-  margin-bottom:20px;padding:14px 18px 20px;
-  background:var(--panel);border:1px solid var(--border);
-  border-radius:12px;flex-wrap:wrap;position:relative;
-}
-.filter-bar::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1.5px;
-  background:linear-gradient(90deg,var(--t1),var(--t2));
-  opacity:.35;border-radius:12px 12px 0 0;
+async function loadDetalhesFederais() {
+  const { data } = await sb.from('view_detalhe_federal').select('*')
+    .order('concurso', { ascending: false });
+  state.detalhesFederais = data || [];
 }
 
-/* ═══════════════════════════════════════════════════════════
-   RESPONSIVO
-════════════════════════════════════════════════════════════ */
-@media(max-width:1400px){
-  .kpis,
-  .kpi-row{grid-template-columns:repeat(4,1fr)}
+// ══════════════════════════════════════════════════════════
+// FILL SELECTORS
+// ══════════════════════════════════════════════════════════
+function fillFederalSelectors() {
+  fillSelect('mov-federal', state.federais, 'Selecione...', 'id', x => `${x.concurso}`);
+  updateFecFederal();
 }
 
-@media(max-width:1100px){
-  .kpis,
-  .kpi-row{grid-template-columns:repeat(4,1fr)}
-  .grid-5,.grid-4,.grid-3{grid-template-columns:repeat(2,1fr)}
+function updateFecFederal() {
+  const lojaId   = $('fec-loteria')?.value;
+  const filtered = lojaId ? state.federais.filter(x => String(x.loteria_id) === String(lojaId)) : [];
+  fillSelect('fec-federal', filtered,
+    filtered.length ? 'Selecione o concurso...' : 'Selecione a loja primeiro',
+    'id', x => `${x.concurso} — ${fmtDate(x.dt_sorteio)}`);
+  $('fec-valor-fracao').value  = '';
+  $('fec-valor-cambista').value = '';
+  $('fec-total').value         = '';
 }
 
-@media(max-width:900px){
-  .kpis,
-  .kpi-row{grid-template-columns:repeat(2,1fr)}
+// ══════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════
+function lookupLoteriaName(id) {
+  return state.loterias.find(x => String(x.id) === String(id))?.nome || '—';
+}
+function lookupFederal(id) {
+  return state.federais.find(x => String(x.id) === String(id));
 }
 
-@media(max-width:700px){
-  .grid-5,.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}
-  .main{padding:12px 10px 30px}
-  .tabs-bar{padding:0 10px}
-  .header{padding:0 12px;height:56px}
-  .header-inner{gap:10px}
-  .header-clock{display:none}
-  .btn-header span{display:none}
-  .tab-btn{padding:12px 12px;font-size:11px}
-  .page-title{font-size:18px}
-  .page-sub{font-size:12px}
-  .field-label{font-size:9px}
-  .table th,.table td{padding:8px 8px}
-  .kpis,
-  .kpi-row{grid-template-columns:repeat(2,1fr)}
+function applyFederalType(tipo) {
+  if (tipo === 'ESPECIAL') {
+    $('cad-valor-fracao').value = '10.00';
+    $('cad-valor-custo').value  = '8.04';
+  } else {
+    $('cad-valor-fracao').value = '4.00';
+    $('cad-valor-custo').value  = '3.21';
+  }
 }
 
-@media(max-width:500px){
-  .kpis,
-  .kpi-row{grid-template-columns:1fr 1fr}
-  .kpi-value{font-size:16px}
+function nextWedOrSat(base = new Date()) {
+  const d = new Date(base); d.setHours(12,0,0,0);
+  while (![3,6].includes(d.getDay())) d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
 }
 
-@keyframes fadeUp{
-  from{opacity:0;transform:translateY(8px)}
-  to{opacity:1;transform:none}
+function nextQuaSabFrom(baseIso, dir) {
+  let d = new Date((baseIso||new Date().toISOString().slice(0,10))+'T12:00:00');
+  d.setDate(d.getDate()+(dir>0?1:-1));
+  while (![3,6].includes(d.getDay())) d.setDate(d.getDate()+(dir>0?1:-1));
+  return d.toISOString().slice(0,10);
 }
+
+function suggestNextConcurso() {
+  const nums = state.federais.map(f=>parseInt(f.concurso,10)).filter(n=>!isNaN(n));
+  return nums.length ? String(Math.max(...nums)+1) : '';
+}
+
+function suggestNextSorteio() {
+  if (!state.federais.length) return nextWedOrSat();
+  const dates = state.federais.map(f=>f.dt_sorteio).filter(Boolean).sort().reverse();
+  return nextQuaSabFrom(dates[0],1);
+}
+
+function fillQtdPadraoCadastro() {
+  const d   = $('cad-dt-sorteio').value
+    ? new Date($('cad-dt-sorteio').value+'T12:00:00') : new Date();
+  const pad = d.getDay()===6 ? QTD_PADRAO.sab : QTD_PADRAO.qua;
+  $('cad-qtd-centro').value    = pad.centro;
+  $('cad-qtd-boulevard').value = pad.boulevard;
+  $('cad-qtd-lotobel').value   = pad.lotobel;
+  $('cad-qtd-santa').value     = pad.santa;
+  $('cad-qtd-via').value       = pad.via;
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER — KPIs  (usa fed-kpi do federal.css)
+// ══════════════════════════════════════════════════════════
+function renderKPIs(rows) {
+  const sum = key => rows.reduce((a,x)=>a+Number(x[key]||0),0);
+  $('kpis-visao').innerHTML = [
+    ['Qtd Inicial',  sum('qtd_inicial'),              'Carga base'],
+    ['Venda Int.',   sum('qtd_venda_interna_total'),  'Todos os canais internos'],
+    ['Venda Ext.',   sum('qtd_venda_externa'),        'Enviadas para outras lojas'],
+    ['Dev. CX Int.', sum('qtd_dev_cx_interna'),       'Devolução interna'],
+    ['Dev. CX Ext.', sum('qtd_dev_cx_externa'),       'Devolução nos destinos'],
+    ['Encalhe',      sum('qtd_encalhe'),              'Frações não vendidas'],
+    ['Prêmio',       fmtMoney(sum('premio_encalhe_total')), 'Prêmio encalhe'],
+    ['Resultado',    fmtMoney(sum('resultado')),      'Apuração geral']
+  ].map(([l,v,s]) => `
+    <div class="fed-kpi">
+      <div class="fed-kpi-label">${l}</div>
+      <div class="fed-kpi-value">${v}</div>
+      <div class="fed-kpi-sub">${s}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER — EXIBIÇÃO
+// ══════════════════════════════════════════════════════════
+function renderVisao() {
+  let rows   = [...state.resumo];
+  const c    = $('filtro-concurso')?.value.trim();
+  const lojaId = $('filtro-loja')?.value;
+  const di   = $('filtro-dt-ini')?.value;
+  const df   = $('filtro-dt-fim')?.value;
+
+  if (c)      rows = rows.filter(x => String(x.concurso).includes(c));
+  if (lojaId) rows = rows.filter(x => String(x.loteria_id) === String(lojaId));
+  if (di)     rows = rows.filter(x => x.dt_sorteio >= di);
+  if (df)     rows = rows.filter(x => x.dt_sorteio <= df);
+
+  renderKPIs(rows);
+  lojaId ? renderVisaoLoja(rows, lojaId) : renderVisaoTodas(rows);
+}
+
+function emptyRow(cols, msg) {
+  return `<tr><td colspan="${cols}" class="sl-table-empty">${msg}</td></tr>`;
+}
+
+function badgeStatus(status) {
+  const map = {
+    PENDENTE: 'sl-badge--amber',
+    PAGO:     'sl-badge--ok',
+    QUITADO:  'sl-badge--ok'
+  };
+  return `<span class="sl-badge ${map[status]||'sl-badge--neutral'}">${status||'PENDENTE'}</span>`;
+}
+
+function renderVisaoTodas(rows) {
+  $('thead-visao').innerHTML = `<tr>
+    <th>Loja</th><th>Concurso</th><th>Data</th><th>Ini.</th>
+    <th>Venda Int.</th><th>Venda Ext.</th><th>Dev.CX Int.</th><th>Dev.CX Ext.</th>
+    <th>Encalhe</th><th>Enviadas</th><th>Retorno</th><th>Estoque</th><th>Resultado</th><th>Ações</th>
+  </tr>`;
+  $('tbody-visao').innerHTML = rows.length ? rows.map(r => {
+    const res = Number(r.resultado||0);
+    return `<tr>
+      <td>${r.loja_origem}</td>
+      <td class="td-mono">${r.concurso}</td>
+      <td class="td-mono">${fmtDate(r.dt_sorteio)}</td>
+      <td class="td-mono">${r.qtd_inicial}</td>
+      <td class="td-mono">${r.qtd_venda_interna_total||'—'}</td>
+      <td class="td-mono">${r.qtd_venda_externa||'—'}</td>
+      <td class="td-mono">${r.qtd_dev_cx_interna||'—'}</td>
+      <td class="td-mono">${r.qtd_dev_cx_externa||'—'}</td>
+      <td class="td-mono">${r.qtd_encalhe||'—'}</td>
+      <td class="td-mono">${r.qtd_enviada||'—'}</td>
+      <td class="td-mono">${r.qtd_retorno_recebido||'—'}</td>
+      <td class="td-mono">${r.estoque_atual}</td>
+      <td class="td-mono ${res>=0?'td-ok':'td-err'}">${fmtMoney(res)}</td>
+      <td>
+        <button class="sl-btn sl-btn--outline sl-btn--sm" onclick="openFederalDetail('${r.federal_id}')">Detalhar</button>
+        <button class="sl-btn sl-btn--ghost   sl-btn--sm" onclick="openLancamento('${r.federal_id}')">Lançamento</button>
+      </td>
+    </tr>`;
+  }).join('') : emptyRow(14, 'Nada encontrado. Ajuste os filtros ou cadastre o primeiro concurso.');
+}
+
+function renderVisaoLoja(rows, lojaId) {
+  const funcMap = {};
+  state.vendasFuncionario
+    .filter(v => String(v.loteria_id)===String(lojaId) && v.canal_venda==='CAIXA')
+    .forEach(v => { funcMap[String(v.usuario_id)] = v.funcionario_nome; });
+  const funcs = Object.entries(funcMap).map(([id,nome]) => ({ id, nome }));
+  const colSpan = 8 + funcs.length + 4;
+
+  $('thead-visao').innerHTML = `<tr>
+    <th>Concurso</th><th>Data</th><th>Ini.</th>
+    ${funcs.map(f=>`<th>${f.nome.split(' ')[0]}</th>`).join('')}
+    <th>WA</th><th>Balcão</th><th>Cambista</th>
+    <th>Dev.CX Int.</th><th>Dev.CX Ext.</th>
+    <th>Venda Ext.</th><th>Encalhe</th>
+    <th>Enviadas</th><th>Retorno</th><th>Estoque</th><th>Resultado</th><th>Ações</th>
+  </tr>`;
+
+  $('tbody-visao').innerHTML = rows.length ? rows.map(r => {
+    const res = Number(r.resultado||0);
+    const tdFuncs = funcs.map(f => {
+      const v = state.vendasFuncionario.find(x =>
+        String(x.federal_id)===String(r.federal_id) && String(x.usuario_id)===f.id && x.canal_venda==='CAIXA');
+      return `<td class="td-mono">${v?.qtd_vendida||'—'}</td>`;
+    }).join('');
+    return `<tr>
+      <td class="td-mono">${r.concurso}</td>
+      <td class="td-mono">${fmtDate(r.dt_sorteio)}</td>
+      <td class="td-mono">${r.qtd_inicial}</td>
+      ${tdFuncs}
+      <td class="td-mono">${r.qtd_vendida_whatsapp||'—'}</td>
+      <td class="td-mono">${r.qtd_vendida_balcao||'—'}</td>
+      <td class="td-mono">${r.qtd_vendida_cambista_interno||'—'}</td>
+      <td class="td-mono">${r.qtd_dev_cx_interna||'—'}</td>
+      <td class="td-mono">${r.qtd_dev_cx_externa||'—'}</td>
+      <td class="td-mono">${r.qtd_venda_externa||'—'}</td>
+      <td class="td-mono">${r.qtd_encalhe||'—'}</td>
+      <td class="td-mono">${r.qtd_enviada||'—'}</td>
+      <td class="td-mono">${r.qtd_retorno_recebido||'—'}</td>
+      <td class="td-mono">${r.estoque_atual}</td>
+      <td class="td-mono ${res>=0?'td-ok':'td-err'}">${fmtMoney(res)}</td>
+      <td>
+        <button class="sl-btn sl-btn--outline sl-btn--sm" onclick="openFederalDetail('${r.federal_id}')">Detalhar</button>
+        <button class="sl-btn sl-btn--ghost   sl-btn--sm" onclick="openLancamento('${r.federal_id}')">Lançamento</button>
+      </td>
+    </tr>`;
+  }).join('') : emptyRow(colSpan, 'Nada encontrado.');
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER — CADASTRO
+// ══════════════════════════════════════════════════════════
+function renderCadastro() {
+  const grupos = Object.values(
+    state.federais.reduce((acc,f) => {
+      if (!acc[f.concurso]) acc[f.concurso] = {
+        concurso:f.concurso, dt_sorteio:f.dt_sorteio,
+        valor_fracao:f.valor_fracao, valor_custo:f.valor_custo,
+        qt_fracoes_bilhete:f.qt_fracoes_bilhete, itens:[]
+      };
+      acc[f.concurso].itens.push(f); return acc;
+    }, {})
+  ).sort((a,b)=>String(b.concurso).localeCompare(String(a.concurso),undefined,{numeric:true}));
+
+  $('cnt-cadastros').textContent = grupos.length;
+  $('tbody-cadastro').innerHTML  = grupos.length ? grupos.map(g => {
+    const tipo     = Number(g.valor_fracao)===10 ? 'ESPECIAL' : 'COMUM';
+    const totalIni = g.itens.reduce((a,x)=>a+Number(x.qtd_recebidas||0),0);
+    const totalDev = g.itens.reduce((a,x)=>a+Number(x.qtd_devolvidas||0),0);
+    const totalEnc = g.itens.reduce((a,x)=>a+Number(x.qtd_encalhe||0),0);
+    return `<tr>
+      <td>Todos</td>
+      <td class="td-mono">${g.concurso}</td>
+      <td class="td-mono">${fmtDate(g.dt_sorteio)}</td>
+      <td>${tipo==='COMUM'
+        ? '<span class="sl-badge sl-badge--theme">Comum</span>'
+        : '<span class="sl-badge sl-badge--amber">Especial</span>'}</td>
+      <td class="td-mono">${fmtMoney(g.valor_fracao)}</td>
+      <td class="td-mono">${fmtMoney(g.valor_custo)}</td>
+      <td class="td-mono">${totalIni}</td>
+      <td class="td-mono">${totalDev}</td>
+      <td class="td-mono">${totalEnc}</td>
+      <td>
+        <button class="sl-btn sl-btn--outline sl-btn--sm" onclick="editCadastro('${g.concurso}')">Editar</button>
+        <button class="sl-btn sl-btn--danger  sl-btn--sm" onclick="deleteCadastro('${g.concurso}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('') : emptyRow(10, 'Nenhum concurso cadastrado.');
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER — MOVIMENTAÇÕES
+// ══════════════════════════════════════════════════════════
+function renderMovimentacoes() {
+  $('tbody-mov').innerHTML = state.movimentos.length ? state.movimentos.map(m => {
+    const federal    = lookupFederal(m.federal_id);
+    const isTrans    = m.tipo_evento==='TRANSFERENCIA';
+    const valorFracao = Number(federal?.valor_fracao||m.federais?.valor_fracao||m.valor_fracao_ref||0);
+    const valorCusto  = Number(federal?.valor_custo ||m.federais?.valor_custo ||0);
+    const total = isTrans
+      ? (Number(m.qtd_vendida||0)*valorFracao)
+      + (Number(m.qtd_devolucao_caixa||0)*valorCusto)
+      + (Number(m.qtd_venda_cambista||0)*Number(m.valor_cambista||0))
+      : Number(m.valor_total_real||m.valor_total||(Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)));
+    const distrib = isTrans ? [
+      m.qtd_vendida>0        ? `${m.qtd_vendida} venda`         : null,
+      m.qtd_devolucao_caixa>0? `${m.qtd_devolucao_caixa} dev.cx`: null,
+      m.qtd_venda_cambista>0 ? `${m.qtd_venda_cambista} camb.`  : null,
+      m.qtd_retorno_origem>0 ? `${m.qtd_retorno_origem} retorno` : null,
+    ].filter(Boolean).join(' · ')||'—' : '—';
+    return `<tr>
+      <td class="td-mono">${new Date(m.created_at).toLocaleDateString('pt-BR')}</td>
+      <td class="td-mono">${m.federais?.concurso||'—'}</td>
+      <td><span class="sl-badge sl-badge--theme">${m.tipo_evento||m.tipo||'—'}</span></td>
+      <td>${lookupLoteriaName(m.loteria_origem)}</td>
+      <td>${m.loteria_destino?lookupLoteriaName(m.loteria_destino):'—'}</td>
+      <td class="td-mono">${m.qtd_fracoes}</td>
+      <td class="td-mono" style="font-size:11px">${distrib}</td>
+      <td class="td-mono">${fmtMoney(total)}</td>
+      <td>${badgeStatus(m.status_acerto)}</td>
+      <td>
+        <button class="sl-btn sl-btn--outline sl-btn--sm" onclick="editMov('${m.id}')">Editar</button>
+        <button class="sl-btn sl-btn--danger  sl-btn--sm" onclick="deleteMovDirect('${m.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('') : emptyRow(10, 'Sem movimentações registradas.');
+  applyDestinoFilter();
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER — FECHAMENTO RESUMO
+// ══════════════════════════════════════════════════════════
+function renderFechamentoResumo() {
+  const lojaId = $('fec-loteria')?.value;
+  let rows = [...state.vendasFuncionario];
+  if (lojaId) rows = rows.filter(x=>String(x.loteria_id)===String(lojaId));
+  const nomeLoja = lojaId
+    ? (state.loterias.find(x=>String(x.id)===String(lojaId))?.nome||'')
+    : 'Todas as lojas';
+  const titulo = $('titulo-fechamento-resumo');
+  if (titulo) titulo.textContent = `Vendas — ${nomeLoja}`;
+  $('tbody-fechamento-resumo').innerHTML = rows.length ? rows.map(v => `<tr>
+    <td>${v.funcionario_nome}</td>
+    <td>${lookupLoteriaName(v.loteria_id)}</td>
+    <td><span class="sl-badge sl-badge--theme">${v.canal_venda||'CAIXA'}</span></td>
+    <td class="td-mono">${v.concurso}</td>
+    <td class="td-mono">${v.qtd_vendida}</td>
+    <td class="td-mono">${fmtMoney(v.total_vendido)}</td>
+  </tr>`).join('') : emptyRow(6, 'Sem vendas lançadas.');
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER — AUDITORIA
+// ══════════════════════════════════════════════════════════
+function renderAuditoria() {
+  let rows = [...state.movimentos];
+  const t  = $('aud-tipo')?.value;
+  const s  = $('aud-status')?.value;
+  const c  = $('aud-concurso')?.value.trim();
+  const di = $('aud-dt-ini')?.value;
+  const df = $('aud-dt-fim')?.value;
+  if (t)  rows = rows.filter(x=>(x.tipo_evento||x.tipo)===t);
+  if (s)  rows = rows.filter(x=>(x.status_acerto||'')===s);
+  if (c)  rows = rows.filter(x=>String(x.federais?.concurso||'').includes(c));
+  if (di) rows = rows.filter(x=>String(x.data_mov)>=di);
+  if (df) rows = rows.filter(x=>String(x.data_mov)<=df);
+
+  $('tbody-auditoria').innerHTML = rows.length ? rows.map(m => {
+    const federal    = lookupFederal(m.federal_id);
+    const valorFracao = Number(federal?.valor_fracao||m.federais?.valor_fracao||m.valor_fracao_ref||0);
+    const valorCusto  = Number(federal?.valor_custo ||m.federais?.valor_custo ||0);
+    const isTrans    = m.tipo_evento==='TRANSFERENCIA';
+    const total      = isTrans
+      ? (Number(m.qtd_vendida||0)*valorFracao)+(Number(m.qtd_devolucao_caixa||0)*valorCusto)+(Number(m.qtd_venda_cambista||0)*Number(m.valor_cambista||0))
+      : Number(m.valor_total_real||m.valor_total||(Number(m.qtd_fracoes||0)*Number(m.valor_fracao_real||m.valor_fracao||0)));
+    return `<tr>
+      <td class="td-mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
+      <td>${m.federais?.modalidade||'Federal'}</td>
+      <td class="td-mono">${m.federais?.concurso||'—'}</td>
+      <td><span class="sl-badge sl-badge--theme">${m.tipo_evento||m.tipo||'—'}</span></td>
+      <td>${lookupLoteriaName(m.loteria_origem)}</td>
+      <td>${m.loteria_destino?lookupLoteriaName(m.loteria_destino):'—'}</td>
+      <td class="td-mono">${m.qtd_fracoes}</td>
+      <td class="td-mono">${fmtMoney(m.valor_fracao_real||m.valor_fracao)}</td>
+      <td class="td-mono">${fmtMoney(total)}</td>
+      <td>${badgeStatus(m.status_acerto)}</td>
+      <td>
+        <button class="sl-btn sl-btn--outline sl-btn--sm" onclick="editMov('${m.id}')">Editar</button>
+        <button class="sl-btn sl-btn--ghost   sl-btn--sm" onclick="openMovDetail('${m.id}')">Ver</button>
+        <button class="sl-btn sl-btn--danger  sl-btn--sm" onclick="deleteMovDirect('${m.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('') : emptyRow(11, 'Sem registros para os filtros selecionados.');
+}
+
+// ══════════════════════════════════════════════════════════
+// CADASTRO — CRUD (lógica de negócio preservada integralmente)
+// ══════════════════════════════════════════════════════════
+function setCadastroDefaults() {
+  state.editingCadastroConcurso = null;
+  $('cad-concurso').value        = suggestNextConcurso();
+  $('cad-dt-sorteio').value      = suggestNextSorteio();
+  $('cad-tipo').value            = 'COMUM';
+  applyFederalType('COMUM');
+  $('cad-fracoes-bilhete').value = '10';
+  fillQtdPadraoCadastro();
+}
+
+async function saveCadastro() {
+  try {
+    const concurso     = $('cad-concurso').value.trim();
+    const dt_sorteio   = $('cad-dt-sorteio').value;
+    const valor_fracao = Number($('cad-valor-fracao').value||0);
+    const valor_custo  = Number($('cad-valor-custo').value||0);
+    const qt_fracoes   = Number($('cad-fracoes-bilhete').value||10);
+    if (!concurso||!dt_sorteio) { showStatus('st-cadastro','Preencha concurso e data.','err'); return; }
+    const mapa = [
+      {id:1,qtd:Number($('cad-qtd-centro').value||0)},
+      {id:2,qtd:Number($('cad-qtd-boulevard').value||0)},
+      {id:3,qtd:Number($('cad-qtd-lotobel').value||0)},
+      {id:4,qtd:Number($('cad-qtd-santa').value||0)},
+      {id:5,qtd:Number($('cad-qtd-via').value||0)}
+    ];
+    if (state.editingCadastroConcurso) {
+      for (const item of mapa) {
+        const {error} = await sb.from('federais').update({
+          concurso, dt_sorteio, valor_fracao, valor_custo,
+          qt_fracoes_bilhete:qt_fracoes, qtd_recebidas:item.qtd,
+          updated_at:new Date().toISOString()
+        }).eq('concurso',state.editingCadastroConcurso).eq('loteria_id',item.id);
+        if (error) throw error;
+      }
+      showStatus('st-cadastro','Concurso atualizado em todas as loterias.','ok');
+    } else {
+      for (const item of mapa) {
+        const {error} = await sb.from('federais').insert({
+          loteria_id:item.id, modalidade:'Federal',
+          concurso, dt_sorteio, valor_fracao, valor_custo,
+          qt_fracoes_bilhete:qt_fracoes, qtd_recebidas:item.qtd,
+          qtd_devolvidas:0, qtd_encalhe:0, ativo:true,
+          criado_por:state.usuario?.id||null, updated_at:new Date().toISOString()
+        });
+        if (error) throw error;
+      }
+      showStatus('st-cadastro','Federais cadastradas para todas as loterias.','ok');
+    }
+    await refreshAll(); setCadastroDefaults();
+  } catch(e) { showStatus('st-cadastro',e.message,'err'); }
+}
+
+window.editCadastro = function(concurso) {
+  const itens = state.federais.filter(x=>String(x.concurso)===String(concurso));
+  const f = itens[0]; if (!f) return;
+  state.editingCadastroConcurso = String(concurso);
+  $('cad-concurso').value        = f.concurso;
+  $('cad-dt-sorteio').value      = f.dt_sorteio;
+  $('cad-tipo').value            = Number(f.valor_fracao)===10?'ESPECIAL':'COMUM';
+  $('cad-valor-fracao').value    = f.valor_fracao;
+  $('cad-valor-custo').value     = f.valor_custo;
+  $('cad-fracoes-bilhete').value = f.qt_fracoes_bilhete;
+  $('cad-qtd-centro').value    = itens.find(x=>x.loteria_id===1)?.qtd_recebidas||0;
+  $('cad-qtd-boulevard').value = itens.find(x=>x.loteria_id===2)?.qtd_recebidas||0;
+  $('cad-qtd-lotobel').value   = itens.find(x=>x.loteria_id===3)?.qtd_recebidas||0;
+  $('cad-qtd-santa').value     = itens.find(x=>x.loteria_id===4)?.qtd_recebidas||0;
+  $('cad-qtd-via').value       = itens.find(x=>x.loteria_id===5)?.qtd_recebidas||0;
+  switchTab('cadastro');
+};
+
+window.deleteCadastro = async function(concurso) {
+  if (!concurso||!confirm(`Apagar o concurso ${concurso} em todas as loterias?`)) return;
+  try {
+    const idsFederais = state.federais.filter(x=>String(x.concurso)===String(concurso)).map(x=>x.id);
+    if (idsFederais.length) {
+      for (const tbl of ['federal_encalhe_premio','federal_movimentacoes','fechamento_federais']) {
+        const {error} = await sb.from(tbl).delete().in('federal_id',idsFederais);
+        if (error) throw error;
+      }
+    }
+    const {error} = await sb.from('federais').delete().eq('concurso',concurso);
+    if (error) throw error;
+    if (String(state.editingCadastroConcurso||'')===String(concurso)) { state.editingCadastroConcurso=null; setCadastroDefaults(); }
+    showStatus('st-cadastro',`Concurso ${concurso} excluído.`,'ok');
+    await refreshAll();
+  } catch(e) { showStatus('st-cadastro',e.message,'err'); }
+};
+
+// ══════════════════════════════════════════════════════════
+// MOVIMENTAÇÃO — CRUD (lógica de negócio preservada)
+// ══════════════════════════════════════════════════════════
+async function saveMov() {
+  try {
+    const federal      = lookupFederal($('mov-federal').value);
+    const tipoEvento   = $('mov-tipo-evento').value;
+    const origemId     = Number($('mov-loteria-origem').value||0)||null;
+    const destinoId    = Number($('mov-loteria-destino').value||0)||null;
+    const qtdTotal     = Number($('mov-qtd').value||0);
+    const valor        = Number($('mov-valor').value||0);
+    const qtdVendida   = Number($('mov-qtd-vendida').value||0);
+    const qtdDevCaixa  = Number($('mov-qtd-dev-caixa').value||0);
+    const qtdCambista  = Number($('mov-qtd-cambista').value||0);
+    const qtdRetorno   = Number($('mov-qtd-retorno-origem').value||0);
+    const valorCamb    = Number($('mov-valor-cambista').value||0);
+    if (!$('mov-federal').value||!tipoEvento||!qtdTotal||!origemId) {
+      showStatus('st-mov','Preencha concurso, origem, evento e quantidade.','err'); return;
+    }
+    if (tipoEvento==='TRANSFERENCIA'&&!destinoId) {
+      showStatus('st-mov','Selecione a loja destino.','err'); return;
+    }
+    if (tipoEvento==='TRANSFERENCIA') {
+      const soma = qtdVendida+qtdDevCaixa+qtdCambista+qtdRetorno;
+      if (soma>0&&soma!==qtdTotal) {
+        showStatus('st-mov',`Distribuição inválida: ${soma} ≠ ${qtdTotal}.`,'err'); return;
+      }
+    }
+    const payload = {
+      federal_id:$('mov-federal').value, loteria_origem:origemId,
+      loteria_destino:destinoId||null,
+      tipo:tipoEvento==='TRANSFERENCIA'?'ENVIO':'DEVOLUCAO_EXTERNA',
+      tipo_evento:tipoEvento, qtd_fracoes:qtdTotal, valor_fracao:valor,
+      valor_fracao_ref:Number(federal?.valor_fracao||0), valor_fracao_real:valor,
+      valor_total_real:qtdTotal*valor, valor_a_acertar:0,
+      qtd_vendida:qtdVendida, qtd_devolucao_caixa:qtdDevCaixa,
+      qtd_venda_cambista:qtdCambista, qtd_retorno_origem:qtdRetorno,
+      valor_cambista:valorCamb, status_acerto:'PENDENTE',
+      data_mov:new Date().toISOString().slice(0,10),
+      observacao:$('mov-observacao').value.trim()||null,
+      criado_por:state.usuario?.id||null, updated_at:new Date().toISOString(),
+      editado_por:state.editingMovId?state.usuario?.id:null,
+      editado_em:state.editingMovId?new Date().toISOString():null
+    };
+    if (state.editingMovId) {
+      const {error} = await sb.from('federal_movimentacoes').update(payload).eq('id',state.editingMovId);
+      if (error) throw error;
+      showStatus('st-mov','Movimentação atualizada.','ok');
+    } else {
+      const {error} = await sb.from('federal_movimentacoes').insert(payload);
+      if (error) throw error;
+      showStatus('st-mov','Movimentação registrada.','ok');
+    }
+    state.editingMovId=null; clearMov(); await refreshAll();
+  } catch(e) { showStatus('st-mov',e.message,'err'); }
+}
+
+function clearMov() {
+  state.editingMovId=null;
+  ['mov-federal','mov-loteria-origem','mov-loteria-destino',
+   'mov-dt-concurso','mov-qtd','mov-valor','mov-total','mov-observacao']
+    .forEach(id=>{const el=$(id);if(el)el.value='';});
+  $('mov-modalidade').value='Federal';
+  $('mov-tipo-evento').value='TRANSFERENCIA';
+  ['mov-qtd-vendida','mov-qtd-dev-caixa','mov-qtd-cambista','mov-qtd-retorno-origem']
+    .forEach(id=>{const el=$(id);if(el)el.value=0;});
+  $('mov-valor-cambista').value='';
+  const st=$('mov-distribuicao-status'); if(st) st.textContent='';
+  const pv=$('mov-cambista-total'); if(pv) pv.textContent='';
+  const btn=$('btn-excluir-mov'); if(btn) btn.style.display='none';
+  toggleDistribuicaoFields();
+}
+
+window.editMov = function(id) {
+  const m=state.movimentos.find(x=>String(x.id)===String(id)); if(!m) return;
+  state.editingMovId=id; switchTab('movimentacao');
+  $('mov-federal').value            =m.federal_id;
+  $('mov-modalidade').value         ='Federal';
+  $('mov-loteria-origem').value     =m.loteria_origem||'';
+  $('mov-loteria-destino').value    =m.loteria_destino||'';
+  $('mov-dt-concurso').value        =lookupFederal(m.federal_id)?.dt_sorteio||'';
+  $('mov-tipo-evento').value        =m.tipo_evento||'TRANSFERENCIA';
+  $('mov-qtd').value                =m.qtd_fracoes;
+  $('mov-valor').value              =m.valor_fracao_real||m.valor_fracao||'';
+  $('mov-total').value              =Number(m.valor_total_real||m.valor_total||0).toFixed(2);
+  $('mov-observacao').value         =m.observacao||'';
+  $('mov-qtd-vendida').value        =m.qtd_vendida||0;
+  $('mov-qtd-dev-caixa').value      =m.qtd_devolucao_caixa||0;
+  $('mov-qtd-cambista').value       =m.qtd_venda_cambista||0;
+  $('mov-qtd-retorno-origem').value =m.qtd_retorno_origem||0;
+  $('mov-valor-cambista').value     =m.valor_cambista||'';
+  toggleDistribuicaoFields(); syncMovValorByTipo(); applyDestinoFilter();
+  const btn=$('btn-excluir-mov'); if(btn) btn.style.display='inline-flex';
+};
+
+async function deleteMov() {
+  if (!state.editingMovId||!confirm('Apagar esta movimentação?')) return;
+  try {
+    const {error}=await sb.from('federal_movimentacoes').delete().eq('id',state.editingMovId);
+    if(error) throw error;
+    showStatus('st-mov','Movimentação apagada.','ok'); clearMov(); await refreshAll();
+  } catch(e) { showStatus('st-mov',e.message,'err'); }
+}
+
+window.deleteMovDirect = async function(id) {
+  if (!id||!confirm('Apagar esta movimentação?')) return;
+  try {
+    const {error}=await sb.from('federal_movimentacoes').delete().eq('id',id);
+    if(error) throw error;
+    if(String(state.editingMovId||'')===String(id)) clearMov();
+    closeDrawer();
+    showStatus('st-mov','Movimentação apagada.','ok');
+    showStatus('st-auditoria','Movimentação apagada.','ok');
+    await refreshAll();
+  } catch(e) { showStatus('st-mov',e.message,'err'); }
+};
+
+// ══════════════════════════════════════════════════════════
+// FECHAMENTO — CRUD
+// ══════════════════════════════════════════════════════════
+async function saveFechamento() {
+  try {
+    const lojaId    =$('fec-loteria').value;
+    const usuarioId =$('fec-usuario').value;
+    const dataRef   =$('fec-data-ref').value;
+    const federalId =$('fec-federal').value;
+    const canal     =$('fec-canal').value||'CAIXA';
+    if (!lojaId||!usuarioId||!dataRef||!federalId) {
+      showStatus('st-fechamento','Preencha loja, funcionário, data e concurso.','err'); return;
+    }
+    const federal=lookupFederal(federalId);
+    if (!federal||String(federal.loteria_id)!==String(lojaId)) {
+      showStatus('st-fechamento','Concurso não pertence à loja selecionada.','err'); return;
+    }
+    const qtdVendida   =Number($('fec-qtd-vendida').value||0);
+    const valorFracao  =Number($('fec-valor-fracao').value||0);
+    const valorCambista=Number($('fec-valor-cambista').value||0);
+    if (qtdVendida<=0) { showStatus('st-fechamento','Informe a quantidade vendida.','err'); return; }
+    const valorUnitario   =canal==='CAMBISTA'?valorCambista:valorFracao;
+    const totalCalculado  =qtdVendida*valorUnitario;
+    const usuario=state.usuarios.find(x=>String(x.id)===String(usuarioId));
+    const header={
+      loteria_id:Number(lojaId), usuario_id:Number(usuarioId),
+      funcionario_nome:usuario?.nome||'Funcionário', data_ref:dataRef,
+      canal_venda:canal, total_federais:totalCalculado,
+      troco_inicial:0,troco_sobra:0,relatorio:0,deposito:0,pix_cnpj:0,diferenca_pix:0,
+      premio_raspadinha:0,resgate_telesena:0,total_produtos:0,total_boloes:0,
+      total_fiado:0,total_debitos:0,total_creditos:0,quebra:0,
+      criado_por:state.usuario?.id||null, updated_at:new Date().toISOString()
+    };
+    const {data:fHeader,error:eH}=await sb.from('fechamentos').insert(header).select('id').single();
+    if(eH) throw eH;
+    const {error:eI}=await sb.from('fechamento_federais').insert({
+      fechamento_id:fHeader.id, federal_id:federalId, modalidade:'Federal',
+      concurso:federal.concurso, dt_sorteio:federal.dt_sorteio||null,
+      valor_fracao:valorUnitario, qtd_vendida:qtdVendida, total:totalCalculado
+    });
+    if(eI) throw eI;
+    showStatus('st-fechamento',`Venda registrada — ${qtdVendida} fração(ões) via ${canal}.`,'ok');
+    $('fec-qtd-vendida').value=''; $('fec-valor-cambista').value=''; $('fec-total').value='';
+    await refreshAll();
+  } catch(e) { showStatus('st-fechamento',e.message,'err'); }
+}
+
+// ══════════════════════════════════════════════════════════
+// LANÇAMENTO (drawer)
+// ══════════════════════════════════════════════════════════
+window.openLancamento = function(federalId) {
+  const f=lookupFederal(federalId); if(!f) return;
+  state.lancFederalId=$('lanc-modalidade').value='Federal'||federalId;
+  state.lancFederalId=federalId;
+  $('lanc-modalidade').value =  'Federal';
+  $('lanc-concurso').value   = f.concurso;
+  $('lanc-data').value       = f.dt_sorteio;
+  $('lanc-loja').value       = lookupLoteriaName(f.loteria_id);
+  $('lanc-qtd-dev').value    = f.qtd_devolvidas||0;
+  $('lanc-qtd-enc').value    = f.qtd_encalhe||0;
+  $('lanc-vlr-premio').value = '';
+  $('lanc-obs').value        = '';
+  $('overlay-lanc').classList.add('show');
+  $('drawer-lanc').classList.add('open');
+};
+
+function closeLancamento() {
+  $('overlay-lanc').classList.remove('show');
+  $('drawer-lanc').classList.remove('open');
+  state.lancFederalId=null;
+}
+
+async function saveLancamento() {
+  try {
+    if (!state.lancFederalId) return;
+    const qtdDev=Number($('lanc-qtd-dev').value||0);
+    const qtdEnc=Number($('lanc-qtd-enc').value||0);
+    const premio=Number($('lanc-vlr-premio').value||0);
+    const obs   =$('lanc-obs').value.trim()||null;
+    const {error:e1}=await sb.from('federais').update({
+      qtd_devolvidas:qtdDev, qtd_encalhe:qtdEnc, updated_at:new Date().toISOString()
+    }).eq('id',state.lancFederalId);
+    if(e1) throw e1;
+    if (premio>0) {
+      const {data:pEx}=await sb.from('federal_encalhe_premio').select('id')
+        .eq('federal_id',state.lancFederalId).order('created_at',{ascending:false}).limit(1);
+      if (pEx?.length) {
+        const {error:e2}=await sb.from('federal_encalhe_premio').update({
+          qtd_fracoes_premiadas:qtdEnc||1, valor_premio:premio,
+          observacao:obs, data_registro:new Date().toISOString().slice(0,10)
+        }).eq('id',pEx[0].id);
+        if(e2) throw e2;
+      } else {
+        const {error:e3}=await sb.from('federal_encalhe_premio').insert({
+          federal_id:state.lancFederalId, qtd_fracoes_premiadas:qtdEnc||1,
+          valor_premio:premio, observacao:obs, criado_por:state.usuario?.id||null
+        });
+        if(e3) throw e3;
+      }
+    }
+    showStatus('st-visao','Lançamento salvo.','ok');
+    closeLancamento(); await refreshAll();
+  } catch(e) { showStatus('st-visao',e.message,'err'); }
+}
+
+// ══════════════════════════════════════════════════════════
+// DRAWER — DETALHES
+// ══════════════════════════════════════════════════════════
+window.openFederalDetail = function(federalId) {
+  const r=state.resumo.find(x=>String(x.federal_id)===String(federalId)); if(!r) return;
+  const detOrigem =state.detalhesFederais.filter(x=>String(x.federal_origem_id)===String(federalId));
+  const vendas    =state.vendasFuncionario.filter(x=>String(x.federal_id)===String(federalId));
+  const rowsVI    = ['CAIXA','WHATSAPP','BALCAO','CAMBISTA'].flatMap(canal =>
+    vendas.filter(v=>(v.canal_venda||'CAIXA')===canal).map(v =>
+      `<tr><td>${v.funcionario_nome}</td>
+       <td><span class="sl-badge sl-badge--theme">${canal}</span></td>
+       <td class="td-mono">${v.qtd_vendida}</td>
+       <td class="td-mono">${fmtMoney(v.total_vendido)}</td></tr>`
+    ));
+
+  const body=`
+    <div class="sl-card" style="margin-bottom:14px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${[
+          ['Inicial',r.qtd_inicial],['Venda Int.',r.qtd_venda_interna_total],
+          ['Venda Ext.',r.qtd_venda_externa],['Dev.CX Int.',r.qtd_dev_cx_interna],
+          ['Encalhe',r.qtd_encalhe],['Estoque',r.estoque_atual],
+          ['Prêmio',fmtMoney(r.premio_encalhe_total)],['Resultado',fmtMoney(r.resultado)]
+        ].map(([l,v])=>`<span class="sl-badge sl-badge--neutral">${l}: ${v}</span>`).join('')}
+      </div>
+    </div>
+    <div class="sl-section-sep"><div class="sl-section-label">Venda interna</div><div class="sl-section-line"></div></div>
+    ${rowsVI.length
+      ? `<div class="sl-table-wrap"><table class="sl-table">
+          <thead><tr><th>Funcionário</th><th>Canal</th><th>Qtd</th><th>Total</th></tr></thead>
+          <tbody>${rowsVI.join('')}</tbody></table></div>`
+      : '<p style="color:var(--text3);padding:8px 0">Sem vendas internas</p>'}
+    <div class="sl-section-sep" style="margin-top:16px">
+      <div class="sl-section-label">Venda externa por loja</div><div class="sl-section-line"></div>
+    </div>
+    ${detOrigem.length
+      ? `<div class="sl-table-wrap"><table class="sl-table">
+          <thead><tr><th>Loja destino</th><th>Venda normal</th><th>Cambista</th><th>Retorno</th><th>Acerto</th></tr></thead>
+          <tbody>${detOrigem.map(d=>`<tr>
+            <td>${d.loja_destino_nome}</td>
+            <td class="td-mono">${d.qtd_vendida>0?`${d.qtd_vendida}×${fmtMoney(r.valor_fracao)}`:'—'}</td>
+            <td class="td-mono">${d.qtd_venda_cambista>0?`${d.qtd_venda_cambista}×${fmtMoney(d.valor_cambista)}`:'—'}</td>
+            <td class="td-mono">${d.qtd_retorno_origem>0?d.qtd_retorno_origem:'—'}</td>
+            <td class="td-mono">${fmtMoney(d.valor_acerto)}</td>
+          </tr>`).join('')}</tbody></table></div>`
+      : '<p style="color:var(--text3);padding:8px 0">Sem vendas externas</p>'}`;
+
+  openDrawer(
+    `Federal ${r.concurso} — ${r.loja_origem}`,
+    `${r.modalidade} • ${fmtDate(r.dt_sorteio)}`,
+    body,
+    [{label:'Fechar',kind:'secondary',onClick:closeDrawer}]
+  );
+};
+
+window.openMovDetail = function(id) {
+  const m=state.movimentos.find(x=>String(x.id)===String(id)); if(!m) return;
+  const federal    =lookupFederal(m.federal_id);
+  const vF=Number(federal?.valor_fracao||m.federais?.valor_fracao||0);
+  const vC=Number(federal?.valor_custo ||m.federais?.valor_custo ||0);
+  const total=(Number(m.qtd_vendida||0)*vF)+(Number(m.qtd_devolucao_caixa||0)*vC)+(Number(m.qtd_venda_cambista||0)*Number(m.valor_cambista||0));
+  openDrawer(
+    `Movimentação ${m.tipo_evento||m.tipo}`,
+    `${m.federais?.modalidade||'Federal'} • Concurso ${m.federais?.concurso||'—'}`,
+    `<div class="fed-grid-2" style="gap:10px;margin-bottom:14px">
+      <div class="fed-soft-card"><div class="sl-label">Origem</div><div>${lookupLoteriaName(m.loteria_origem)}</div></div>
+      <div class="fed-soft-card"><div class="sl-label">Destino</div><div>${m.loteria_destino?lookupLoteriaName(m.loteria_destino):'—'}</div></div>
+      <div class="fed-soft-card"><div class="sl-label">Qtd transferida</div><div class="td-mono">${m.qtd_fracoes}</div></div>
+      <div class="fed-soft-card"><div class="sl-label">Status</div><div>${badgeStatus(m.status_acerto)}</div></div>
+     </div>
+     <div class="sl-card">
+       <div class="sl-label" style="margin-bottom:8px">Distribuição no destino</div>
+       <div style="display:flex;flex-wrap:wrap;gap:6px">
+         ${m.qtd_vendida>0?`<span class="sl-badge sl-badge--neutral">Venda ${m.qtd_vendida}×${fmtMoney(vF)}=${fmtMoney(m.qtd_vendida*vF)}</span>`:''}
+         ${m.qtd_devolucao_caixa>0?`<span class="sl-badge sl-badge--neutral">Dev.cx ${m.qtd_devolucao_caixa}×${fmtMoney(vC)}=${fmtMoney(m.qtd_devolucao_caixa*vC)}</span>`:''}
+         ${m.qtd_venda_cambista>0?`<span class="sl-badge sl-badge--neutral">Camb. ${m.qtd_venda_cambista}×${fmtMoney(m.valor_cambista)}=${fmtMoney(m.qtd_venda_cambista*Number(m.valor_cambista||0))}</span>`:''}
+         ${m.qtd_retorno_origem>0?`<span class="sl-badge sl-badge--neutral">Retorno ${m.qtd_retorno_origem} (sem débito)</span>`:''}
+       </div>
+       <div style="margin-top:10px;font-weight:600">Total pendência: ${fmtMoney(total)}</div>
+     </div>`,
+    [
+      {label:'Editar', kind:'amber',    onClick:()=>{closeDrawer();window.editMov(id);}},
+      {label:'Fechar', kind:'secondary',onClick:closeDrawer}
+    ]
+  );
+};
+
+// ══════════════════════════════════════════════════════════
+// DRAWERS GENÉRICOS
+// ══════════════════════════════════════════════════════════
+function openDrawer(title, sub, bodyHtml, actions=[]) {
+  $('drawer-title').textContent=title;
+  $('drawer-sub').textContent=sub;
+  $('drawer-body').innerHTML=bodyHtml;
+  $('drawer-foot').innerHTML='';
+  actions.forEach(a => {
+    const b=document.createElement('button');
+    b.textContent=a.label;
+    b.className=`sl-btn sl-btn--${a.kind==='primary'?'primary':a.kind==='amber'?'outline':a.kind==='danger'?'danger':'ghost'}`;
+    b.onclick=a.onClick;
+    $('drawer-foot').appendChild(b);
+  });
+  $('overlay').classList.add('show');
+  $('drawer').classList.add('open');
+}
+function closeDrawer() {
+  $('overlay').classList.remove('show');
+  $('drawer').classList.remove('open');
+}
+window.closeDrawer=closeDrawer;
+
+// ══════════════════════════════════════════════════════════
+// HELPERS DE MOVIMENTAÇÃO
+// ══════════════════════════════════════════════════════════
+function syncMovValorByTipo() {
+  const f=lookupFederal($('mov-federal').value); if(!f) return;
+  const tipo=$('mov-tipo-evento').value;
+  if (tipo==='DEVOLUCAO_CAIXA') $('mov-valor').value=f.valor_custo;
+  else if (tipo==='VENDA_CAMBISTA') $('mov-valor').value='';
+  else $('mov-valor').value=f.valor_fracao;
+  const qtd=Number($('mov-qtd').value||0);
+  const valor=Number($('mov-valor').value||0);
+  $('mov-total').value=qtd&&valor?(qtd*valor).toFixed(2):'';
+}
+
+function applyDestinoFilter() {
+  const origem=$('mov-loteria-origem')?.value;
+  const sel=$('mov-loteria-destino');
+  if (!sel) return;
+  [...sel.options].forEach(opt=>{
+    if (!opt.value){opt.hidden=false;return;}
+    opt.hidden=!!origem&&opt.value===origem;
+  });
+  if (origem&&sel.value===origem) sel.value='';
+}
+
+function toggleDistribuicaoFields() {
+  const isTrans=$('mov-tipo-evento').value==='TRANSFERENCIA';
+  const bloco=$('bloco-distribuicao');
+  if (bloco) bloco.style.display=isTrans?'':'none';
+}
+
+function toggleCambistaField() {
+  const canal=$('fec-canal').value;
+  const bloco=$('fec-bloco-cambista');
+  const fracaoLb=$('fec-label-fracao');
+  if (bloco)    bloco.style.display   =canal==='CAMBISTA'?'':'none';
+  if (fracaoLb) fracaoLb.style.display=canal==='CAMBISTA'?'none':'';
+  $('fec-total').value='';
+}
+
+function updateFecTotal() {
+  const canal=$('fec-canal').value;
+  const qtd=Number($('fec-qtd-vendida').value||0);
+  const vF =Number($('fec-valor-fracao').value||0);
+  const vC =Number($('fec-valor-cambista').value||0);
+  const valor=canal==='CAMBISTA'?vC:vF;
+  $('fec-total').value=qtd&&valor?(qtd*valor).toFixed(2):'';
+}
+
+// ══════════════════════════════════════════════════════════
+// BIND EVENTS
+// ══════════════════════════════════════════════════════════
+function bindEvents() {
+  // Drawers
+  $('overlay').addEventListener('click',closeDrawer);
+  $('btn-close-drawer').addEventListener('click',closeDrawer);
+  $('overlay-lanc').addEventListener('click',closeLancamento);
+  $('btn-close-lanc').addEventListener('click',closeLancamento);
+  $('btn-cancel-lanc').addEventListener('click',closeLancamento);
+  $('btn-save-lanc').addEventListener('click',saveLancamento);
+
+  // Loja tree — ciclar ao clicar no logo (comportamento mantido)
+  $('lojaTreeWrap')?.addEventListener('click', () => {
+    const sel=$('filtro-loja');
+    if (!sel) return;
+    const opts=[...sel.options].map(o=>o.value);
+    const idx=opts.indexOf(sel.value);
+    sel.value=opts[(idx+1)%opts.length];
+    sincronizarTemaComFiltro();
+    renderVisao();
+  });
+
+  // Filtro de loja (seletor explícito no header)
+  $('filtro-loja')?.addEventListener('change', () => {
+    sincronizarTemaComFiltro(); renderVisao();
+  });
+
+  // Exibição
+  $('btn-limpar-visao')?.addEventListener('click', () => {
+    ['filtro-concurso','filtro-loja','filtro-dt-ini','filtro-dt-fim']
+      .forEach(id=>{const el=$(id);if(el)el.value='';});
+    sincronizarTemaComFiltro(); renderVisao();
+  });
+  $('btn-recarregar-visao')?.addEventListener('click',refreshAll);
+
+  // Cadastro
+  $('btn-cancelar-cadastro')?.addEventListener('click',setCadastroDefaults);
+  $('btn-salvar-cadastro')?.addEventListener('click',saveCadastro);
+  $('cad-tipo')?.addEventListener('change',e=>applyFederalType(e.target.value));
+  $('cad-dt-sorteio')?.addEventListener('change',fillQtdPadraoCadastro);
+  $('cad-data-prev')?.addEventListener('click',()=>{
+    $('cad-dt-sorteio').value=nextQuaSabFrom($('cad-dt-sorteio').value||suggestNextSorteio(),-1);
+    fillQtdPadraoCadastro();
+  });
+  $('cad-data-next')?.addEventListener('click',()=>{
+    $('cad-dt-sorteio').value=nextQuaSabFrom($('cad-dt-sorteio').value||suggestNextSorteio(),1);
+    fillQtdPadraoCadastro();
+  });
+
+  // Movimentação
+  $('btn-salvar-mov')?.addEventListener('click',saveMov);
+  $('btn-limpar-mov')?.addEventListener('click',clearMov);
+  $('btn-excluir-mov')?.addEventListener('click',deleteMov);
+  $('mov-modalidade').value='Federal';
+  $('mov-loteria-origem')?.addEventListener('change',applyDestinoFilter);
+  $('mov-federal')?.addEventListener('change',()=>{
+    const f=lookupFederal($('mov-federal').value);
+    if(!f){
+      $('mov-resumo-selec').innerHTML='<span style="color:var(--text3)">Selecione um concurso</span>';
+      return;
+    }
+    $('mov-modalidade').value='Federal';
+    $('mov-loteria-origem').value=f.loteria_id;
+    $('mov-dt-concurso').value=f.dt_sorteio;
+    applyDestinoFilter(); syncMovValorByTipo();
+    $('mov-resumo-selec').innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${[['Modalidade','Federal'],['Origem',lookupLoteriaName(f.loteria_id)],
+         ['Concurso',f.concurso],['Data',fmtDate(f.dt_sorteio)],
+         ['Fração',fmtMoney(f.valor_fracao)],['Custo',fmtMoney(f.valor_custo)]]
+        .map(([l,v])=>`<span class="sl-badge sl-badge--neutral">${l}: ${v}</span>`).join('')}
+    </div>`;
+  });
+  $('mov-tipo-evento')?.addEventListener('change',()=>{syncMovValorByTipo();toggleDistribuicaoFields();});
+  ['mov-qtd','mov-valor'].forEach(id=>$(id)?.addEventListener('input',()=>{
+    const qtd=Number($('mov-qtd').value||0);
+    const valor=Number($('mov-valor').value||0);
+    $('mov-total').value=qtd&&valor?(qtd*valor).toFixed(2):'';
+  }));
+  ['mov-qtd-vendida','mov-qtd-dev-caixa','mov-qtd-cambista','mov-qtd-retorno-origem']
+    .forEach(id=>$(id)?.addEventListener('input',()=>{
+      const total=Number($('mov-qtd').value||0);
+      const soma =['mov-qtd-vendida','mov-qtd-dev-caixa','mov-qtd-cambista','mov-qtd-retorno-origem']
+        .reduce((a,i)=>a+Number($(i)?.value||0),0);
+      const st=$('mov-distribuicao-status'); if(!st) return;
+      if (soma===0){st.textContent='';return;}
+      st.textContent=soma===total?`✓ ${total} distribuídas`:soma<total?`Faltam ${total-soma}`:`Excesso de ${soma-total}`;
+      st.style.color=soma===total?'var(--success)':'var(--error)';
+    }));
+  $('mov-valor-cambista')?.addEventListener('input',()=>{
+    const qtd=Number($('mov-qtd-cambista').value||0);
+    const valor=Number($('mov-valor-cambista').value||0);
+    const el=$('mov-cambista-total');
+    if(el) el.textContent=qtd&&valor?`= ${fmtMoney(qtd*valor)}`:'';
+  });
+
+  // Fechamento
+  $('fec-canal')?.addEventListener('change',()=>{toggleCambistaField();updateFecTotal();});
+  $('fec-data-ref').value=new Date().toISOString().slice(0,10);
+  $('fec-loteria')?.addEventListener('change',()=>{updateFecFederal();renderFechamentoResumo();});
+  $('fec-federal')?.addEventListener('change',()=>{
+    const f=lookupFederal($('fec-federal').value);
+    $('fec-valor-fracao').value=f?f.valor_fracao:'';
+    $('fec-valor-cambista').value=''; $('fec-total').value='';
+  });
+  ['fec-qtd-vendida','fec-valor-fracao','fec-valor-cambista'].forEach(id=>$(id)?.addEventListener('input',updateFecTotal));
+  $('btn-salvar-fechamento')?.addEventListener('click',saveFechamento);
+  $('btn-limpar-fechamento')?.addEventListener('click',()=>{
+    $('fec-qtd-vendida').value=''; $('fec-valor-cambista').value=''; $('fec-total').value='';
+  });
+
+  // Auditoria
+  $('btn-filtrar-auditoria')?.addEventListener('click',renderAuditoria);
+  $('btn-recarregar-auditoria')?.addEventListener('click',refreshAll);
+
+  toggleCambistaField();
+}
+
+// ══════════════════════════════════════════════════════════
+// ARRANQUE
+// ══════════════════════════════════════════════════════════
+bootstrap().catch(err => {
+  console.error('Federal bootstrap error:', err);
+  alert('Erro ao iniciar o módulo Federal: ' + (err.message||err));
+});
