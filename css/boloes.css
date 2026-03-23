@@ -1,9 +1,3 @@
-.boloes-top-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .boloes-module-shell {
   padding: 0;
   overflow: hidden;
@@ -226,13 +220,11 @@
 }
 
 @media (max-width: 720px) {
-  .boloes-top-actions,
   .boloes-actions-row {
     width: 100%;
     justify-content: stretch;
   }
 
-  .boloes-top-actions > *,
   .boloes-actions-row > * {
     flex: 1;
   }
@@ -246,4 +238,50 @@
   .boloes-panel {
     padding: 14px;
   }
+}
+
+
+.boloes-embed-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.boloes-embed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.boloes-embed-sub {
+  margin-top: 6px;
+  color: var(--text2);
+  font-size: 13px;
+}
+
+.boloes-embed-wrap {
+  min-height: 72vh;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255,255,255,.015);
+}
+
+.boloes-embed-frame {
+  width: 100%;
+  min-height: 72vh;
+  border: 0;
+  display: block;
+  background: transparent;
+}
+
+.boloes-embed-loading {
+  display: grid;
+  place-items: center;
+  min-height: 72vh;
+  color: var(--text2);
+  font: 500 13px/1.4 var(--mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
