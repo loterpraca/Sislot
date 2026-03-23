@@ -9,6 +9,12 @@ const state = {
   loterias: [],
   usuario: null,
   activeTab: 'visao',
+  embedsLoaded: {},
+};
+
+const TAB_ROUTES = {
+  cadastro: './bolao-cadastro.html',
+  movimentacao: './bolao-movimentar.html',
 };
 
 const MODALIDADES = [
@@ -23,12 +29,14 @@ async function init() {
   try {
     SISLOT_THEME.init();
     bindTabs();
+    restoreTabFromHash();
     bindActions();
     preencherModalidades();
     await carregarUsuario();
     await carregarLoterias();
     aplicarFiltroLojaPeloTema();
     await carregarBoloes();
+    switchTab(state.activeTab);
 
     document.addEventListener('sislot:tema', async () => {
       aplicarFiltroLojaPeloTema();
@@ -67,6 +75,7 @@ function bindActions() {
 
 function switchTab(tab) {
   state.activeTab = tab;
+  updateHash(tab);
   document.querySelectorAll('.boloes-tab').forEach(btn => {
     const on = btn.dataset.tab === tab;
     btn.classList.toggle('is-active', on);
@@ -75,6 +84,42 @@ function switchTab(tab) {
   document.querySelectorAll('.boloes-panel').forEach(panel => {
     panel.classList.toggle('is-active', panel.dataset.panel === tab);
   });
+  ensureEmbeddedTab(tab);
+}
+
+function restoreTabFromHash() {
+  const raw = String(location.hash || '').replace('#', '').trim();
+  const allowed = ['visao','cadastro','movimentacao','mestra','auditoria'];
+  if (allowed.includes(raw)) state.activeTab = raw;
+}
+
+function updateHash(tab) {
+  const newHash = `#${tab}`;
+  if (location.hash !== newHash) history.replaceState(null, '', newHash);
+}
+
+function ensureEmbeddedTab(tab) {
+  const src = TAB_ROUTES[tab];
+  if (!src) return;
+
+  const wrapId = tab === 'cadastro' ? 'embedCadastroWrap' : 'embedMovimentacaoWrap';
+  const wrap = $(wrapId);
+  if (!wrap) return;
+
+  if (state.embedsLoaded[tab]) return;
+
+  wrap.innerHTML = `<div class="boloes-embed-loading">Carregando ${tab === 'cadastro' ? 'cadastro' : 'movimentação'}…</div>`;
+
+  const frame = document.createElement('iframe');
+  frame.className = 'boloes-embed-frame';
+  frame.src = src;
+  frame.loading = 'lazy';
+  frame.title = tab === 'cadastro' ? 'Cadastro de bolão' : 'Movimentação de bolão';
+  frame.addEventListener('load', () => {
+    wrap.innerHTML = '';
+    wrap.appendChild(frame);
+    state.embedsLoaded[tab] = true;
+  }, { once: true });
 }
 
 function preencherModalidades() {
