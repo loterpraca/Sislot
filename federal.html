@@ -1,16 +1,17 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Federal — SISLOT</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/federal.css">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/sislot-base.css" />
+  <link rel="stylesheet" href="./css/sislot-components.css" />
+  <link rel="stylesheet" href="./css/federal.css" />
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./sislot-config.js"></script>
-  <script src="./sislot-utils.js"></script>
   <script src="./sislot-security.js"></script>
 </head>
 <body>
@@ -18,284 +19,281 @@
   <!-- ══════════════════════════════════════════════════
        OVERLAYS & DRAWERS
   ═══════════════════════════════════════════════════ -->
-
-  <!-- Drawer genérico (Detalhar / Ver movimentação) -->
-  <div id="overlay" class="overlay"></div>
-  <div id="drawer" class="drawer drawer-right">
-    <div class="drawer-header">
+  <div id="overlay" class="sl-drawer-overlay"></div>
+  <div id="drawer" class="sl-drawer">
+    <div class="sl-drawer-header">
       <div>
-        <div id="drawer-title" class="drawer-title"></div>
-        <div id="drawer-sub"   class="drawer-sub"></div>
+        <div id="drawer-title" class="sl-drawer-title"></div>
+        <div id="drawer-sub"   class="sl-drawer-sub"></div>
       </div>
-      <button id="btn-close-drawer" class="btn-icon">✕</button>
+      <button id="btn-close-drawer" class="sl-btn sl-btn--ghost sl-btn--sm">✕</button>
     </div>
-    <div id="drawer-body" class="drawer-body"></div>
-    <div id="drawer-foot" class="drawer-foot"></div>
+    <div id="drawer-body" class="sl-drawer-body"></div>
+    <div id="drawer-foot" class="sl-drawer-footer"></div>
   </div>
 
   <!-- Drawer Lançamento -->
-  <div id="overlay-lanc" class="overlay"></div>
-  <div id="drawer-lanc" class="drawer drawer-right">
-    <div class="drawer-header">
+  <div id="overlay-lanc" class="sl-drawer-overlay"></div>
+  <div id="drawer-lanc" class="sl-drawer">
+    <div class="sl-drawer-header">
       <div>
-        <div class="drawer-title">Lançamento</div>
-        <div class="drawer-sub">Atualiza devolução, encalhe e prêmio</div>
+        <div class="sl-drawer-title">Lançamento</div>
+        <div class="sl-drawer-sub">Atualiza devolução, encalhe e prêmio</div>
       </div>
-      <button id="btn-close-lanc" class="btn-icon">✕</button>
+      <button id="btn-close-lanc" class="sl-btn sl-btn--ghost sl-btn--sm">✕</button>
     </div>
-    <div class="drawer-body">
+    <div class="sl-drawer-body">
 
-      <div class="grid-2" style="gap:10px;margin-bottom:12px">
-        <div class="field-group">
-          <label class="field-label">Modalidade</label>
-          <input id="lanc-modalidade" class="input" readonly>
+      <div class="fed-grid-2" style="margin-bottom:12px">
+        <div class="sl-field">
+          <label class="sl-label">Modalidade</label>
+          <input id="lanc-modalidade" class="sl-input" readonly />
         </div>
-        <div class="field-group">
-          <label class="field-label">Concurso</label>
-          <input id="lanc-concurso" class="input" readonly>
+        <div class="sl-field">
+          <label class="sl-label">Concurso</label>
+          <input id="lanc-concurso" class="sl-input" readonly />
         </div>
-        <div class="field-group">
-          <label class="field-label">Data sorteio</label>
-          <input id="lanc-data" type="date" class="input" readonly>
+        <div class="sl-field">
+          <label class="sl-label">Data sorteio</label>
+          <input id="lanc-data" type="date" class="sl-input" readonly />
         </div>
-        <div class="field-group">
-          <label class="field-label">Loja</label>
-          <input id="lanc-loja" class="input" readonly>
-        </div>
-      </div>
-
-      <div class="sep">
-        <span class="sep-label">Devolução e encalhe</span>
-        <div class="sep-line"></div>
-      </div>
-
-      <div class="grid-2" style="gap:10px;margin-bottom:12px">
-        <div class="field-group">
-          <label class="field-label">Qtd devolvida (caixa própria)</label>
-          <input id="lanc-qtd-dev" type="number" min="0" value="0" class="input">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Qtd encalhe</label>
-          <input id="lanc-qtd-enc" type="number" min="0" value="0" class="input">
+        <div class="sl-field">
+          <label class="sl-label">Loja</label>
+          <input id="lanc-loja" class="sl-input" readonly />
         </div>
       </div>
 
-      <div class="sep">
-        <span class="sep-label">Prêmio do encalhe (se houver)</span>
-        <div class="sep-line"></div>
+      <div class="sl-section-sep">
+        <div class="sl-section-label">Devolução e encalhe</div>
+        <div class="sl-section-line"></div>
       </div>
 
-      <div class="field-group" style="margin-bottom:12px">
-        <label class="field-label">Valor total do prêmio (R$)</label>
-        <input id="lanc-vlr-premio" type="number" step="0.01" min="0"
-               class="input" placeholder="0,00">
+      <div class="fed-grid-2" style="margin-bottom:12px">
+        <div class="sl-field">
+          <label class="sl-label">Qtd devolvida (caixa própria)</label>
+          <input id="lanc-qtd-dev" type="number" min="0" value="0" class="sl-input" />
+        </div>
+        <div class="sl-field">
+          <label class="sl-label">Qtd encalhe</label>
+          <input id="lanc-qtd-enc" type="number" min="0" value="0" class="sl-input" />
+        </div>
       </div>
 
-      <div class="field-group">
-        <label class="field-label">Observação</label>
-        <textarea id="lanc-obs" class="input" rows="2" placeholder="Opcional..."></textarea>
+      <div class="sl-section-sep">
+        <div class="sl-section-label">Prêmio do encalhe (se houver)</div>
+        <div class="sl-section-line"></div>
+      </div>
+
+      <div class="sl-field" style="margin-bottom:12px">
+        <label class="sl-label">Valor total do prêmio (R$)</label>
+        <input id="lanc-vlr-premio" type="number" step="0.01" min="0" class="sl-input" placeholder="0,00" />
+      </div>
+
+      <div class="sl-field">
+        <label class="sl-label">Observação</label>
+        <textarea id="lanc-obs" class="sl-input" rows="2" placeholder="Opcional…"></textarea>
       </div>
 
     </div>
-    <div class="drawer-foot">
-      <button id="btn-save-lanc"   class="btn-primary">Salvar</button>
-      <button id="btn-cancel-lanc" class="btn-secondary">Cancelar</button>
+    <div class="sl-drawer-footer">
+      <button id="btn-save-lanc"   class="sl-btn sl-btn--primary">Salvar</button>
+      <button id="btn-cancel-lanc" class="sl-btn sl-btn--ghost">Cancelar</button>
     </div>
   </div>
 
   <!-- ══════════════════════════════════════════════════
        HEADER
   ═══════════════════════════════════════════════════ -->
-  <header class="header">
-    <div class="header-inner">
+  <header class="sl-header">
+    <div class="sl-header-inner">
 
-      <div class="loja-tree" id="lojaTreeWrap" title="Clique para filtrar por loja">
-        <svg class="loja-tree-all" id="lojaTreeAll" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="1.5"
-             stroke-linecap="round" stroke-linejoin="round">
+      <div class="sl-loja-logo" id="lojaTreeWrap" title="Clique para ciclar lojas">
+        <svg class="sl-loja-logo-icon" id="lojaTreeAll" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3"  y="3"  width="7" height="7" rx="1.5"/>
           <rect x="14" y="3"  width="7" height="7" rx="1.5"/>
           <rect x="3"  y="14" width="7" height="7" rx="1.5"/>
           <rect x="14" y="14" width="7" height="7" rx="1.5"/>
         </svg>
-        <img src="" alt="Logo" id="logoImg" style="display:none"/>
+        <img src="" alt="Logo" id="logoImg" style="display:none" />
       </div>
 
-      <div class="header-info">
-        <div class="header-nome" id="headerNome">Todas as Lojas</div>
-        <div class="header-sub">Federal · SISLOT</div>
+      <div class="sl-header-info">
+        <div class="sl-header-nome" id="headerNome">Todas as Lojas</div>
+        <div class="sl-header-sub">Federal · SISLOT</div>
       </div>
 
-      <div class="header-clock" id="relogio">--:--:--</div>
+      <!-- Seletor explícito de loja (filtro principal) -->
+      <div class="sl-loja-select">
+        <select id="filtro-loja" aria-label="Filtrar por loja">
+          <option value="">Todas as lojas</option>
+        </select>
+      </div>
 
-      <button class="btn-header" onclick="location.href='./menu.html'">
+      <div class="sl-header-clock" id="relogio">--:--:--</div>
+
+      <a href="./menu.html" class="sl-btn-header">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
-        <span>Menu</span>
-      </button>
+        Menu
+      </a>
+
     </div>
   </header>
 
   <!-- ══════════════════════════════════════════════════
        TABS
   ═══════════════════════════════════════════════════ -->
-  <nav class="tabs-bar">
-    <button class="tab-btn active" data-tab="visao">
-      <span class="tab-dot" style="background:var(--accent)"></span>Exibição
+  <nav class="fed-tabs-bar">
+    <button class="fed-tab-btn active" data-tab="visao">
+      <span class="fed-tab-dot" style="background:var(--success)"></span>Exibição
     </button>
-    <button class="tab-btn" data-tab="cadastro">
-      <span class="tab-dot" style="background:var(--sky)"></span>Cadastro
+    <button class="fed-tab-btn" data-tab="cadastro">
+      <span class="fed-tab-dot" style="background:var(--sky)"></span>Cadastro
     </button>
-    <button class="tab-btn" data-tab="movimentacao">
-      <span class="tab-dot" style="background:var(--amber)"></span>Movimentação
+    <button class="fed-tab-btn" data-tab="movimentacao">
+      <span class="fed-tab-dot" style="background:var(--amber)"></span>Movimentação
     </button>
-    <button class="tab-btn" data-tab="fechamento">
-      <span class="tab-dot" style="background:var(--purple)"></span>Venda
+    <button class="fed-tab-btn" data-tab="fechamento">
+      <span class="fed-tab-dot" style="background:var(--purple)"></span>Venda
     </button>
-    <button class="tab-btn" data-tab="auditoria">Auditoria</button>
-    <button class="tab-btn" data-tab="controle">Controle</button>
+    <button class="fed-tab-btn" data-tab="auditoria">Auditoria</button>
+    <button class="fed-tab-btn" data-tab="controle">Controle</button>
   </nav>
 
   <!-- ══════════════════════════════════════════════════
        MAIN
   ═══════════════════════════════════════════════════ -->
-  <main class="main">
+  <main class="sl-main sl-main--wide">
 
-    <!-- ── EXIBIÇÃO ─────────────────────────────────── -->
-    <div id="panel-visao" class="tab-panel active">
+    <!-- ── EXIBIÇÃO ──────────────────────────────────── -->
+    <div id="panel-visao" class="fed-panel active">
 
-      <!-- Filtros -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="flex" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
-
-          <div class="field-group" style="min-width:140px">
-            <label class="field-label">Concurso</label>
-            <input id="filtro-concurso" class="input" placeholder="Ex: 3200">
+      <div class="sl-card" style="margin-bottom:16px">
+        <div class="fed-filter-row">
+          <div class="sl-field">
+            <label class="sl-label">Concurso</label>
+            <input id="filtro-concurso" class="sl-input" placeholder="Ex: 3200" />
           </div>
-
-          <div class="field-group" style="min-width:180px">
-            <label class="field-label">Loja</label>
-            <select id="filtro-loja" class="input"></select>
+          <div class="sl-field">
+            <label class="sl-label">Data início</label>
+            <input id="filtro-dt-ini" type="date" class="sl-input" />
           </div>
-
-          <div class="field-group" style="min-width:140px">
-            <label class="field-label">Data início</label>
-            <input id="filtro-dt-ini" type="date" class="input">
+          <div class="sl-field">
+            <label class="sl-label">Data fim</label>
+            <input id="filtro-dt-fim" type="date" class="sl-input" />
           </div>
-
-          <div class="field-group" style="min-width:140px">
-            <label class="field-label">Data fim</label>
-            <input id="filtro-dt-fim" type="date" class="input">
+          <div class="fed-filter-actions">
+            <button id="btn-limpar-visao"     class="sl-btn sl-btn--ghost sl-btn--sm">Limpar</button>
+            <button id="btn-recarregar-visao" class="sl-btn sl-btn--outline sl-btn--sm">Recarregar</button>
           </div>
-
-          <div class="flex" style="gap:8px;align-items:center;padding-bottom:2px">
-            <button id="btn-limpar-visao"     class="btn-secondary">Limpar</button>
-            <button id="btn-recarregar-visao" class="btn-secondary">Recarregar</button>
-          </div>
-
         </div>
       </div>
 
-      <!-- KPIs -->
-      <div id="kpis-visao" class="kpi-row" style="margin-bottom:16px"></div>
+      <div id="kpis-visao" class="fed-kpi-row" style="margin-bottom:16px"></div>
 
-      <!-- Tabela dinâmica -->
-      <div class="table-wrap">
-        <table class="table">
+      <div class="sl-table-wrap">
+        <table class="sl-table">
           <thead id="thead-visao"></thead>
           <tbody id="tbody-visao"></tbody>
         </table>
       </div>
 
-      <div id="st-visao" class="status-bar"></div>
-
+      <div id="st-visao" class="sl-status-bar" style="margin-top:10px"></div>
     </div>
 
-    <!-- ── CADASTRO ──────────────────────────────────── -->
-    <div id="panel-cadastro" class="tab-panel">
-      <div class="page-header">
+    <!-- ── CADASTRO ───────────────────────────────────── -->
+    <div id="panel-cadastro" class="fed-panel">
+      <div class="sl-page-header">
         <div>
-          <div class="page-title">Cadastro de Concurso</div>
-          <div class="page-sub">Cadastre a Federal de todas as loterias de uma vez, com padrão automático para quarta e sábado.</div>
+          <h1 class="sl-page-title">Cadastro de Concurso</h1>
+          <p class="sl-page-sub">Cadastre a Federal de todas as loterias de uma vez, com padrão automático para quarta e sábado.</p>
         </div>
       </div>
 
-      <div class="status-bar" id="st-cadastro"></div>
+      <div class="sl-status-bar" id="st-cadastro"></div>
 
-      <div class="card" id="card-form-cadastro" style="display:block">
-        <div class="sep"><span class="sep-label">Dados do concurso</span><div class="sep-line"></div></div>
-        <div class="grid-4">
-          <div class="field">
-            <label class="field-label">Modalidade</label>
-            <input value="Federal" readonly>
+      <div class="sl-card">
+        <div class="sl-section-sep">
+          <div class="sl-section-label">Dados do concurso</div>
+          <div class="sl-section-line"></div>
+        </div>
+
+        <div class="fed-grid-4">
+          <div class="sl-field">
+            <label class="sl-label">Modalidade</label>
+            <input value="Federal" class="sl-input" readonly />
           </div>
-          <div class="field">
-            <label class="field-label req">Concurso</label>
-            <input id="cad-concurso" placeholder="3060">
+          <div class="sl-field">
+            <label class="sl-label">Concurso <span style="color:var(--error)">*</span></label>
+            <input id="cad-concurso" class="sl-input" placeholder="3060" />
           </div>
-          <div class="field">
-            <label class="field-label req">Data sorteio</label>
-            <div style="display:grid;grid-template-columns:36px 1fr 36px;gap:0;align-items:stretch">
-              <button type="button" class="btn-secondary" id="cad-data-prev"
-                      style="border-radius:8px 0 0 8px;padding:0;height:34px;justify-content:center">−</button>
-              <input type="date" id="cad-dt-sorteio" style="border-radius:0;height:34px">
-              <button type="button" class="btn-secondary" id="cad-data-next"
-                      style="border-radius:0 8px 8px 0;padding:0;height:34px;justify-content:center">+</button>
+          <div class="sl-field">
+            <label class="sl-label">Data sorteio <span style="color:var(--error)">*</span></label>
+            <div class="fed-date-wrap">
+              <button type="button" class="sl-btn sl-btn--ghost sl-btn--sm fed-date-btn" id="cad-data-prev">−</button>
+              <input type="date" id="cad-dt-sorteio" class="sl-input fed-date-input" />
+              <button type="button" class="sl-btn sl-btn--ghost sl-btn--sm fed-date-btn" id="cad-data-next">+</button>
             </div>
           </div>
-          <div class="field">
-            <label class="field-label req">Tipo</label>
-            <select id="cad-tipo">
+          <div class="sl-field">
+            <label class="sl-label">Tipo <span style="color:var(--error)">*</span></label>
+            <select id="cad-tipo" class="sl-select">
               <option value="COMUM">Comum</option>
               <option value="ESPECIAL">Especial</option>
             </select>
           </div>
         </div>
 
-        <div class="grid-4" style="margin-top:14px">
-          <div class="field">
-            <label class="field-label req">Valor fração</label>
-            <input type="number" id="cad-valor-fracao" step="0.01">
+        <div class="fed-grid-4" style="margin-top:14px">
+          <div class="sl-field">
+            <label class="sl-label">Valor fração <span style="color:var(--error)">*</span></label>
+            <input type="number" id="cad-valor-fracao" step="0.01" class="sl-input" />
           </div>
-          <div class="field">
-            <label class="field-label req">Valor custo</label>
-            <input type="number" id="cad-valor-custo" step="0.01">
+          <div class="sl-field">
+            <label class="sl-label">Valor custo <span style="color:var(--error)">*</span></label>
+            <input type="number" id="cad-valor-custo" step="0.01" class="sl-input" />
           </div>
-          <div class="field">
-            <label class="field-label req">Frações/bilhete</label>
-            <input type="number" id="cad-fracoes-bilhete" value="10">
+          <div class="sl-field">
+            <label class="sl-label">Frações/bilhete <span style="color:var(--error)">*</span></label>
+            <input type="number" id="cad-fracoes-bilhete" value="10" class="sl-input" />
           </div>
-          <div class="field">
-            <label class="field-label">Padrão automático</label>
-            <input value="Quarta / Sábado" readonly>
+          <div class="sl-field">
+            <label class="sl-label">Padrão automático</label>
+            <input value="Quarta / Sábado" class="sl-input" readonly />
           </div>
         </div>
 
-        <div class="sep"><span class="sep-label">Qtd inicial por loteria</span><div class="sep-line"></div></div>
-        <div class="grid-5" style="margin-top:14px">
-          <div class="field"><label class="field-label">Centro</label>       <input type="number" id="cad-qtd-centro"></div>
-          <div class="field"><label class="field-label">Boulevard</label>    <input type="number" id="cad-qtd-boulevard"></div>
-          <div class="field"><label class="field-label">Lotobel</label>      <input type="number" id="cad-qtd-lotobel"></div>
-          <div class="field"><label class="field-label">Santa Tereza</label> <input type="number" id="cad-qtd-santa"></div>
-          <div class="field"><label class="field-label">Via Brasil</label>   <input type="number" id="cad-qtd-via"></div>
+        <div class="sl-section-sep" style="margin-top:16px">
+          <div class="sl-section-label">Qtd inicial por loteria</div>
+          <div class="sl-section-line"></div>
         </div>
 
-        <div class="flex" style="margin-top:12px;gap:8px">
-          <button class="btn-primary"   id="btn-salvar-cadastro">Salvar concurso</button>
-          <button class="btn-secondary" id="btn-cancelar-cadastro">Limpar</button>
+        <div class="fed-grid-5" style="margin-top:14px">
+          <div class="sl-field"><label class="sl-label">Centro</label>        <input type="number" id="cad-qtd-centro"    class="sl-input" /></div>
+          <div class="sl-field"><label class="sl-label">Boulevard</label>     <input type="number" id="cad-qtd-boulevard" class="sl-input" /></div>
+          <div class="sl-field"><label class="sl-label">Lotobel</label>       <input type="number" id="cad-qtd-lotobel"   class="sl-input" /></div>
+          <div class="sl-field"><label class="sl-label">Santa Tereza</label>  <input type="number" id="cad-qtd-santa"     class="sl-input" /></div>
+          <div class="sl-field"><label class="sl-label">Via Brasil</label>    <input type="number" id="cad-qtd-via"       class="sl-input" /></div>
+        </div>
+
+        <div class="fed-btn-row" style="margin-top:16px">
+          <button class="sl-btn sl-btn--primary"  id="btn-salvar-cadastro">Salvar concurso</button>
+          <button class="sl-btn sl-btn--ghost"    id="btn-cancelar-cadastro">Limpar</button>
         </div>
       </div>
 
-      <div class="sep">
-        <span class="sep-label">Concursos cadastrados</span>
-        <div class="sep-line"></div>
-        <span class="sep-count" id="cnt-cadastros">0</span>
+      <div class="sl-section-sep" style="margin-top:20px">
+        <div class="sl-section-label">Concursos cadastrados</div>
+        <div class="sl-section-line"></div>
+        <span class="sl-badge sl-badge--theme" id="cnt-cadastros">0</span>
       </div>
-      <div class="table-wrap">
-        <table class="table">
+
+      <div class="sl-table-wrap">
+        <table class="sl-table">
           <thead>
             <tr>
               <th>Loja</th><th>Concurso</th><th>Dt Sorteio</th>
@@ -308,182 +306,162 @@
       </div>
     </div>
 
-    <!-- ── MOVIMENTAÇÃO ──────────────────────────────── -->
-    <div id="panel-movimentacao" class="tab-panel">
+    <!-- ── MOVIMENTAÇÃO ───────────────────────────────── -->
+    <div id="panel-movimentacao" class="fed-panel">
 
-      <!-- FORMULÁRIO -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">Registrar movimentação</div>
+      <div class="sl-card" style="margin-bottom:16px">
+        <div class="sl-card-title">Registrar movimentação</div>
 
-        <!-- Linha 1: Concurso + resumo -->
-        <div class="grid-2" style="gap:12px;margin-bottom:4px">
-          <div class="field-group">
-            <label class="field-label">Concurso</label>
-            <select id="mov-federal" class="input"></select>
+        <div class="fed-grid-2" style="margin-bottom:10px">
+          <div class="sl-field">
+            <label class="sl-label">Concurso</label>
+            <select id="mov-federal" class="sl-select"></select>
           </div>
-          <div id="mov-resumo-selec" class="soft-card"
-               style="font-size:12px;display:flex;align-items:center;min-height:38px">
-            <span style="color:var(--dim)">Selecione um concurso para ver os detalhes</span>
+          <div id="mov-resumo-selec" class="fed-soft-card">
+            <span style="color:var(--text3)">Selecione um concurso para ver os detalhes</span>
           </div>
         </div>
 
-        <!-- Linha 2: campos base -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:10px;margin-top:10px">
-          <div class="field-group">
-            <label class="field-label">Modalidade</label>
-            <input id="mov-modalidade" class="input" value="Federal" readonly>
+        <div class="fed-grid-6" style="margin-top:10px">
+          <div class="sl-field">
+            <label class="sl-label">Modalidade</label>
+            <input id="mov-modalidade" class="sl-input" value="Federal" readonly />
           </div>
-          <div class="field-group">
-            <label class="field-label">Data concurso</label>
-            <input id="mov-dt-concurso" type="date" class="input" readonly>
+          <div class="sl-field">
+            <label class="sl-label">Data concurso</label>
+            <input id="mov-dt-concurso" type="date" class="sl-input" readonly />
           </div>
-          <div class="field-group">
-            <label class="field-label">Loja origem</label>
-            <select id="mov-loteria-origem" class="input"></select>
+          <div class="sl-field">
+            <label class="sl-label">Loja origem</label>
+            <select id="mov-loteria-origem" class="sl-select"></select>
           </div>
-          <div class="field-group">
-            <label class="field-label">Loja destino</label>
-            <select id="mov-loteria-destino" class="input"></select>
+          <div class="sl-field">
+            <label class="sl-label">Loja destino</label>
+            <select id="mov-loteria-destino" class="sl-select"></select>
           </div>
-          <div class="field-group">
-            <label class="field-label">Tipo de evento</label>
-            <select id="mov-tipo-evento" class="input">
+          <div class="sl-field">
+            <label class="sl-label">Tipo de evento</label>
+            <select id="mov-tipo-evento" class="sl-select">
               <option value="TRANSFERENCIA">Transferência</option>
               <option value="DEVOLUCAO_CAIXA">Devolução caixa</option>
               <option value="VENDA_CAMBISTA">Venda cambista</option>
             </select>
           </div>
-          <div class="field-group">
-            <label class="field-label">Status acerto</label>
-            <select id="mov-status-acerto" class="input">
+          <div class="sl-field">
+            <label class="sl-label">Status acerto</label>
+            <select id="mov-status-acerto" class="sl-select">
               <option value="PENDENTE">Pendente</option>
               <option value="PAGO">Pago</option>
             </select>
           </div>
         </div>
 
-        <!-- Linha 3: qtd, valor, total, observação -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:10px;margin-top:10px">
-          <div class="field-group">
-            <label class="field-label">Qtd transferida</label>
-            <input id="mov-qtd" type="number" min="0" class="input" placeholder="0">
+        <div class="fed-grid-4" style="margin-top:10px">
+          <div class="sl-field">
+            <label class="sl-label">Qtd transferida</label>
+            <input id="mov-qtd" type="number" min="0" class="sl-input" placeholder="0" />
           </div>
-          <div class="field-group">
-            <label class="field-label">Valor / fração (R$)</label>
-            <input id="mov-valor" type="number" step="0.01" class="input" placeholder="0,00">
+          <div class="sl-field">
+            <label class="sl-label">Valor / fração (R$)</label>
+            <input id="mov-valor" type="number" step="0.01" class="sl-input" placeholder="0,00" />
           </div>
-          <div class="field-group">
-            <label class="field-label">Total (R$)</label>
-            <input id="mov-total" class="input" readonly placeholder="automático">
+          <div class="sl-field">
+            <label class="sl-label">Total (R$)</label>
+            <input id="mov-total" class="sl-input" readonly placeholder="automático" />
           </div>
-          <div class="field-group">
-            <label class="field-label">Observação</label>
-            <input id="mov-observacao" class="input" placeholder="Opcional...">
+          <div class="sl-field">
+            <label class="sl-label">Observação</label>
+            <input id="mov-observacao" class="sl-input" placeholder="Opcional…" />
           </div>
         </div>
 
-        <!-- Linha 4: Distribuição — só aparece em TRANSFERENCIA -->
+        <!-- Distribuição — só aparece em TRANSFERENCIA -->
         <div id="bloco-distribuicao" style="display:none;margin-top:12px">
-          <div class="sep">
-            <span class="sep-label">
+          <div class="sl-section-sep">
+            <div class="sl-section-label">
               Distribuição no destino
-              <span id="mov-distribuicao-status"
-                    style="margin-left:8px;font-size:12px;font-family:'IBM Plex Mono',monospace"></span>
-            </span>
-            <div class="sep-line"></div>
+              <span id="mov-distribuicao-status" style="margin-left:8px;font-family:var(--mono);font-size:12px"></span>
+            </div>
+            <div class="sl-section-line"></div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px">
-            <div class="field-group">
-              <label class="field-label">Qtd vendida</label>
-              <input id="mov-qtd-vendida" type="number" min="0" value="0" class="input">
-              <span style="font-size:10px;color:var(--dim);margin-top:2px">preço normal</span>
+          <div class="fed-grid-5">
+            <div class="sl-field">
+              <label class="sl-label">Qtd vendida</label>
+              <input id="mov-qtd-vendida" type="number" min="0" value="0" class="sl-input" />
+              <span class="fed-field-hint">preço normal</span>
             </div>
-            <div class="field-group">
-              <label class="field-label">Qtd dev. caixa</label>
-              <input id="mov-qtd-dev-caixa" type="number" min="0" value="0" class="input">
-              <span style="font-size:10px;color:var(--dim);margin-top:2px">valor de custo</span>
+            <div class="sl-field">
+              <label class="sl-label">Qtd dev. caixa</label>
+              <input id="mov-qtd-dev-caixa" type="number" min="0" value="0" class="sl-input" />
+              <span class="fed-field-hint">valor de custo</span>
             </div>
-            <div class="field-group">
-              <label class="field-label">Qtd cambista</label>
-              <input id="mov-qtd-cambista" type="number" min="0" value="0" class="input">
-              <span id="mov-cambista-total"
-                    style="font-size:10px;color:var(--amber);margin-top:2px;display:block"></span>
+            <div class="sl-field">
+              <label class="sl-label">Qtd cambista</label>
+              <input id="mov-qtd-cambista" type="number" min="0" value="0" class="sl-input" />
+              <span id="mov-cambista-total" class="fed-field-hint" style="color:var(--amber)"></span>
             </div>
-            <div class="field-group">
-              <label class="field-label">Valor / fração cambista</label>
-              <input id="mov-valor-cambista" type="number" step="0.01" min="0"
-                     class="input" placeholder="negociado livre">
+            <div class="sl-field">
+              <label class="sl-label">Valor / fração cambista</label>
+              <input id="mov-valor-cambista" type="number" step="0.01" min="0" class="sl-input" placeholder="livre" />
             </div>
-            <div class="field-group">
-              <label class="field-label">Qtd retorno origem</label>
-              <input id="mov-qtd-retorno-origem" type="number" min="0" value="0" class="input">
-              <span style="font-size:10px;color:var(--dim);margin-top:2px">sem débito financeiro</span>
+            <div class="sl-field">
+              <label class="sl-label">Qtd retorno origem</label>
+              <input id="mov-qtd-retorno-origem" type="number" min="0" value="0" class="sl-input" />
+              <span class="fed-field-hint">sem débito financeiro</span>
             </div>
           </div>
         </div>
 
-        <div id="st-mov" class="status-bar" style="margin-top:12px"></div>
+        <div id="st-mov" class="sl-status-bar" style="margin-top:12px"></div>
 
-        <div class="flex" style="gap:8px;margin-top:12px">
-          <button id="btn-salvar-mov"  class="btn-primary">Salvar</button>
-          <button id="btn-limpar-mov"  class="btn-secondary">Limpar</button>
-          <button id="btn-excluir-mov" class="btn-danger" style="display:none">Excluir</button>
+        <div class="fed-btn-row" style="margin-top:12px">
+          <button id="btn-salvar-mov"  class="sl-btn sl-btn--primary">Salvar</button>
+          <button id="btn-limpar-mov"  class="sl-btn sl-btn--ghost">Limpar</button>
+          <button id="btn-excluir-mov" class="sl-btn sl-btn--danger" style="display:none">Excluir</button>
         </div>
       </div>
 
-      <!-- TABELA -->
-      <div class="table-wrap">
-        <table class="table">
+      <div class="sl-table-wrap">
+        <table class="sl-table">
           <thead>
             <tr>
-              <th>Data</th>
-              <th>Concurso</th>
-              <th>Evento</th>
-              <th>Origem</th>
-              <th>Destino</th>
-              <th>Qtd</th>
-              <th>Distribuição</th>
-              <th>Valor acerto</th>
-              <th>Status</th>
-              <th>Ações</th>
+              <th>Data</th><th>Concurso</th><th>Evento</th>
+              <th>Origem</th><th>Destino</th><th>Qtd</th>
+              <th>Distribuição</th><th>Valor acerto</th><th>Status</th><th>Ações</th>
             </tr>
           </thead>
           <tbody id="tbody-mov"></tbody>
         </table>
       </div>
-
     </div>
 
-    <!-- ── VENDA ─────────────────────────────────────── -->
-    <div id="panel-fechamento" class="tab-panel">
-      <div class="grid-2" style="gap:20px;align-items:start">
+    <!-- ── VENDA ──────────────────────────────────────── -->
+    <div id="panel-fechamento" class="fed-panel">
+      <div class="fed-grid-2" style="gap:20px;align-items:start">
 
-        <!-- Formulário -->
-        <div class="card">
-          <div class="card-title">Venda direta</div>
+        <div class="sl-card">
+          <div class="sl-card-title">Venda direta</div>
 
-          <!-- Loja + Funcionário -->
-          <div class="grid-2" style="gap:10px">
-            <div class="field-group">
-              <label class="field-label">Loja</label>
-              <select id="fec-loteria" class="input"></select>
+          <div class="fed-grid-2">
+            <div class="sl-field">
+              <label class="sl-label">Loja</label>
+              <select id="fec-loteria" class="sl-select"></select>
             </div>
-            <div class="field-group">
-              <label class="field-label">Funcionário / Sócio</label>
-              <select id="fec-usuario" class="input"></select>
+            <div class="sl-field">
+              <label class="sl-label">Funcionário / Sócio</label>
+              <select id="fec-usuario" class="sl-select"></select>
             </div>
           </div>
 
-          <!-- Data + Canal -->
-          <div class="grid-2" style="gap:10px;margin-top:10px">
-            <div class="field-group">
-              <label class="field-label">Data</label>
-              <input id="fec-data-ref" type="date" class="input">
+          <div class="fed-grid-2" style="margin-top:10px">
+            <div class="sl-field">
+              <label class="sl-label">Data</label>
+              <input id="fec-data-ref" type="date" class="sl-input" />
             </div>
-            <div class="field-group">
-              <label class="field-label">Canal de venda</label>
-              <select id="fec-canal" class="input">
+            <div class="sl-field">
+              <label class="sl-label">Canal de venda</label>
+              <select id="fec-canal" class="sl-select">
                 <option value="CAIXA">Fechamento de caixa</option>
                 <option value="WHATSAPP">WhatsApp</option>
                 <option value="BALCAO">Balcão</option>
@@ -492,57 +470,48 @@
             </div>
           </div>
 
-          <!-- Concurso -->
-          <div class="field-group" style="margin-top:10px">
-            <label class="field-label">Concurso</label>
-            <select id="fec-federal" class="input">
-              <option value="">Selecione a loja primeiro...</option>
+          <div class="sl-field" style="margin-top:10px">
+            <label class="sl-label">Concurso</label>
+            <select id="fec-federal" class="sl-select">
+              <option value="">Selecione a loja primeiro…</option>
             </select>
           </div>
 
-          <!-- Qtd + Valor fração (canais normais) -->
-          <div class="grid-2" style="gap:10px;margin-top:10px">
-            <div class="field-group">
-              <label class="field-label">Qtd vendida</label>
-              <input id="fec-qtd-vendida" type="number" min="0" class="input" placeholder="0">
+          <div class="fed-grid-2" style="margin-top:10px">
+            <div class="sl-field">
+              <label class="sl-label">Qtd vendida</label>
+              <input id="fec-qtd-vendida" type="number" min="0" class="sl-input" placeholder="0" />
             </div>
-            <!-- Valor fração padrão — oculto quando CAMBISTA -->
-            <div id="fec-label-fracao" class="field-group">
-              <label class="field-label">Valor por fração (R$)</label>
-              <input id="fec-valor-fracao" type="number" step="0.01"
-                     class="input" placeholder="0,00" readonly>
+            <div id="fec-label-fracao" class="sl-field">
+              <label class="sl-label">Valor por fração (R$)</label>
+              <input id="fec-valor-fracao" type="number" step="0.01" class="sl-input" placeholder="0,00" readonly />
             </div>
-            <!-- Valor cambista livre — aparece só quando CAMBISTA -->
-            <div id="fec-bloco-cambista" class="field-group" style="display:none">
-              <label class="field-label">Valor por fração cambista (R$)</label>
-              <input id="fec-valor-cambista" type="number" step="0.01" min="0"
-                     class="input" placeholder="valor negociado livre">
+            <div id="fec-bloco-cambista" class="sl-field" style="display:none">
+              <label class="sl-label">Valor por fração cambista (R$)</label>
+              <input id="fec-valor-cambista" type="number" step="0.01" min="0" class="sl-input" placeholder="valor negociado livre" />
             </div>
           </div>
 
-          <!-- Total -->
-          <div class="field-group" style="margin-top:10px">
-            <label class="field-label">Total (R$)</label>
-            <input id="fec-total" class="input" readonly placeholder="calculado automaticamente">
+          <div class="sl-field" style="margin-top:10px">
+            <label class="sl-label">Total (R$)</label>
+            <input id="fec-total" class="sl-input" readonly placeholder="calculado automaticamente" />
           </div>
 
-          <div id="st-fechamento" class="status-bar"></div>
+          <div id="st-fechamento" class="sl-status-bar"></div>
 
-          <div class="flex" style="gap:8px;margin-top:12px">
-            <button id="btn-salvar-fechamento" class="btn-primary">Registrar venda</button>
-            <button id="btn-limpar-fechamento" class="btn-secondary">Limpar</button>
-            <button id="btn-cancelar-fechamento" class="btn-secondary" style="display:none">Cancelar edição</button>
+          <div class="fed-btn-row" style="margin-top:12px">
+            <button id="btn-salvar-fechamento"   class="sl-btn sl-btn--primary">Registrar venda</button>
+            <button id="btn-limpar-fechamento"   class="sl-btn sl-btn--ghost">Limpar</button>
+            <button id="btn-cancelar-fechamento" class="sl-btn sl-btn--outline" style="display:none">Cancelar edição</button>
           </div>
         </div>
 
-        <!-- Resumo de vendas -->
         <div>
-          <div class="flex" style="justify-content:space-between;
-                                   align-items:center;margin-bottom:10px">
-            <span id="titulo-fechamento-resumo" class="card-title" style="margin:0">Vendas registradas</span>
+          <div class="fed-btn-row" style="margin-bottom:10px">
+            <span id="titulo-fechamento-resumo" class="sl-card-title">Vendas registradas</span>
           </div>
-          <div class="table-wrap">
-            <table class="table">
+          <div class="sl-table-wrap">
+            <table class="sl-table">
               <thead>
                 <tr>
                   <th>Funcionário</th><th>Loja</th><th>Canal</th>
@@ -558,59 +527,51 @@
       </div>
     </div>
 
-    <!-- ── AUDITORIA ─────────────────────────────────── -->
-    <div id="panel-auditoria" class="tab-panel">
+    <!-- ── AUDITORIA ──────────────────────────────────── -->
+    <div id="panel-auditoria" class="fed-panel">
 
-      <!-- Filtros -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="flex" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
-
-          <div class="field-group" style="min-width:160px">
-            <label class="field-label">Tipo evento</label>
-            <select id="aud-tipo" class="input">
+      <div class="sl-card" style="margin-bottom:16px">
+        <div class="fed-filter-row">
+          <div class="sl-field">
+            <label class="sl-label">Tipo evento</label>
+            <select id="aud-tipo" class="sl-select">
               <option value="">Todos</option>
               <option value="TRANSFERENCIA">Transferência</option>
               <option value="DEVOLUCAO_CAIXA">Devolução caixa</option>
               <option value="VENDA_CAMBISTA">Venda cambista</option>
             </select>
           </div>
-
-          <div class="field-group" style="min-width:140px">
-            <label class="field-label">Status acerto</label>
-            <select id="aud-status" class="input">
+          <div class="sl-field">
+            <label class="sl-label">Status acerto</label>
+            <select id="aud-status" class="sl-select">
               <option value="">Todos</option>
               <option value="PENDENTE">Pendente</option>
               <option value="PAGO">Pago</option>
             </select>
           </div>
-
-          <div class="field-group" style="min-width:120px">
-            <label class="field-label">Concurso</label>
-            <input id="aud-concurso" class="input" placeholder="Ex: 3200">
+          <div class="sl-field">
+            <label class="sl-label">Concurso</label>
+            <input id="aud-concurso" class="sl-input" placeholder="Ex: 3200" />
           </div>
-
-          <div class="field-group" style="min-width:140px">
-            <label class="field-label">Data início</label>
-            <input id="aud-dt-ini" type="date" class="input">
+          <div class="sl-field">
+            <label class="sl-label">Data início</label>
+            <input id="aud-dt-ini" type="date" class="sl-input" />
           </div>
-
-          <div class="field-group" style="min-width:140px">
-            <label class="field-label">Data fim</label>
-            <input id="aud-dt-fim" type="date" class="input">
+          <div class="sl-field">
+            <label class="sl-label">Data fim</label>
+            <input id="aud-dt-fim" type="date" class="sl-input" />
           </div>
-
-          <div class="flex" style="gap:8px;align-items:center;padding-bottom:2px">
-            <button id="btn-filtrar-auditoria"    class="btn-primary">Filtrar</button>
-            <button id="btn-recarregar-auditoria" class="btn-secondary">Recarregar</button>
+          <div class="fed-filter-actions">
+            <button id="btn-filtrar-auditoria"    class="sl-btn sl-btn--primary sl-btn--sm">Filtrar</button>
+            <button id="btn-recarregar-auditoria" class="sl-btn sl-btn--ghost sl-btn--sm">Recarregar</button>
           </div>
-
         </div>
       </div>
 
-      <div id="st-auditoria" class="status-bar"></div>
+      <div id="st-auditoria" class="sl-status-bar" style="margin-bottom:10px"></div>
 
-      <div class="table-wrap">
-        <table class="table">
+      <div class="sl-table-wrap">
+        <table class="sl-table">
           <thead>
             <tr>
               <th>Data/hora</th><th>Modalidade</th><th>Concurso</th>
@@ -624,13 +585,15 @@
       </div>
     </div>
 
-    <!-- ── CONTROLE ───────────────────────────────────── -->
-    <div id="panel-controle" class="tab-panel">
-      <!-- Preenchido dinamicamente -->
+    <!-- ── CONTROLE ────────────────────────────────────── -->
+    <div id="panel-controle" class="fed-panel">
+      <!-- preenchido dinamicamente pelo JS -->
     </div>
 
   </main>
 
+  <script src="./js/sislot-utils.js"></script>
+  <script src="./js/sislot-theme.js"></script>
   <script src="./js/federal.js"></script>
 </body>
 </html>
