@@ -1,198 +1,288 @@
-/* ═══════════════════════════════════════════════════════════
-   SISLOT — BASE SYSTEM CSS
-   Arquivo único de variáveis, reset, temas e tipografia.
-   Substitui os blocos :root e body[data-loja] de todos os módulos.
-   Versão: 3.0
-════════════════════════════════════════════════════════════ */
+/* SISLOT — Bolão Cadastro (módulo)
+   CSS específico da tela. A base global fica em sislot-base.css e sislot-components.css */
 
-/* ── Reset ──────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+.sl-main--narrow {
+  width: min(1100px, calc(100vw - 28px));
+  margin: 20px auto 28px;
 }
 
-/* ── Variáveis estruturais (imutáveis por tema) ─────────── */
-:root {
-  /* Fundo em camadas */
-  --bg:       #070d1a;
-  --bg2:      #0c1528;
-  --panel:    #101f38;
-  --panel2:   #132240;
-
-  /* Bordas */
-  --border:   #1a3060;
-  --border2:  #243d70;
-
-  /* Texto */
-  --text:     #dde8f8;
-  --text2:    #7a95c4;
-  --text3:    #3d5a8a;
-
-  /* Semântica */
-  --error:    #ff4f4f;
-  --success:  #00d4a0;
-  --amber:    #f5a623;
-  --sky:      #38bdf8;
-  --purple:   #a78bfa;
-  --wpp:      #25d366;
-
-  /* Input */
-  --input-bg: #0a1628;
-
-  /* Transição padrão */
-  --tr: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Tipografia */
-  --mono: 'IBM Plex Mono', monospace;
-  --sans: 'IBM Plex Sans', sans-serif;
-
-  /* Aliases de compatibilidade com código legado */
-  --deep:        var(--bg);
-  --mid:         var(--bg2);
-  --blue-deep:   var(--bg);
-  --blue-mid:    var(--bg2);
-  --blue-panel:  var(--panel);
-  --blue-border: var(--border);
-  --text-bright: var(--text);
-  --text-mid:    var(--text2);
-  --text-dim:    var(--text3);
-  --muted:       var(--text2);
-  --dim:         var(--text3);
-  --bright:      var(--text);
-  --accent:      var(--t1);
-  --input-border: var(--border);
-
-  /* ── Cor de tema padrão: prata "Todas as Lojas" ───────── */
-  --t1: #94a3b8;
-  --t2: #64748b;
-  --t3: rgba(148, 163, 184, 0.10);
-  --t4: rgba(148, 163, 184, 0.25);
-  --t5: rgba(148, 163, 184, 0.05);
+.sl-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 4px 0 14px;
 }
 
-/* ── Temas por lotérica ──────────────────────────────────
-   Fonte canônica das cores — definida uma única vez aqui.
-   Aplicação: document.body.dataset.loja = 'boulevard'
-─────────────────────────────────────────────────────────── */
-body[data-loja="boulevard"] {
-  --t1: #3b82f6;
-  --t2: #1d4ed8;
-  --t3: rgba(59, 130, 246, 0.10);
-  --t4: rgba(59, 130, 246, 0.25);
-  --t5: rgba(59, 130, 246, 0.05);
+.sl-page-title {
+  font: 700 26px/1 var(--mono);
+  letter-spacing: .04em;
 }
 
-body[data-loja="centro"] {
-  --t1: #00c896;
-  --t2: #00a07a;
-  --t3: rgba(0, 200, 150, 0.10);
-  --t4: rgba(0, 200, 150, 0.25);
-  --t5: rgba(0, 200, 150, 0.05);
+.sl-page-sub {
+  margin-top: 6px;
+  color: var(--text2);
+  font-size: 13px;
 }
 
-body[data-loja="lotobel"] {
-  --t1: #ef4444;
-  --t2: #b91c1c;
-  --t3: rgba(239, 68, 68, 0.10);
-  --t4: rgba(239, 68, 68, 0.25);
-  --t5: rgba(239, 68, 68, 0.05);
+.quickbar {
+  padding: 4px;
+  margin: 4px 0 14px;
 }
 
-body[data-loja="santa-tereza"] {
-  --t1: #a855f7;
-  --t2: #7e22ce;
-  --t3: rgba(168, 85, 247, 0.10);
-  --t4: rgba(168, 85, 247, 0.25);
-  --t5: rgba(168, 85, 247, 0.05);
+.quickbar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
 }
 
-body[data-loja="via-brasil"] {
-  --t1: #eab308;
-  --t2: #a16207;
-  --t3: rgba(234, 179, 8, 0.10);
-  --t4: rgba(234, 179, 8, 0.25);
-  --t5: rgba(234, 179, 8, 0.05);
+.quickchips {
+  margin-top: 8px;
 }
 
-body[data-loja="todas"] {
-  --t1: #94a3b8;
-  --t2: #64748b;
-  --t3: rgba(148, 163, 184, 0.10);
-  --t4: rgba(148, 163, 184, 0.25);
-  --t5: rgba(148, 163, 184, 0.05);
+.chips-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-/* ── Body base ──────────────────────────────────────────── */
-body {
-  background: var(--bg);
-  font-family: var(--sans);
-  color: var(--text);
-  min-height: 100vh;
+.sl-card.card {
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.section-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--t3), transparent);
+  border: 1px solid var(--t4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  flex: 0 0 36px;
+}
+
+.section-icon i {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--t1);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font: 600 18px/1.25 var(--sans);
+  letter-spacing: .01em;
+}
+
+.origem-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--t5);
+  border: 1px solid var(--t4);
+  color: var(--text2);
+  font: 600 11px/1 var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.origem-chip i {
+  font-size: 11px;
+  color: var(--t1);
+}
+
+.origem-chip-clickable {
+  cursor: pointer;
+  transition: transform var(--tr), border-color var(--tr), background var(--tr);
+}
+
+.origem-chip-clickable:hover {
+  transform: translateY(-1px);
+  border-color: var(--t1);
+  background: var(--t3);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.field {
   display: flex;
   flex-direction: column;
-  background-image:
-    radial-gradient(ellipse 100% 50% at 50% -10%, var(--t3) 0%, transparent 65%),
-    repeating-linear-gradient(0deg, transparent, transparent 47px, rgba(26, 48, 96, 0.18) 47px, rgba(26, 48, 96, 0.18) 48px),
-    repeating-linear-gradient(90deg, transparent, transparent 47px, rgba(26, 48, 96, 0.10) 47px, rgba(26, 48, 96, 0.10) 48px);
-  transition: background-image var(--tr);
+  gap: 8px;
 }
 
-/* ── Tipografia base ────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  line-height: 1.2;
+.field label,
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text2);
+  font: 600 12px/1.2 var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.field label > span:first-child,
+.label-row > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field label i,
+.label-row i {
+  color: var(--t1);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  outline: none;
+  background: var(--input-bg);
   color: var(--text);
+  font: 500 14px/1.2 var(--sans);
+  transition: border-color var(--tr), box-shadow var(--tr), transform var(--tr);
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+.field input:focus,
+.field select:focus {
+  border-color: var(--t1);
+  box-shadow: 0 0 0 3px var(--t3);
 }
 
-button {
-  font-family: var(--sans);
-  cursor: pointer;
+.day-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-input, select, textarea {
-  font-family: var(--sans);
+.day-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--text2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--tr);
 }
 
-/* ── Animações globais ──────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+.day-btn i {
+  font-size: 10px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+.day-btn:hover {
+  border-color: var(--t1);
+  color: var(--t1);
+  background: var(--t5);
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+.actions-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.sl-btn .sl-btn-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
+.sl-btn .sl-btn-text i {
+  font-size: 13px;
+  line-height: 1;
 }
 
-/* ── Utilitários ────────────────────────────────────────── */
-.is-hidden  { display: none !important; }
-.text-mono  { font-family: var(--mono); }
-.text-dim   { color: var(--text3); }
-.text-mid   { color: var(--text2); }
-.text-theme { color: var(--t1); }
-.text-error { color: var(--error); }
-.text-ok    { color: var(--success); }
-.text-amber { color: var(--amber); }
+.sl-status-bar.status {
+  margin-top: 14px;
+}
 
-/* Cadastro sem bloco de movimentação */
-.header-sub{letter-spacing:.18em}
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.modal-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--t3), transparent);
+  border: 1px solid var(--t4);
+}
+
+.modal-icon i {
+  color: var(--t1);
+  font-size: 16px;
+}
+
+.modal-title {
+  font: 700 18px/1.2 var(--mono);
+}
+
+.modal-body {
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.header-sub {
+  letter-spacing: .18em;
+}
+
+@media (max-width: 860px) {
+  .grid-2,
+  .actions-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .sl-main--narrow {
+    width: min(100vw - 18px, 1000px);
+    margin-top: 14px;
+  }
+
+  .section-title {
+    align-items: flex-start;
+  }
+}
