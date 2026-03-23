@@ -286,3 +286,184 @@
     align-items: flex-start;
   }
 }
+
+
+/* QUICKBAR / ATALHOS */
+.quickbar{
+  padding: 10px 0 6px;
+}
+
+.quickbar-grid{
+  display:flex;
+  gap:6px;
+  align-items:stretch;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:4px;
+  scrollbar-width:none;
+}
+
+.quickbar-grid::-webkit-scrollbar{display:none}
+
+.qmod{
+  position:relative;
+  height:44px;
+  width:60px;
+  min-width:60px;
+  flex:0 0 60px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--panel);
+  padding:0;
+  overflow:hidden;
+  cursor:pointer;
+  transition:var(--tr);
+  display:block;
+}
+
+.qmod::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:12px;
+  background:var(--t3);
+  opacity:0;
+  transition:opacity .2s;
+}
+
+.qmod:hover{
+  border-color:var(--border2);
+  transform:translateY(-2px);
+}
+
+.qmod:hover::before{opacity:.6}
+
+.qmod.active{
+  border-color:var(--t1);
+  box-shadow:0 0 0 2px var(--t4),0 4px 12px var(--t3);
+}
+
+.qmod.active::before{opacity:1}
+
+.qmod img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  padding:4px;
+  transform:scale(1.08);
+  transform-origin:center;
+  display:block;
+  pointer-events:none;
+}
+
+@media(min-width:760px){
+  .qmod{
+    height:52px;
+    width:70px;
+    min-width:70px;
+    flex-basis:70px;
+  }
+}
+
+.quickchips{
+  display:none;
+  margin-top:8px;
+}
+
+.quickchips.active{display:block}
+
+.chips-row{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:4px;
+  scrollbar-width:none;
+}
+
+.chips-row::-webkit-scrollbar{display:none}
+
+.chip-tile{
+  all:unset;
+  box-sizing:border-box;
+  position:relative;
+  height:34px;
+  width:48px;
+  min-width:48px;
+  flex:0 0 48px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--panel);
+  overflow:hidden;
+  cursor:pointer;
+  transition:var(--tr);
+  display:block;
+}
+
+.chip-tile::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:10px;
+  background:var(--t3);
+  opacity:0;
+  transition:opacity .2s;
+}
+
+.chip-tile:hover{
+  border-color:var(--t4);
+  transform:translateY(-1px);
+}
+
+.chip-tile:hover::before{opacity:1}
+
+.chip-tile img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  padding:3px;
+  transform:scale(1.06);
+  transform-origin:center;
+  display:block;
+  pointer-events:none;
+  z-index:1;
+}
+
+.chip-badge{
+  position:absolute;
+  left:3px;
+  bottom:3px;
+  padding:1px 4px;
+  border-radius:999px;
+  background:rgba(7,13,26,.85);
+  border:1px solid var(--border2);
+  font-family:var(--mono);
+  font-size:8px;
+  font-weight:600;
+  color:var(--text2);
+  pointer-events:none;
+  z-index:2;
+  line-height:1.3;
+}
+
+
+@media (max-width: 760px) {
+  .sl-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .actions-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
