@@ -926,7 +926,7 @@ function bind() {
 // INICIALIZAÇÃO
 // ══════════════════════════════════════════════════════════
 async function init() {
-    console.log('movimentar.js — init');
+    console.log('bolao-movimentar.js — init');
 
     const { data: { session } } = await sb.auth.getSession();
     if (!session?.user?.id) { location.href = './login.html'; return; }
