@@ -1,210 +1,198 @@
-.cadastro-page-header {
-  gap: 16px;
-  flex-wrap: wrap;
+/* ═══════════════════════════════════════════════════════════
+   SISLOT — BASE SYSTEM CSS
+   Arquivo único de variáveis, reset, temas e tipografia.
+   Substitui os blocos :root e body[data-loja] de todos os módulos.
+   Versão: 3.0
+════════════════════════════════════════════════════════════ */
+
+/* ── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-.origem-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--t4);
-  background: var(--t5);
-  color: var(--t1);
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
+/* ── Variáveis estruturais (imutáveis por tema) ─────────── */
+:root {
+  /* Fundo em camadas */
+  --bg:       #070d1a;
+  --bg2:      #0c1528;
+  --panel:    #101f38;
+  --panel2:   #132240;
+
+  /* Bordas */
+  --border:   #1a3060;
+  --border2:  #243d70;
+
+  /* Texto */
+  --text:     #dde8f8;
+  --text2:    #7a95c4;
+  --text3:    #3d5a8a;
+
+  /* Semântica */
+  --error:    #ff4f4f;
+  --success:  #00d4a0;
+  --amber:    #f5a623;
+  --sky:      #38bdf8;
+  --purple:   #a78bfa;
+  --wpp:      #25d366;
+
+  /* Input */
+  --input-bg: #0a1628;
+
+  /* Transição padrão */
+  --tr: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Tipografia */
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+
+  /* Aliases de compatibilidade com código legado */
+  --deep:        var(--bg);
+  --mid:         var(--bg2);
+  --blue-deep:   var(--bg);
+  --blue-mid:    var(--bg2);
+  --blue-panel:  var(--panel);
+  --blue-border: var(--border);
+  --text-bright: var(--text);
+  --text-mid:    var(--text2);
+  --text-dim:    var(--text3);
+  --muted:       var(--text2);
+  --dim:         var(--text3);
+  --bright:      var(--text);
+  --accent:      var(--t1);
+  --input-border: var(--border);
+
+  /* ── Cor de tema padrão: prata "Todas as Lojas" ───────── */
+  --t1: #94a3b8;
+  --t2: #64748b;
+  --t3: rgba(148, 163, 184, 0.10);
+  --t4: rgba(148, 163, 184, 0.25);
+  --t5: rgba(148, 163, 184, 0.05);
 }
 
-.origem-chip-clickable {
-  cursor: pointer;
-  transition: transform var(--tr), border-color var(--tr), background var(--tr);
+/* ── Temas por lotérica ──────────────────────────────────
+   Fonte canônica das cores — definida uma única vez aqui.
+   Aplicação: document.body.dataset.loja = 'boulevard'
+─────────────────────────────────────────────────────────── */
+body[data-loja="boulevard"] {
+  --t1: #3b82f6;
+  --t2: #1d4ed8;
+  --t3: rgba(59, 130, 246, 0.10);
+  --t4: rgba(59, 130, 246, 0.25);
+  --t5: rgba(59, 130, 246, 0.05);
 }
 
-.origem-chip-clickable:hover {
-  transform: translateY(-1px);
-  border-color: var(--t1);
-  background: rgba(255,255,255,.04);
+body[data-loja="centro"] {
+  --t1: #00c896;
+  --t2: #00a07a;
+  --t3: rgba(0, 200, 150, 0.10);
+  --t4: rgba(0, 200, 150, 0.25);
+  --t5: rgba(0, 200, 150, 0.05);
 }
 
-.quickbar {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-bottom: 20px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+body[data-loja="lotobel"] {
+  --t1: #ef4444;
+  --t2: #b91c1c;
+  --t3: rgba(239, 68, 68, 0.10);
+  --t4: rgba(239, 68, 68, 0.25);
+  --t5: rgba(239, 68, 68, 0.05);
 }
 
-.quickbar-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+body[data-loja="santa-tereza"] {
+  --t1: #a855f7;
+  --t2: #7e22ce;
+  --t3: rgba(168, 85, 247, 0.10);
+  --t4: rgba(168, 85, 247, 0.25);
+  --t5: rgba(168, 85, 247, 0.05);
 }
 
-.quickbar-help {
-  color: var(--text3);
-  font-size: 11px;
+body[data-loja="via-brasil"] {
+  --t1: #eab308;
+  --t2: #a16207;
+  --t3: rgba(234, 179, 8, 0.10);
+  --t4: rgba(234, 179, 8, 0.25);
+  --t5: rgba(234, 179, 8, 0.05);
 }
 
-.quickbar-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
-  gap: 10px;
+body[data-loja="todas"] {
+  --t1: #94a3b8;
+  --t2: #64748b;
+  --t3: rgba(148, 163, 184, 0.10);
+  --t4: rgba(148, 163, 184, 0.25);
+  --t5: rgba(148, 163, 184, 0.05);
 }
 
-.qmod {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 54px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel);
-  transition: transform var(--tr), border-color var(--tr), background var(--tr), box-shadow var(--tr);
-}
-
-.qmod img {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-}
-
-.qmod:hover,
-.qmod.active {
-  border-color: var(--t1);
-  background: var(--t5);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px var(--t3);
-}
-
-.quickchips {
-  display: none;
-}
-
-.quickchips.active {
-  display: block;
-}
-
-.chips-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.chip-tile {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text2);
-  font-size: 12px;
-  transition: border-color var(--tr), color var(--tr), background var(--tr), transform var(--tr);
-}
-
-.chip-tile img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-}
-
-.chip-tile:hover {
-  border-color: var(--t1);
+/* ── Body base ──────────────────────────────────────────── */
+body {
+  background: var(--bg);
+  font-family: var(--sans);
   color: var(--text);
-  background: var(--t5);
-  transform: translateY(-1px);
-}
-
-.cadastro-card {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  background-image:
+    radial-gradient(ellipse 100% 50% at 50% -10%, var(--t3) 0%, transparent 65%),
+    repeating-linear-gradient(0deg, transparent, transparent 47px, rgba(26, 48, 96, 0.18) 47px, rgba(26, 48, 96, 0.18) 48px),
+    repeating-linear-gradient(90deg, transparent, transparent 47px, rgba(26, 48, 96, 0.10) 47px, rgba(26, 48, 96, 0.10) 48px);
+  transition: background-image var(--tr);
 }
 
-.card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+/* ── Tipografia base ────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
 }
 
-.cadastro-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+button {
+  font-family: var(--sans);
+  cursor: pointer;
 }
 
-.day-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+input, select, textarea {
+  font-family: var(--sans);
 }
 
-.day-btn {
-  width: 26px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--text2);
-  transition: border-color var(--tr), color var(--tr), background var(--tr), transform var(--tr);
+/* ── Animações globais ──────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.day-btn:hover {
-  border-color: var(--t1);
-  color: var(--t1);
-  background: var(--t5);
-  transform: translateY(-1px);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.sl-status-bar {
-  min-height: 40px;
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
 }
 
-.sl-status-bar.muted {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,.04);
-  border-left: 3px solid var(--border);
-  color: var(--text2);
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-@media (max-width: 720px) {
-  .quickbar-head,
-  .card-top,
-  .cadastro-page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .quickbar-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .cadastro-actions {
-    width: 100%;
-  }
-
-  .cadastro-actions .sl-btn {
-    flex: 1 1 calc(50% - 5px);
-  }
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Utilitários ────────────────────────────────────────── */
+.is-hidden  { display: none !important; }
+.text-mono  { font-family: var(--mono); }
+.text-dim   { color: var(--text3); }
+.text-mid   { color: var(--text2); }
+.text-theme { color: var(--t1); }
+.text-error { color: var(--error); }
+.text-ok    { color: var(--success); }
+.text-amber { color: var(--amber); }
+
+/* Cadastro sem bloco de movimentação */
+.header-sub{letter-spacing:.18em}
