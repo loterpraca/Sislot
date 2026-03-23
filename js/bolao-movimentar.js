@@ -69,8 +69,6 @@ const LOJAS = [
 
 let usuario = null;
 let lojaIdPorSlug = {};
-let lojaSlugPorId = {};
-let lojaNomePorId = {};
 let dataAtual = new Date();
 let bolaoSelecionado = null;
 let saldosPorLoja = {};
@@ -80,14 +78,10 @@ init();
 
 async function init() {
   try {
-    if (window.SISLOT_THEME?.init) {
-      window.SISLOT_THEME.init();
-    }
-
+    if (window.SISLOT_THEME?.init) window.SISLOT_THEME.init();
     await validarSessao();
     await carregarLoterias();
     bind();
-
     atualizarDateDisplay();
     await buscarBoloes();
 
@@ -131,13 +125,8 @@ async function carregarLoterias() {
   if (error) throw new Error(error.message);
 
   lojaIdPorSlug = {};
-  lojaSlugPorId = {};
-  lojaNomePorId = {};
-
   (lojas || []).forEach(l => {
     lojaIdPorSlug[l.slug] = l.id;
-    lojaSlugPorId[l.id] = l.slug;
-    lojaNomePorId[l.id] = l.nome;
   });
 }
 
@@ -205,7 +194,6 @@ function renderBoloes(boloes, posicoes, movs) {
   if (!lista) return;
 
   lista.innerHTML = '';
-
   const grupos = {};
   boloes.forEach(b => {
     if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
@@ -330,36 +318,29 @@ function selecionarBolao(b, posicoes, movs) {
 
 function abrirPanel(b) {
   setStatus('statusBar', '', 'ok');
-
-  const panelNome = $('panelNome');
-  const panelTags = $('panelTags');
-
-  if (panelNome) panelNome.textContent = `${b.modalidade} — Concurso ${b.concurso}`;
-  if (panelTags) {
-    panelTags.innerHTML = `
-      <span class="rtag rtag-amber">${escapeHtml(b.loterias?.nome || '—')} (origem)</span>
-      <span class="rtag rtag-green">${fmtBRL(b.valor_cota)}/cota</span>
-      <span class="rtag">${Number(b.qtd_jogos || 0)} jogos · ${Number(b.qtd_dezenas || 0)} dez.</span>
-      <span class="rtag">${Number(b.qtd_cotas_total || 0)} cotas total</span>
-    `;
-  }
+  $('panelNome').textContent = `${b.modalidade} — Concurso ${b.concurso}`;
+  $('panelTags').innerHTML = `
+    <span class="rtag rtag-amber">${escapeHtml(b.loterias?.nome || '—')} (origem)</span>
+    <span class="rtag rtag-green">${fmtBRL(b.valor_cota)}/cota</span>
+    <span class="rtag">${Number(b.qtd_jogos || 0)} jogos · ${Number(b.qtd_dezenas || 0)} dez.</span>
+    <span class="rtag">${Number(b.qtd_cotas_total || 0)} cotas total</span>
+  `;
 
   const saldoWrap = $('movSaldoAtual');
-  if (saldoWrap) saldoWrap.innerHTML = '<div class="msa-label">Saldo atual por loja</div>';
+  saldoWrap.innerHTML = '<div class="msa-label">Saldo atual por loja</div>';
 
   LOJAS.forEach(loja => {
     const id = lojaIdPorSlug[loja.slug];
     const qtd = Number(saldosPorLoja[id] || 0);
     if (qtd === 0 && id !== b.loteria_id) return;
-
     const item = document.createElement('div');
     item.className = 'msa-item' + (id === b.loteria_id ? ' origem' : '');
     item.innerHTML = `<div class="msa-loja">${escapeHtml(loja.nome)}</div><div class="msa-val">${qtd}</div>`;
-    if (saldoWrap) saldoWrap.appendChild(item);
+    saldoWrap.appendChild(item);
   });
 
   const grid = $('destinosGrid');
-  if (grid) grid.innerHTML = '';
+  grid.innerHTML = '';
 
   LOJAS.forEach(loja => {
     const id = lojaIdPorSlug[loja.slug];
@@ -380,21 +361,15 @@ function abrirPanel(b) {
       <div class="destino-hist" id="hist-${loja.slug}" title="Histórico">${ehOrigem ? '(origem)' : histStr}</div>
       <div class="destino-sub" id="sub-${loja.slug}">—</div>
     `;
-    if (grid) grid.appendChild(field);
+    grid.appendChild(field);
 
     const input = $(`dest-${loja.slug}`);
-    if (input && !ehOrigem) {
-      input.addEventListener('input', () => onDestInput(loja.slug));
-    }
+    if (input && !ehOrigem) input.addEventListener('input', () => onDestInput(loja.slug));
   });
 
   calcTotal();
-
-  const panel = $('movPanel');
-  if (panel) {
-    panel.classList.add('open');
-    document.body.classList.add('panel-open');
-  }
+  $('movPanel').classList.add('open');
+  document.body.classList.add('panel-open');
 }
 
 function onDestInput(slug) {
@@ -404,17 +379,13 @@ function onDestInput(slug) {
   const cota = bolaoSelecionado?.valor_cota || 0;
 
   if (qtd !== 0) {
-    if (sub) {
-      sub.textContent = fmtBRL(Math.abs(qtd) * cota);
-      sub.className = 'destino-sub on';
-    }
-    if (inp) inp.classList.add('filled');
+    sub.textContent = fmtBRL(Math.abs(qtd) * cota);
+    sub.className = 'destino-sub on';
+    inp.classList.add('filled');
   } else {
-    if (sub) {
-      sub.textContent = '—';
-      sub.className = 'destino-sub';
-    }
-    if (inp) inp.classList.remove('filled');
+    sub.textContent = '—';
+    sub.className = 'destino-sub';
+    inp.classList.remove('filled');
   }
   calcTotal();
 }
@@ -425,8 +396,7 @@ function calcTotal() {
     const inp = $(`dest-${l.slug}`);
     if (inp && !inp.disabled) total += Math.abs(parseInt(inp.value, 10) || 0);
   });
-  const totalEl = $('movTotal');
-  if (totalEl) totalEl.textContent = total + ' cotas';
+  $('movTotal').textContent = total + ' cotas';
 }
 
 function zerarMov(limparStatus = true) {
@@ -447,8 +417,7 @@ function zerarMov(limparStatus = true) {
 }
 
 function fecharPanel() {
-  const panel = $('movPanel');
-  if (panel) panel.classList.remove('open');
+  $('movPanel').classList.remove('open');
   document.body.classList.remove('panel-open');
   document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
   bolaoSelecionado = null;
@@ -476,20 +445,12 @@ function onMovimentar() {
     return;
   }
 
-  const icones = {
-    boulevard: '🏢',
-    centro: '🏙️',
-    lotobel: '🏛️',
-    'santa-tereza': '⛪',
-    'via-brasil': '🛣️',
-  };
-
   const linhas = [
-    `📍 Origem: ${b.loterias?.nome || '—'}`,
-    `🎯 ${b.modalidade} — Concurso ${b.concurso}`,
-    `💰 Cota: ${fmtBRL(b.valor_cota)}`,
+    `Origem: ${b.loterias?.nome || '—'}`,
+    `${b.modalidade} — Concurso ${b.concurso}`,
+    `Cota: ${fmtBRL(b.valor_cota)}`,
     '',
-    '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:',
+    'CONFERÊNCIA DE MOVIMENTAÇÃO',
     '(Histórico [Mov] → Final)',
   ];
 
@@ -503,28 +464,21 @@ function onMovimentar() {
     const histStr = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
     const deltaStr = delta > 0 ? `[+${delta}]` : delta < 0 ? `[${delta}]` : '';
     if (delta !== 0) {
-      linhas.push(`${icones[l.slug] || '📍'} ${l.nome}: ${histStr} ${deltaStr} → ${final}`);
+      linhas.push(`${l.nome}: ${histStr} ${deltaStr} → ${final}`);
     } else {
-      linhas.push(`${icones[l.slug] || '📍'} ${l.nome}: ${histStr} → ${saldo} (sem alteração)`);
+      linhas.push(`${l.nome}: ${histStr} → ${saldo} (sem alteração)`);
     }
   });
 
-  linhas.push('', '⚠️ Confirma a movimentação?');
-
-  const confirmBody = $('confirmBody');
-  if (confirmBody) confirmBody.textContent = linhas.join('\n');
-
-  const confirmOverlay = $('confirmOverlay');
-  if (confirmOverlay) confirmOverlay.style.display = 'flex';
+  linhas.push('', 'Confirma a movimentação?');
+  $('confirmBody').textContent = linhas.join('\\n');
+  $('confirmOverlay').style.display = 'flex';
 }
 
 async function doMovimentar(b, deltas) {
   const btn = $('btnMovimentar');
-  if (btn) {
-    btn.disabled = true;
-    btn.classList.add('loading');
-  }
-
+  btn.disabled = true;
+  btn.classList.add('loading');
   setStatus('statusBar', 'Registrando movimentação…', 'warn');
 
   try {
@@ -547,50 +501,18 @@ async function doMovimentar(b, deltas) {
     }
 
     if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
-
     const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
     if (error) throw new Error(error.message);
 
-    const bolaoIdAtual = bolaoSelecionado?.id;
-
-    if (bolaoSelecionado) {
-      const origemId = bolaoSelecionado.loteria_id;
-      Object.entries(deltas).forEach(([slug, qtdRaw]) => {
-        const qtd = Number(qtdRaw || 0);
-        const destId = lojaIdPorSlug[slug];
-        if (!destId || qtd === 0) return;
-
-        if (saldosPorLoja[destId] == null) saldosPorLoja[destId] = 0;
-        saldosPorLoja[destId] += qtd;
-        saldosPorLoja[origemId] -= qtd;
-
-        if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
-        historicoPorLoja[destId].push(qtd);
-
-        if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
-        historicoPorLoja[origemId].push(-qtd);
-      });
-
-      if (saldosPorLoja[origemId] < 0) saldosPorLoja[origemId] = 0;
-      abrirPanel(bolaoSelecionado);
-    }
-
-    setStatus('statusBar', '✓ Movimentação registrada com sucesso!', 'ok');
+    setStatus('statusBar', 'Movimentação registrada com sucesso.', 'ok');
     zerarMov(false);
     await buscarBoloes();
-
-    if (bolaoIdAtual) {
-      const card = document.querySelector(`.bolao-card[data-id="${bolaoIdAtual}"]`);
-      if (card) card.classList.add('selected');
-    }
   } catch (e) {
     console.error(e);
     setStatus('statusBar', e.message || 'Erro ao registrar movimentação.', 'err');
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.classList.remove('loading');
-    }
+    btn.disabled = false;
+    btn.classList.remove('loading');
   }
 }
 
@@ -629,8 +551,7 @@ function bind() {
   $('btnMovimentar')?.addEventListener('click', onMovimentar);
 
   $('confirmCancel')?.addEventListener('click', () => {
-    const overlay = $('confirmOverlay');
-    if (overlay) overlay.style.display = 'none';
+    $('confirmOverlay').style.display = 'none';
   });
 
   $('confirmOverlay')?.addEventListener('click', (e) => {
@@ -638,8 +559,7 @@ function bind() {
   });
 
   $('confirmOk')?.addEventListener('click', async () => {
-    const overlay = $('confirmOverlay');
-    if (overlay) overlay.style.display = 'none';
+    $('confirmOverlay').style.display = 'none';
     if (!bolaoSelecionado) return;
 
     const deltas = {};
