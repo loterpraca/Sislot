@@ -390,14 +390,14 @@
     // =====================================================
     // EXPORT
     // =====================================================
-    const SISLOT_UTILS = {
-        $, $q, $$,
- parseCota, fmtBR, fmtBRL, fmtData, fmtDataInput, isoDate, getDataAtual, addDias,
- setStatus, showStatus, hideStatus, setBtnLoading, showModal, showToast, updateClock, startClock,
- fillSelect,
- validarCPF, validarCNPJ, validarEmail,
- apiRequest
-    };
+   const SISLOT_UTILS = {
+    $, $q, $qa, $$,
+    parseCota, fmtBR, fmtBRL, fmtData, fmtDataInput, isoDate, getDataAtual, addDias,
+    setStatus, showStatus, hideStatus, setBtnLoading, showModal, showToast, updateClock, startClock,
+    fillSelect,
+    validarCPF, validarCNPJ, validarEmail,
+    apiRequest
+};
 
     // Aliases para compatibilidade
     if (typeof window.fmtMoney === 'undefined') window.fmtMoney = SISLOT_UTILS.fmtBRL;
