@@ -57,30 +57,37 @@ const state = {
 // ══════════════════════════════════════════════════════
 // INICIALIZAÇÃO
 // ══════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', );
 
 async function init() {
-  // Tenta usar o security module; fallback para mock se não existir
-  if (window.SISLOT_SECURITY) {
-    const ctx = await window.SISLOT_SECURITY.protegerPagina?.('produto');
-    if (ctx) {
-      state.usuario     = ctx.usuario;
-      state.roleUsuario = ctx.usuario?.role || 'OPERADOR';
-      const principal   = ctx.lojaInicial || null;
-      if (principal) {
-        const loja = LOJAS.find(l => l.slug === principal.loteria_slug);
-        if (loja) state.lojaAtiva = loja;
+  try {
+    if (window.SISLOT_SECURITY) {
+      const ctx = await window.SISLOT_SECURITY.protegerPagina?.('produto');
+      if (ctx) {
+        state.usuario = ctx.usuario;
+        state.roleUsuario = ctx.usuario?.role || 'OPERADOR';
+
+        const principal = ctx.lojaInicial || null;
+        if (principal) {
+          const loja = LOJAS.find(l => l.slug === principal.loteria_slug);
+          if (loja) state.lojaAtiva = loja;
+        }
       }
     }
-  }
 
-  bind();
-  aplicarTema(state.lojaAtiva.slug);
-  renderScreenTabs();
-  renderCards();
-  renderMovSelects();
-  renderEstoque();
-  renderMestra();
+    bind();
+    await carregarDashboard();
+    aplicarTema(state.lojaAtiva.slug);
+    renderScreenTabs();
+    renderCards();
+    renderMovSelects();
+    renderEstoque();
+    renderMestra();
+    preencherData();
+  } catch (e) {
+    console.error('Erro ao iniciar produto:', e);
+    alert('Erro ao iniciar: ' + (e.message || e));
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -886,23 +893,67 @@ function setStatusCadastro(inputId, msg, tipo) {
   if (inp) { inp.focus(); inp.style.borderColor = tipo === 'err' ? 'var(--error)' : ''; }
   setStatus('statusRasp', msg, tipo);
 }
-async function init() {
+async function inativarTeleSenaSelecionada() {
   try {
-    await carregarContextoUsuario(); // se você já tiver essa função
+    const campanhaNome = $('teleCampanha')?.value?.trim();
+    const itemNome = $('teleItem')?.value?.trim();
+
+    if (!campanhaNome) {
+      setStatus('statusTele', 'Informe a campanha para inativar.', 'err');
+      return;
+    }
+
+    if (!sb) throw new Error('Supabase não inicializado.');
+
+    // tenta item primeiro
+    if (itemNome) {
+      const { data: campanha, error: campanhaErr } = await sb
+        .from('telesena_campanhas')
+        .select('id')
+        .eq('nome', campanhaNome)
+        .maybeSingle();
+
+      if (campanhaErr) throw campanhaErr;
+      if (!campanha?.id) throw new Error('Campanha não encontrada.');
+
+      const { data: item, error: itemBuscaErr } = await sb
+        .from('telesena_itens')
+        .select('id')
+        .eq('campanha_id', campanha.id)
+        .eq('nome', itemNome)
+        .maybeSingle();
+
+      if (itemBuscaErr) throw itemBuscaErr;
+      if (!item?.id) throw new Error('Item não encontrado.');
+
+      const { error: updErr } = await sb
+        .from('telesena_itens')
+        .update({ ativo: false })
+        .eq('id', item.id);
+
+      if (updErr) throw updErr;
+
+      setStatus('statusTele', `✓ Item "${itemNome}" inativado.`, 'ok');
+    } else {
+      const { error: updCampErr } = await sb
+        .from('telesena_campanhas')
+        .update({ ativo: false })
+        .eq('nome', campanhaNome);
+
+      if (updCampErr) throw updCampErr;
+
+      setStatus('statusTele', `✓ Campanha "${campanhaNome}" inativada.`, 'ok');
+    }
+
     await carregarDashboard();
-    renderLoja();
-    renderTabs();
     renderCards();
-    renderMovSelects();
+    renderEstoque();
     renderMestra();
-    preencherData();
   } catch (e) {
-    console.error(e);
-    alert('Erro ao iniciar: ' + (e.message || e));
+    console.error('Erro ao inativar Tele Sena:', e);
+    setStatus('statusTele', `Erro: ${e.message || e}`, 'err');
   }
 }
-
-
 // ══════════════════════════════════════════════════════
 // BIND DE EVENTOS
 // ══════════════════════════════════════════════════════
@@ -983,9 +1034,8 @@ function bind() {
 
   $('btnSalvarRasp')?.addEventListener('click', salvarRaspadinha);
   $('btnInativarRasp')?.addEventListener('click', () => setStatus('statusRasp', 'Raspadinha inativada.', 'ok'));
-  $('btnSalvarTele')?.addEventListener('click', () => setStatus('statusTele', '✓ Tele Sena salva.', 'ok'));
-  $('btnInativarTele')?.addEventListener('click', () => setStatus('statusTele', 'Item/campanha inativado.', 'ok'));
-
+  $('btnSalvarTele')?.addEventListener('click', salvarTeleSena);
+$('btnInativarTele')?.addEventListener('click', inativarTeleSenaSelecionada);
   // Filtros estoque rápido (Tela 1)
   document.querySelectorAll('#stockFilterChips .filter-chip').forEach(btn =>
     btn.addEventListener('click', () => {
