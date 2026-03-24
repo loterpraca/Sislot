@@ -697,18 +697,180 @@ function fecharModalLoja() {
 // ══════════════════════════════════════════════════════
 // CADASTRO — RASPADINHA
 // ══════════════════════════════════════════════════════
-function salvarRaspadinha() {
-  const nome      = $('raspNome')?.value?.trim();
-  const valorVend = Number($('raspValorVenda')?.value || 0);
+async function salvarRaspadinha() {
+  try {
+    const nome = $('raspNome')?.value?.trim();
+    const valorVend = Number($('raspValorVenda')?.value || 0);
+    const ordem = Number($('raspOrdem')?.value || 0);
 
-  if (!nome)         { setStatusCadastro('raspNome',      'Informe o nome.', 'err'); return; }
-  if (valorVend <= 0){ setStatusCadastro('raspValorVenda','Informe o valor de venda.', 'err'); return; }
+    if (!nome) {
+      setStatusCadastro('raspNome', 'Informe o nome.', 'err');
+      return;
+    }
 
-  const custo = valorVend * 0.8;
-  const inp   = $('raspValorCusto');
-  if (inp) inp.value = custo.toFixed(2);
+    if (valorVend <= 0) {
+      setStatusCadastro('raspValorVenda', 'Informe o valor de venda.', 'err');
+      return;
+    }
 
-  setStatus('statusRasp', `✓ Raspadinha "${nome}" salva · Custo: R$ ${fmtBR(custo)}`, 'ok');
+    const valorCusto = Number((valorVend * 0.8).toFixed(2));
+    const inp = $('raspValorCusto');
+    if (inp) inp.value = valorCusto.toFixed(2);
+
+    if (!sb) throw new Error('Supabase não inicializado.');
+
+    const payload = {
+      nome,
+      valor_venda: valorVend,
+      valor_custo: valorCusto,
+      margem_percentual: 20,
+      ordem,
+      ativo: true
+    };
+
+    const { data, error } = await sb
+      .from('raspadinhas')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    setStatus('statusRasp', `✓ Raspadinha "${data.nome}" salva.`, 'ok');
+
+    $('raspNome').value = '';
+    $('raspValorVenda').value = '';
+    $('raspValorCusto').value = '';
+    $('raspOrdem').value = '';
+
+    await carregarDashboard();
+    renderCards();
+  } catch (e) {
+    setStatus('statusRasp', `Erro: ${e.message || e}`, 'err');
+    console.error('Erro ao salvar raspadinha:', e);
+  }
+}
+async function carregarDashboard() {
+  try {
+    if (!sb) throw new Error('Supabase não inicializado.');
+    if (!state.lojaAtiva?.id) return;
+
+    const { data, error } = await sb
+      .from('view_produtos_dashboard_loja')
+      .select('*')
+      .eq('loteria_id', state.lojaAtiva.id)
+      .order('produto', { ascending: true });
+
+    if (error) throw error;
+
+    state.dashboard = data || [];
+  } catch (e) {
+    console.error('Erro ao carregar dashboard:', e);
+    setStatus('statusGeral', `Erro ao carregar dashboard: ${e.message || e}`, 'err');
+  }
+}
+
+async function salvarTeleSena() {
+  try {
+    const campanhaNome = $('teleCampanha')?.value?.trim();
+    const itemNome = $('teleItem')?.value?.trim();
+    const dataInicio = $('teleDataInicio')?.value || null;
+    const dataFim = $('teleDataFim')?.value || null;
+    const valorVenda = Number($('teleValorVenda')?.value || 0);
+    const valorCusto = Number($('teleValorCusto')?.value || 0);
+
+    if (!campanhaNome) {
+      setStatus('statusTele', 'Informe a campanha.', 'err');
+      $('teleCampanha')?.focus();
+      return;
+    }
+
+    if (!itemNome) {
+      setStatus('statusTele', 'Informe o item da campanha.', 'err');
+      $('teleItem')?.focus();
+      return;
+    }
+
+    if (!dataInicio || !dataFim) {
+      setStatus('statusTele', 'Informe data inicial e final.', 'err');
+      return;
+    }
+
+    if (valorVenda <= 0) {
+      setStatus('statusTele', 'Informe o valor de venda.', 'err');
+      $('teleValorVenda')?.focus();
+      return;
+    }
+
+    if (valorCusto < 0) {
+      setStatus('statusTele', 'Informe o valor de custo.', 'err');
+      $('teleValorCusto')?.focus();
+      return;
+    }
+
+    if (!sb) throw new Error('Supabase não inicializado.');
+
+    // 1) busca campanha existente
+    let campanhaId = null;
+
+    const { data: campanhaExistente, error: campanhaBuscaErr } = await sb
+      .from('telesena_campanhas')
+      .select('id, nome')
+      .eq('nome', campanhaNome)
+      .maybeSingle();
+
+    if (campanhaBuscaErr) throw campanhaBuscaErr;
+
+    if (campanhaExistente?.id) {
+      campanhaId = campanhaExistente.id;
+    } else {
+      const { data: campanhaNova, error: campanhaInsertErr } = await sb
+        .from('telesena_campanhas')
+        .insert({
+          nome: campanhaNome,
+          data_inicio: dataInicio,
+          data_fim: dataFim,
+          ativo: true,
+          ordem: 0
+        })
+        .select()
+        .single();
+
+      if (campanhaInsertErr) throw campanhaInsertErr;
+      campanhaId = campanhaNova.id;
+    }
+
+    // 2) cria item da campanha
+    const { data: itemNovo, error: itemErr } = await sb
+      .from('telesena_itens')
+      .insert({
+        campanha_id: campanhaId,
+        nome: itemNome,
+        valor_venda: valorVenda,
+        valor_custo: valorCusto,
+        ativo: true,
+        ordem: 0
+      })
+      .select()
+      .single();
+
+    if (itemErr) throw itemErr;
+
+    setStatus('statusTele', `✓ Item "${itemNovo.nome}" salvo na campanha "${campanhaNome}".`, 'ok');
+
+    $('teleCampanha').value = '';
+    $('teleItem').value = '';
+    $('teleDataInicio').value = '';
+    $('teleDataFim').value = '';
+    $('teleValorVenda').value = '';
+    $('teleValorCusto').value = '';
+
+    await carregarDashboard();
+    renderCards();
+  } catch (e) {
+    setStatus('statusTele', `Erro: ${e.message || e}`, 'err');
+    console.error('Erro ao salvar Tele Sena:', e);
+  }
 }
 
 function setStatus(elId, msg, tipo) {
@@ -724,6 +886,22 @@ function setStatusCadastro(inputId, msg, tipo) {
   if (inp) { inp.focus(); inp.style.borderColor = tipo === 'err' ? 'var(--error)' : ''; }
   setStatus('statusRasp', msg, tipo);
 }
+async function init() {
+  try {
+    await carregarContextoUsuario(); // se você já tiver essa função
+    await carregarDashboard();
+    renderLoja();
+    renderTabs();
+    renderCards();
+    renderMovSelects();
+    renderMestra();
+    preencherData();
+  } catch (e) {
+    console.error(e);
+    alert('Erro ao iniciar: ' + (e.message || e));
+  }
+}
+
 
 // ══════════════════════════════════════════════════════
 // BIND DE EVENTOS
