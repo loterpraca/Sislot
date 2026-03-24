@@ -892,6 +892,21 @@ function setStatusCadastro(inputId, msg, tipo) {
   if (inp) { inp.focus(); inp.style.borderColor = tipo === 'err' ? 'var(--error)' : ''; }
   setStatus('statusRasp', msg, tipo);
 }
+function preencherData() {
+  const agora = new Date();
+  const dataBr = agora.toLocaleDateString('pt-BR');
+  const dataIso = agora.toISOString().slice(0, 10);
+
+  const pillData = $('pillData');
+  if (pillData) pillData.textContent = dataBr;
+
+  const teleDataInicio = $('teleDataInicio');
+  const teleDataFim = $('teleDataFim');
+
+  if (teleDataInicio && !teleDataInicio.value) teleDataInicio.value = dataIso;
+  if (teleDataFim && !teleDataFim.value) teleDataFim.value = dataIso;
+}
+
 async function inativarTeleSenaSelecionada() {
   try {
     const campanhaNome = $('teleCampanha')?.value?.trim();
