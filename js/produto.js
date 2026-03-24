@@ -1,355 +1,251 @@
-const $ = (id) => document.getElementById(id);
+const sb = window.supabase && window.SISLOT_CONFIG
+  ? supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey)
+  : null;
+
+const utils = window.SISLOT_UTILS || {};
+const $ = utils.$ || (id => document.getElementById(id));
+
+const LOJAS = [
+  { id: 1, nome: 'Centro', slug: 'centro', logo: '' },
+  { id: 2, nome: 'Boulevard', slug: 'boulevard', logo: '' },
+  { id: 3, nome: 'Lotobel', slug: 'lotobel', logo: '' },
+  { id: 4, nome: 'Santa Tereza', slug: 'santa-tereza', logo: '' },
+  { id: 5, nome: 'Via Brasil', slug: 'via-brasil', logo: '' }
+];
 
 const state = {
-  ctx: null,
-  loteriasPermitidas: [],
-  loteriaAtiva: null,
+  lojaAtiva: LOJAS[0],
+  abaCadastro: 'raspadinha',
   screen: 'cadastro',
-  cadastroTab: null,
-  estoqueRapido: [],
-  estoqueLista: [],
-  mestraLista: [],
-  permissaoMestra: false
+  selecionado: null,
+  podeVerMestra: true,
+  dashboard: [
+    { id: 1, produto: 'RASPADINHA', campanha_nome: 'Jogo da Velha', item_nome: 'Jogo da Velha', saldo_atual: 120, vendidas_7d: 18, media_dia_7d: 2.57, duracao_estoque_dias: 46.7, valor_venda: 2.5 },
+    { id: 2, produto: 'RASPADINHA', campanha_nome: 'Trio da Sorte', item_nome: 'Trio da Sorte', saldo_atual: 80, vendidas_7d: 10, media_dia_7d: 1.43, duracao_estoque_dias: 55.9, valor_venda: 2.5 },
+    { id: 3, produto: 'TELESENA', campanha_nome: 'Mães 2026', item_nome: 'Completa', saldo_atual: 50, vendidas_7d: 14, media_dia_7d: 2.00, duracao_estoque_dias: 25.0, valor_venda: 12 }
+  ]
 };
-
-// MOCK inicial
-const mockLoterias = [
-  { id: 1, nome: 'Centro', slug: 'centro', principal: true, papel_na_loja: 'ADMIN' },
-  { id: 2, nome: 'Boulevard', slug: 'boulevard', principal: false, papel_na_loja: 'ADMIN' },
-  { id: 3, nome: 'Lotobel', slug: 'lotobel', principal: false, papel_na_loja: 'ADMIN' },
-  { id: 4, nome: 'Santa Tereza', slug: 'santa-tereza', principal: false, papel_na_loja: 'ADMIN' },
-  { id: 5, nome: 'Via Brasil', slug: 'via-brasil', principal: false, papel_na_loja: 'ADMIN' }
-];
-
-const mockEstoque = [
-  { id: 101, familia: 'RASPADINHA', item: 'Raspadinha R$ 2,50', campanha: '', saldo: 120, entradas: 200, mov: 0, vendidas7d: 28, mediaDia: 4, duracao: 30 },
-  { id: 102, familia: 'RASPADINHA', item: 'Raspadinha R$ 5,00', campanha: '', saldo: 75, entradas: 100, mov: -5, vendidas7d: 21, mediaDia: 3, duracao: 25 },
-  { id: 201, familia: 'TELESENA', item: 'Tele Sena Completa', campanha: 'Mães 2026', saldo: 90, entradas: 120, mov: 10, vendidas7d: 35, mediaDia: 5, duracao: 18 },
-  { id: 202, familia: 'TELESENA', item: 'Tele Sena Semanal', campanha: 'Mães 2026', saldo: 40, entradas: 80, mov: 0, vendidas7d: 14, mediaDia: 2, duracao: 20 }
-];
-
-const mockMestra = [
-  { familia: 'RASPADINHA', item: 'Raspadinha R$ 2,50', campanha: '', vendidas: 280, faturamento: 700.00, custo: 560.00, lucro: 140.00 },
-  { familia: 'RASPADINHA', item: 'Raspadinha R$ 5,00', campanha: '', vendidas: 120, faturamento: 600.00, custo: 480.00, lucro: 120.00 },
-  { familia: 'TELESENA', item: 'Tele Sena Completa', campanha: 'Mães 2026', vendidas: 150, faturamento: 600.00, custo: 552.00, lucro: 48.00 }
-];
 
 document.addEventListener('DOMContentLoaded', init);
 
-async function init() {
-  bindEvents();
-  await carregarContexto();
-  montarLojaInicial();
-  aplicarTema();
-  renderTudo();
+function init() {
+  bind();
+  renderLoja();
+  renderTabs();
+  renderCards();
+  renderMovSelects();
+  renderMestra();
+  preencherData();
 }
 
-function bindEvents() {
-  document.querySelectorAll('.main-tab').forEach(btn => {
+function bind() {
+  document.querySelectorAll('.qmod').forEach(btn => {
     btn.addEventListener('click', () => mudarScreen(btn.dataset.screen));
   });
 
-  document.querySelectorAll('.subtab').forEach(btn => {
-    btn.addEventListener('click', () => mudarCadastroTab(btn.dataset.cadastro));
+  document.querySelectorAll('.chip-tile').forEach(btn => {
+    btn.addEventListener('click', () => mudarAba(btn.dataset.aba));
   });
 
-  $('sel-loja').addEventListener('change', onTrocaLoja);
-  $('btn-recarregar').addEventListener('click', renderTudo);
+  $('btnLoja').addEventListener('click', abrirModalLoja);
+  $('btnFecharModalLoja').addEventListener('click', fecharModalLoja);
+  $('btnFecharPanel').addEventListener('click', fecharPanel);
 
-  $('btn-cancelar-raspadinha').addEventListener('click', () => mudarCadastroTab(null));
-  $('btn-cancelar-telesena').addEventListener('click', () => mudarCadastroTab(null));
+  $('panelTipoMov').addEventListener('change', atualizarPrevisto);
+  $('panelQtd').addEventListener('input', atualizarPrevisto);
 
-  $('tele-valor-venda').addEventListener('input', recalcularCustoTelesena);
+  $('btnAplicarPanel').addEventListener('click', aplicarMovimentacaoRapida);
 
-  $('btn-salvar-raspadinha').addEventListener('click', salvarRaspadinha);
-  $('btn-salvar-telesena').addEventListener('click', salvarTelesena);
-  $('btn-salvar-mov').addEventListener('click', salvarMovimentacao);
-
-  $('filtro-familia-cadastro').addEventListener('change', renderMovRapida);
-  $('filtro-familia-estoque').addEventListener('change', renderEstoque);
-  $('btn-buscar-mestra').addEventListener('click', renderMestra);
+  $('btnSalvarRasp').addEventListener('click', () => alert('Salvar raspadinha'));
+  $('btnSalvarTele').addEventListener('click', () => alert('Salvar Tele Sena'));
+  $('btnInativarRasp').addEventListener('click', () => alert('Inativar raspadinha'));
+  $('btnInativarTele').addEventListener('click', () => alert('Inativar item/campanha'));
+  $('btnSalvarMov').addEventListener('click', () => alert('Salvar movimentação entre lojas'));
 }
 
-async function carregarContexto() {
-  // aqui você pluga tua segurança real
-  state.ctx = {
-    usuario: { id: 1, nome: 'Administrador', perfil: 'ADMIN' },
-    lojasPermitidas: mockLoterias,
-    lojaInicial: mockLoterias.find(l => l.principal) || mockLoterias[0]
-  };
-
-  state.loteriasPermitidas = state.ctx.lojasPermitidas || [];
-  state.permissaoMestra =
-    state.ctx.usuario?.perfil === 'ADMIN' ||
-    state.loteriasPermitidas.some(l => l.papel_na_loja === 'SOCIO');
-}
-
-function montarLojaInicial() {
-  const select = $('sel-loja');
-  const movOrigem = $('mov-origem');
-  const movDestino = $('mov-destino');
-
-  select.innerHTML = '';
-  movOrigem.innerHTML = '';
-  movDestino.innerHTML = '';
-
-  state.loteriasPermitidas.forEach(loja => {
-    const opt = new Option(loja.nome, loja.id);
-    const opt2 = new Option(loja.nome, loja.id);
-    const opt3 = new Option(loja.nome, loja.id);
-    select.add(opt);
-    movOrigem.add(opt2);
-    movDestino.add(opt3);
-  });
-
-  state.loteriaAtiva = state.ctx.lojaInicial;
-  select.value = String(state.loteriaAtiva.id);
-  movOrigem.value = String(state.loteriaAtiva.id);
-
-  if (!state.permissaoMestra) {
-    $('tab-mestra').style.display = 'none';
-    if (state.screen === 'mestra') mudarScreen('cadastro');
-  }
-}
-
-function aplicarTema() {
-  $('app').dataset.theme = state.loteriaAtiva?.slug || 'centro';
-  $('subtitulo-topo').textContent = `Gestão operacional • ${state.loteriaAtiva?.nome || ''}`;
+function preencherData() {
+  const now = new Date();
+  $('pillData').textContent = now.toLocaleDateString('pt-BR');
 }
 
 function mudarScreen(screen) {
-  if (screen === 'mestra' && !state.permissaoMestra) return;
-
+  if (screen === 'mestra' && !state.podeVerMestra) return;
   state.screen = screen;
 
-  document.querySelectorAll('.main-tab').forEach(b =>
-    b.classList.toggle('active', b.dataset.screen === screen)
-  );
-
-  document.querySelectorAll('.screen').forEach(s =>
-    s.classList.toggle('active', s.id === `screen-${screen}`)
-  );
+  document.querySelectorAll('.qmod').forEach(b => b.classList.toggle('active', b.dataset.screen === screen));
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === `screen-${screen}`));
 }
 
-function mudarCadastroTab(tab) {
-  state.cadastroTab = tab;
-
-  document.querySelectorAll('.subtab').forEach(b =>
-    b.classList.toggle('active', b.dataset.cadastro === tab)
-  );
-
-  $('cadastro-empty').classList.toggle('hidden', !!tab);
-  $('form-raspadinha').classList.toggle('hidden', tab !== 'raspadinha');
-  $('form-telesena').classList.toggle('hidden', tab !== 'telesena');
+function mudarAba(aba) {
+  state.abaCadastro = aba;
+  document.querySelectorAll('.chip-tile').forEach(b => b.classList.toggle('active', b.dataset.aba === aba));
+  document.querySelectorAll('.cadastro-pane').forEach(p => p.classList.remove('active'));
+  $(`pane-${aba}`).classList.add('active');
 }
 
-function onTrocaLoja(e) {
-  const id = Number(e.target.value);
-  state.loteriaAtiva = state.loteriasPermitidas.find(l => l.id === id) || state.loteriaAtiva;
-  $('mov-origem').value = String(id);
-  aplicarTema();
-  renderTudo();
+function renderLoja() {
+  document.body.dataset.loja = state.lojaAtiva.slug;
+  document.documentElement.dataset.loja = state.lojaAtiva.slug;
+  $('headerNome').textContent = state.lojaAtiva.nome;
+  $('pillLoja').textContent = state.lojaAtiva.nome;
+  $('lojaLogo').src = state.lojaAtiva.logo || '';
 }
 
-function renderTudo() {
-  carregarDadosMock();
-  renderCards();
-  renderMovRapida();
-  renderEstoque();
-  renderMestra();
-  renderItensMovimentacao();
+function abrirModalLoja() {
+  const box = $('listaLojasModal');
+  box.innerHTML = '';
+  LOJAS.forEach(loja => {
+    const div = document.createElement('button');
+    div.className = 'modal-loja-item';
+    div.textContent = loja.nome;
+    div.onclick = () => {
+      state.lojaAtiva = loja;
+      renderLoja();
+      fecharModalLoja();
+    };
+    box.appendChild(div);
+  });
+  $('modalLoja').classList.add('active');
 }
 
-function carregarDadosMock() {
-  state.estoqueRapido = [...mockEstoque];
-  state.estoqueLista = [...mockEstoque];
-  state.mestraLista = [...mockMestra];
+function fecharModalLoja() {
+  $('modalLoja').classList.remove('active');
+}
+
+function renderTabs() {
+  if (!state.podeVerMestra) $('btnMestra').style.display = 'none';
 }
 
 function renderCards() {
-  const totalVendidas7d = state.estoqueLista.reduce((a, b) => a + Number(b.vendidas7d || 0), 0);
-  const mediaDia = state.estoqueLista.reduce((a, b) => a + Number(b.mediaDia || 0), 0);
-  const saldo = state.estoqueLista.reduce((a, b) => a + Number(b.saldo || 0), 0);
-  const duracao = mediaDia > 0 ? (saldo / mediaDia).toFixed(1) + ' dias' : 'Sem giro recente';
-  const campanhaAtiva = state.estoqueLista.find(i => i.familia === 'TELESENA' && i.campanha)?.campanha || '—';
+  const cardsCadastro = $('cardsCadastro');
+  const cardsEstoque = $('cardsEstoque');
 
-  $('card-vendidas-7d').textContent = String(totalVendidas7d);
-  $('card-media-dia').textContent = mediaDia.toFixed(1).replace('.', ',');
-  $('card-duracao').textContent = duracao;
-  $('card-campanha').textContent = campanhaAtiva;
-}
+  cardsCadastro.innerHTML = '';
+  cardsEstoque.innerHTML = '';
 
-function renderMovRapida() {
-  const familia = $('filtro-familia-cadastro').value;
-  const tbody = $('tbody-mov-rapida');
-  tbody.innerHTML = '';
+  const lista = state.dashboard.filter(item =>
+    state.abaCadastro === 'raspadinha' ? item.produto === 'RASPADINHA' : item.produto === 'TELESENA'
+  );
 
-  const lista = state.estoqueRapido.filter(item => familia === 'TODOS' || item.familia === familia);
+  const totalVendidas = lista.reduce((a, b) => a + Number(b.vendidas_7d || 0), 0);
+  const totalMedia = lista.reduce((a, b) => a + Number(b.media_dia_7d || 0), 0);
+  const totalSaldo = lista.reduce((a, b) => a + Number(b.saldo_atual || 0), 0);
+  const duracao = totalMedia > 0 ? (totalSaldo / totalMedia).toFixed(1) + ' dias' : '—';
+
+  $('mVendidas7d').textContent = String(totalVendidas);
+  $('mMediaDia').textContent = totalMedia.toFixed(2).replace('.', ',');
+  $('mDuracao').textContent = duracao;
+  $('mCampanha').textContent = lista[0]?.campanha_nome || '—';
+
+  state.dashboard.forEach(item => {
+    const card = montarCard(item);
+    cardsEstoque.appendChild(card.cloneNode(true));
+  });
 
   lista.forEach(item => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.familia}</td>
-      <td>${item.item}</td>
-      <td>${item.campanha || '—'}</td>
-      <td>${item.saldo}</td>
-      <td>
-        <select data-tipo="${item.id}" class="mov-tipo">
-          <option value="ENTRADA">Entrada</option>
-          <option value="REDUCAO">Redução</option>
-        </select>
-      </td>
-      <td><input type="number" min="0" value="0" class="mov-qtd" data-qtd="${item.id}" /></td>
-      <td><span id="saldo-final-${item.id}">${item.saldo}</span></td>
-      <td><button class="btn btn-primary btn-aplicar" data-id="${item.id}">Aplicar</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  document.querySelectorAll('.mov-qtd, .mov-tipo').forEach(el => {
-    el.addEventListener('input', atualizarSaldoPrevisto);
-    el.addEventListener('change', atualizarSaldoPrevisto);
-  });
-
-  document.querySelectorAll('.btn-aplicar').forEach(btn => {
-    btn.addEventListener('click', aplicarMovimentacaoRapida);
+    const card = montarCard(item);
+    card.addEventListener('click', () => abrirPanel(item));
+    cardsCadastro.appendChild(card);
   });
 }
 
-function atualizarSaldoPrevisto(e) {
-  const rowId = Number(e.target.dataset.qtd || e.target.dataset.tipo);
-  const item = state.estoqueRapido.find(i => i.id === rowId);
-  if (!item) return;
-
-  const tipo = document.querySelector(`select[data-tipo="${rowId}"]`)?.value || 'ENTRADA';
-  const qtd = Number(document.querySelector(`input[data-qtd="${rowId}"]`)?.value || 0);
-
-  const saldoFinal = tipo === 'ENTRADA' ? item.saldo + qtd : item.saldo - qtd;
-  $(`saldo-final-${rowId}`).textContent = saldoFinal < 0 ? 'Inválido' : String(saldoFinal);
+function montarCard(item) {
+  const card = document.createElement('div');
+  card.className = 'prod-card';
+  card.innerHTML = `
+    <div class="top">
+      <div>
+        <div class="name">${item.item_nome}</div>
+        <div class="sub">${item.campanha_nome || '—'} • ${item.produto}</div>
+      </div>
+      <div class="sub">R$ ${Number(item.valor_venda || 0).toFixed(2).replace('.', ',')}</div>
+    </div>
+    <div class="meta">
+      <div><span>Saldo</span><strong>${item.saldo_atual}</strong></div>
+      <div><span>Vendidas 7d</span><strong>${item.vendidas_7d}</strong></div>
+      <div><span>Média/dia</span><strong>${Number(item.media_dia_7d || 0).toFixed(2).replace('.', ',')}</strong></div>
+      <div><span>Duração</span><strong>${item.duracao_estoque_dias ?? '—'}</strong></div>
+    </div>
+  `;
+  return card;
 }
 
-function aplicarMovimentacaoRapida(e) {
-  const id = Number(e.currentTarget.dataset.id);
-  const item = state.estoqueRapido.find(i => i.id === id);
-  if (!item) return;
+function abrirPanel(item) {
+  state.selecionado = item;
+  $('panelTitulo').textContent = item.item_nome;
+  $('panelSub').textContent = `Saldo atual: ${item.saldo_atual}`;
+  $('panelQtd').value = '';
+  $('panelObs').value = '';
+  $('panelSaldoPrev').value = item.saldo_atual;
+  $('movPanel').classList.add('active');
+}
 
-  const tipo = document.querySelector(`select[data-tipo="${id}"]`)?.value || 'ENTRADA';
-  const qtd = Number(document.querySelector(`input[data-qtd="${id}"]`)?.value || 0);
+function fecharPanel() {
+  $('movPanel').classList.remove('active');
+  state.selecionado = null;
+}
 
-  if (!qtd || qtd <= 0) {
-    alert('Informe uma quantidade válida.');
-    return;
-  }
+function atualizarPrevisto() {
+  if (!state.selecionado) return;
+  const tipo = $('panelTipoMov').value;
+  const qtd = Number($('panelQtd').value || 0);
+  const saldo = Number(state.selecionado.saldo_atual || 0);
+  const final = tipo === 'ENTRADA' ? saldo + qtd : saldo - qtd;
+  $('panelSaldoPrev').value = final;
+}
 
-  if (tipo === 'REDUCAO' && qtd > item.saldo) {
-    alert('Saldo insuficiente para redução.');
-    return;
-  }
+function aplicarMovimentacaoRapida() {
+  if (!state.selecionado) return;
+  const tipo = $('panelTipoMov').value;
+  const qtd = Number($('panelQtd').value || 0);
+  if (!qtd || qtd <= 0) return alert('Informe quantidade válida');
 
-  item.saldo = tipo === 'ENTRADA' ? item.saldo + qtd : item.saldo - qtd;
-  renderMovRapida();
-  renderEstoque();
+  const idx = state.dashboard.findIndex(x => x.id === state.selecionado.id);
+  if (idx < 0) return;
+
+  const saldo = Number(state.dashboard[idx].saldo_atual || 0);
+  if (tipo === 'REDUCAO' && qtd > saldo) return alert('Saldo insuficiente');
+
+  state.dashboard[idx].saldo_atual = tipo === 'ENTRADA' ? saldo + qtd : saldo - qtd;
   renderCards();
+  fecharPanel();
 }
 
-function renderItensMovimentacao() {
-  const sel = $('mov-item');
-  sel.innerHTML = '';
+function renderMovSelects() {
+  const origem = $('movOrigem');
+  const destino = $('movDestino');
+  const produto = $('movProduto');
+  origem.innerHTML = '';
+  destino.innerHTML = '';
+  produto.innerHTML = '';
 
-  mockEstoque.forEach(item => {
-    sel.add(new Option(`${item.familia} • ${item.item}`, item.id));
+  LOJAS.forEach(loja => {
+    origem.add(new Option(loja.nome, loja.id));
+    destino.add(new Option(loja.nome, loja.id));
   });
-}
+  origem.value = state.lojaAtiva.id;
 
-function salvarMovimentacao() {
-  const qtd = Number($('mov-qtd').value || 0);
-  const custo = Number($('mov-custo').value || 0);
-  if (!qtd || qtd <= 0) {
-    alert('Informe quantidade válida.');
-    return;
-  }
-  alert('Movimentação pronta para integrar no backend.');
-}
-
-function renderEstoque() {
-  const familia = $('filtro-familia-estoque').value;
-  const tbody = $('tbody-estoque');
-  tbody.innerHTML = '';
-
-  const lista = state.estoqueLista.filter(item => familia === 'TODOS' || item.familia === familia);
-
-  lista.forEach(item => {
-    const badge = item.duracao <= 7 ? 'danger' : item.duracao <= 15 ? 'warn' : 'ok';
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.familia}</td>
-      <td>${item.item}</td>
-      <td>${item.campanha || '—'}</td>
-      <td>${item.entradas}</td>
-      <td>${item.mov}</td>
-      <td>${item.vendidas7d}</td>
-      <td>${item.saldo}</td>
-      <td><span class="badge ${badge}">${item.duracao} dias</span></td>
-    `;
-    tbody.appendChild(tr);
+  state.dashboard.forEach(item => {
+    produto.add(new Option(item.item_nome, item.id));
   });
 }
 
 function renderMestra() {
-  const tbody = $('tbody-mestra');
-  tbody.innerHTML = '';
+  const box = $('cardsMestra');
+  box.innerHTML = '';
+  if (!state.podeVerMestra) return;
 
-  const familia = $('mestra-familia').value;
-  const lista = state.mestraLista.filter(item => familia === 'TODOS' || item.familia === familia);
+  const totalQtd = state.dashboard.reduce((a, b) => a + Number(b.vendidas_7d || 0), 0);
+  const totalFat = state.dashboard.reduce((a, b) => a + Number(b.vendidas_7d || 0) * Number(b.valor_venda || 0), 0);
 
-  let vendas = 0;
-  let faturamento = 0;
-  let custo = 0;
-  let lucro = 0;
-
-  lista.forEach(item => {
-    vendas += Number(item.vendidas || 0);
-    faturamento += Number(item.faturamento || 0);
-    custo += Number(item.custo || 0);
-    lucro += Number(item.lucro || 0);
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.familia}</td>
-      <td>${item.item}</td>
-      <td>${item.campanha || '—'}</td>
-      <td>${item.vendidas}</td>
-      <td>${fmtBRL(item.faturamento)}</td>
-      <td>${fmtBRL(item.custo)}</td>
-      <td>${fmtBRL(item.lucro)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  $('mestra-vendas').textContent = String(vendas);
-  $('mestra-faturamento').textContent = fmtBRL(faturamento);
-  $('mestra-custo').textContent = fmtBRL(custo);
-  $('mestra-lucro').textContent = fmtBRL(lucro);
-}
-
-function recalcularCustoTelesena() {
-  const venda = Number($('tele-valor-venda').value || 0);
-  const custo = venda * 0.92;
-  $('tele-valor-custo').value = custo ? custo.toFixed(2) : '';
-}
-
-function salvarRaspadinha() {
-  alert('Cadastro de raspadinha pronto para integrar no backend.');
-}
-
-function salvarTelesena() {
-  alert('Cadastro de Tele Sena pronto para integrar no backend.');
-}
-
-function fmtBRL(v) {
-  return Number(v || 0).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
+  [
+    { titulo: 'Vendas', valor: totalQtd },
+    { titulo: 'Faturamento', valor: `R$ ${totalFat.toFixed(2).replace('.', ',')}` },
+    { titulo: 'Itens ativos', valor: state.dashboard.length }
+  ].forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'metric-card';
+    card.innerHTML = `<span>${item.titulo}</span><strong>${item.valor}</strong>`;
+    box.appendChild(card);
   });
 }
