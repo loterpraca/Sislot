@@ -543,55 +543,62 @@ function updT2Geral() {
 }
 
 async function buscarFechamentoExistente() {
-    const funcId = $('funcionario').value;
+    const funcionarioId = toInt($('funcionario').value);
     const dataRef = $('data-ref').value;
-    const btn = $('btn-buscar-fech');
-    if (!funcId || !dataRef) {
-        showStatusMsg('status-busca', 'Selecione funcionário e data antes de buscar.', 'err');
+    if (!funcionarioId || !dataRef) {
+        toast('Selecione funcionário e data.', false);
         return;
     }
-    btn.disabled = true;
-    btn.textContent = 'Buscando...';
-    hideStatusMsg('status-busca');
+
     try {
+        setSaveLoading(true, 'Buscando fechamento...');
         const { data: fech, error } = await sb
             .from('fechamentos')
             .select(`
                 *,
                 fechamento_produtos(*),
-                fechamento_federais(*),
                 fechamento_boloes(*),
                 fechamento_dividas(*)
             `)
             .eq('loteria_id', loteriaAtiva.id)
-            .eq('usuario_id', funcId)
+            .eq('usuario_id', funcionarioId)
             .eq('data_ref', dataRef)
             .maybeSingle();
+
         if (error) throw error;
+
         if (!fech) {
-            showStatusMsg('status-busca', 'Nenhum fechamento encontrado para esta data.', 'ok');
-            modoAtual = 'novo';
-            fechamentoOriginalId = null;
+            toast('Nenhum fechamento encontrado para este funcionário/data.', false);
             return;
         }
-        preencherTela1(fech);
-        fechamentoOriginalId = fech.id;
-        modoAtual = 'edicao';
-        ESTADO.tela2 = montarTela2DoFechamento(fech);
+
+        const federaisCarregados = await carregarFederaisDoFechamento(fech.id);
+
+        fechamentoAtualId = fech.id;
+        fechamentoEncontrado = true;
+
+        ESTADO.tela1 = montarTela1DoFechamento(fech);
+        ESTADO.tela2 = montarTela2DoFechamento(fech, federaisCarregados);
         ESTADO.tela3 = montarTela3DoFechamento(fech);
+
+        preencherTela1(fech);
         preencherTela2();
-        showStatusMsg('status-busca', '✓ Fechamento carregado para edição.', 'ok');
+
+        await buscarFederaisSupabase(fech.data_ref);
+        restaurarFederais();
+
+        toast('Fechamento carregado com sucesso.', true);
     } catch (e) {
-        showStatusMsg('status-busca', 'Erro ao buscar: ' + e.message, 'err');
+        console.error('Erro ao buscar fechamento:', e);
+        toast(e.message || 'Erro ao buscar fechamento.', false);
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Buscar Fechamento';
+        setSaveLoading(false);
     }
 }
-
 function montarTela3DoFechamento(fech) {
     const internos = [];
     const externos = [];
+
     (fech.fechamento_boloes || []).forEach(b => {
         const item = {
             bolao_id: b.bolao_id,
@@ -603,20 +610,17 @@ function montarTela3DoFechamento(fech) {
             origem: b.origem || null,
             tipo: b.tipo || null
         };
+
         if (b.tipo === 'EXTERNO' || b.origem) {
             externos.push(item);
         } else {
             internos.push(item);
         }
     });
+
     return {
         internos,
-        externos,
-        dividas: (fech.fechamento_dividas || []).map(d => ({
-            id: d.id,
-            descricao: d.descricao,
-            valor: d.valor
-        }))
+        externos
     };
 }
 
@@ -671,52 +675,35 @@ function preencherTela2() {
     updT2Geral();
 }
 
-function montarTela2DoFechamento(fech) {
-    const raspMap = new Map(
-        (fech.fechamento_produtos || [])
-            .filter(p => p.tipo === 'RASPADINHA')
-            .map(p => [String(p.produto_id || ''), {
-                produto_id: p.produto_id || null,
-                preco: p.valor_unitario,
-                qtd: p.qtd_vendida,
-                sub: p.total
-            }])
-    );
-    const raspadinha = produtosRasp.map(p => {
-        return raspMap.get(String(p.id || '')) || {
-            produto_id: p.id || null,
-            preco: p.valor_unitario,
-            qtd: 0,
-            sub: 0
-        };
-    });
-    const telesenaDb = (fech.fechamento_produtos || [])
-        .find(p => p.tipo === 'TELESENA') || null;
-    const telesena = telesenaDb
-        ? {
-            produto_id: telesenaDb.produto_id || null,
-            preco: telesenaDb.valor_unitario,
-            qtd: telesenaDb.qtd_vendida,
-            sub: telesenaDb.total
-        }
-        : {
-            produto_id: produtoTele?.id || null,
-            preco: produtoTele?.valor_unitario || 16,
-            qtd: 0,
-            sub: 0
-        };
-    const federaisCarregados = (fech.fechamento_federais || []).map(f => ({
-        federal_id: f.federal_id,
-        concurso: f.concurso,
-        modalidade: f.modalidade,
-        dtSorteio: f.dt_sorteio,
-        valorUnit: f.valor_fracao,
-        qtdVendida: f.qtd_vendida,
-        subtotal: f.total
-    }));
-    return { raspadinha, telesena, federais: federaisCarregados };
-}
+function montarTela2DoFechamento(fech, federaisCarregados = []) {
+    const produtos = fech.fechamento_produtos || [];
 
+    const raspadinha = produtos
+        .filter(p => String(p.tipo || '').toUpperCase() === 'RASPADINHA')
+        .map(p => ({
+            produto_id: p.produto_id,
+            descricao: p.descricao,
+            preco: Number(p.valor_unit || 0),
+            qtd: Number(p.qtd || 0),
+            sub: Number(p.total || 0)
+        }));
+
+    const telesenaRow = produtos.find(p => String(p.tipo || '').toUpperCase() === 'TELESENA');
+    const telesena = telesenaRow
+        ? {
+            produto_id: telesenaRow.produto_id,
+            preco: Number(telesenaRow.valor_unit || 0),
+            qtd: Number(telesenaRow.qtd || 0),
+            sub: Number(telesenaRow.total || 0)
+        }
+        : null;
+
+    return {
+        raspadinha,
+        telesena,
+        federais: federaisCarregados
+    };
+}
 async function buscarFederais() {
     const dataRef = $('data-ref').value;
     if (!dataRef) {
@@ -730,34 +717,64 @@ async function buscarFederaisSupabase(dataRef) {
     try {
         setFS('fs-loading');
         $('fs-load-sub').textContent = 'Consultando federais disponíveis para esta loja...';
+
         const { data, error } = await sb
-            .from('view_saldo_federal')
-            .select('*')
+            .from('view_resumo_federal')
+            .select(`
+                federal_id,
+                loteria_id,
+                loja_origem,
+                modalidade,
+                concurso,
+                dt_sorteio,
+                valor_fracao,
+                valor_custo,
+                qtd_inicial,
+                qtd_vendida_funcionarios,
+                qtd_vendida_whatsapp,
+                qtd_vendida_caixa,
+                qtd_vendida_cambista_interno,
+                qtd_venda_interna_total,
+                estoque_atual,
+                resultado
+            `)
             .eq('loteria_id', loteriaAtiva.id)
             .gte('dt_sorteio', dataRef)
-            .gt('saldo_disponivel', 0)
+            .gt('estoque_atual', 0)
             .order('dt_sorteio', { ascending: true })
             .order('concurso', { ascending: true });
+
         if (error) throw error;
+
         if (!data || !data.length) {
             federais = [];
             renderFed();
             setFS('fs-vazio');
             return;
         }
+
         federais = data.map(f => ({
             federal_id: f.federal_id,
+            loteriaId: Number(f.loteria_id),
+            lojaOrigem: f.loja_origem,
             modalidade: f.modalidade,
             concurso: f.concurso,
             dtSorteio: f.dt_sorteio,
-            valorUnit: Number(f.valor_fracao),
-            valorCusto: Number(f.valor_custo),
-            saldo: Number(f.saldo_disponivel || 0),
-            isExterno: !!f.is_externo,
-            qtdFracoes: Number(f.qtd_recebidas || 0)
+            valorUnit: Number(f.valor_fracao || 0),
+            valorCusto: Number(f.valor_custo || 0),
+            qtdInicial: Number(f.qtd_inicial || 0),
+            qtdVendidaFuncionarios: Number(f.qtd_vendida_funcionarios || 0),
+            qtdVendidaWhatsapp: Number(f.qtd_vendida_whatsapp || 0),
+            qtdVendidaCaixa: Number(f.qtd_vendida_caixa || 0),
+            qtdVendidaCambista: Number(f.qtd_vendida_cambista_interno || 0),
+            qtdVendaInternaTotal: Number(f.qtd_venda_interna_total || 0),
+            saldo: Number(f.estoque_atual || 0),
+            resultado: Number(f.resultado || 0)
         }));
+
         renderFed();
         setFS('fs-lista');
+
         if (ESTADO.tela2?.federais?.length) {
             restaurarFederais();
         }
@@ -768,18 +785,15 @@ async function buscarFederaisSupabase(dataRef) {
         $('fs-err-msg').textContent = e.message || 'Erro ao buscar federais.';
     }
 }
-
 function renderFed() {
     const tb = $('fed-tbody');
     tb.innerHTML = '';
     $('fed-count').textContent = federais.length;
+
     federais.forEach((f, i) => {
         const tr = document.createElement('tr');
-        const externoLabel = f.isExterno
-            ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.2);color:var(--sky);margin-left:4px">ext</span>`
-            : '';
         tr.innerHTML = `
-            <td class="mono">${f.modalidade}${externoLabel}</td>
+            <td class="mono">${f.modalidade}</td>
             <td class="mono" style="color:var(--purple);font-weight:600">${f.concurso}</td>
             <td class="mono" style="color:var(--amber)">${fmtData(f.dtSorteio)}</td>
             <td class="mono" style="color:var(--accent)">R$ ${Number(f.valorUnit).toFixed(2).replace('.', ',')}</td>
@@ -795,8 +809,10 @@ function renderFed() {
         `;
         tb.appendChild(tr);
     });
+
     const headers = document.querySelectorAll('.fed-table thead th');
     if (headers[4]) headers[4].textContent = 'Saldo';
+
     $('fed-tot-lbl').textContent = fmtBRL(getFedTot());
     updT2Geral();
 }
@@ -1229,16 +1245,19 @@ function coletarTela2() {
         qtd: parseInt($('tele-qtd').value) || 0,
         sub: getTeleTot()
     };
-    const feds = federais.map((f, i) => ({
+   const feds = federais.map((f, i) => {
+    const qtdVendida = parseInt($(`fed-qtd-${i}`)?.value) || 0;
+    return {
         federal_id: f.federal_id,
         modalidade: f.modalidade,
         concurso: f.concurso,
         dtSorteio: f.dtSorteio,
         valorUnit: Number(f.valorUnit || 0),
-        isExterno: f.isExterno,
-        qtdVendida: parseInt($(`fed-qtd-${i}`)?.value) || 0,
-        subtotal: (parseInt($(`fed-qtd-${i}`)?.value) || 0) * Number(f.valorUnit || 0)
-    }));
+        valorCusto: Number(f.valorCusto || 0),
+        qtdVendida,
+        subtotal: qtdVendida * Number(f.valorUnit || 0)
+    };
+});
     ESTADO.tela2 = { raspadinha, telesena, federais: feds };
 }
 
@@ -1473,8 +1492,8 @@ async function finalizar() {
         if (sobrescrever && existeId) {
             const { error: delProdErr } = await sb.from('fechamento_produtos').delete().eq('fechamento_id', existeId);
             if (delProdErr) throw delProdErr;
-            const { error: delFedErr } = await sb.from('fechamento_federais').delete().eq('fechamento_id', existeId);
-            if (delFedErr) throw delFedErr;
+            const { error: delFedVendasErr } = await sb.from('federal_vendas').delete().eq('fechamento_id', existeId);
+            if (delFedVendasErr) throw delFedVendasErr;
             const { error: delBolErr } = await sb.from('fechamento_boloes').delete().eq('fechamento_id', existeId);
             if (delBolErr) throw delBolErr;
             const { error: delDivErr } = await sb.from('fechamento_dividas').delete().eq('fechamento_id', existeId);
@@ -1523,22 +1542,23 @@ async function finalizar() {
             if (error) throw error;
         }
         setProgress(70);
-        const fedRows = (t2.federais || [])
-            .filter(f => f.qtdVendida > 0)
-            .map(f => ({
-                fechamento_id: fechId,
-                federal_id: f.federal_id,
-                concurso: f.concurso,
-                modalidade: f.modalidade,
-                dt_sorteio: f.dtSorteio,
-                qtd_vendida: f.qtdVendida,
-                valor_fracao: f.valorUnit,
-                total: f.subtotal
-            }));
-        if (fedRows.length) {
-            const { error } = await sb.from('fechamento_federais').insert(fedRows);
-            if (error) throw error;
-        }
+       const federaisVendidas = (t2.federais || []).filter(f => Number(f.qtdVendida || 0) > 0);
+
+for (const f of federaisVendidas) {
+    const { error } = await sb.rpc('registrar_venda_federal', {
+        p_federal_id: f.federal_id,
+        p_loteria_vendedora_id: loteriaAtiva.id,
+        p_usuario_id: Number(t1.funcionario_id),
+        p_canal: 'FECHAMENTO',
+        p_qtd_vendida: Number(f.qtdVendida),
+        p_data_referencia: t1.data_ref,
+        p_desconto: 0,
+        p_observacao: 'Lançado no fechamento',
+        p_fechamento_id: fechId
+    });
+
+    if (error) throw error;
+}
         setProgress(82);
         const bolRowsCorretos = [
             ...(t3.internos || []).filter(b => b.qtdVendida > 0).map(b => ({
@@ -1651,7 +1671,29 @@ function setFS(s) {
     const alvo = $(s);
     if (alvo) alvo.style.display = s === 'fs-lista' ? 'block' : 'flex';
 }
+async function carregarFederaisDoFechamento(fechId) {
+    const { data, error } = await sb
+        .from('federal_vendas')
+        .select(`
+            federal_id,
+            qtd_vendida,
+            valor_unitario,
+            desconto,
+            valor_liquido
+        `)
+        .eq('fechamento_id', fechId)
+        .eq('canal', 'FECHAMENTO');
 
+    if (error) throw error;
+
+    return (data || []).map(f => ({
+        federal_id: f.federal_id,
+        valorUnit: Number(f.valor_unitario || 0),
+        qtdVendida: Number(f.qtd_vendida || 0),
+        subtotal: Number(f.valor_liquido || 0),
+        desconto: Number(f.desconto || 0)
+    }));
+}
 function resetEstado() {
     ESTADO.tela1 = {};
     ESTADO.tela2 = { raspadinha: [], telesena: null, federais: [] };
