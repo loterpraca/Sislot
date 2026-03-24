@@ -543,7 +543,7 @@ function updT2Geral() {
 }
 
 async function buscarFechamentoExistente() {
-    const funcionarioId = toInt($('funcionario').value);
+    const funcionarioId = parseInt($('funcionario').value, 10);
     const dataRef = $('data-ref').value;
     if (!funcionarioId || !dataRef) {
         toast('Selecione funcionário e data.', false);
@@ -573,6 +573,7 @@ async function buscarFechamentoExistente() {
         }
 
         const federaisCarregados = await carregarFederaisDoFechamento(fech.id);
+        console.log('fechamento_dividas carregadas:', fech.fechamento_dividas);
 
         fechamentoAtualId = fech.id;
         fechamentoEncontrado = true;
@@ -1282,6 +1283,7 @@ function coletarTela3() {
 }
 
 function montarResumo() {
+    console.log('t1.dividas no resumo:', t1.dividas);
     coletarTela1();
     coletarTela2();
     coletarTela3();
