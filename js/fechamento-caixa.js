@@ -596,6 +596,20 @@ async function buscarFechamentoExistente() {
         setSaveLoading(false);
     }
 }
+function setSaveLoading(loading, text = '') {
+    const btn = document.querySelector('[onclick="buscarFechamentoExistente()"]');
+    if (!btn) return;
+
+    if (loading) {
+        btn.disabled = true;
+        btn.dataset.oldText = btn.textContent;
+        btn.textContent = text || 'Carregando...';
+    } else {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.oldText || 'Buscar Fechamento';
+    }
+}
+
 function montarTela3DoFechamento(fech) {
     const internos = [];
     const externos = [];
