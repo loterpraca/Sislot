@@ -9,14 +9,18 @@
     // DOM HELPERS
     // =====================================================
     function $(id) {
-        return document.getElementById(id);
+    return document.getElementById(id);
     }
-    function $q(selector) {
-        return document.querySelector(selector);
+
+    function $q(selector, ctx = document) {
+    return ctx.querySelector(selector);
     }
-    function $qa(selector) {
-        return document.querySelectorAll(selector);
+
+    function $qa(selector, ctx = document) {
+    return Array.from(ctx.querySelectorAll(selector));
     }
+
+    const $$ = $qa;
 
     // =====================================================
     // FORMATAÇÃO
