@@ -57,7 +57,7 @@ const state = {
 // ══════════════════════════════════════════════════════
 // INICIALIZAÇÃO
 // ══════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', );
+document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   try {
@@ -65,7 +65,7 @@ async function init() {
       const ctx = await window.SISLOT_SECURITY.protegerPagina?.('produto');
       if (ctx) {
         state.usuario = ctx.usuario;
-        state.roleUsuario = ctx.usuario?.role || 'OPERADOR';
+        state.roleUsuario = ctx.usuario?.perfil || ctx.usuario?.role || 'OPERADOR';
 
         const principal = ctx.lojaInicial || null;
         if (principal) {
@@ -89,7 +89,6 @@ async function init() {
     alert('Erro ao iniciar: ' + (e.message || e));
   }
 }
-
 // ══════════════════════════════════════════════════════
 // TEMA POR LOJA
 // ══════════════════════════════════════════════════════
