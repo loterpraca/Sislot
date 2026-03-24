@@ -1317,13 +1317,14 @@ function coletarTela3() {
 }
 
 function montarResumo() {
-    console.log('t1.dividas no resumo:', t1.dividas);
+    
     coletarTela1();
     coletarTela2();
     coletarTela3();
     const t1 = ESTADO.tela1;
     const t2 = ESTADO.tela2;
     const t3 = ESTADO.tela3;
+    console.log('t1.dividas no resumo:', t1.dividas);
     $('r-func').textContent = t1.funcionario_nome || '—';
     $('r-data').textContent = fmtData(t1.data_ref);
     $('r-loteria').textContent = loteriaAtiva?.nome || '—';
@@ -1710,6 +1711,10 @@ function setFS(s) {
     });
     const alvo = $(s);
     if (alvo) alvo.style.display = s === 'fs-lista' ? 'block' : 'flex';
+}
+
+function toast(msg, ok = true) {
+    console.log((ok ? '[OK] ' : '[ERRO] ') + msg);
 }
 async function carregarFederaisDoFechamento(fechId) {
     const { data, error } = await sb
