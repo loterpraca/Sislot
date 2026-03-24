@@ -609,6 +609,26 @@ function setSaveLoading(loading, text = '') {
         btn.textContent = btn.dataset.oldText || 'Buscar Fechamento';
     }
 }
+function montarTela1DoFechamento(fech) {
+    return {
+        funcionario_id: fech.usuario_id || '',
+        data_ref: fech.data_ref || '',
+        relatorio: Number(fech.relatorio || 0),
+        deposito: Number(fech.deposito || 0),
+        troco_inicial: Number(fech.troco_inicial || 0),
+        troco_sobra: Number(fech.troco_sobra || 0),
+        pix_cnpj: Number(fech.pix_cnpj || 0),
+        diferenca_pix: Number(fech.diferenca_pix || 0),
+        premio_raspadinha: Number(fech.premio_raspadinha || 0),
+        resgate_telesena: Number(fech.resgate_telesena || 0),
+        dividas: (fech.fechamento_dividas || []).map(d => ({
+            id: d.id,
+            cliente_nome: d.cliente_nome || '',
+            valor: Number(d.valor || 0)
+        }))
+    };
+}
+
 
 function montarTela3DoFechamento(fech) {
     const internos = [];
