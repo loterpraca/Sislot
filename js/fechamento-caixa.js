@@ -631,6 +631,10 @@ function preencherTela1(fech) {
         el.value = v !== null && v !== undefined ? Number(v).toFixed(2) : '';
         el.classList.toggle('filled', !!el.value && el.value !== '0.00');
     };
+    $('funcionario').value = fech.usuario_id || '';
+    $('data-ref').value = fech.data_ref || '';
+    autoFill($('funcionario'));
+    autoFill($('data-ref'));
     set('relatorio', fech.relatorio);
     set('deposito', fech.deposito);
     set('troco-ini', fech.troco_inicial);
