@@ -43,15 +43,15 @@ const state = {
   movHistorico: [],
 
   // Dados mock — substituir por queries Supabase
-  dashboard: [
-    { id:1, produto:'RASPADINHA', item_nome:'Jogo da Velha',       campanha_nome:null,         saldo_atual:120, vendidas_7d:18, media_dia_7d:2.57, duracao_estoque_dias:46.7, valor_venda:2.50 },
-    { id:2, produto:'RASPADINHA', item_nome:'Trio da Sorte',        campanha_nome:null,         saldo_atual:80,  vendidas_7d:10, media_dia_7d:1.43, duracao_estoque_dias:55.9, valor_venda:2.50 },
-    { id:3, produto:'RASPADINHA', item_nome:'Roda da Sorte',        campanha_nome:null,         saldo_atual:12,  vendidas_7d:8,  media_dia_7d:1.14, duracao_estoque_dias:10.5, valor_venda:5.00 },
-    { id:4, produto:'RASPADINHA', item_nome:'Horóscopo da Sorte',   campanha_nome:null,         saldo_atual:3,   vendidas_7d:5,  media_dia_7d:0.71, duracao_estoque_dias:4.2,  valor_venda:10.00},
-    { id:5, produto:'RASPADINHA', item_nome:'Chute Certo',          campanha_nome:null,         saldo_atual:50,  vendidas_7d:4,  media_dia_7d:0.57, duracao_estoque_dias:87.7, valor_venda:20.00},
-    { id:6, produto:'TELESENA',   item_nome:'Completa',            campanha_nome:'Mães 2026',  saldo_atual:50,  vendidas_7d:14, media_dia_7d:2.00, duracao_estoque_dias:25.0, valor_venda:12.00},
-    { id:7, produto:'TELESENA',   item_nome:'Meia',                campanha_nome:'Mães 2026',  saldo_atual:30,  vendidas_7d:8,  media_dia_7d:1.14, duracao_estoque_dias:26.3, valor_venda:6.00 },
-  ]
+ dashboard: [
+  { produto:'RASPADINHA', raspadinha_id:1, telesena_item_id:null, item_nome:'Jogo da Velha', campanha_nome:null, saldo_atual:120, vendidas_7d:18, media_dia_7d:2.57, duracao_estoque_dias:46.7, valor_venda:2.50, valor_custo:2.00 },
+  { produto:'RASPADINHA', raspadinha_id:2, telesena_item_id:null, item_nome:'Trio da Sorte', campanha_nome:null, saldo_atual:80, vendidas_7d:10, media_dia_7d:1.43, duracao_estoque_dias:55.9, valor_venda:2.50, valor_custo:2.00 },
+  { produto:'RASPADINHA', raspadinha_id:3, telesena_item_id:null, item_nome:'Roda da Sorte', campanha_nome:null, saldo_atual:12, vendidas_7d:8, media_dia_7d:1.14, duracao_estoque_dias:10.5, valor_venda:5.00, valor_custo:4.00 },
+  { produto:'RASPADINHA', raspadinha_id:4, telesena_item_id:null, item_nome:'Horóscopo da Sorte', campanha_nome:null, saldo_atual:3, vendidas_7d:5, media_dia_7d:0.71, duracao_estoque_dias:4.2, valor_venda:10.00, valor_custo:8.00 },
+  { produto:'RASPADINHA', raspadinha_id:5, telesena_item_id:null, item_nome:'Chute Certo', campanha_nome:null, saldo_atual:50, vendidas_7d:4, media_dia_7d:0.57, duracao_estoque_dias:87.7, valor_venda:20.00, valor_custo:16.00 },
+  { produto:'TELESENA', telesena_item_id:1, raspadinha_id:null, item_nome:'Completa', campanha_nome:'Mães 2026', saldo_atual:50, vendidas_7d:14, media_dia_7d:2.00, duracao_estoque_dias:25.0, valor_venda:12.00, valor_custo:11.04 },
+  { produto:'TELESENA', telesena_item_id:2, raspadinha_id:null, item_nome:'Meia', campanha_nome:'Mães 2026', saldo_atual:30, vendidas_7d:8, media_dia_7d:1.14, duracao_estoque_dias:26.3, valor_venda:6.00, valor_custo:5.52 }
+]
 };
 
 // ══════════════════════════════════════════════════════
@@ -451,30 +451,33 @@ function esconderStatusPanel() {
 // MOVIMENTAÇÃO ENTRE LOJAS (Tela 2)
 // ══════════════════════════════════════════════════════
 function renderMovSelects() {
-  const origem  = $('movOrigem');
+  const origem = $('movOrigem');
   const destino = $('movDestino');
   const produto = $('movProduto');
   if (!origem || !destino || !produto) return;
 
-  origem.innerHTML = destino.innerHTML = '';
+  origem.innerHTML = '';
+  destino.innerHTML = '';
+  produto.innerHTML = '<option value="">Selecione…</option>';
 
   LOJAS.forEach(loja => {
     origem.add(new Option(loja.nome, loja.id));
     destino.add(new Option(loja.nome, loja.id));
   });
 
-  origem.value  = state.lojaAtiva.id;
-  destino.value = LOJAS.find(l => l.id !== state.lojaAtiva.id)?.id || '';
+  origem.value = String(state.lojaAtiva.id);
+  destino.value = String(LOJAS.find(l => l.id !== state.lojaAtiva.id)?.id || '');
 
-  renderMovRouteVisual();
-
-  // Produto
-  produto.innerHTML = '<option value="">Selecione…</option>';
   state.dashboard.forEach(item => {
     const label = item.campanha_nome
       ? `${item.campanha_nome} — ${item.item_nome}`
       : item.item_nome;
-    produto.add(new Option(label, item.id));
+
+    const value = item.produto === 'RASPADINHA'
+      ? `R:${item.raspadinha_id}`
+      : `T:${item.telesena_item_id}`;
+
+    produto.add(new Option(label, value));
   });
 }
 
@@ -521,47 +524,115 @@ function renderMovHistorico() {
   });
 }
 
-function salvarMovimentacao() {
-  const origemId  = Number($('movOrigem')?.value);
-  const destinoId = Number($('movDestino')?.value);
-  const produtoId = Number($('movProduto')?.value);
-  const qtd       = Number($('movQtd')?.value || 0);
-  const custo     = Number($('movCusto')?.value || 0);
-  const obs       = $('movObs')?.value?.trim() || '';
+async function salvarMovimentacao() {
+  try {
+    const origemId = Number($('movOrigem')?.value);
+    const destinoId = Number($('movDestino')?.value);
+    const produtoKey = $('movProduto')?.value || '';
+    const qtd = Number($('movQtd')?.value || 0);
+    const custoInformado = Number($('movCusto')?.value || 0);
+    const obs = $('movObs')?.value?.trim() || '';
 
-  if (!origemId || !destinoId || !produtoId) {
-    setStatusMov('Preencha todos os campos obrigatórios.', 'err'); return;
+    if (!origemId || !destinoId || !produtoKey) {
+      setStatus('statusMov', 'Preencha todos os campos obrigatórios.', 'err');
+      return;
+    }
+
+    if (origemId === destinoId) {
+      setStatus('statusMov', 'Origem e destino não podem ser iguais.', 'err');
+      return;
+    }
+
+    if (qtd <= 0) {
+      setStatus('statusMov', 'Informe uma quantidade válida.', 'err');
+      return;
+    }
+
+    if (!sb) throw new Error('Supabase não inicializado.');
+
+    const prod = state.dashboard.find(x => {
+      const key = x.produto === 'RASPADINHA'
+        ? `R:${x.raspadinha_id}`
+        : `T:${x.telesena_item_id}`;
+      return key === produtoKey;
+    });
+
+    if (!prod) {
+      setStatus('statusMov', 'Produto não encontrado.', 'err');
+      return;
+    }
+
+    const saldoAtual = Number(prod.saldo_atual || 0);
+    if (qtd > saldoAtual) {
+      setStatus('statusMov', `Saldo insuficiente. Saldo atual: ${saldoAtual}`, 'err');
+      return;
+    }
+
+    const valorCustoUnit = custoInformado > 0
+      ? custoInformado
+      : Number(prod.valor_custo || 0);
+
+    if (valorCustoUnit < 0) {
+      setStatus('statusMov', 'Custo unitário inválido.', 'err');
+      return;
+    }
+
+    const valorTotal = Number((qtd * valorCustoUnit).toFixed(2));
+
+    const payload = {
+      loteria_origem_id: origemId,
+      loteria_destino_id: destinoId,
+      produto: prod.produto,
+      raspadinha_id: prod.produto === 'RASPADINHA' ? prod.raspadinha_id : null,
+      telesena_item_id: prod.produto === 'TELESENA' ? prod.telesena_item_id : null,
+      qtd,
+      valor_custo_unit: valorCustoUnit,
+      valor_total: valorTotal,
+      data_referencia: new Date().toISOString().slice(0, 10),
+      observacao: obs || null,
+      usuario_id: state.usuario?.id || null
+    };
+
+    const { error } = await sb
+      .from('produtos_movimentacoes')
+      .insert(payload);
+
+    if (error) throw error;
+
+    setStatus('statusMov', '✓ Movimentação salva com sucesso.', 'ok');
+
+    $('movQtd').value = '';
+    $('movCusto').value = '';
+    $('movObs').value = '';
+
+    await carregarDashboard();
+    renderCards();
+    renderMovSelects();
+    renderEstoque();
+    renderMestra();
+  } catch (e) {
+    console.error('Erro ao salvar movimentação:', e);
+    setStatus('statusMov', `Erro: ${e.message || e}`, 'err');
   }
-  if (origemId === destinoId) {
-    setStatusMov('Origem e destino não podem ser iguais.', 'err'); return;
-  }
-  if (qtd <= 0) {
-    setStatusMov('Informe uma quantidade válida.', 'err'); return;
-  }
-
-  const originL = LOJAS.find(l => l.id === origemId);
-  const destL   = LOJAS.find(l => l.id === destinoId);
-  const prod    = state.dashboard.find(x => x.id === produtoId);
-
-  if (!prod) { setStatusMov('Produto não encontrado.', 'err'); return; }
-
-  // Registra no histórico
-  state.movHistorico.unshift({
-    tipo: 'ENTRADA',
-    nome: `${prod.item_nome} · ${originL?.nome} → ${destL?.nome}`,
-    qtd, obs,
-    hora: new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })
-  });
-  renderMovHistorico();
-
-  setStatusMov(`✓ Movimentação de ${qtd} un. de ${prod.item_nome} registrada.`, 'ok');
-
-  $('movQtd').value  = '';
-  $('movCusto').value= '';
-  $('movObs').value  = '';
-  renderMovRouteVisual();
 }
+function bindMovProdutoCusto() {
+  const sel = $('movProduto');
+  if (!sel) return;
 
+  sel.addEventListener('change', () => {
+    const produtoKey = sel.value || '';
+    const prod = state.dashboard.find(x => {
+      const key = x.produto === 'RASPADINHA'
+        ? `R:${x.raspadinha_id}`
+        : `T:${x.telesena_item_id}`;
+      return key === produtoKey;
+    });
+
+    if (!prod) return;
+    const inpCusto = $('movCusto');
+    if (inpCusto) inpCusto.value = Number(prod.valor_custo || 0).toFixed(2);
+  });
+}
 function setStatusMov(msg, tipo) {
   const el = $('statusMov');
   if (!el) return;
@@ -769,13 +840,24 @@ async function carregarDashboard() {
 
     if (error) throw error;
 
-    state.dashboard = data || [];
+    state.dashboard = (data || []).map(item => ({
+      produto: item.produto,
+      raspadinha_id: item.raspadinha_id ?? null,
+      telesena_item_id: item.telesena_item_id ?? null,
+      campanha_nome: item.campanha_nome ?? null,
+      item_nome: item.item_nome,
+      saldo_atual: Number(item.saldo_atual || 0),
+      vendidas_7d: Number(item.vendidas_7d || 0),
+      media_dia_7d: Number(item.media_dia_7d || 0),
+      duracao_estoque_dias: Number(item.duracao_estoque_dias || 0),
+      valor_venda: Number(item.valor_venda || 0),
+      valor_custo: Number(item.valor_custo || 0)
+    }));
   } catch (e) {
     console.error('Erro ao carregar dashboard:', e);
     setStatus('statusGeral', `Erro ao carregar dashboard: ${e.message || e}`, 'err');
   }
 }
-
 async function salvarTeleSena() {
   try {
     const campanhaNome = $('teleCampanha')?.value?.trim();
@@ -968,11 +1050,39 @@ async function inativarTeleSenaSelecionada() {
     setStatus('statusTele', `Erro: ${e.message || e}`, 'err');
   }
 }
+async function inativarRaspadinhaSelecionada() {
+  try {
+    const nome = $('raspNome')?.value?.trim();
+    if (!nome) {
+      setStatus('statusRasp', 'Informe o nome da raspadinha para inativar.', 'err');
+      return;
+    }
+
+    if (!sb) throw new Error('Supabase não inicializado.');
+
+    const { error } = await sb
+      .from('raspadinhas')
+      .update({ ativo: false })
+      .eq('nome', nome);
+
+    if (error) throw error;
+
+    setStatus('statusRasp', `✓ Raspadinha "${nome}" inativada.`, 'ok');
+
+    await carregarDashboard();
+    renderCards();
+    renderEstoque();
+    renderMestra();
+  } catch (e) {
+    console.error('Erro ao inativar raspadinha:', e);
+    setStatus('statusRasp', `Erro: ${e.message || e}`, 'err');
+  }
+}
 // ══════════════════════════════════════════════════════
 // BIND DE EVENTOS
 // ══════════════════════════════════════════════════════
 function bind() {
-
+bindMovProdutoCusto();
   // Quickbar
   document.querySelectorAll('.qmod').forEach(btn =>
     btn.addEventListener('click', () => mudarScreen(btn.dataset.screen))
@@ -1047,7 +1157,7 @@ function bind() {
   });
 
   $('btnSalvarRasp')?.addEventListener('click', salvarRaspadinha);
-  $('btnInativarRasp')?.addEventListener('click', () => setStatus('statusRasp', 'Raspadinha inativada.', 'ok'));
+$('btnInativarRasp')?.addEventListener('click', inativarRaspadinhaSelecionada);
   $('btnSalvarTele')?.addEventListener('click', salvarTeleSena);
 $('btnInativarTele')?.addEventListener('click', inativarTeleSenaSelecionada);
   // Filtros estoque rápido (Tela 1)
