@@ -1,332 +1,289 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-loja="centro">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SISLOT • Produtos</title>
+  <title>SISLOT • Produto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/produto.css" />
 </head>
-<body>
-  <div class="app" id="app" data-theme="centro">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-badge">S</div>
-        <div>
-          <h1>Produtos</h1>
-          <p id="subtitulo-topo">Gestão operacional por loja</p>
-        </div>
+<body data-loja="centro">
+  <header class="header">
+    <div class="header-inner">
+      <button class="loja-tree" id="btnLoja" title="Trocar loja">
+        <img id="lojaLogo" alt="Loja" src="" />
+      </button>
+
+      <div class="header-info">
+        <div class="header-nome" id="headerNome">Centro</div>
+        <div class="header-sub">SISLOT • PRODUTO</div>
       </div>
 
-      <div class="topbar-actions">
-        <div class="loja-chip">
-          <label for="sel-loja">Loja</label>
-          <select id="sel-loja"></select>
-        </div>
-        <button class="btn btn-outline" id="btn-recarregar">Recarregar</button>
+      <button class="btn-menu" id="btnMenu">
+        <i>≡</i><span>Menu</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="page-hero card">
+      <div class="section-header">
+        <div class="section-icon">◉</div>
+        <div class="section-title">Produto</div>
       </div>
-    </header>
 
-    <nav class="main-tabs">
-      <button class="main-tab active" data-screen="cadastro">Cadastro</button>
-      <button class="main-tab" data-screen="movimentacao">Movimentação</button>
-      <button class="main-tab" data-screen="estoque">Estoque</button>
-      <button class="main-tab" data-screen="mestra" id="tab-mestra">Mestra de Produtos</button>
-    </nav>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1>Cadastro, movimentação, estoque e mestra</h1>
+          <p>Baseado no padrão visual do movimentar e do cadastro de bolões.</p>
+        </div>
 
-    <main class="screens">
-      <!-- TELA 1 -->
-      <section class="screen active" id="screen-cadastro">
-        <div class="cards-grid" id="cards-dashboard">
-          <div class="card stat">
-            <span class="stat-label">Vendidas 7 dias</span>
-            <strong class="stat-value" id="card-vendidas-7d">0</strong>
+        <div class="hero-meta">
+          <div class="meta-pill">
+            <span>Loja ativa</span>
+            <strong id="pillLoja">Centro</strong>
           </div>
-          <div class="card stat">
-            <span class="stat-label">Média por dia</span>
-            <strong class="stat-value" id="card-media-dia">0,0</strong>
+          <div class="meta-pill">
+            <span>Data ref.</span>
+            <strong id="pillData">—</strong>
           </div>
-          <div class="card stat">
-            <span class="stat-label">Duração estimada</span>
-            <strong class="stat-value" id="card-duracao">—</strong>
-          </div>
-          <div class="card stat">
-            <span class="stat-label">Campanha ativa</span>
-            <strong class="stat-value" id="card-campanha">—</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="quickbar">
+      <div class="quickbar-grid">
+        <button class="qmod active" data-screen="cadastro"><span>Cadastro</span></button>
+        <button class="qmod" data-screen="movimentacao"><span>Movimentação</span></button>
+        <button class="qmod" data-screen="estoque"><span>Estoque</span></button>
+        <button class="qmod" data-screen="mestra" id="btnMestra"><span>Mestra</span></button>
+      </div>
+    </section>
+
+    <section class="screen active" id="screen-cadastro">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-icon">✎</div>
+          <div class="section-title">Cadastro</div>
+        </div>
+
+        <div class="chips-row">
+          <button class="chip-tile active" data-aba="raspadinha">R</button>
+          <button class="chip-tile" data-aba="telesena">T</button>
+        </div>
+
+        <div class="status muted">
+          <i>i</i>
+          <div>
+            Sem abrir formulário, você já pode usar os cards abaixo para entrada ou redução rápida de estoque.
           </div>
         </div>
 
-        <div class="card">
-          <div class="subtabs">
-            <button class="subtab" data-cadastro="raspadinha">Raspadinha</button>
-            <button class="subtab" data-cadastro="telesena">Tele Sena</button>
+        <div class="cadastro-pane active" id="pane-raspadinha">
+          <div class="grid-2">
+            <div class="field">
+              <label>Nome da raspadinha</label>
+              <input id="raspNome" placeholder="Ex: Jogo da Velha" />
+            </div>
+            <div class="field">
+              <label>Valor de venda</label>
+              <input id="raspValorVenda" type="number" step="0.01" placeholder="0,00" />
+            </div>
+            <div class="field">
+              <label>Valor de custo</label>
+              <input id="raspValorCusto" type="number" step="0.01" placeholder="0,00" />
+            </div>
+            <div class="field">
+              <label>Ordem</label>
+              <input id="raspOrdem" type="number" placeholder="0" />
+            </div>
           </div>
 
-          <div class="empty-cadastro" id="cadastro-empty">
-            <p>Selecione uma aba para cadastrar ou editar.</p>
-            <small>Abaixo você já pode movimentar o estoque sem abrir o formulário.</small>
+          <div class="actions">
+            <button class="btn-primary" id="btnSalvarRasp">Salvar raspadinha</button>
+            <button class="btn-dark" id="btnInativarRasp">Inativar</button>
           </div>
-
-          <form id="form-raspadinha" class="cadastro-form hidden">
-            <h3>Cadastro de Raspadinha</h3>
-            <div class="grid-4">
-              <div class="field">
-                <label>Descrição</label>
-                <input type="text" id="rasp-descricao" />
-              </div>
-              <div class="field">
-                <label>Valor de venda</label>
-                <input type="number" step="0.01" id="rasp-valor-venda" />
-              </div>
-              <div class="field">
-                <label>Valor de custo</label>
-                <input type="number" step="0.01" id="rasp-valor-custo" />
-              </div>
-              <div class="field">
-                <label>Ordem</label>
-                <input type="number" id="rasp-ordem" />
-              </div>
-            </div>
-            <div class="form-actions">
-              <button type="button" class="btn btn-primary" id="btn-salvar-raspadinha">Salvar Raspadinha</button>
-              <button type="button" class="btn btn-outline" id="btn-cancelar-raspadinha">Cancelar</button>
-            </div>
-          </form>
-
-          <form id="form-telesena" class="cadastro-form hidden">
-            <h3>Cadastro de Tele Sena</h3>
-            <div class="grid-4">
-              <div class="field">
-                <label>Campanha</label>
-                <input type="text" id="tele-campanha" placeholder="Ex: Mães 2026" />
-              </div>
-              <div class="field">
-                <label>Tipo</label>
-                <input type="text" id="tele-tipo" placeholder="Ex: Completa / Semanal / Mix" />
-              </div>
-              <div class="field">
-                <label>Data início</label>
-                <input type="date" id="tele-inicio" />
-              </div>
-              <div class="field">
-                <label>Data fim</label>
-                <input type="date" id="tele-fim" />
-              </div>
-            </div>
-
-            <div class="grid-4">
-              <div class="field">
-                <label>Valor de venda</label>
-                <input type="number" step="0.01" id="tele-valor-venda" />
-              </div>
-              <div class="field">
-                <label>Margem</label>
-                <input type="text" id="tele-margem" value="8%" disabled />
-              </div>
-              <div class="field">
-                <label>Valor de custo</label>
-                <input type="number" step="0.01" id="tele-valor-custo" disabled />
-              </div>
-              <div class="field">
-                <label>Ordem</label>
-                <input type="number" id="tele-ordem" />
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button type="button" class="btn btn-primary" id="btn-salvar-telesena">Salvar Tele Sena</button>
-              <button type="button" class="btn btn-outline" id="btn-cancelar-telesena">Cancelar</button>
-            </div>
-          </form>
         </div>
 
-        <div class="card">
-          <div class="section-head">
-            <div>
-              <h3>Movimentação rápida de estoque</h3>
-              <p>Entrada ou redução sem sair da tela</p>
-            </div>
-            <div class="filters-inline">
-              <select id="filtro-familia-cadastro">
-                <option value="TODOS">Todos</option>
-                <option value="RASPADINHA">Raspadinha</option>
-                <option value="TELESENA">Tele Sena</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Família</th>
-                  <th>Item</th>
-                  <th>Campanha</th>
-                  <th>Saldo atual</th>
-                  <th>Movimento</th>
-                  <th>Qtd</th>
-                  <th>Saldo final</th>
-                  <th>Ação</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-mov-rapida"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- TELA 2 -->
-      <section class="screen" id="screen-movimentacao">
-        <div class="card">
-          <h3>Movimentação entre lojas</h3>
-
-          <div class="grid-4">
+        <div class="cadastro-pane" id="pane-telesena">
+          <div class="grid-2">
             <div class="field">
-              <label>Origem</label>
-              <select id="mov-origem"></select>
-            </div>
-            <div class="field">
-              <label>Destino</label>
-              <select id="mov-destino"></select>
-            </div>
-            <div class="field">
-              <label>Família</label>
-              <select id="mov-familia">
-                <option value="RASPADINHA">Raspadinha</option>
-                <option value="TELESENA">Tele Sena</option>
-              </select>
+              <label>Campanha</label>
+              <input id="teleCampanha" placeholder="Ex: Mães 2026" />
             </div>
             <div class="field">
               <label>Item</label>
-              <select id="mov-item"></select>
+              <input id="teleItem" placeholder="Ex: Completa" />
+            </div>
+            <div class="field">
+              <label>Data inicial</label>
+              <input id="teleDataInicio" type="date" />
+            </div>
+            <div class="field">
+              <label>Data final</label>
+              <input id="teleDataFim" type="date" />
+            </div>
+            <div class="field">
+              <label>Valor de venda</label>
+              <input id="teleValorVenda" type="number" step="0.01" placeholder="0,00" />
+            </div>
+            <div class="field">
+              <label>Valor de custo</label>
+              <input id="teleValorCusto" type="number" step="0.01" placeholder="0,00" />
             </div>
           </div>
 
-          <div class="grid-4">
-            <div class="field">
-              <label>Quantidade</label>
-              <input type="number" id="mov-qtd" />
-            </div>
-            <div class="field">
-              <label>Custo unitário</label>
-              <input type="number" step="0.01" id="mov-custo" />
-            </div>
-            <div class="field">
-              <label>Valor total</label>
-              <input type="number" step="0.01" id="mov-total" disabled />
-            </div>
-            <div class="field">
-              <label>Observação</label>
-              <input type="text" id="mov-obs" />
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button class="btn btn-primary" id="btn-salvar-mov">Salvar movimentação</button>
+          <div class="actions">
+            <button class="btn-primary" id="btnSalvarTele">Salvar Tele Sena</button>
+            <button class="btn-dark" id="btnInativarTele">Inativar</button>
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- TELA 3 -->
-      <section class="screen" id="screen-estoque">
-        <div class="card">
-          <div class="section-head">
-            <div>
-              <h3>Estoque da loja</h3>
-              <p>Consulta operacional</p>
-            </div>
-            <div class="filters-inline">
-              <select id="filtro-familia-estoque">
-                <option value="TODOS">Todos</option>
-                <option value="RASPADINHA">Raspadinha</option>
-                <option value="TELESENA">Tele Sena</option>
-              </select>
-            </div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span>Vendidas 7 dias</span>
+          <strong id="mVendidas7d">0</strong>
+        </div>
+        <div class="metric-card">
+          <span>Média por dia</span>
+          <strong id="mMediaDia">0,0</strong>
+        </div>
+        <div class="metric-card">
+          <span>Duração estimada</span>
+          <strong id="mDuracao">—</strong>
+        </div>
+        <div class="metric-card">
+          <span>Campanha ativa</span>
+          <strong id="mCampanha">—</strong>
+        </div>
+      </div>
+
+      <div class="cards-grid" id="cardsCadastro"></div>
+    </section>
+
+    <section class="screen" id="screen-movimentacao">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-icon">⇄</div>
+          <div class="section-title">Movimentação entre lojas</div>
+        </div>
+
+        <div class="mov-grid">
+          <div class="field">
+            <label>Origem</label>
+            <select id="movOrigem"></select>
           </div>
-
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Família</th>
-                  <th>Item</th>
-                  <th>Campanha</th>
-                  <th>Entradas</th>
-                  <th>Mov. líquida</th>
-                  <th>Vendidas 7d</th>
-                  <th>Saldo atual</th>
-                  <th>Duração</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-estoque"></tbody>
-            </table>
+          <div class="field">
+            <label>Destino</label>
+            <select id="movDestino"></select>
+          </div>
+          <div class="field">
+            <label>Produto</label>
+            <select id="movProduto"></select>
+          </div>
+          <div class="field">
+            <label>Quantidade</label>
+            <input id="movQtd" type="number" />
+          </div>
+          <div class="field">
+            <label>Custo unitário</label>
+            <input id="movCusto" type="number" step="0.01" />
+          </div>
+          <div class="field">
+            <label>Observação</label>
+            <input id="movObs" />
           </div>
         </div>
-      </section>
 
-      <!-- TELA 4 -->
-      <section class="screen" id="screen-mestra">
-        <div class="card">
-          <div class="section-head">
-            <div>
-              <h3>Mestra de Produtos</h3>
-              <p>Visão analítica por loja, campanha e família</p>
-            </div>
-            <div class="filters-inline">
-              <input type="date" id="mestra-inicio" />
-              <input type="date" id="mestra-fim" />
-              <select id="mestra-familia">
-                <option value="TODOS">Todos</option>
-                <option value="RASPADINHA">Raspadinha</option>
-                <option value="TELESENA">Tele Sena</option>
-              </select>
-              <button class="btn btn-primary" id="btn-buscar-mestra">Buscar</button>
-            </div>
-          </div>
-
-          <div class="cards-grid small">
-            <div class="card stat">
-              <span class="stat-label">Vendas</span>
-              <strong class="stat-value" id="mestra-vendas">0</strong>
-            </div>
-            <div class="card stat">
-              <span class="stat-label">Faturamento</span>
-              <strong class="stat-value" id="mestra-faturamento">R$ 0,00</strong>
-            </div>
-            <div class="card stat">
-              <span class="stat-label">Custo</span>
-              <strong class="stat-value" id="mestra-custo">R$ 0,00</strong>
-            </div>
-            <div class="card stat">
-              <span class="stat-label">Lucro</span>
-              <strong class="stat-value" id="mestra-lucro">R$ 0,00</strong>
-            </div>
-          </div>
-
-          <div class="table-wrap">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Família</th>
-                  <th>Item</th>
-                  <th>Campanha</th>
-                  <th>Vendidas</th>
-                  <th>Faturamento</th>
-                  <th>Custo</th>
-                  <th>Lucro</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-mestra"></tbody>
-            </table>
-          </div>
+        <div class="actions">
+          <button class="btn-primary" id="btnSalvarMov">Salvar movimentação</button>
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-estoque">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-icon">▣</div>
+          <div class="section-title">Estoque</div>
+        </div>
+        <div class="cards-grid" id="cardsEstoque"></div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-mestra">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-icon">◫</div>
+          <div class="section-title">Mestra de Produtos</div>
+        </div>
+
+        <div class="status muted">
+          <i>i</i>
+          <div>Somente ADMIN e SOCIO devem ver esta área.</div>
+        </div>
+
+        <div class="cards-grid" id="cardsMestra"></div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="mov-panel" id="movPanel">
+    <div class="mov-panel-head">
+      <div>
+        <strong id="panelTitulo">Item</strong>
+        <small id="panelSub">Saldo atual: 0</small>
+      </div>
+      <button class="btn-dark btn-small" id="btnFecharPanel">Fechar</button>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>Tipo de movimento</label>
+        <select id="panelTipoMov">
+          <option value="ENTRADA">Entrada</option>
+          <option value="REDUCAO">Redução</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Quantidade</label>
+        <input id="panelQtd" type="number" />
+      </div>
+      <div class="field">
+        <label>Saldo final previsto</label>
+        <input id="panelSaldoPrev" disabled />
+      </div>
+      <div class="field">
+        <label>Observação</label>
+        <input id="panelObs" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="btnAplicarPanel">Aplicar</button>
+    </div>
+  </aside>
+
+  <div class="modal-overlay" id="modalLoja">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-icon">⌘</div>
+        <div class="modal-title">Trocar loja</div>
+      </div>
+      <div class="modal-body" id="listaLojasModal"></div>
+      <div class="modal-actions">
+        <button class="btn-dark" id="btnFecharModalLoja">Fechar</button>
+      </div>
+    </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./sislot-config.js"></script>
-<script src="./js/sislot-utils.js"></script>
-<script src="./sislot-security.js"></script>
-<script src="./js/produto.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./js/sislot-utils.js"></script>
+  <script src="./sislot-security.js"></script>
+  <script src="./js/produto.js"></script>
 </body>
 </html>
