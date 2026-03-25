@@ -1,7 +1,18 @@
 /**
  * SISLOT — Produto
  * Cadastro · Movimentação · Estoque · Mestra
- * Segue o padrão de bolao-cadastro.js e movimentar.js
+ *
+ * Correções aplicadas:
+ *  1. Campo `id` adicionado a todos os itens do dashboard (mock + carregarDashboard)
+ *  2. carregarDashboard não destrói o mock quando Supabase está indisponível
+ *  3. findIndex em aplicarMovimentacaoRapida usa item.id corretamente
+ *  4. renderMestra usa valor_custo real do item (não mais % hardcoded)
+ *  5. renderMovRouteVisual chamado ao final de renderMovSelects
+ *  6. stockBadge com null-check
+ *  7. salvarMovimentacao atualiza estado local como fallback
+ *  8. Cálculo automático de custo:
+ *       Raspadinha → custo = venda × 0.80 (lucro 20%)
+ *       Tele Sena  → custo = venda × 0.92 (lucro  8%)
  */
 
 const sb = window.supabase && window.SISLOT_CONFIG
@@ -12,6 +23,18 @@ const utils = window.SISLOT_UTILS || {};
 const $     = utils.$     || (id => document.getElementById(id));
 const fmtBR = utils.fmtBR || (v => parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
 const fmtBRL= utils.fmtBRL|| (v => parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+
+// ── Margem de custo por tipo ──────────────────────────
+// Altere aqui se as margens mudarem no futuro
+const MARGEM_CUSTO = {
+  RASPADINHA: 0.80,   // custo = venda × 0.80 → lucro 20%
+  TELESENA:   0.92,   // custo = venda × 0.92 → lucro  8%
+};
+
+function calcularCusto(tipo, valorVenda) {
+  const fator = MARGEM_CUSTO[tipo] ?? 0.80;
+  return Number((Number(valorVenda || 0) * fator).toFixed(2));
+}
 
 // ── Lojas do sistema ─────────────────────────────────
 const LOJAS = [
@@ -33,25 +56,25 @@ const LOJA_CONFIG = {
 // ── Estado global ────────────────────────────────────
 const state = {
   screen:       'cadastro',
-  abaCadastro:  null,         // null = somente cards; 'raspadinha' | 'telesena'
+  abaCadastro:  null,
   lojaAtiva:    LOJAS[0],
   tipoFiltro:   'todos',
   panelItem:    null,
   tipoMov:      'ENTRADA',
   usuario:      null,
-  roleUsuario:  'ADMIN',      // será sobrescrito por sislot-security
+  roleUsuario:  'ADMIN',
   movHistorico: [],
 
-  // Dados mock — substituir por queries Supabase
- dashboard: [
-  { produto:'RASPADINHA', raspadinha_id:1, telesena_item_id:null, item_nome:'Jogo da Velha', campanha_nome:null, saldo_atual:120, vendidas_7d:18, media_dia_7d:2.57, duracao_estoque_dias:46.7, valor_venda:2.50, valor_custo:2.00 },
-  { produto:'RASPADINHA', raspadinha_id:2, telesena_item_id:null, item_nome:'Trio da Sorte', campanha_nome:null, saldo_atual:80, vendidas_7d:10, media_dia_7d:1.43, duracao_estoque_dias:55.9, valor_venda:2.50, valor_custo:2.00 },
-  { produto:'RASPADINHA', raspadinha_id:3, telesena_item_id:null, item_nome:'Roda da Sorte', campanha_nome:null, saldo_atual:12, vendidas_7d:8, media_dia_7d:1.14, duracao_estoque_dias:10.5, valor_venda:5.00, valor_custo:4.00 },
-  { produto:'RASPADINHA', raspadinha_id:4, telesena_item_id:null, item_nome:'Horóscopo da Sorte', campanha_nome:null, saldo_atual:3, vendidas_7d:5, media_dia_7d:0.71, duracao_estoque_dias:4.2, valor_venda:10.00, valor_custo:8.00 },
-  { produto:'RASPADINHA', raspadinha_id:5, telesena_item_id:null, item_nome:'Chute Certo', campanha_nome:null, saldo_atual:50, vendidas_7d:4, media_dia_7d:0.57, duracao_estoque_dias:87.7, valor_venda:20.00, valor_custo:16.00 },
-  { produto:'TELESENA', telesena_item_id:1, raspadinha_id:null, item_nome:'Completa', campanha_nome:'Mães 2026', saldo_atual:50, vendidas_7d:14, media_dia_7d:2.00, duracao_estoque_dias:25.0, valor_venda:12.00, valor_custo:11.04 },
-  { produto:'TELESENA', telesena_item_id:2, raspadinha_id:null, item_nome:'Meia', campanha_nome:'Mães 2026', saldo_atual:30, vendidas_7d:8, media_dia_7d:1.14, duracao_estoque_dias:26.3, valor_venda:6.00, valor_custo:5.52 }
-]
+  // FIX 1: id adicionado a cada item — padrão "R:<raspadinha_id>" ou "T:<telesena_item_id>"
+  dashboard: [
+    { id:'R:1', produto:'RASPADINHA', raspadinha_id:1,  telesena_item_id:null, item_nome:'Jogo da Velha',       campanha_nome:null,       saldo_atual:120, vendidas_7d:18, media_dia_7d:2.57, duracao_estoque_dias:46.7, valor_venda:2.50,  valor_custo:2.00  },
+    { id:'R:2', produto:'RASPADINHA', raspadinha_id:2,  telesena_item_id:null, item_nome:'Trio da Sorte',       campanha_nome:null,       saldo_atual:80,  vendidas_7d:10, media_dia_7d:1.43, duracao_estoque_dias:55.9, valor_venda:2.50,  valor_custo:2.00  },
+    { id:'R:3', produto:'RASPADINHA', raspadinha_id:3,  telesena_item_id:null, item_nome:'Roda da Sorte',       campanha_nome:null,       saldo_atual:12,  vendidas_7d:8,  media_dia_7d:1.14, duracao_estoque_dias:10.5, valor_venda:5.00,  valor_custo:4.00  },
+    { id:'R:4', produto:'RASPADINHA', raspadinha_id:4,  telesena_item_id:null, item_nome:'Horóscopo da Sorte',  campanha_nome:null,       saldo_atual:3,   vendidas_7d:5,  media_dia_7d:0.71, duracao_estoque_dias:4.2,  valor_venda:10.00, valor_custo:8.00  },
+    { id:'R:5', produto:'RASPADINHA', raspadinha_id:5,  telesena_item_id:null, item_nome:'Chute Certo',         campanha_nome:null,       saldo_atual:50,  vendidas_7d:4,  media_dia_7d:0.57, duracao_estoque_dias:87.7, valor_venda:20.00, valor_custo:16.00 },
+    { id:'T:1', produto:'TELESENA',   raspadinha_id:null, telesena_item_id:1,  item_nome:'Completa',            campanha_nome:'Mães 2026', saldo_atual:50,  vendidas_7d:14, media_dia_7d:2.00, duracao_estoque_dias:25.0, valor_venda:12.00, valor_custo:11.04 },
+    { id:'T:2', produto:'TELESENA',   raspadinha_id:null, telesena_item_id:2,  item_nome:'Meia',                campanha_nome:'Mães 2026', saldo_atual:30,  vendidas_7d:8,  media_dia_7d:1.14, duracao_estoque_dias:26.3, valor_venda:6.00,  valor_custo:5.52  },
+  ]
 };
 
 // ══════════════════════════════════════════════════════
@@ -64,7 +87,7 @@ async function init() {
     if (window.SISLOT_SECURITY) {
       const ctx = await window.SISLOT_SECURITY.protegerPagina?.('produto');
       if (ctx) {
-        state.usuario = ctx.usuario;
+        state.usuario    = ctx.usuario;
         state.roleUsuario = ctx.usuario?.perfil || ctx.usuario?.role || 'OPERADOR';
 
         const principal = ctx.lojaInicial || null;
@@ -89,6 +112,7 @@ async function init() {
     alert('Erro ao iniciar: ' + (e.message || e));
   }
 }
+
 // ══════════════════════════════════════════════════════
 // TEMA POR LOJA
 // ══════════════════════════════════════════════════════
@@ -103,14 +127,12 @@ function aplicarTema(slug) {
   const nome = $('headerNome');
   if (nome) nome.textContent = cfg.nome;
 
-  // Reflete no estoque e pill
   const estNome = $('estoqueLojaNome');
   if (estNome) estNome.textContent = cfg.nome;
 
   const movNome = $('movNomeOrigem');
   if (movNome) movNome.textContent = cfg.nome;
 
-  // Atualiza select de origem
   const movOrigem = $('movOrigem');
   if (movOrigem) movOrigem.value = state.lojaAtiva.id;
 }
@@ -137,8 +159,8 @@ function mudarScreen(screen) {
     s.classList.toggle('active', s.id === `screen-${screen}`)
   );
 
-  if (screen === 'estoque')  renderEstoque();
-  if (screen === 'mestra')   renderMestra();
+  if (screen === 'estoque') renderEstoque();
+  if (screen === 'mestra')  renderMestra();
 }
 
 // ══════════════════════════════════════════════════════
@@ -166,7 +188,6 @@ function mudarAba(aba) {
   const hint = $('tipoHint');
   if (hint) hint.style.display = 'none';
 
-  // Rola suavemente até o formulário
   setTimeout(() => pane?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 }
 
@@ -181,9 +202,9 @@ function getFiltrados(filtro) {
 
 function stockLevel(item) {
   const dias = Number(item.duracao_estoque_dias || 0);
-  if (dias === 0) return 'critical';
-  if (dias < 15)  return 'critical';
-  if (dias < 30)  return 'warning';
+  if (dias === 0)  return 'critical';
+  if (dias < 15)   return 'critical';
+  if (dias < 30)   return 'warning';
   return 'ok';
 }
 
@@ -195,8 +216,7 @@ function montarCard(item, clickable = false) {
   const card = document.createElement('div');
   card.className = 'prod-card';
   card.dataset.level = nivel;
-  card.dataset.id    = item.id;
-  card.style.animationDelay = `${(item.id % 9) * 0.04}s`;
+  card.dataset.id    = item.id;   // FIX 1: usa item.id string composto
 
   const valorStr  = `R$ ${fmtBR(item.valor_venda)}`;
   const campanha  = item.campanha_nome ? `<div class="pcard-campanha">${item.campanha_nome}</div>` : '';
@@ -256,20 +276,23 @@ function renderCards() {
 
   const lista = getFiltrados(state.tipoFiltro);
 
-  lista.forEach((item, i) => {
+  lista.forEach(item => {
     const card = montarCard(item, true);
     card.addEventListener('click', () => abrirPanel(item));
     container.appendChild(card);
   });
 
   atualizarMetricas(lista);
-  $('stockBadge').textContent = lista.length;
+
+  // FIX 5: null-check no stockBadge
+  const badge = $('stockBadge');
+  if (badge) badge.textContent = lista.length;
 }
 
 function atualizarMetricas(lista) {
-  const totalSaldo   = lista.reduce((a, b) => a + Number(b.saldo_atual  || 0), 0);
-  const totalVend    = lista.reduce((a, b) => a + Number(b.vendidas_7d  || 0), 0);
-  const totalMedia   = lista.reduce((a, b) => a + Number(b.media_dia_7d || 0), 0);
+  const totalSaldo   = lista.reduce((a, b) => a + Number(b.saldo_atual   || 0), 0);
+  const totalVend    = lista.reduce((a, b) => a + Number(b.vendidas_7d   || 0), 0);
+  const totalMedia   = lista.reduce((a, b) => a + Number(b.media_dia_7d  || 0), 0);
   const duracaoMedia = totalMedia > 0 ? (totalSaldo / totalMedia) : 0;
 
   if ($('mSaldoTotal')) $('mSaldoTotal').textContent = totalSaldo;
@@ -285,7 +308,6 @@ function abrirPanel(item) {
   state.panelItem = item;
   state.tipoMov   = 'ENTRADA';
 
-  // Popula header
   const tipoBadge = $('panelTipoBadge');
   if (tipoBadge) tipoBadge.textContent = item.produto === 'RASPADINHA' ? 'Raspadinha' : 'Tele Sena';
 
@@ -299,13 +321,9 @@ function abrirPanel(item) {
       : `R$ ${fmtBR(item.valor_venda)}`;
   }
 
-  // Saldo
   atualizarSaldoPanel(item.saldo_atual, item.saldo_atual);
-
-  // Toggle
   setTipoToggle('ENTRADA');
 
-  // Limpa campos
   const inp = $('panelQtd');
   if (inp) { inp.value = ''; inp.focus?.(); }
   const obs = $('panelObs');
@@ -313,12 +331,11 @@ function abrirPanel(item) {
 
   esconderStatusPanel();
 
-  // Atualiza cards ativos
+  // FIX 1: compara item.id (string) com dataset.id (string)
   document.querySelectorAll('.prod-card').forEach(c =>
-    c.classList.toggle('active', Number(c.dataset.id) === item.id)
+    c.classList.toggle('active', c.dataset.id === item.id)
   );
 
-  // Abre
   $('movPanel').classList.add('active');
   $('panelBackdrop').classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -342,19 +359,16 @@ function atualizarSaldoPanel(saldoAtual, saldoPrev) {
   const prevEl = $('panelSaldoPrev');
   if (prevEl) prevEl.textContent = saldoPrev;
 
-  // Barra de nível
   const max = Math.max(saldoAtual, 200);
   const pct = Math.min(100, Math.max(0, (saldoAtual / max) * 100));
   const bar = $('panelSaldoBar');
   if (bar) bar.style.width = pct + '%';
 
-  // Cor do preview
   if (prevEl) {
     prevEl.style.color = saldoPrev > saldoAtual ? 'var(--t1)'
                        : saldoPrev < saldoAtual ? '#f87171' : '';
   }
 
-  // Ícone da seta
   const arrow = $('prevArrowIcon');
   if (arrow) {
     arrow.className = saldoPrev > saldoAtual ? 'fas fa-arrow-up'
@@ -364,9 +378,9 @@ function atualizarSaldoPanel(saldoAtual, saldoPrev) {
 
 function calcularPrevisto() {
   if (!state.panelItem) return;
-  const qtd    = Number($('panelQtd')?.value || 0);
-  const saldo  = Number(state.panelItem.saldo_atual);
-  const final  = state.tipoMov === 'ENTRADA' ? saldo + qtd : saldo - qtd;
+  const qtd   = Number($('panelQtd')?.value || 0);
+  const saldo = Number(state.panelItem.saldo_atual);
+  const final = state.tipoMov === 'ENTRADA' ? saldo + qtd : saldo - qtd;
   atualizarSaldoPanel(saldo, final);
 }
 
@@ -394,15 +408,17 @@ function aplicarMovimentacaoRapida() {
     return;
   }
 
-  // Aplica no estado local
+  // FIX 1 + 3: findIndex usando item.id (string composto)
   const idx = state.dashboard.findIndex(x => x.id === item.id);
-  if (idx < 0) return;
+  if (idx < 0) {
+    showStatusPanel('Produto não encontrado no estado.', 'err');
+    return;
+  }
 
   const novoSaldo = state.tipoMov === 'ENTRADA' ? saldo + qtd : saldo - qtd;
   state.dashboard[idx].saldo_atual = novoSaldo;
   state.panelItem.saldo_atual      = novoSaldo;
 
-  // Registra no histórico
   const obs   = $('panelObs')?.value || '';
   const entry = {
     tipo:    state.tipoMov,
@@ -415,18 +431,18 @@ function aplicarMovimentacaoRapida() {
   state.movHistorico.unshift(entry);
   renderMovHistorico();
 
-  // Re-renderiza cards sem fechar o painel
   renderCards();
   renderEstoque();
 
-  // Feedback visual
   atualizarSaldoPanel(novoSaldo, novoSaldo);
-  showStatusPanel(`✓ ${state.tipoMov === 'ENTRADA' ? 'Entrada' : 'Redução'} de ${qtd} un. aplicada. Novo saldo: ${novoSaldo}`, 'ok');
+  showStatusPanel(
+    `✓ ${state.tipoMov === 'ENTRADA' ? 'Entrada' : 'Redução'} de ${qtd} un. aplicada. Novo saldo: ${novoSaldo}`,
+    'ok'
+  );
 
   $('panelQtd').value = '';
   $('panelObs').value = '';
 
-  // Fecha após 1.5s
   setTimeout(() => {
     fecharPanel();
     esconderStatusPanel();
@@ -434,7 +450,7 @@ function aplicarMovimentacaoRapida() {
 }
 
 function showStatusPanel(msg, tipo) {
-  const st  = $('statusPanel');
+  const st     = $('statusPanel');
   const msg_el = $('statusPanelMsg');
   if (!st || !msg_el) return;
   msg_el.textContent = msg;
@@ -451,12 +467,12 @@ function esconderStatusPanel() {
 // MOVIMENTAÇÃO ENTRE LOJAS (Tela 2)
 // ══════════════════════════════════════════════════════
 function renderMovSelects() {
-  const origem = $('movOrigem');
+  const origem  = $('movOrigem');
   const destino = $('movDestino');
   const produto = $('movProduto');
   if (!origem || !destino || !produto) return;
 
-  origem.innerHTML = '';
+  origem.innerHTML  = '';
   destino.innerHTML = '';
   produto.innerHTML = '<option value="">Selecione…</option>';
 
@@ -465,20 +481,18 @@ function renderMovSelects() {
     destino.add(new Option(loja.nome, loja.id));
   });
 
-  origem.value = String(state.lojaAtiva.id);
+  origem.value  = String(state.lojaAtiva.id);
   destino.value = String(LOJAS.find(l => l.id !== state.lojaAtiva.id)?.id || '');
 
   state.dashboard.forEach(item => {
     const label = item.campanha_nome
       ? `${item.campanha_nome} — ${item.item_nome}`
       : item.item_nome;
-
-    const value = item.produto === 'RASPADINHA'
-      ? `R:${item.raspadinha_id}`
-      : `T:${item.telesena_item_id}`;
-
-    produto.add(new Option(label, value));
+    produto.add(new Option(label, item.id));   // FIX 1: usa item.id como value
   });
+
+  // FIX 4: atualiza visual de rota na carga inicial
+  renderMovRouteVisual();
 }
 
 function renderMovRouteVisual() {
@@ -492,7 +506,7 @@ function renderMovRouteVisual() {
   if (nOrig) nOrig.textContent = origemL?.nome || '—';
   if (nDest) nDest.textContent = destinoL?.nome || '—';
 
-  const qty = Number($('movQtd')?.value || 0);
+  const qty  = Number($('movQtd')?.value || 0);
   const rQty = $('movRouteQty');
   if (rQty) rQty.textContent = qty > 0 ? `${qty} un.` : '—';
 }
@@ -526,12 +540,12 @@ function renderMovHistorico() {
 
 async function salvarMovimentacao() {
   try {
-    const origemId = Number($('movOrigem')?.value);
-    const destinoId = Number($('movDestino')?.value);
-    const produtoKey = $('movProduto')?.value || '';
-    const qtd = Number($('movQtd')?.value || 0);
+    const origemId   = Number($('movOrigem')?.value);
+    const destinoId  = Number($('movDestino')?.value);
+    const produtoKey = $('movProduto')?.value || '';        // FIX 1: item.id como chave
+    const qtd        = Number($('movQtd')?.value || 0);
     const custoInformado = Number($('movCusto')?.value || 0);
-    const obs = $('movObs')?.value?.trim() || '';
+    const obs        = $('movObs')?.value?.trim() || '';
 
     if (!origemId || !destinoId || !produtoKey) {
       setStatus('statusMov', 'Preencha todos os campos obrigatórios.', 'err');
@@ -548,15 +562,8 @@ async function salvarMovimentacao() {
       return;
     }
 
-    if (!sb) throw new Error('Supabase não inicializado.');
-
-    const prod = state.dashboard.find(x => {
-      const key = x.produto === 'RASPADINHA'
-        ? `R:${x.raspadinha_id}`
-        : `T:${x.telesena_item_id}`;
-      return key === produtoKey;
-    });
-
+    // FIX 1: busca pelo id composto
+    const prod = state.dashboard.find(x => x.id === produtoKey);
     if (!prod) {
       setStatus('statusMov', 'Produto não encontrado.', 'err');
       return;
@@ -579,33 +586,40 @@ async function salvarMovimentacao() {
 
     const valorTotal = Number((qtd * valorCustoUnit).toFixed(2));
 
-    const payload = {
-      loteria_origem_id: origemId,
-      loteria_destino_id: destinoId,
-      produto: prod.produto,
-      raspadinha_id: prod.produto === 'RASPADINHA' ? prod.raspadinha_id : null,
-      telesena_item_id: prod.produto === 'TELESENA' ? prod.telesena_item_id : null,
-      qtd,
-      valor_custo_unit: valorCustoUnit,
-      valor_total: valorTotal,
-      data_referencia: new Date().toISOString().slice(0, 10),
-      observacao: obs || null,
-      usuario_id: state.usuario?.id || null
-    };
+    // FIX 7: atualiza estado local antes de qualquer chamada remota
+    const idx = state.dashboard.findIndex(x => x.id === produtoKey);
+    if (idx >= 0) {
+      state.dashboard[idx].saldo_atual = Math.max(0, saldoAtual - qtd);
+    }
 
-    const { error } = await sb
-      .from('produtos_movimentacoes')
-      .insert(payload);
+    if (sb) {
+      const payload = {
+        loteria_origem_id:  origemId,
+        loteria_destino_id: destinoId,
+        produto:            prod.produto,
+        raspadinha_id:      prod.produto === 'RASPADINHA' ? prod.raspadinha_id   : null,
+        telesena_item_id:   prod.produto === 'TELESENA'   ? prod.telesena_item_id : null,
+        qtd,
+        valor_custo_unit:   valorCustoUnit,
+        valor_total:        valorTotal,
+        data_referencia:    new Date().toISOString().slice(0, 10),
+        observacao:         obs || null,
+        usuario_id:         state.usuario?.id || null
+      };
 
-    if (error) throw error;
+      const { error } = await sb.from('produtos_movimentacoes').insert(payload);
+      if (error) throw error;
+
+      // Recarrega do servidor após sucesso remoto
+      await carregarDashboard();
+    }
 
     setStatus('statusMov', '✓ Movimentação salva com sucesso.', 'ok');
 
-    $('movQtd').value = '';
+    $('movQtd').value   = '';
     $('movCusto').value = '';
-    $('movObs').value = '';
+    $('movObs').value   = '';
 
-    await carregarDashboard();
     renderCards();
     renderMovSelects();
     renderEstoque();
@@ -615,24 +629,21 @@ async function salvarMovimentacao() {
     setStatus('statusMov', `Erro: ${e.message || e}`, 'err');
   }
 }
+
 function bindMovProdutoCusto() {
   const sel = $('movProduto');
   if (!sel) return;
 
   sel.addEventListener('change', () => {
     const produtoKey = sel.value || '';
-    const prod = state.dashboard.find(x => {
-      const key = x.produto === 'RASPADINHA'
-        ? `R:${x.raspadinha_id}`
-        : `T:${x.telesena_item_id}`;
-      return key === produtoKey;
-    });
-
+    // FIX 1: busca pelo id composto
+    const prod = state.dashboard.find(x => x.id === produtoKey);
     if (!prod) return;
     const inpCusto = $('movCusto');
     if (inpCusto) inpCusto.value = Number(prod.valor_custo || 0).toFixed(2);
   });
 }
+
 function setStatusMov(msg, tipo) {
   const el = $('statusMov');
   if (!el) return;
@@ -644,8 +655,8 @@ function setStatusMov(msg, tipo) {
 // TELA 3 — ESTOQUE
 // ══════════════════════════════════════════════════════
 function renderEstoque() {
-  const container  = $('cardsEstoque');
-  const searchVal  = $('estoqueSearch')?.value?.toLowerCase() || '';
+  const container   = $('cardsEstoque');
+  const searchVal   = $('estoqueSearch')?.value?.toLowerCase() || '';
   const filtroAtivo = document.querySelector('#screen-estoque .filter-chip.active')?.dataset.filter || 'todos';
 
   if (!container) return;
@@ -664,16 +675,15 @@ function renderEstoque() {
     container.appendChild(card);
   });
 
-  // Atualiza summary
-  const totalItens    = lista.length;
-  const totalSaldo    = lista.reduce((a,b) => a + Number(b.saldo_atual  || 0), 0);
-  const totalVendas   = lista.reduce((a,b) => a + Number(b.vendidas_7d  || 0), 0);
-  const criticos      = lista.filter(i => stockLevel(i) === 'critical').length;
+  const totalItens  = lista.length;
+  const totalSaldo  = lista.reduce((a, b) => a + Number(b.saldo_atual  || 0), 0);
+  const totalVendas = lista.reduce((a, b) => a + Number(b.vendidas_7d  || 0), 0);
+  const criticos    = lista.filter(i => stockLevel(i) === 'critical').length;
 
-  if ($('esItens'))   $('esItens').textContent   = totalItens;
-  if ($('esSaldo'))   $('esSaldo').textContent   = totalSaldo;
-  if ($('esVendas'))  $('esVendas').textContent  = totalVendas;
-  if ($('esCriticos'))$('esCriticos').textContent= criticos;
+  if ($('esItens'))    $('esItens').textContent    = totalItens;
+  if ($('esSaldo'))    $('esSaldo').textContent    = totalSaldo;
+  if ($('esVendas'))   $('esVendas').textContent   = totalVendas;
+  if ($('esCriticos')) $('esCriticos').textContent = criticos;
 
   const alertItem = $('esAlertItem');
   if (alertItem) alertItem.style.opacity = criticos > 0 ? '1' : '.4';
@@ -688,29 +698,29 @@ function renderMestra() {
 
   const lista = state.dashboard;
 
-  // KPIs
-  const totalVend  = lista.reduce((a,b) => a + Number(b.vendidas_7d   || 0), 0);
-  const totalFat   = lista.reduce((a,b) => a + Number(b.vendidas_7d   || 0) * Number(b.valor_venda || 0), 0);
-  const totalCusto = lista.reduce((a,b) => a + Number(b.vendidas_7d   || 0) * Number(b.valor_venda || 0) * .8, 0);
+  // FIX 3: usa valor_custo real de cada item — não mais 80% fixo
+  const totalVend  = lista.reduce((a, b) => a + Number(b.vendidas_7d  || 0), 0);
+  const totalFat   = lista.reduce((a, b) => a + Number(b.vendidas_7d  || 0) * Number(b.valor_venda || 0), 0);
+  const totalCusto = lista.reduce((a, b) => a + Number(b.vendidas_7d  || 0) * Number(b.valor_custo || 0), 0);
   const totalLucro = totalFat - totalCusto;
   const margem     = totalFat > 0 ? (totalLucro / totalFat * 100) : 0;
 
-  if ($('kpiVendas'))  $('kpiVendas').textContent  = totalVend;
-  if ($('kpiFat'))     $('kpiFat').textContent     = fmtBRL(totalFat);
-  if ($('kpiCusto'))   $('kpiCusto').textContent   = fmtBRL(totalCusto);
-  if ($('kpiLucro'))   $('kpiLucro').textContent   = fmtBRL(totalLucro);
-  if ($('kpiMargem'))  $('kpiMargem').textContent  = margem.toFixed(1) + '%';
+  if ($('kpiVendas')) $('kpiVendas').textContent = totalVend;
+  if ($('kpiFat'))    $('kpiFat').textContent    = fmtBRL(totalFat);
+  if ($('kpiCusto'))  $('kpiCusto').textContent  = fmtBRL(totalCusto);
+  if ($('kpiLucro'))  $('kpiLucro').textContent  = fmtBRL(totalLucro);
+  if ($('kpiMargem')) $('kpiMargem').textContent = margem.toFixed(1) + '%';
 
-  // Tabela
   const tbody = $('mestraTbody');
   if (!tbody) return;
   tbody.innerHTML = '';
 
   lista.forEach(item => {
-    const fat   = Number(item.vendidas_7d || 0) * Number(item.valor_venda || 0);
-    const custo = fat * 0.8;
-    const lucro = fat - custo;
-    const marg  = fat > 0 ? (lucro / fat * 100) : 0;
+    // FIX 3: custo real por linha
+    const fat       = Number(item.vendidas_7d || 0) * Number(item.valor_venda || 0);
+    const custo     = Number(item.vendidas_7d || 0) * Number(item.valor_custo || 0);
+    const lucro     = fat - custo;
+    const marg      = fat > 0 ? (lucro / fat * 100) : 0;
     const tipoLabel = item.produto === 'RASPADINHA' ? 'rasp' : 'tele';
     const tipoBadge = item.produto === 'RASPADINHA' ? 'Rasp.' : 'Tele Sena';
 
@@ -773,33 +783,60 @@ function fecharModalLoja() {
 
 // ══════════════════════════════════════════════════════
 // CADASTRO — RASPADINHA
+// FIX 8: custo = venda × 0.80 (lucro 20%) — calculado automaticamente
 // ══════════════════════════════════════════════════════
 async function salvarRaspadinha() {
   try {
-    const nome = $('raspNome')?.value?.trim();
+    const nome     = $('raspNome')?.value?.trim();
     const valorVend = Number($('raspValorVenda')?.value || 0);
-    const ordem = Number($('raspOrdem')?.value || 0);
+    const ordem    = Number($('raspOrdem')?.value || 0);
 
     if (!nome) {
-      setStatusCadastro('raspNome', 'Informe o nome.', 'err');
+      setStatus('statusRasp', 'Informe o nome.', 'err');
+      $('raspNome')?.focus();
       return;
     }
 
     if (valorVend <= 0) {
-      setStatusCadastro('raspValorVenda', 'Informe o valor de venda.', 'err');
+      setStatus('statusRasp', 'Informe o valor de venda.', 'err');
+      $('raspValorVenda')?.focus();
       return;
     }
 
-    const valorCusto = Number((valorVend * 0.8).toFixed(2));
-    const inp = $('raspValorCusto');
-    if (inp) inp.value = valorCusto.toFixed(2);
+    // FIX 8: custo automático Raspadinha (20% de lucro)
+    const valorCusto = calcularCusto('RASPADINHA', valorVend);
+    const inpCusto = $('raspValorCusto');
+    if (inpCusto) inpCusto.value = valorCusto.toFixed(2);
 
-    if (!sb) throw new Error('Supabase não inicializado.');
+    if (!sb) {
+      // Modo offline: insere no mock
+      const newId = `R:${Date.now()}`;
+      state.dashboard.push({
+        id:                 newId,
+        produto:            'RASPADINHA',
+        raspadinha_id:      Date.now(),
+        telesena_item_id:   null,
+        campanha_nome:      null,
+        item_nome:          nome,
+        saldo_atual:        0,
+        vendidas_7d:        0,
+        media_dia_7d:       0,
+        duracao_estoque_dias: 0,
+        valor_venda:        valorVend,
+        valor_custo:        valorCusto,
+      });
+      setStatus('statusRasp', `✓ Raspadinha "${nome}" cadastrada (modo offline).`, 'ok');
+      limparFormRasp();
+      renderCards();
+      renderEstoque();
+      renderMestra();
+      return;
+    }
 
     const payload = {
       nome,
-      valor_venda: valorVend,
-      valor_custo: valorCusto,
+      valor_venda:       valorVend,
+      valor_custo:       valorCusto,
       margem_percentual: 20,
       ordem,
       ativo: true
@@ -814,58 +851,36 @@ async function salvarRaspadinha() {
     if (error) throw error;
 
     setStatus('statusRasp', `✓ Raspadinha "${data.nome}" salva.`, 'ok');
-
-    $('raspNome').value = '';
-    $('raspValorVenda').value = '';
-    $('raspValorCusto').value = '';
-    $('raspOrdem').value = '';
+    limparFormRasp();
 
     await carregarDashboard();
     renderCards();
+    renderEstoque();
+    renderMestra();
   } catch (e) {
     setStatus('statusRasp', `Erro: ${e.message || e}`, 'err');
     console.error('Erro ao salvar raspadinha:', e);
   }
 }
-async function carregarDashboard() {
-  try {
-    if (!sb) throw new Error('Supabase não inicializado.');
-    if (!state.lojaAtiva?.id) return;
 
-    const { data, error } = await sb
-      .from('view_produtos_dashboard_loja')
-      .select('*')
-      .eq('loteria_id', state.lojaAtiva.id)
-      .order('produto', { ascending: true });
-
-    if (error) throw error;
-
-    state.dashboard = (data || []).map(item => ({
-      produto: item.produto,
-      raspadinha_id: item.raspadinha_id ?? null,
-      telesena_item_id: item.telesena_item_id ?? null,
-      campanha_nome: item.campanha_nome ?? null,
-      item_nome: item.item_nome,
-      saldo_atual: Number(item.saldo_atual || 0),
-      vendidas_7d: Number(item.vendidas_7d || 0),
-      media_dia_7d: Number(item.media_dia_7d || 0),
-      duracao_estoque_dias: Number(item.duracao_estoque_dias || 0),
-      valor_venda: Number(item.valor_venda || 0),
-      valor_custo: Number(item.valor_custo || 0)
-    }));
-  } catch (e) {
-    console.error('Erro ao carregar dashboard:', e);
-    setStatus('statusGeral', `Erro ao carregar dashboard: ${e.message || e}`, 'err');
-  }
+function limparFormRasp() {
+  ['raspNome','raspValorVenda','raspValorCusto','raspOrdem'].forEach(id => {
+    const el = $(id);
+    if (el) el.value = '';
+  });
 }
+
+// ══════════════════════════════════════════════════════
+// CADASTRO — TELE SENA
+// FIX 8: custo = venda × 0.92 (lucro 8%) — calculado automaticamente
+// ══════════════════════════════════════════════════════
 async function salvarTeleSena() {
   try {
     const campanhaNome = $('teleCampanha')?.value?.trim();
-    const itemNome = $('teleItem')?.value?.trim();
-    const dataInicio = $('teleDataInicio')?.value || null;
-    const dataFim = $('teleDataFim')?.value || null;
-    const valorVenda = Number($('teleValorVenda')?.value || 0);
-    const valorCusto = Number($('teleValorCusto')?.value || 0);
+    const itemNome     = $('teleItem')?.value?.trim();
+    const dataInicio   = $('teleDataInicio')?.value || null;
+    const dataFim      = $('teleDataFim')?.value    || null;
+    const valorVenda   = Number($('teleValorVenda')?.value || 0);
 
     if (!campanhaNome) {
       setStatus('statusTele', 'Informe a campanha.', 'err');
@@ -890,15 +905,37 @@ async function salvarTeleSena() {
       return;
     }
 
-    if (valorCusto < 0) {
-      setStatus('statusTele', 'Informe o valor de custo.', 'err');
-      $('teleValorCusto')?.focus();
+    // FIX 8: custo automático Tele Sena (8% de lucro)
+    const valorCusto = calcularCusto('TELESENA', valorVenda);
+    const inpCusto = $('teleValorCusto');
+    if (inpCusto) inpCusto.value = valorCusto.toFixed(2);
+
+    if (!sb) {
+      // Modo offline: insere no mock
+      const newId = `T:${Date.now()}`;
+      state.dashboard.push({
+        id:                 newId,
+        produto:            'TELESENA',
+        raspadinha_id:      null,
+        telesena_item_id:   Date.now(),
+        campanha_nome:      campanhaNome,
+        item_nome:          itemNome,
+        saldo_atual:        0,
+        vendidas_7d:        0,
+        media_dia_7d:       0,
+        duracao_estoque_dias: 0,
+        valor_venda:        valorVenda,
+        valor_custo:        valorCusto,
+      });
+      setStatus('statusTele', `✓ Item "${itemNome}" cadastrado (modo offline).`, 'ok');
+      limparFormTele();
+      renderCards();
+      renderEstoque();
+      renderMestra();
       return;
     }
 
-    if (!sb) throw new Error('Supabase não inicializado.');
-
-    // 1) busca campanha existente
+    // 1) busca ou cria campanha
     let campanhaId = null;
 
     const { data: campanhaExistente, error: campanhaBuscaErr } = await sb
@@ -914,13 +951,7 @@ async function salvarTeleSena() {
     } else {
       const { data: campanhaNova, error: campanhaInsertErr } = await sb
         .from('telesena_campanhas')
-        .insert({
-          nome: campanhaNome,
-          data_inicio: dataInicio,
-          data_fim: dataFim,
-          ativo: true,
-          ordem: 0
-        })
+        .insert({ nome: campanhaNome, data_inicio: dataInicio, data_fim: dataFim, ativo: true, ordem: 0 })
         .select()
         .single();
 
@@ -928,14 +959,14 @@ async function salvarTeleSena() {
       campanhaId = campanhaNova.id;
     }
 
-    // 2) cria item da campanha
+    // 2) cria item
     const { data: itemNovo, error: itemErr } = await sb
       .from('telesena_itens')
       .insert({
-        campanha_id: campanhaId,
-        nome: itemNome,
-        valor_venda: valorVenda,
-        valor_custo: valorCusto,
+        campanha_id:  campanhaId,
+        nome:         itemNome,
+        valor_venda:  valorVenda,
+        valor_custo:  valorCusto,
         ativo: true,
         ordem: 0
       })
@@ -945,111 +976,136 @@ async function salvarTeleSena() {
     if (itemErr) throw itemErr;
 
     setStatus('statusTele', `✓ Item "${itemNovo.nome}" salvo na campanha "${campanhaNome}".`, 'ok');
-
-    $('teleCampanha').value = '';
-    $('teleItem').value = '';
-    $('teleDataInicio').value = '';
-    $('teleDataFim').value = '';
-    $('teleValorVenda').value = '';
-    $('teleValorCusto').value = '';
-
-    await carregarDashboard();
-    renderCards();
-  } catch (e) {
-    setStatus('statusTele', `Erro: ${e.message || e}`, 'err');
-    console.error('Erro ao salvar Tele Sena:', e);
-  }
-}
-
-function setStatus(elId, msg, tipo) {
-  const el = $(elId);
-  if (!el) return;
-  el.className = `status ${tipo}`;
-  const icon = tipo === 'ok' ? 'check-circle' : tipo === 'err' ? 'exclamation-circle' : 'info-circle';
-  el.innerHTML = `<i class="fas fa-${icon}"></i><span>${msg}</span>`;
-}
-
-function setStatusCadastro(inputId, msg, tipo) {
-  const inp = $(inputId);
-  if (inp) { inp.focus(); inp.style.borderColor = tipo === 'err' ? 'var(--error)' : ''; }
-  setStatus('statusRasp', msg, tipo);
-}
-function preencherData() {
-  const agora = new Date();
-  const dataBr = agora.toLocaleDateString('pt-BR');
-  const dataIso = agora.toISOString().slice(0, 10);
-
-  const pillData = $('pillData');
-  if (pillData) pillData.textContent = dataBr;
-
-  const teleDataInicio = $('teleDataInicio');
-  const teleDataFim = $('teleDataFim');
-
-  if (teleDataInicio && !teleDataInicio.value) teleDataInicio.value = dataIso;
-  if (teleDataFim && !teleDataFim.value) teleDataFim.value = dataIso;
-}
-
-async function inativarTeleSenaSelecionada() {
-  try {
-    const campanhaNome = $('teleCampanha')?.value?.trim();
-    const itemNome = $('teleItem')?.value?.trim();
-
-    if (!campanhaNome) {
-      setStatus('statusTele', 'Informe a campanha para inativar.', 'err');
-      return;
-    }
-
-    if (!sb) throw new Error('Supabase não inicializado.');
-
-    // tenta item primeiro
-    if (itemNome) {
-      const { data: campanha, error: campanhaErr } = await sb
-        .from('telesena_campanhas')
-        .select('id')
-        .eq('nome', campanhaNome)
-        .maybeSingle();
-
-      if (campanhaErr) throw campanhaErr;
-      if (!campanha?.id) throw new Error('Campanha não encontrada.');
-
-      const { data: item, error: itemBuscaErr } = await sb
-        .from('telesena_itens')
-        .select('id')
-        .eq('campanha_id', campanha.id)
-        .eq('nome', itemNome)
-        .maybeSingle();
-
-      if (itemBuscaErr) throw itemBuscaErr;
-      if (!item?.id) throw new Error('Item não encontrado.');
-
-      const { error: updErr } = await sb
-        .from('telesena_itens')
-        .update({ ativo: false })
-        .eq('id', item.id);
-
-      if (updErr) throw updErr;
-
-      setStatus('statusTele', `✓ Item "${itemNome}" inativado.`, 'ok');
-    } else {
-      const { error: updCampErr } = await sb
-        .from('telesena_campanhas')
-        .update({ ativo: false })
-        .eq('nome', campanhaNome);
-
-      if (updCampErr) throw updCampErr;
-
-      setStatus('statusTele', `✓ Campanha "${campanhaNome}" inativada.`, 'ok');
-    }
+    limparFormTele();
 
     await carregarDashboard();
     renderCards();
     renderEstoque();
     renderMestra();
   } catch (e) {
+    setStatus('statusTele', `Erro: ${e.message || e}`, 'err');
+    console.error('Erro ao salvar Tele Sena:', e);
+  }
+}
+
+function limparFormTele() {
+  ['teleCampanha','teleItem','teleDataInicio','teleDataFim','teleValorVenda','teleValorCusto'].forEach(id => {
+    const el = $(id);
+    if (el) el.value = '';
+  });
+  preencherData();
+}
+
+// ══════════════════════════════════════════════════════
+// CARREGAMENTO DO DASHBOARD (Supabase)
+// FIX 2: não destrói o mock quando Supabase está indisponível
+// ══════════════════════════════════════════════════════
+async function carregarDashboard() {
+  // FIX 2: sem Supabase, mantém o estado atual (mock ou última carga)
+  if (!sb) {
+    console.warn('Supabase não inicializado — mantendo dados atuais.');
+    return;
+  }
+  if (!state.lojaAtiva?.id) return;
+
+  try {
+    const { data, error } = await sb
+      .from('view_produtos_dashboard_loja')
+      .select('*')
+      .eq('loteria_id', state.lojaAtiva.id)
+      .order('produto', { ascending: true });
+
+    if (error) throw error;
+
+    // FIX 1: id adicionado no mapeamento
+    state.dashboard = (data || []).map(item => ({
+      id:                   item.produto === 'RASPADINHA'
+                              ? `R:${item.raspadinha_id}`
+                              : `T:${item.telesena_item_id}`,
+      produto:              item.produto,
+      raspadinha_id:        item.raspadinha_id    ?? null,
+      telesena_item_id:     item.telesena_item_id ?? null,
+      campanha_nome:        item.campanha_nome     ?? null,
+      item_nome:            item.item_nome,
+      saldo_atual:          Number(item.saldo_atual          || 0),
+      vendidas_7d:          Number(item.vendidas_7d          || 0),
+      media_dia_7d:         Number(item.media_dia_7d         || 0),
+      duracao_estoque_dias: Number(item.duracao_estoque_dias || 0),
+      valor_venda:          Number(item.valor_venda          || 0),
+      valor_custo:          Number(item.valor_custo          || 0),
+    }));
+  } catch (e) {
+    console.error('Erro ao carregar dashboard:', e);
+    // Mostra erro no status se existir um elemento genérico de status no DOM
+    const elErr = $('statusGeral') || $('statusMov') || $('statusRasp');
+    if (elErr) setStatus(elErr.id, `Erro ao carregar dashboard: ${e.message || e}`, 'err');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// INATIVAR TELE SENA / RASPADINHA
+// ══════════════════════════════════════════════════════
+async function inativarTeleSenaSelecionada() {
+  try {
+    const campanhaNome = $('teleCampanha')?.value?.trim();
+    const itemNome     = $('teleItem')?.value?.trim();
+
+    if (!campanhaNome) {
+      setStatus('statusTele', 'Informe a campanha para inativar.', 'err');
+      return;
+    }
+
+    if (!sb) {
+      // Modo offline: remove do mock
+      if (itemNome) {
+        const idx = state.dashboard.findIndex(
+          x => x.produto === 'TELESENA' &&
+               x.campanha_nome === campanhaNome &&
+               x.item_nome === itemNome
+        );
+        if (idx >= 0) state.dashboard.splice(idx, 1);
+        setStatus('statusTele', `✓ Item "${itemNome}" inativado (modo offline).`, 'ok');
+      } else {
+        state.dashboard = state.dashboard.filter(
+          x => !(x.produto === 'TELESENA' && x.campanha_nome === campanhaNome)
+        );
+        setStatus('statusTele', `✓ Campanha "${campanhaNome}" inativada (modo offline).`, 'ok');
+      }
+      renderCards(); renderEstoque(); renderMestra();
+      return;
+    }
+
+    if (itemNome) {
+      const { data: campanha, error: campanhaErr } = await sb
+        .from('telesena_campanhas').select('id').eq('nome', campanhaNome).maybeSingle();
+      if (campanhaErr) throw campanhaErr;
+      if (!campanha?.id) throw new Error('Campanha não encontrada.');
+
+      const { data: item, error: itemBuscaErr } = await sb
+        .from('telesena_itens').select('id')
+        .eq('campanha_id', campanha.id).eq('nome', itemNome).maybeSingle();
+      if (itemBuscaErr) throw itemBuscaErr;
+      if (!item?.id) throw new Error('Item não encontrado.');
+
+      const { error: updErr } = await sb.from('telesena_itens').update({ ativo: false }).eq('id', item.id);
+      if (updErr) throw updErr;
+
+      setStatus('statusTele', `✓ Item "${itemNome}" inativado.`, 'ok');
+    } else {
+      const { error: updCampErr } = await sb
+        .from('telesena_campanhas').update({ ativo: false }).eq('nome', campanhaNome);
+      if (updCampErr) throw updCampErr;
+      setStatus('statusTele', `✓ Campanha "${campanhaNome}" inativada.`, 'ok');
+    }
+
+    await carregarDashboard();
+    renderCards(); renderEstoque(); renderMestra();
+  } catch (e) {
     console.error('Erro ao inativar Tele Sena:', e);
     setStatus('statusTele', `Erro: ${e.message || e}`, 'err');
   }
 }
+
 async function inativarRaspadinhaSelecionada() {
   try {
     const nome = $('raspNome')?.value?.trim();
@@ -1058,31 +1114,59 @@ async function inativarRaspadinhaSelecionada() {
       return;
     }
 
-    if (!sb) throw new Error('Supabase não inicializado.');
+    if (!sb) {
+      // Modo offline: remove do mock
+      state.dashboard = state.dashboard.filter(
+        x => !(x.produto === 'RASPADINHA' && x.item_nome === nome)
+      );
+      setStatus('statusRasp', `✓ Raspadinha "${nome}" inativada (modo offline).`, 'ok');
+      renderCards(); renderEstoque(); renderMestra();
+      return;
+    }
 
-    const { error } = await sb
-      .from('raspadinhas')
-      .update({ ativo: false })
-      .eq('nome', nome);
-
+    const { error } = await sb.from('raspadinhas').update({ ativo: false }).eq('nome', nome);
     if (error) throw error;
 
     setStatus('statusRasp', `✓ Raspadinha "${nome}" inativada.`, 'ok');
-
     await carregarDashboard();
-    renderCards();
-    renderEstoque();
-    renderMestra();
+    renderCards(); renderEstoque(); renderMestra();
   } catch (e) {
     console.error('Erro ao inativar raspadinha:', e);
     setStatus('statusRasp', `Erro: ${e.message || e}`, 'err');
   }
 }
+
+// ══════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ══════════════════════════════════════════════════════
+function setStatus(elId, msg, tipo) {
+  const el = $(elId);
+  if (!el) return;
+  el.className = `status ${tipo}`;
+  const icon = tipo === 'ok' ? 'check-circle' : tipo === 'err' ? 'exclamation-circle' : 'info-circle';
+  el.innerHTML = `<i class="fas fa-${icon}"></i><span>${msg}</span>`;
+}
+
+function preencherData() {
+  const agora   = new Date();
+  const dataBr  = agora.toLocaleDateString('pt-BR');
+  const dataIso = agora.toISOString().slice(0, 10);
+
+  const pillData = $('pillData');
+  if (pillData) pillData.textContent = dataBr;
+
+  const teleDataInicio = $('teleDataInicio');
+  const teleDataFim    = $('teleDataFim');
+  if (teleDataInicio && !teleDataInicio.value) teleDataInicio.value = dataIso;
+  if (teleDataFim    && !teleDataFim.value)    teleDataFim.value    = dataIso;
+}
+
 // ══════════════════════════════════════════════════════
 // BIND DE EVENTOS
 // ══════════════════════════════════════════════════════
 function bind() {
-bindMovProdutoCusto();
+  bindMovProdutoCusto();
+
   // Quickbar
   document.querySelectorAll('.qmod').forEach(btn =>
     btn.addEventListener('click', () => mudarScreen(btn.dataset.screen))
@@ -1137,11 +1221,9 @@ bindMovProdutoCusto();
   });
   $('movQtd')?.addEventListener('input', renderMovRouteVisual);
 
-  // Selects de movimentação
   $('movOrigem')?.addEventListener('change', renderMovRouteVisual);
   $('movDestino')?.addEventListener('change', renderMovRouteVisual);
 
-  // Salvar movimentação entre lojas
   $('btnSalvarMov')?.addEventListener('click', salvarMovimentacao);
   $('btnLimparMov')?.addEventListener('click', () => {
     ['movQtd','movCusto','movObs'].forEach(id => { const el = $(id); if (el) el.value = ''; });
@@ -1149,17 +1231,26 @@ bindMovProdutoCusto();
     setStatusMov('Campos limpos.', 'muted');
   });
 
-  // Cadastro raspadinha — custo automático
+  // FIX 8: Raspadinha — custo automático ao digitar valor de venda (20% lucro)
   $('raspValorVenda')?.addEventListener('input', () => {
     const v = Number($('raspValorVenda').value || 0);
     const c = $('raspValorCusto');
-    if (c) c.value = v > 0 ? (v * 0.8).toFixed(2) : '';
+    if (c) c.value = v > 0 ? calcularCusto('RASPADINHA', v).toFixed(2) : '';
+  });
+
+  // FIX 8: Tele Sena — custo automático ao digitar valor de venda (8% lucro)
+  $('teleValorVenda')?.addEventListener('input', () => {
+    const v = Number($('teleValorVenda').value || 0);
+    const c = $('teleValorCusto');
+    if (c) c.value = v > 0 ? calcularCusto('TELESENA', v).toFixed(2) : '';
   });
 
   $('btnSalvarRasp')?.addEventListener('click', salvarRaspadinha);
-$('btnInativarRasp')?.addEventListener('click', inativarRaspadinhaSelecionada);
+  $('btnInativarRasp')?.addEventListener('click', inativarRaspadinhaSelecionada);
+
   $('btnSalvarTele')?.addEventListener('click', salvarTeleSena);
-$('btnInativarTele')?.addEventListener('click', inativarTeleSenaSelecionada);
+  $('btnInativarTele')?.addEventListener('click', inativarTeleSenaSelecionada);
+
   // Filtros estoque rápido (Tela 1)
   document.querySelectorAll('#stockFilterChips .filter-chip').forEach(btn =>
     btn.addEventListener('click', () => {
@@ -1181,15 +1272,12 @@ $('btnInativarTele')?.addEventListener('click', inativarTeleSenaSelecionada);
 
   $('estoqueSearch')?.addEventListener('input', renderEstoque);
 
-  // Mestra — filtros
   $('mestraPeriodo')?.addEventListener('change', renderMestra);
-  $('mestraTipo')?.addEventListener('change', renderMestra);
+  $('mestraTipo')?.addEventListener('change',    renderMestra);
 
-  // Navegação (início / sair)
   $('btnInicio')?.addEventListener('click', () => window.SISLOT_SECURITY?.irParaInicio?.());
-  $('btnSair')?.addEventListener('click', async () => await window.SISLOT_SECURITY?.sair?.());
+  $('btnSair')?.addEventListener('click',   async () => await window.SISLOT_SECURITY?.sair?.());
 
-  // Fecha modal pelo overlay
   $('modalLoja')?.addEventListener('click', e => {
     if (e.target === $('modalLoja')) fecharModalLoja();
   });
