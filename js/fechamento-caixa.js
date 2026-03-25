@@ -1722,9 +1722,6 @@ const prodRows = (t2.produtos || [])
     qtd_vendida: Number(p.qtd || 0),
     total: Number(p.sub || 0)
   }));
-                raspadinha_id: p.raspadinha_id || null,
-                telesena_item_id: p.telesena_item_id || null
-            }));
 
         if (prodRows.length) {
             const { error } = await sb.from('fechamento_produtos').insert(prodRows);
