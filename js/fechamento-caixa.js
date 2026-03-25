@@ -673,19 +673,25 @@ async function buscarFechamentoExistente() {
         const federaisCarregados = await carregarFederaisDoFechamento(fech.id);
         console.log('fechamento_dividas carregadas:', fech.fechamento_dividas);
 
-        fechamentoOriginalId = fech.id;
+       fechamentoOriginalId = fech.id;
 
-        ESTADO.tela1 = montarTela1DoFechamento(fech);
-        ESTADO.tela2 = montarTela2DoFechamento(fech, federaisCarregados);
-        ESTADO.tela3 = montarTela3DoFechamento(fech);
+ESTADO.tela1 = montarTela1DoFechamento(fech);
+ESTADO.tela2 = montarTela2DoFechamento(fech, federaisCarregados);
+ESTADO.tela3 = montarTela3DoFechamento(fech);
 
-        preencherTela1(fech);
-        preencherTela2();
+preencherTela1(fech);
 
-        await buscarFederaisSupabase(fech.data_ref);
-        restaurarFederais();
+// mostra a tela primeiro
+showStep(2);
 
-        toast('Fechamento carregado com sucesso.', true);
+// agora renderiza produtos e reaplica quantidades
+await preencherTela2();
+
+// federais depois
+await buscarFederaisSupabase(fech.data_ref);
+restaurarFederais();
+
+toast('Fechamento carregado com sucesso.', true);
     } catch (e) {
         console.error('Erro ao buscar fechamento:', e);
         toast(e.message || 'Erro ao buscar fechamento.', false);
@@ -793,27 +799,54 @@ function preencherTela1(fech) {
     (fech.fechamento_dividas || []).forEach(d => addDivida(d.cliente_nome, d.valor));
 }
 
-function preencherTela2() {
-    const t2 = ESTADO.tela2 || {};
-    const produtos = t2.produtos || [];
+async function preencherTela2() {
+  // garante que os cards existam no DOM antes de tentar jogar as quantidades
+  await carregarProdutos();
 
-    const mapa = {};
-    produtos.forEach(p => {
-        const key = `${p.produto}|${p.raspadinha_id || ''}|${p.telesena_item_id || ''}`;
-        mapa[key] = Number(p.qtd || 0);
-    });
+  const t2 = ESTADO.tela2 || {};
+  const produtos = t2.produtos || [];
 
-    produtosLista.forEach(item => {
-        const key = `${item.produto}|${item.raspadinha_id || ''}|${item.telesena_item_id || ''}`;
-        const idItem = item.raspadinha_id || item.telesena_item_id;
-        const inpQtd = $(`prod-qtd-${item.produto}-${idItem}`);
-        if (inpQtd) {
-            inpQtd.value = (mapa[key] || 0) > 0 ? mapa[key] : '';
-        }
-    });
+  const mapaPorProdutoId = {};
+  const mapaFallback = {};
 
-    recalcProdutos();
-    updT2Geral();
+  produtos.forEach(p => {
+    if (p.produto_id) {
+      mapaPorProdutoId[String(p.produto_id)] = Number(p.qtd || 0);
+    }
+
+    const fallbackKey = [
+      String(p.produto || '').toUpperCase(),
+      String(p.descricao || '').trim(),
+      Number(p.preco || 0)
+    ].join('|');
+
+    mapaFallback[fallbackKey] = Number(p.qtd || 0);
+  });
+
+  produtosLista.forEach(item => {
+    const idItem = item.raspadinha_id || item.telesena_item_id;
+    const inpQtd = $(`prod-qtd-${item.produto}-${idItem}`);
+    if (!inpQtd) return;
+
+    let qtd = 0;
+
+    if (item.produto_id && mapaPorProdutoId[String(item.produto_id)] !== undefined) {
+      qtd = mapaPorProdutoId[String(item.produto_id)];
+    } else {
+      const fallbackKey = [
+        String(item.produto || '').toUpperCase(),
+        String(item.item_nome || '').trim(),
+        Number(item.valor_venda || 0)
+      ].join('|');
+
+      qtd = mapaFallback[fallbackKey] || 0;
+    }
+
+    inpQtd.value = qtd > 0 ? qtd : '';
+  });
+
+  recalcProdutos();
+  updT2Geral();
 }
 
 // ─── COLETA DE DADOS ──────────────────────────────────────────────────────────
