@@ -730,22 +730,19 @@ function montarTela1DoFechamento(fech) {
 }
 
 function montarTela2DoFechamento(fech, federaisCarregados = []) {
-    const produtos = (fech.fechamento_produtos || []).map(p => ({
-        produto_id: p.produto_id || null,
-        produto: String(p.tipo || '').toUpperCase(),
-        descricao: p.descricao || '',
-        preco: Number(p.valor_unit || 0),
-        qtd: Number(p.qtd || 0),
-        sub: Number(p.total || 0),
-        raspadinha_id: p.raspadinha_id || null,
-        telesena_item_id: p.telesena_item_id || null
-    }));
+  const produtos = (fech.fechamento_produtos || []).map(p => ({
+    produto_id: p.produto_id || null,
+    produto: String(p.tipo || '').toUpperCase(),
+    descricao: p.descricao || '',
+    preco: Number(p.valor_unitario || 0),
+    qtd: Number(p.qtd_vendida || 0),
+    sub: Number(p.total || 0)
+  }));
 
-    return {
-        produtos,
-        federais: federaisCarregados
-    };
-}
+  return {
+    produtos,
+    federais: federaisCarregados
+  };
 
 function montarTela3DoFechamento(fech) {
     const internos = [];
@@ -1714,17 +1711,17 @@ async function finalizar() {
 
         setProgress(55);
 
-        // FIX: prodRows agora usa o novo modelo t2.produtos
-        const prodRows = (t2.produtos || [])
-            .filter(p => Number(p.qtd || 0) > 0)
-            .map(p => ({
-                fechamento_id: fechId,
-                produto_id: p.produto_id || null,
-                tipo: p.produto,
-                descricao: p.descricao || '',
-                valor_unit: Number(p.preco || 0),
-                qtd: Number(p.qtd || 0),
-                total: Number(p.sub || 0),
+const prodRows = (t2.produtos || [])
+  .filter(p => Number(p.qtd || 0) > 0)
+  .map(p => ({
+    fechamento_id: fechId,
+    produto_id: p.produto_id || null,
+    tipo: p.produto,
+    descricao: p.descricao || '',
+    valor_unitario: Number(p.preco || 0),
+    qtd_vendida: Number(p.qtd || 0),
+    total: Number(p.sub || 0)
+  }));
                 raspadinha_id: p.raspadinha_id || null,
                 telesena_item_id: p.telesena_item_id || null
             }));
