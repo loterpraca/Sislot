@@ -173,15 +173,31 @@ select.sel:disabled{opacity:.85;cursor:default}
 .div-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
 .div-counter{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
 
+/* ── GRID DE PRODUTOS ──────────────────────────────────────────────── */
 .prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:640px){.prod-grid{grid-template-columns:1fr}}
-.prod-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;transition:border-color .2s}
-.prod-card.has-val{border-color:rgba(0,200,150,.3)}
+
+.prod-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:14px;transition:border-color .2s,opacity .2s,filter .2s;
+}
+.prod-card.has-val{border-color:rgba(0,200,150,.3);background:rgba(0,200,150,.02)}
+
+/* FIX: cartões sem estoque ficam atenuados e não clicáveis visualmente */
+.prod-card.is-off{
+  opacity:.45;
+  filter:grayscale(.5);
+  pointer-events:none; /* desabilita interação visual; inputs já têm disabled */
+}
+.prod-card.is-off .prod-nome{color:var(--dim)}
+.prod-card.is-off .badge{opacity:.7}
+
 .prod-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .prod-nome{font-size:13px;font-weight:600}
 .badge{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 7px;border-radius:10px;letter-spacing:.07em;text-transform:uppercase}
 .badge-r{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--amber)}
 .badge-t{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.2);color:var(--accent)}
+
 .faixas{display:flex;flex-direction:column;gap:9px}
 .faixa-row{display:grid;grid-template-columns:88px 1fr 72px;gap:8px;align-items:center}
 .faixa-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-align:right;transition:color .2s}
@@ -194,7 +210,8 @@ select.sel:disabled{opacity:.85;cursor:default}
 }
 .btn-q:first-child{border-radius:5px 0 0 5px}
 .btn-q:last-child{border-radius:0 5px 5px 0}
-.btn-q:hover{background:rgba(0,200,150,.1);color:var(--accent);border-color:rgba(0,200,150,.3)}
+.btn-q:hover:not(:disabled){background:rgba(0,200,150,.1);color:var(--accent);border-color:rgba(0,200,150,.3)}
+.btn-q:disabled{opacity:.35;cursor:not-allowed}
 input.inp-qtd{
   width:46px!important;height:32px;text-align:center;border-radius:0!important;
   border-left:none!important;border-right:none!important;
@@ -210,6 +227,7 @@ input.inp-preco{width:72px!important;padding:6px 8px!important;font-size:12px!im
 .prod-tot-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--dim);transition:color .2s}
 .prod-tot-val.on{color:var(--accent)}
 
+/* ── ESTADO VAZIO ────────────────────────────────────────────────────── */
 .state-box{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:8px;padding:36px 20px;text-align:center;
@@ -221,6 +239,8 @@ input.inp-preco{width:72px!important;padding:6px 8px!important;font-size:12px!im
   width:28px;height:28px;border-radius:50%;border:3px solid rgba(167,139,250,.15);
   border-top-color:var(--purple);animation:spin .8s linear infinite
 }
+
+/* ── FEDERAIS ────────────────────────────────────────────────────────── */
 .fed-table-wrap{border-radius:10px;border:1px solid var(--border);overflow:hidden}
 table.fed-table{width:100%;border-collapse:collapse}
 table.fed-table thead tr{background:var(--mid)}
@@ -251,6 +271,7 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .fed-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-align:center;margin-top:2px;transition:color .2s}
 .fed-sub.on{color:var(--purple)}
 
+/* ── BOLÕES ──────────────────────────────────────────────────────────── */
 .bloco-sep{display:flex;align-items:center;gap:12px;margin:20px 0 14px}
 .bloco-label{
   font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;
@@ -310,6 +331,7 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .bolao-card.is-int input.inp-qtd.filled{color:var(--ic)!important;border-top-color:rgba(0,200,150,.4)!important;border-bottom-color:rgba(0,200,150,.4)!important}
 .bolao-card.is-ext input.inp-qtd.filled{color:var(--ec)!important;border-top-color:rgba(56,189,248,.4)!important;border-bottom-color:rgba(56,189,248,.4)!important}
 
+/* ── LISTA DE VENDAS ─────────────────────────────────────────────────── */
 .vendas-list{
   background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:8px;
   padding:10px 12px;margin-top:12px;display:none;animation:fadeUp .25s ease;
@@ -325,6 +347,7 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .venda-item .vi-qtd{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:11px}
 .venda-item .vi-val{font-family:'IBM Plex Mono',monospace;color:var(--bright);font-size:11px}
 
+/* ── RESUMO ──────────────────────────────────────────────────────────── */
 .grade{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 @media(max-width:700px){.grade{grid-template-columns:1fr}}
 .bloco{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
@@ -351,6 +374,7 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .linha.sub .linha-label{font-size:10px;color:var(--dim)}
 .linha.sub .linha-val{font-size:10px;color:var(--dim)}
 
+/* ── QUEBRA ──────────────────────────────────────────────────────────── */
 .quebra-card{border-radius:12px;padding:20px 24px;margin-bottom:16px;border:2px solid;display:flex;align-items:center;gap:20px;transition:all .4s}
 .q-eq{background:rgba(0,200,150,.06);border-color:rgba(0,200,150,.3)}
 .q-pos{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.35)}
@@ -370,6 +394,7 @@ input.inp-fed.filled{border-top-color:rgba(167,139,250,.5)!important;border-bott
 .q-pos .q-valor{color:var(--amber)}
 .q-neg .q-valor{color:var(--err)}
 
+/* ── JUSTIFICATIVA ───────────────────────────────────────────────────── */
 .just-wrap{
   background:rgba(245,166,35,.04);border:1px solid rgba(245,166,35,.25);
   border-radius:10px;padding:14px 16px;margin-bottom:16px;display:none
@@ -389,6 +414,7 @@ textarea#justificativa:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba
 textarea#justificativa::placeholder{color:var(--dim)}
 .just-counter{font-size:10px;color:var(--dim);text-align:right;margin-top:4px}
 
+/* ── TOTAIS ──────────────────────────────────────────────────────────── */
 .totais-bar{
   display:flex;background:var(--panel);border:1px solid var(--border);
   border-radius:10px;overflow:hidden;margin-top:20px;margin-bottom:6px
@@ -404,6 +430,7 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .tv-b{color:var(--bright);font-size:16px} .tv-ic{color:var(--ic)} .tv-ec{color:var(--ec)}
 @media(max-width:640px){.totais-bar{flex-wrap:wrap}}
 
+/* ── BOTÕES DE NAVEGAÇÃO ─────────────────────────────────────────────── */
 .form-footer{
   display:flex;align-items:center;justify-content:space-between;padding-top:20px;border-top:1px solid var(--border);margin-top:8px
 }
@@ -431,6 +458,7 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .btn-finalizar.visualizar:hover:not(:disabled){background:rgba(56,189,248,.2)}
 .btn-finalizar:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
 
+/* ── MODAIS ──────────────────────────────────────────────────────────── */
 .overlay{
   display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,22,40,.88);
   backdrop-filter:blur(6px);align-items:center;justify-content:center;
@@ -475,6 +503,7 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .admin-field input:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(245,166,35,.1)}
 .admin-err{font-size:11px;color:var(--err);margin-top:6px;display:none}
 
+/* ── INFO / MODO BANNER ──────────────────────────────────────────────── */
 .info-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
 .info-chip{
   display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);
@@ -491,6 +520,7 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .modo-banner.edicao{background:rgba(245,166,35,.06);border-color:rgba(245,166,35,.25);color:var(--amber)}
 .modo-banner.visualizacao{background:rgba(56,189,248,.06);border-color:rgba(56,189,248,.25);color:var(--sky)}
 
+/* ── STEPS / STATUS ──────────────────────────────────────────────────── */
 .step-content{display:none}
 .step-content.active{display:block;animation:fadeUp .3s ease}
 
@@ -501,11 +531,13 @@ textarea#justificativa::placeholder{color:var(--dim)}
 .status-chip.ok{background:rgba(0,200,150,.08);border-color:rgba(0,200,150,.2);color:var(--bright)}
 .status-chip.err{background:rgba(255,82,82,.08);border-color:rgba(255,82,82,.2);color:#ffb3b3}
 
+/* ── ANIMAÇÕES ───────────────────────────────────────────────────────── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ── RESPONSIVO ──────────────────────────────────────────────────────── */
 @media(max-width:700px){
   .header{padding:0 12px}
   .btn-menu span{display:none}
