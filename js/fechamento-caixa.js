@@ -742,7 +742,9 @@ function montarTela2DoFechamento(fech, federaisCarregados = []) {
     descricao: p.descricao || '',
     preco: Number(p.valor_unitario || 0),
     qtd: Number(p.qtd_vendida || 0),
-    sub: Number(p.total || 0)
+    sub: Number(p.total || 0),
+    raspadinha_id: p.raspadinha_id || null,
+    telesena_item_id: p.telesena_item_id || null
   }));
 
   return {
