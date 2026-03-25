@@ -49,10 +49,8 @@ let lstExt = [];
 let allBoloes = [];
 let federais = [];
 
-let produtosRasp = [];
-let produtoTele = null;
-
-const PRECOS_RASP_FALLBACK = [2.50, 5.00, 10.00, 20.00];
+let produtosLista = [];
+let mostrarProdutosSemEstoque = false;
 
 const n = id => parseFloat($(id)?.value) || 0;
 
@@ -158,6 +156,11 @@ async function init() {
 
         await carregarProdutos();
         buildRaspadinha();
+        $('prod-filtro-tipo')?.addEventListener('change', carregarProdutos);
+        $('toggle-produtos-todos')?.addEventListener('change', (e) => {
+         mostrarProdutosSemEstoque = !!e.target.checked;
+        renderProdutos();
+        });
         bindHeaderActions();
         bindStepClicks();
         renderDivCount();
@@ -404,7 +407,9 @@ function remDivida(btn) {
 }
 
 async function carregarProdutos() {
-    const { data, error } = await sb
+    const tipo = $('prod-filtro-tipo')?.value || '';
+
+    let query = sb
         .from('view_produtos_saldo_loja')
         .select(`
             loteria_id,
@@ -414,126 +419,205 @@ async function carregarProdutos() {
             raspadinha_id,
             telesena_item_id,
             valor_venda,
-            valor_custo,
             saldo_atual
         `)
         .eq('loteria_id', loteriaAtiva.id)
         .order('produto')
         .order('item_nome');
 
+    if (tipo) query = query.eq('produto', tipo);
+
+    const { data, error } = await query;
+
     if (error) {
-        console.error('Erro ao carregar produtos por estoque:', error);
-        produtosRasp = [];
-        produtoTele = [];
+        console.error('Erro ao carregar produtos:', error);
+        produtosLista = [];
+        renderProdutos();
         return;
     }
 
-    let lista = data || [];
+    produtosLista = data || [];
+    renderProdutos();
+}
+function produtosVisiveis() {
+    let lista = [...produtosLista];
 
     if (!mostrarProdutosSemEstoque) {
         lista = lista.filter(p => Number(p.saldo_atual || 0) > 0);
     }
 
-    produtosRasp = lista.filter(p => p.produto === 'RASPADINHA');
-    produtosTele = lista.filter(p => p.produto === 'TELESENA');
+    lista.sort((a, b) => {
+        const sa = Number(a.saldo_atual || 0);
+        const sb = Number(b.saldo_atual || 0);
+
+        if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
+        if (String(a.produto || '') !== String(b.produto || '')) {
+            return String(a.produto || '').localeCompare(String(b.produto || ''));
+        }
+        return String(a.item_nome || '').localeCompare(String(b.item_nome || ''));
+    });
+
+    return lista;
 }
+
+function buildProdutoCard(item) {
+    const saldo = Number(item.saldo_atual || 0);
+    const semEstoque = saldo <= 0;
+    const estoqueBaixo = saldo > 0 && saldo <= 5;
+    const badge = semEstoque ? 'Sem estoque' : estoqueBaixo ? 'Baixo' : 'Disponível';
+    const badgeClass = semEstoque ? 'badge-r' : estoqueBaixo ? 'badge-t' : 'badge';
+
+    const idItem = item.raspadinha_id || item.telesena_item_id;
+    const nome = item.item_nome || 'Sem nome';
+    const tipo = item.produto === 'RASPADINHA' ? 'Raspadinha' : 'Tele Sena';
+
+    return `
+        <div class="prod-card ${semEstoque ? 'is-off' : ''}" data-produto="${item.produto}" data-item-id="${idItem}">
+            <div class="prod-head">
+                <div>
+                    <div class="prod-nome">${nome}</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px">${tipo}</div>
+                </div>
+                <span class="badge ${badgeClass}">${badge}</span>
+            </div>
+
+            <div class="g2" style="margin-bottom:10px">
+                <div>
+                    <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Valor</label>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">
+                        ${fmtBRL(item.valor_venda || 0)}
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Estoque</label>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:${semEstoque ? 'var(--err)' : 'var(--text)'}">
+                        ${saldo}
+                    </div>
+                </div>
+            </div>
+
+            <div class="qtd-wrap">
+                <button type="button" class="btn-q" onclick="ajProduto('${item.produto}', '${idItem}', -1)" ${semEstoque ? 'disabled' : ''}>−</button>
+                <input
+                    type="number"
+                    class="inp-qtd"
+                    id="prod-qtd-${item.produto}-${idItem}"
+                    placeholder="0"
+                    min="0"
+                    max="${Math.max(0, saldo)}"
+                    oninput="recalcProdutos()"
+                    onblur="blurQ('prod-qtd-${item.produto}-${idItem}')"
+                    ${semEstoque ? 'disabled' : ''}>
+                <button type="button" class="btn-q" onclick="ajProduto('${item.produto}', '${idItem}', 1)" ${semEstoque ? 'disabled' : ''}>+</button>
+            </div>
+
+            <div class="prod-footer">
+                <span class="prod-tot-lbl">Subtotal</span>
+                <span class="prod-tot-val" id="prod-sub-${item.produto}-${idItem}">R$ 0,00</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderProdutos() {
+    const wrap = $('produtos-grid');
+    if (!wrap) return;
+
+    const lista = produtosVisiveis();
+
+    if (!lista.length) {
+        wrap.innerHTML = `
+            <div class="state-box">
+                <div class="state-title">Nenhum produto disponível</div>
+                <div class="state-sub">Altere o filtro ou marque “Mostrar sem estoque”.</div>
+            </div>`;
+        const totalEl = $('produtos-tot');
+        if (totalEl) totalEl.textContent = 'R$ 0,00';
+        updT2Geral();
+        return;
+    }
+
+    wrap.innerHTML = lista.map(buildProdutoCard).join('');
+    recalcProdutos();
+}
+
+function ajProduto(produto, idItem, delta) {
+    const el = $(`prod-qtd-${produto}-${idItem}`);
+    if (!el || el.disabled) return;
+
+    const atual = Number(el.value || 0);
+    const max = Number(el.max || 999999);
+    const novo = Math.max(0, Math.min(max, atual + delta));
+    el.value = novo || '';
+    recalcProdutos();
+    el.focus();
+}
+
+function recalcProdutos() {
+    let total = 0;
+
+    produtosLista.forEach(item => {
+        const idItem = item.raspadinha_id || item.telesena_item_id;
+        const elQtd = $(`prod-qtd-${item.produto}-${idItem}`);
+        const elSub = $(`prod-sub-${item.produto}-${idItem}`);
+        if (!elQtd || !elSub) return;
+
+        const saldo = Number(item.saldo_atual || 0);
+        let qtd = Number(elQtd.value || 0);
+
+        if (qtd > saldo) {
+            qtd = saldo;
+            elQtd.value = saldo || '';
+        }
+
+        const subtotal = qtd * Number(item.valor_venda || 0);
+        elSub.textContent = fmtBRL(subtotal);
+        elSub.classList.toggle('on', subtotal > 0);
+        elQtd.classList.toggle('filled', qtd > 0);
+        total += subtotal;
+    });
+
+    const totalEl = $('produtos-tot');
+    if (totalEl) totalEl.textContent = fmtBRL(total);
+
+    const t2Rasp = $('t2-rasp');
+    if (t2Rasp) t2Rasp.textContent = fmtBRL(total);
+
+    updT2Geral();
+}
+
 
 function buildRaspadinha() {
-    const wrap = $('faixas-rasp');
-    wrap.innerHTML = '';
-    produtosRasp.forEach((p, i) => {
-        const div = document.createElement('div');
-        div.className = 'faixa-row';
-        div.innerHTML = `
-            <div class="pfx-wrap">
-                <span class="pfx">R$</span>
-                <input type="number" class="inp-preco" id="rp-${i}"
-                    value="${Number(p.valor_unitario).toFixed(2)}"
-                    step="0.50" min="0.01" onchange="recalcR(${i})"
-                    title="${p.descricao}">
-            </div>
-            <div class="qtd-wrap">
-                <button type="button" class="btn-q" onclick="ajR(${i},-1)">−</button>
-                <input type="number" class="inp-qtd" id="rq-${i}" placeholder="0" min="0"
-                    oninput="recalcR(${i})" onblur="blurQ('rq-${i}')">
-                <button type="button" class="btn-q" onclick="ajR(${i},+1)">+</button>
-            </div>
-            <div class="faixa-sub" id="rs-${i}">—</div>
-        `;
-        wrap.appendChild(div);
-    });
-    if (produtoTele && $('tele-preco')) {
-        $('tele-preco').value = Number(produtoTele.valor_unitario).toFixed(2);
-    }
+    renderProdutos();
 }
 
-function ajR(i, d) {
-    const inp = $(`rq-${i}`);
-    inp.value = Math.max(0, (parseInt(inp.value) || 0) + d) || '';
-    recalcR(i);
-    inp.focus();
-}
+function ajR() {}
 
-function recalcR(i) {
-    const qtd = parseInt($(`rq-${i}`).value) || 0;
-    const prc = parseFloat($(`rp-${i}`).value) || 0;
-    const sub = $(`rs-${i}`);
-    const inp = $(`rq-${i}`);
-    if (qtd > 0) {
-        sub.textContent = 'R$ ' + (qtd * prc).toFixed(2).replace('.', ',');
-        sub.classList.add('on');
-        inp.classList.add('filled');
-    } else {
-        sub.textContent = '—';
-        sub.classList.remove('on');
-        inp.classList.remove('filled');
-    }
-    updRaspTot();
-}
+recalcR() {}
 
 function updRaspTot() {
-    let t = 0;
-    produtosRasp.forEach((_, i) => {
-        t += (parseInt($(`rq-${i}`)?.value) || 0) * (parseFloat($(`rp-${i}`)?.value) || 0);
-    });
-    const el = $('rasp-tot');
-    el.textContent = 'R$ ' + t.toFixed(2).replace('.', ',');
-    el.classList.toggle('on', t > 0);
-    $('card-rasp').classList.toggle('has-val', t > 0);
-    $('t2-rasp').textContent = 'R$ ' + t.toFixed(2).replace('.', ',');
-    updT2Geral();
+    recalcProdutos();
 }
-
-function ajTele(d) {
-    const inp = $('tele-qtd');
-    inp.value = Math.max(0, (parseInt(inp.value) || 0) + d) || '';
-    recalcTele();
-    inp.focus();
-}
+function ajTele() {}
 
 function recalcTele() {
-    const qtd = parseInt($('tele-qtd').value) || 0;
-    const prc = parseFloat($('tele-preco').value) || 0;
-    const tot = qtd * prc;
-    const el = $('tele-tot');
-    el.textContent = 'R$ ' + tot.toFixed(2).replace('.', ',');
-    el.classList.toggle('on', tot > 0);
-    $('card-tele').classList.toggle('has-val', tot > 0);
-    $('t2-tele').textContent = 'R$ ' + tot.toFixed(2).replace('.', ',');
-    updT2Geral();
+    recalcProdutos();
 }
 
 function getRaspTot() {
     let t = 0;
-    produtosRasp.forEach((_, i) => {
-        t += (parseInt($(`rq-${i}`)?.value) || 0) * (parseFloat($(`rp-${i}`)?.value) || 0);
+    produtosLista.forEach(item => {
+        const idItem = item.raspadinha_id || item.telesena_item_id;
+        const qtd = Number($(`prod-qtd-${item.produto}-${idItem}`)?.value || 0);
+        t += qtd * Number(item.valor_venda || 0);
     });
     return t;
 }
 
 function getTeleTot() {
-    return (parseInt($('tele-qtd').value) || 0) * (parseFloat($('tele-preco').value) || 0);
+    return 0;
 }
+
 
 function getFedTot() {
     let t = 0;
@@ -692,61 +776,42 @@ function preencherTela1(fech) {
 
 function preencherTela2() {
     const t2 = ESTADO.tela2 || {};
-    const rasp = t2.raspadinha || [];
-    produtosRasp.forEach((p, i) => {
-        const item = rasp[i];
-        const inpPreco = $(`rp-${i}`);
-        const inpQtd = $(`rq-${i}`);
-        if (inpPreco) {
-            inpPreco.value = item?.preco != null
-                ? Number(item.preco).toFixed(2)
-                : Number(p.valor_unitario || 0).toFixed(2);
-        }
-        if (inpQtd) {
-            inpQtd.value = item?.qtd > 0 ? item.qtd : '';
-        }
-        recalcR(i);
+    const produtos = t2.produtos || [];
+
+    const mapa = {};
+    produtos.forEach(p => {
+        const key = `${p.produto}|${p.raspadinha_id || ''}|${p.telesena_item_id || ''}`;
+        mapa[key] = Number(p.qtd || 0);
     });
-    if ($('tele-preco')) {
-        $('tele-preco').value = t2.telesena?.preco != null
-            ? Number(t2.telesena.preco).toFixed(2)
-            : Number(produtoTele?.valor_unitario || 16).toFixed(2);
-    }
-    if ($('tele-qtd')) {
-        $('tele-qtd').value = (t2.telesena?.qtd || 0) > 0
-            ? t2.telesena.qtd
-            : '';
-    }
-    recalcTele();
+
+    produtosLista.forEach(item => {
+        const key = `${item.produto}|${item.raspadinha_id || ''}|${item.telesena_item_id || ''}`;
+        const idItem = item.raspadinha_id || item.telesena_item_id;
+        const inpQtd = $(`prod-qtd-${item.produto}-${idItem}`);
+        if (inpQtd) {
+            inpQtd.value = (mapa[key] || 0) > 0 ? mapa[key] : '';
+        }
+    });
+
+    recalcProdutos();
     updT2Geral();
 }
 
+
 function montarTela2DoFechamento(fech, federaisCarregados = []) {
-    const produtos = fech.fechamento_produtos || [];
-
-    const raspadinha = produtos
-        .filter(p => String(p.tipo || '').toUpperCase() === 'RASPADINHA')
-        .map(p => ({
-            produto_id: p.produto_id,
-            descricao: p.descricao,
-            preco: Number(p.valor_unit || 0),
-            qtd: Number(p.qtd || 0),
-            sub: Number(p.total || 0)
-        }));
-
-    const telesenaRow = produtos.find(p => String(p.tipo || '').toUpperCase() === 'TELESENA');
-    const telesena = telesenaRow
-        ? {
-            produto_id: telesenaRow.produto_id,
-            preco: Number(telesenaRow.valor_unit || 0),
-            qtd: Number(telesenaRow.qtd || 0),
-            sub: Number(telesenaRow.total || 0)
-        }
-        : null;
+    const produtos = (fech.fechamento_produtos || []).map(p => ({
+        produto_id: p.produto_id || null,
+        produto: String(p.tipo || '').toUpperCase(),
+        descricao: p.descricao || '',
+        preco: Number(p.valor_unit || 0),
+        qtd: Number(p.qtd || 0),
+        sub: Number(p.total || 0),
+        raspadinha_id: p.raspadinha_id || null,
+        telesena_item_id: p.telesena_item_id || null
+    }));
 
     return {
-        raspadinha,
-        telesena,
+        produtos,
         federais: federaisCarregados
     };
 }
@@ -1277,36 +1342,37 @@ function coletarTela1() {
 }
 
 function coletarTela2() {
-    const raspadinha = produtosRasp.map((p, i) => ({
-        produto_id: p.id,
-        descricao: p.descricao,
-        preco: parseFloat($(`rp-${i}`)?.value) || Number(p.valor_unitario),
-        qtd: parseInt($(`rq-${i}`)?.value) || 0,
-        sub: (parseFloat($(`rp-${i}`)?.value) || Number(p.valor_unitario)) *
-             (parseInt($(`rq-${i}`)?.value) || 0)
-    }));
-    const telesena = {
-        produto_id: produtoTele?.id || null,
-        preco: parseFloat($('tele-preco').value) || Number(produtoTele?.valor_unitario || 16),
-        qtd: parseInt($('tele-qtd').value) || 0,
-        sub: getTeleTot()
-    };
-   const feds = federais.map((f, i) => {
-    const qtdVendida = parseInt($(`fed-qtd-${i}`)?.value) || 0;
-    return {
-        federal_id: f.federal_id,
-        modalidade: f.modalidade,
-        concurso: f.concurso,
-        dtSorteio: f.dtSorteio,
-        valorUnit: Number(f.valorUnit || 0),
-        valorCusto: Number(f.valorCusto || 0),
-        qtdVendida,
-        subtotal: qtdVendida * Number(f.valorUnit || 0)
-    };
-});
-    ESTADO.tela2 = { raspadinha, telesena, federais: feds };
-}
+    const produtos = produtosLista.map(item => {
+        const idItem = item.raspadinha_id || item.telesena_item_id;
+        const qtd = parseInt($(`prod-qtd-${item.produto}-${idItem}`)?.value) || 0;
+        return {
+            produto_id: null,
+            produto: item.produto,
+            descricao: item.item_nome || '',
+            preco: Number(item.valor_venda || 0),
+            qtd,
+            sub: qtd * Number(item.valor_venda || 0),
+            raspadinha_id: item.raspadinha_id || null,
+            telesena_item_id: item.telesena_item_id || null
+        };
+    });
 
+    const feds = federais.map((f, i) => {
+        const qtdVendida = parseInt($(`fed-qtd-${i}`)?.value) || 0;
+        return {
+            federal_id: f.federal_id,
+            modalidade: f.modalidade,
+            concurso: f.concurso,
+            dtSorteio: f.dtSorteio,
+            valorUnit: Number(f.valorUnit || 0),
+            valorCusto: Number(f.valorCusto || 0),
+            qtdVendida,
+            subtotal: qtdVendida * Number(f.valorUnit || 0)
+        };
+    });
+
+    ESTADO.tela2 = { produtos, federais: feds };
+}
 function coletarTela3() {
     const coleta = tipo => allBoloes
         .filter(b => b.tipo === tipo)
@@ -1335,7 +1401,7 @@ function montarResumo() {
     $('r-func').textContent = t1.funcionario_nome || '—';
     $('r-data').textContent = fmtData(t1.data_ref);
     $('r-loteria').textContent = loteriaAtiva?.nome || '—';
-    const totalProd = [...(t2.raspadinha || []).map(r => r.sub), (t2.telesena?.sub || 0)].reduce((a, b) => a + b, 0);
+    const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
     const totalFed = (t2.federais || []).reduce((a, f) => a + f.subtotal, 0);
     const totalBol = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + b.subtotal, 0);
     const totalDiv = (t1.dividas || []).reduce((a, d) => a + d.valor, 0);
@@ -1748,7 +1814,7 @@ async function carregarFederaisDoFechamento(fechId) {
 }
 function resetEstado() {
     ESTADO.tela1 = {};
-    ESTADO.tela2 = { raspadinha: [], telesena: null, federais: [] };
+    ESTADO.tela2 = { produtos: [], federais: [] };
     ESTADO.tela3 = { internos: [], externos: [] };
     lstInt = [];
     lstExt = [];
@@ -1781,9 +1847,7 @@ function resetEstado() {
     dividaCount = 0;
     renderDivCount();
     calcDivTotal();
-    buildRaspadinha();
-    $('tele-qtd').value = '';
-    recalcTele();
+    renderProdutos();
     $('fed-tbody').innerHTML = '';
     $('fed-count').textContent = '0';
     $('fed-tot-lbl').textContent = 'R$ 0,00';
