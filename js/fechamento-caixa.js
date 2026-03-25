@@ -800,48 +800,33 @@ function preencherTela1(fech) {
 }
 
 async function preencherTela2() {
-  // garante que os cards existam no DOM antes de tentar jogar as quantidades
   await carregarProdutos();
 
   const t2 = ESTADO.tela2 || {};
-  const produtos = t2.produtos || [];
+  const produtosSalvos = t2.produtos || [];
 
-  const mapaPorProdutoId = {};
-  const mapaFallback = {};
+  const mapa = {};
 
-  produtos.forEach(p => {
-    if (p.produto_id) {
-      mapaPorProdutoId[String(p.produto_id)] = Number(p.qtd || 0);
-    }
+  produtosSalvos.forEach(p => {
+    const chave =
+      String(p.produto || '').toUpperCase() === 'RASPADINHA'
+        ? `RASPADINHA|${p.raspadinha_id || ''}`
+        : `TELESENA|${p.telesena_item_id || ''}`;
 
-    const fallbackKey = [
-      String(p.produto || '').toUpperCase(),
-      String(p.descricao || '').trim(),
-      Number(p.preco || 0)
-    ].join('|');
-
-    mapaFallback[fallbackKey] = Number(p.qtd || 0);
+    mapa[chave] = Number(p.qtd || 0);
   });
 
   produtosLista.forEach(item => {
+    const chave =
+      String(item.produto || '').toUpperCase() === 'RASPADINHA'
+        ? `RASPADINHA|${item.raspadinha_id || ''}`
+        : `TELESENA|${item.telesena_item_id || ''}`;
+
     const idItem = item.raspadinha_id || item.telesena_item_id;
     const inpQtd = $(`prod-qtd-${item.produto}-${idItem}`);
     if (!inpQtd) return;
 
-    let qtd = 0;
-
-    if (item.produto_id && mapaPorProdutoId[String(item.produto_id)] !== undefined) {
-      qtd = mapaPorProdutoId[String(item.produto_id)];
-    } else {
-      const fallbackKey = [
-        String(item.produto || '').toUpperCase(),
-        String(item.item_nome || '').trim(),
-        Number(item.valor_venda || 0)
-      ].join('|');
-
-      qtd = mapaFallback[fallbackKey] || 0;
-    }
-
+    const qtd = mapa[chave] || 0;
     inpQtd.value = qtd > 0 ? qtd : '';
   });
 
@@ -1754,7 +1739,9 @@ const prodRows = (t2.produtos || [])
     descricao: p.descricao || '',
     valor_unitario: Number(p.preco || 0),
     qtd_vendida: Number(p.qtd || 0),
-    total: Number(p.sub || 0)
+    total: Number(p.sub || 0),
+    raspadinha_id: p.raspadinha_id || null,
+    telesena_item_id: p.telesena_item_id || null
   }));
 
         if (prodRows.length) {
