@@ -405,30 +405,37 @@ function remDivida(btn) {
 
 async function carregarProdutos() {
     const { data, error } = await sb
-        .from('produtos')
-        .select('id, tipo, descricao, valor_unitario, ordem, ativo')
-        .eq('ativo', true)
-        .order('ordem');
-    if (error) console.error(error);
-    if (data && data.length) {
-        produtosRasp = data.filter(p => p.tipo === 'RASPADINHA');
-        produtoTele = data.find(p => p.tipo === 'TELESENA') || null;
+        .from('view_produtos_saldo_loja')
+        .select(`
+            loteria_id,
+            produto,
+            campanha_nome,
+            item_nome,
+            raspadinha_id,
+            telesena_item_id,
+            valor_venda,
+            valor_custo,
+            saldo_atual
+        `)
+        .eq('loteria_id', loteriaAtiva.id)
+        .order('produto')
+        .order('item_nome');
+
+    if (error) {
+        console.error('Erro ao carregar produtos por estoque:', error);
+        produtosRasp = [];
+        produtoTele = [];
+        return;
     }
-    if (!produtosRasp.length) {
-        produtosRasp = PRECOS_RASP_FALLBACK.map((v, i) => ({
-            id: null,
-            descricao: `Raspadinha R$ ${v.toFixed(2).replace('.', ',')}`,
-            valor_unitario: v,
-            ordem: i + 1
-        }));
+
+    let lista = data || [];
+
+    if (!mostrarProdutosSemEstoque) {
+        lista = lista.filter(p => Number(p.saldo_atual || 0) > 0);
     }
-    if (!produtoTele) {
-        produtoTele = {
-            id: null,
-            descricao: 'Telesena',
-            valor_unitario: 16.00
-        };
-    }
+
+    produtosRasp = lista.filter(p => p.produto === 'RASPADINHA');
+    produtosTele = lista.filter(p => p.produto === 'TELESENA');
 }
 
 function buildRaspadinha() {
