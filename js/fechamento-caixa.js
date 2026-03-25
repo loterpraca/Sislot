@@ -743,7 +743,7 @@ function montarTela2DoFechamento(fech, federaisCarregados = []) {
     produtos,
     federais: federaisCarregados
   };
-
+}
 function montarTela3DoFechamento(fech) {
     const internos = [];
     const externos = [];
