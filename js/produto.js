@@ -506,64 +506,102 @@ async function aplicarMovimentacaoRapida() {
   const item = state.panelItem;
   if (!item) return;
 
-  const qtd = Number($('panelQtd')?.value || 0);
-  if (!qtd || qtd <= 0) { showStatusPanel('Informe uma quantidade válida.', 'err'); return; }
+  const qtdInput = Number($('panelQtd')?.value || 0);
+  if (!qtdInput || qtdInput <= 0) {
+    showStatusPanel('Informe uma quantidade válida.', 'err');
+    return;
+  }
 
-  const saldo = Number(item.saldo_atual);
-  if (state.tipoMov === 'REDUCAO' && qtd > saldo) {
+  const saldoAtual = Number(item.saldo_atual || 0);
+
+  if (state.tipoMov === 'REDUCAO' && qtdInput > saldoAtual) {
     showStatusPanel('Quantidade maior que o saldo disponível.', 'err');
     return;
   }
 
-  const idx = state.dashboard.findIndex(x => x.id === item.id);
-  if (idx < 0) { showStatusPanel('Produto não encontrado.', 'err'); return; }
-
-  const novoSaldo = state.tipoMov === 'ENTRADA' ? saldo + qtd : saldo - qtd;
-
-  // Atualiza estado local imediatamente → UI não trava aguardando rede
-  state.dashboard[idx].saldo_atual = novoSaldo;
-  state.panelItem.saldo_atual      = novoSaldo;
-
-  // Persiste no Supabase de forma assíncrona (não bloqueia UI)
-  if (sb) {
-    const obs = $('panelObs')?.value?.trim() || null;
-    sb.from('produtos_ajustes').insert({
-      loteria_id:       state.lojaAtiva.id,
-      produto:          item.produto,
-      raspadinha_id:    item.produto === 'RASPADINHA' ? item.raspadinha_id    : null,
-      telesena_item_id: item.produto === 'TELESENA'   ? item.telesena_item_id : null,
-      tipo:             state.tipoMov,
-      qtd,
-      saldo_anterior:   saldo,
-      saldo_posterior:  novoSaldo,
-      data_referencia:  new Date().toISOString().slice(0, 10),
-      observacao:       obs,
-      usuario_id:       state.usuario?.id || null,
-    }).then(({ error }) => {
-      if (error) console.error('[SISLOT] Erro ao registrar ajuste:', error);
-    });
+  if (!sb) {
+    showStatusPanel('Supabase não disponível.', 'err');
+    return;
   }
 
-  // Registra no histórico local
-  const obs = $('panelObs')?.value || '';
-  state.movHistorico.unshift({
-    tipo: state.tipoMov, nome: item.item_nome, qtd, novoSaldo, obs,
-    hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-  });
+  const obs = $('panelObs')?.value?.trim() || null;
 
-  renderMovHistorico();
-  renderCards();
-  renderEstoque();
-  atualizarSaldoPanel(novoSaldo, novoSaldo);
-  showStatusPanel(
-    `✓ ${state.tipoMov === 'ENTRADA' ? 'Entrada' : 'Redução'} de ${qtd} un. Novo saldo: ${novoSaldo}`,
-    'ok'
-  );
+  // Entrada = positivo | Redução = negativo
+  const qtdLancamento = state.tipoMov === 'ENTRADA' ? qtdInput : -qtdInput;
+  const novoSaldo = saldoAtual + qtdLancamento;
 
-  $('panelQtd').value = '';
-  $('panelObs').value = '';
+  const payload = {
+    loteria_id:       state.lojaAtiva.id,
+    produto:          item.produto,
+    raspadinha_id:    item.produto === 'RASPADINHA' ? item.raspadinha_id : null,
+    telesena_item_id: item.produto === 'TELESENA' ? item.telesena_item_id : null,
+    qtd:              qtdLancamento,
+    data_referencia:  new Date().toISOString().slice(0, 10),
+    observacao:       obs,
+    usuario_id:       state.usuario?.id || null,
+  };
 
-  setTimeout(() => { fecharPanel(); esconderStatusPanel(); }, 1500);
+  try {
+    showStatusPanel('Salvando...', 'info');
+
+    const { error } = await sb
+      .from('produtos_entradas')
+      .insert(payload);
+
+    if (error) throw error;
+
+    // Histórico local apenas visual
+    state.movHistorico.unshift({
+      tipo: state.tipoMov,
+      nome: item.item_nome,
+      qtd: qtdInput,
+      novoSaldo,
+      obs: obs || '',
+      hora: new Date().toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+    });
+
+    renderMovHistorico();
+
+    // Recarrega saldo real vindo do servidor/view
+    await carregarDashboard();
+    renderCards();
+    renderEstoque();
+    renderMestra();
+    renderMovSelects?.();
+
+    // Atualiza painel com o valor recarregado do servidor
+    const itemAtualizado = state.dashboard.find(x => x.id === item.id);
+    if (itemAtualizado) {
+      state.panelItem = itemAtualizado;
+      atualizarSaldoPanel(
+        Number(itemAtualizado.saldo_atual || 0),
+        Number(itemAtualizado.saldo_atual || 0)
+      );
+    }
+
+    showStatusPanel(
+      `✓ ${state.tipoMov === 'ENTRADA' ? 'Entrada' : 'Redução'} registrada com sucesso.`,
+      'ok'
+    );
+
+    if ($('panelQtd')) $('panelQtd').value = '';
+    if ($('panelObs')) $('panelObs').value = '';
+
+    setTimeout(() => {
+      fecharPanel();
+      esconderStatusPanel();
+    }, 1200);
+
+  } catch (err) {
+    console.error('[SISLOT] Erro ao registrar movimentação rápida:', err);
+    showStatusPanel(
+      err?.message || 'Erro ao salvar movimentação.',
+      'err'
+    );
+  }
 }
 
 function showStatusPanel(msg, tipo) {
