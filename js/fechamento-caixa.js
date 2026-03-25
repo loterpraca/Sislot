@@ -40,7 +40,7 @@ let fechamentoOriginalId = null;
 
 const ESTADO = {
     tela1: {},
-    tela2: { raspadinha: [], telesena: null, federais: [] },
+    tela2: { produtos: [], federais: [] },
     tela3: { internos: [], externos: [] },
 };
 
@@ -156,11 +156,13 @@ async function init() {
 
         await carregarProdutos();
         buildRaspadinha();
+
         $('prod-filtro-tipo')?.addEventListener('change', carregarProdutos);
         $('toggle-produtos-todos')?.addEventListener('change', (e) => {
-         mostrarProdutosSemEstoque = !!e.target.checked;
-        renderProdutos();
+            mostrarProdutosSemEstoque = !!e.target.checked;
+            renderProdutos();
         });
+
         bindHeaderActions();
         bindStepClicks();
         renderDivCount();
@@ -406,6 +408,8 @@ function remDivida(btn) {
     }, 200);
 }
 
+// ─── PRODUTOS ────────────────────────────────────────────────────────────────
+
 async function carregarProdutos() {
     const tipo = $('prod-filtro-tipo')?.value || '';
 
@@ -439,6 +443,7 @@ async function carregarProdutos() {
     produtosLista = data || [];
     renderProdutos();
 }
+
 function produtosVisiveis() {
     let lista = [...produtosLista];
 
@@ -449,7 +454,6 @@ function produtosVisiveis() {
     lista.sort((a, b) => {
         const sa = Number(a.saldo_atual || 0);
         const sb = Number(b.saldo_atual || 0);
-
         if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
         if (String(a.produto || '') !== String(b.produto || '')) {
             return String(a.produto || '').localeCompare(String(b.produto || ''));
@@ -527,12 +531,14 @@ function renderProdutos() {
 
     if (!lista.length) {
         wrap.innerHTML = `
-            <div class="state-box">
+            <div class="state-box" style="grid-column:1/-1">
                 <div class="state-title">Nenhum produto disponível</div>
-                <div class="state-sub">Altere o filtro ou marque “Mostrar sem estoque”.</div>
+                <div class="state-sub">Altere o filtro ou marque "Mostrar sem estoque".</div>
             </div>`;
         const totalEl = $('produtos-tot');
         if (totalEl) totalEl.textContent = 'R$ 0,00';
+        const t2Rasp = $('t2-rasp');
+        if (t2Rasp) t2Rasp.textContent = 'R$ 0,00';
         updT2Geral();
         return;
     }
@@ -574,6 +580,11 @@ function recalcProdutos() {
         elSub.textContent = fmtBRL(subtotal);
         elSub.classList.toggle('on', subtotal > 0);
         elQtd.classList.toggle('filled', qtd > 0);
+
+        // FIX: ativa destaque visual no card quando há quantidade
+        const card = elQtd.closest('.prod-card');
+        if (card) card.classList.toggle('has-val', qtd > 0);
+
         total += subtotal;
     });
 
@@ -586,23 +597,16 @@ function recalcProdutos() {
     updT2Geral();
 }
 
-
 function buildRaspadinha() {
     renderProdutos();
 }
 
+// Stubs de compatibilidade (modelo antigo removido)
 function ajR() {}
-
-recalcR() {}
-
-function updRaspTot() {
-    recalcProdutos();
-}
+function recalcR() {}
+function updRaspTot() { recalcProdutos(); }
 function ajTele() {}
-
-function recalcTele() {
-    recalcProdutos();
-}
+function recalcTele() { recalcProdutos(); }
 
 function getRaspTot() {
     let t = 0;
@@ -618,7 +622,6 @@ function getTeleTot() {
     return 0;
 }
 
-
 function getFedTot() {
     let t = 0;
     federais.forEach((f, i) => {
@@ -629,9 +632,13 @@ function getFedTot() {
 
 function updT2Geral() {
     const g = getRaspTot() + getTeleTot() + getFedTot();
-    $('t2-geral').textContent = 'R$ ' + g.toFixed(2).replace('.', ',');
-    $('t2-fed').textContent = 'R$ ' + getFedTot().toFixed(2).replace('.', ',');
+    const el = $('t2-geral');
+    if (el) el.textContent = fmtBRL(g);
+    const fed = $('t2-fed');
+    if (fed) fed.textContent = fmtBRL(getFedTot());
 }
+
+// ─── BUSCA DE FECHAMENTO EXISTENTE ───────────────────────────────────────────
 
 async function buscarFechamentoExistente() {
     const funcionarioId = parseInt($('funcionario').value, 10);
@@ -666,8 +673,7 @@ async function buscarFechamentoExistente() {
         const federaisCarregados = await carregarFederaisDoFechamento(fech.id);
         console.log('fechamento_dividas carregadas:', fech.fechamento_dividas);
 
-        fechamentoAtualId = fech.id;
-        fechamentoEncontrado = true;
+        fechamentoOriginalId = fech.id;
 
         ESTADO.tela1 = montarTela1DoFechamento(fech);
         ESTADO.tela2 = montarTela2DoFechamento(fech, federaisCarregados);
@@ -687,10 +693,10 @@ async function buscarFechamentoExistente() {
         setSaveLoading(false);
     }
 }
+
 function setSaveLoading(loading, text = '') {
     const btn = document.querySelector('[onclick="buscarFechamentoExistente()"]');
     if (!btn) return;
-
     if (loading) {
         btn.disabled = true;
         btn.dataset.oldText = btn.textContent;
@@ -700,6 +706,9 @@ function setSaveLoading(loading, text = '') {
         btn.textContent = btn.dataset.oldText || 'Buscar Fechamento';
     }
 }
+
+// ─── MONTAR / PREENCHER TELAS ─────────────────────────────────────────────────
+
 function montarTela1DoFechamento(fech) {
     return {
         funcionario_id: fech.usuario_id || '',
@@ -720,6 +729,23 @@ function montarTela1DoFechamento(fech) {
     };
 }
 
+function montarTela2DoFechamento(fech, federaisCarregados = []) {
+    const produtos = (fech.fechamento_produtos || []).map(p => ({
+        produto_id: p.produto_id || null,
+        produto: String(p.tipo || '').toUpperCase(),
+        descricao: p.descricao || '',
+        preco: Number(p.valor_unit || 0),
+        qtd: Number(p.qtd || 0),
+        sub: Number(p.total || 0),
+        raspadinha_id: p.raspadinha_id || null,
+        telesena_item_id: p.telesena_item_id || null
+    }));
+
+    return {
+        produtos,
+        federais: federaisCarregados
+    };
+}
 
 function montarTela3DoFechamento(fech) {
     const internos = [];
@@ -736,7 +762,6 @@ function montarTela3DoFechamento(fech) {
             origem: b.origem || null,
             tipo: b.tipo || null
         };
-
         if (b.tipo === 'EXTERNO' || b.origem) {
             externos.push(item);
         } else {
@@ -744,10 +769,7 @@ function montarTela3DoFechamento(fech) {
         }
     });
 
-    return {
-        internos,
-        externos
-    };
+    return { internos, externos };
 }
 
 function preencherTela1(fech) {
@@ -797,24 +819,82 @@ function preencherTela2() {
     updT2Geral();
 }
 
+// ─── COLETA DE DADOS ──────────────────────────────────────────────────────────
 
-function montarTela2DoFechamento(fech, federaisCarregados = []) {
-    const produtos = (fech.fechamento_produtos || []).map(p => ({
-        produto_id: p.produto_id || null,
-        produto: String(p.tipo || '').toUpperCase(),
-        descricao: p.descricao || '',
-        preco: Number(p.valor_unit || 0),
-        qtd: Number(p.qtd || 0),
-        sub: Number(p.total || 0),
-        raspadinha_id: p.raspadinha_id || null,
-        telesena_item_id: p.telesena_item_id || null
-    }));
-
-    return {
-        produtos,
-        federais: federaisCarregados
+function coletarTela1() {
+    const dividas = [];
+    document.querySelectorAll('.divida-row').forEach(row => {
+        const nome = row.querySelector('.div-nome')?.value?.trim();
+        const valor = parseFloat(row.querySelector('.div-valor')?.value) || 0;
+        if (nome) dividas.push({ nome, valor });
+    });
+    ESTADO.tela1 = {
+        funcionario_id: $('funcionario').value,
+        funcionario_nome: $('funcionario').options[$('funcionario').selectedIndex]?.text || '',
+        data_ref: $('data-ref').value,
+        relatorio: n('relatorio'),
+        deposito: n('deposito'),
+        troco_inicial: n('troco-ini'),
+        troco_sobra: n('troco-sob'),
+        pix_cnpj: n('pix-cnpj'),
+        diferenca_pix: n('pix-dif'),
+        premio_raspadinha: n('premio-rasp'),
+        resgate_telesena: n('resgate-tele'),
+        dividas
     };
 }
+
+function coletarTela2() {
+    const produtos = produtosLista.map(item => {
+        const idItem = item.raspadinha_id || item.telesena_item_id;
+        const qtd = parseInt($(`prod-qtd-${item.produto}-${idItem}`)?.value) || 0;
+        return {
+            produto_id: null,
+            produto: item.produto,
+            descricao: item.item_nome || '',
+            preco: Number(item.valor_venda || 0),
+            qtd,
+            sub: qtd * Number(item.valor_venda || 0),
+            raspadinha_id: item.raspadinha_id || null,
+            telesena_item_id: item.telesena_item_id || null
+        };
+    });
+
+    const feds = federais.map((f, i) => {
+        const qtdVendida = parseInt($(`fed-qtd-${i}`)?.value) || 0;
+        return {
+            federal_id: f.federal_id,
+            modalidade: f.modalidade,
+            concurso: f.concurso,
+            dtSorteio: f.dtSorteio,
+            valorUnit: Number(f.valorUnit || 0),
+            valorCusto: Number(f.valorCusto || 0),
+            qtdVendida,
+            subtotal: qtdVendida * Number(f.valorUnit || 0)
+        };
+    });
+
+    ESTADO.tela2 = { produtos, federais: feds };
+}
+
+function coletarTela3() {
+    const coleta = tipo => allBoloes
+        .filter(b => b.tipo === tipo)
+        .map(({ data, idx }) => ({
+            bolao_id: data.bolao_id,
+            modalidade: data.modalidade,
+            valorCota: Number(data.valorCota || 0),
+            qtdVendida: parseInt($(`qtd-${idx}`)?.value) || 0,
+            subtotal: (parseInt($(`qtd-${idx}`)?.value) || 0) * Number(data.valorCota || 0)
+        }));
+    ESTADO.tela3 = {
+        internos: coleta('INTERNO'),
+        externos: coleta('EXTERNO')
+    };
+}
+
+// ─── FEDERAIS ─────────────────────────────────────────────────────────────────
+
 async function buscarFederais() {
     const dataRef = $('data-ref').value;
     if (!dataRef) {
@@ -896,6 +976,7 @@ async function buscarFederaisSupabase(dataRef) {
         $('fs-err-msg').textContent = e.message || 'Erro ao buscar federais.';
     }
 }
+
 function renderFed() {
     const tb = $('fed-tbody');
     tb.innerHTML = '';
@@ -952,7 +1033,7 @@ function onFed(i) {
         inp.classList.remove('filled');
         inp.closest('tr')?.classList.remove('hv');
     }
-    $('fed-tot-lbl').textContent = 'R$ ' + getFedTot().toFixed(2).replace('.', ',');
+    $('fed-tot-lbl').textContent = fmtBRL(getFedTot());
     updT2Geral();
 }
 
@@ -972,6 +1053,41 @@ function restaurarFederais() {
     });
 }
 
+async function carregarFederaisDoFechamento(fechId) {
+    const { data, error } = await sb
+        .from('federal_vendas')
+        .select(`
+            federal_id,
+            qtd_vendida,
+            valor_unitario,
+            desconto,
+            valor_liquido
+        `)
+        .eq('fechamento_id', fechId)
+        .eq('canal', 'FECHAMENTO');
+
+    if (error) throw error;
+
+    return (data || []).map(f => ({
+        federal_id: f.federal_id,
+        valorUnit: Number(f.valor_unitario || 0),
+        qtdVendida: Number(f.qtd_vendida || 0),
+        subtotal: Number(f.valor_liquido || 0),
+        desconto: Number(f.desconto || 0)
+    }));
+}
+
+// ─── ESTADO FS / B3 ───────────────────────────────────────────────────────────
+
+function setFS(s) {
+    ['fs-inicial', 'fs-loading', 'fs-erro', 'fs-vazio', 'fs-lista'].forEach(id => {
+        const el = $(id);
+        if (el) el.style.display = 'none';
+    });
+    const alvo = $(s);
+    if (alvo) alvo.style.display = s === 'fs-lista' ? 'block' : 'flex';
+}
+
 function setB3(s) {
     ['b3-inicial', 'b3-loading', 'b3-erro', 'b3-vazio', 'b3-lista'].forEach(id => {
         const el = $(id);
@@ -980,6 +1096,8 @@ function setB3(s) {
     const alvo = $(s);
     if (alvo) alvo.style.display = s === 'b3-lista' ? 'block' : 'flex';
 }
+
+// ─── BOLÕES ───────────────────────────────────────────────────────────────────
 
 async function carregarBoloes() {
     const dataRef = $('data-ref').value;
@@ -1006,6 +1124,7 @@ async function carregarBoloes() {
             .lte('dt_inicial', dataRef)
             .gte('dt_concurso', dataRef);
         if (errInt) throw errInt;
+
         const { data: movsExt, error: errExt } = await sb
             .from('movimentacoes_cotas')
             .select(`
@@ -1030,6 +1149,7 @@ async function carregarBoloes() {
             .eq('loteria_destino', loteriaAtiva.id)
             .eq('status', 'ATIVO');
         if (errExt) throw errExt;
+
         const mapaExt = {};
         (movsExt || []).forEach(m => {
             const b = Array.isArray(m.boloes) ? m.boloes[0] : m.boloes;
@@ -1040,6 +1160,7 @@ async function carregarBoloes() {
             }
             mapaExt[m.bolao_id].qtdCotas += Number(m.qtd_cotas || 0);
         });
+
         lstInt = (boloesInt || []).map(b => ({
             bolao_id: b.id,
             modalidade: b.modalidade,
@@ -1053,6 +1174,7 @@ async function carregarBoloes() {
             origem: loteriaAtiva.nome,
             tipo: 'INTERNO'
         }));
+
         lstExt = Object.values(mapaExt).map(({ bolao: b, qtdCotas }) => ({
             bolao_id: b.id,
             modalidade: b.modalidade,
@@ -1067,6 +1189,7 @@ async function carregarBoloes() {
             origemCodLoterico: b.loterias?.cod_loterico || '',
             tipo: 'EXTERNO'
         }));
+
         const total = lstInt.length + lstExt.length;
         if (!total) {
             allBoloes = [];
@@ -1100,6 +1223,7 @@ function renderBoloes() {
     const regulares = ordenarBoloesFechamento(
         todos.filter(b => !isModalidadeEspecial(b.modalidade))
     );
+
     const agruparPorModalidade = lista => {
         const mapa = {};
         lista.forEach(b => {
@@ -1109,6 +1233,7 @@ function renderBoloes() {
         });
         return mapa;
     };
+
     const renderGrupoModalidade = (tituloBloco, lista, blocoEspecial = false) => {
         if (!lista.length) return;
         const bloco = document.createElement('div');
@@ -1175,6 +1300,7 @@ function renderBoloes() {
             wrap.appendChild(grp);
         });
     };
+
     renderGrupoModalidade('Tradicionais', regulares, false);
     renderGrupoModalidade('Especiais', especiais, true);
     updBolTotais();
@@ -1234,9 +1360,7 @@ function ordenarBoloesFechamento(lista) {
         const valA = Number(a.valorCota || 0);
         const valB = Number(b.valorCota || 0);
         if (valA !== valB) return valA - valB;
-        const concA = Number(a.concurso || 0);
-        const concB = Number(b.concurso || 0);
-        return concA - concB;
+        return Number(a.concurso || 0) - Number(b.concurso || 0);
     });
 }
 
@@ -1244,6 +1368,7 @@ function updBolTotais() {
     let tInt = 0;
     let tExt = 0;
     let totalCotas = 0;
+
     allBoloes.forEach(({ tipo, data, idx }) => {
         const qtd = parseInt($(`qtd-${idx}`)?.value) || 0;
         const subtotal = qtd * Number(data.valorCota || 0);
@@ -1251,22 +1376,27 @@ function updBolTotais() {
         else tExt += subtotal;
         totalCotas += qtd;
     });
+
     const tot = tInt + tExt;
     $('tot-int').textContent = fmtBRL(tInt);
     $('tot-ext').textContent = fmtBRL(tExt);
     $('tot-bol').textContent = fmtBRL(tot);
     $('tot-bol-geral').textContent = fmtBRL(tot);
     $('tot-cotas').textContent = totalCotas;
+
     document.querySelectorAll('[id^="mod-tot-"]').forEach(el => {
         el.textContent = 'R$ 0,00';
     });
+
     const blocoTrad = $('bloco-tot-tradicionais');
     if (blocoTrad) blocoTrad.textContent = 'R$ 0,00';
     const blocoEsp = $('bloco-tot-especiais');
     if (blocoEsp) blocoEsp.textContent = 'R$ 0,00';
+
     let totTrad = 0;
     let totEsp = 0;
     const modTots = {};
+
     allBoloes.forEach(({ data, idx, grupo, modalidade }) => {
         const qtd = parseInt($(`qtd-${idx}`)?.value) || 0;
         const subtotal = qtd * Number(data.valorCota || 0);
@@ -1275,6 +1405,7 @@ function updBolTotais() {
         if (grupo === 'Especiais') totEsp += subtotal;
         else totTrad += subtotal;
     });
+
     Object.entries(modTots).forEach(([k, v]) => {
         const el = $(`mod-tot-${k}`);
         if (el) el.textContent = fmtBRL(v);
@@ -1318,106 +1449,42 @@ function restaurarBoloes() {
     });
 }
 
-function coletarTela1() {
-    const dividas = [];
-    document.querySelectorAll('.divida-row').forEach(row => {
-        const nome = row.querySelector('.div-nome')?.value?.trim();
-        const valor = parseFloat(row.querySelector('.div-valor')?.value) || 0;
-        if (nome) dividas.push({ nome, valor });
-    });
-    ESTADO.tela1 = {
-        funcionario_id: $('funcionario').value,
-        funcionario_nome: $('funcionario').options[$('funcionario').selectedIndex]?.text || '',
-        data_ref: $('data-ref').value,
-        relatorio: n('relatorio'),
-        deposito: n('deposito'),
-        troco_inicial: n('troco-ini'),
-        troco_sobra: n('troco-sob'),
-        pix_cnpj: n('pix-cnpj'),
-        diferenca_pix: n('pix-dif'),
-        premio_raspadinha: n('premio-rasp'),
-        resgate_telesena: n('resgate-tele'),
-        dividas
-    };
-}
-
-function coletarTela2() {
-    const produtos = produtosLista.map(item => {
-        const idItem = item.raspadinha_id || item.telesena_item_id;
-        const qtd = parseInt($(`prod-qtd-${item.produto}-${idItem}`)?.value) || 0;
-        return {
-            produto_id: null,
-            produto: item.produto,
-            descricao: item.item_nome || '',
-            preco: Number(item.valor_venda || 0),
-            qtd,
-            sub: qtd * Number(item.valor_venda || 0),
-            raspadinha_id: item.raspadinha_id || null,
-            telesena_item_id: item.telesena_item_id || null
-        };
-    });
-
-    const feds = federais.map((f, i) => {
-        const qtdVendida = parseInt($(`fed-qtd-${i}`)?.value) || 0;
-        return {
-            federal_id: f.federal_id,
-            modalidade: f.modalidade,
-            concurso: f.concurso,
-            dtSorteio: f.dtSorteio,
-            valorUnit: Number(f.valorUnit || 0),
-            valorCusto: Number(f.valorCusto || 0),
-            qtdVendida,
-            subtotal: qtdVendida * Number(f.valorUnit || 0)
-        };
-    });
-
-    ESTADO.tela2 = { produtos, federais: feds };
-}
-function coletarTela3() {
-    const coleta = tipo => allBoloes
-        .filter(b => b.tipo === tipo)
-        .map(({ data, idx }) => ({
-            bolao_id: data.bolao_id,
-            modalidade: data.modalidade,
-            valorCota: Number(data.valorCota || 0),
-            qtdVendida: parseInt($(`qtd-${idx}`)?.value) || 0,
-            subtotal: (parseInt($(`qtd-${idx}`)?.value) || 0) * Number(data.valorCota || 0)
-        }));
-    ESTADO.tela3 = {
-        internos: coleta('INTERNO'),
-        externos: coleta('EXTERNO')
-    };
-}
+// ─── RESUMO ───────────────────────────────────────────────────────────────────
 
 function montarResumo() {
-    
     coletarTela1();
     coletarTela2();
     coletarTela3();
+
     const t1 = ESTADO.tela1;
     const t2 = ESTADO.tela2;
     const t3 = ESTADO.tela3;
-    console.log('t1.dividas no resumo:', t1.dividas);
+
     $('r-func').textContent = t1.funcionario_nome || '—';
     $('r-data').textContent = fmtData(t1.data_ref);
     $('r-loteria').textContent = loteriaAtiva?.nome || '—';
+
     const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
-    const totalFed = (t2.federais || []).reduce((a, f) => a + f.subtotal, 0);
-    const totalBol = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + b.subtotal, 0);
-    const totalDiv = (t1.dividas || []).reduce((a, d) => a + d.valor, 0);
+    const totalFed  = (t2.federais || []).reduce((a, f) => a + f.subtotal, 0);
+    const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + b.subtotal, 0);
+    const totalDiv  = (t1.dividas || []).reduce((a, d) => a + d.valor, 0);
+
     const s = (id, v) => {
         const el = $(id);
         if (!el) return;
         el.textContent = fmtBRL(v);
         el.classList.toggle('zero', v === 0);
     };
+
     s('r-troco-ini', t1.troco_inicial);
     s('r-produtos', totalProd);
     s('r-federais', totalFed);
     s('r-boloes', totalBol);
     s('r-relatorio', t1.relatorio);
+
     const totDeb = t1.troco_inicial + totalProd + totalFed + totalBol + t1.relatorio;
     s('r-tot-deb', totDeb);
+
     s('r-troco-sob', t1.troco_sobra);
     s('r-deposito', t1.deposito);
     s('r-pix', t1.pix_cnpj);
@@ -1425,7 +1492,9 @@ function montarResumo() {
     s('r-rasp', t1.premio_raspadinha);
     s('r-tele', t1.resgate_telesena);
     s('r-dividas', totalDiv);
+
     $('div-badge').textContent = (t1.dividas || []).length;
+
     const subWrap = $('div-sub-wrap');
     subWrap.innerHTML = '';
     (t1.dividas || []).forEach(d => {
@@ -1437,8 +1506,10 @@ function montarResumo() {
         `;
         subWrap.appendChild(l);
     });
+
     const totCred = t1.troco_sobra + t1.deposito + t1.pix_cnpj + t1.diferenca_pix + t1.premio_raspadinha + t1.resgate_telesena + totalDiv;
     s('r-tot-cred', totCred);
+
     const quebra = totCred - totDeb;
     renderQuebra(quebra, totCred, totDeb);
     detectarModo();
@@ -1453,10 +1524,13 @@ function renderQuebra(quebra, cred, deb) {
     const det = $('q-detalhe');
     const justWrap = $('just-wrap');
     const btn = $('btn-final');
+
     card.className = 'quebra-card';
     det.textContent = `Créditos (R$ ${Number(cred).toFixed(2).replace('.', ',')}) − Débitos (R$ ${Number(deb).toFixed(2).replace('.', ',')})`;
+
     const abs = Math.abs(quebra);
     const fmtA = 'R$ ' + abs.toFixed(2).replace('.', ',');
+
     if (abs < 0.005) {
         card.classList.add('q-eq');
         icon.textContent = '✓';
@@ -1482,6 +1556,7 @@ function renderQuebra(quebra, cred, deb) {
         justWrap.classList.add('show');
         btn.disabled = true;
     }
+
     const ta = $('justificativa');
     const cnt = $('just-cnt');
     ta.oninput = () => {
@@ -1520,20 +1595,26 @@ function toggleDividas() {
     arrow.style.transform = open ? 'rotate(0)' : 'rotate(90deg)';
 }
 
+// ─── FINALIZAR / GRAVAR ───────────────────────────────────────────────────────
+
 async function finalizar() {
     if (modoAtual === 'visualizacao') {
         resetEstado();
         showStep(1);
         return;
     }
+
     coletarTela1();
     coletarTela2();
     coletarTela3();
+
     const t1 = ESTADO.tela1;
     const t2 = ESTADO.tela2;
     const t3 = ESTADO.tela3;
+
     const btn = $('btn-final');
     btn.disabled = true;
+
     try {
         let existeId = fechamentoOriginalId;
         if (!existeId) {
@@ -1547,6 +1628,7 @@ async function finalizar() {
             if (errExiste) throw errExiste;
             if (existe?.id) existeId = existe.id;
         }
+
         const permissao = FECHAMENTO_RULES.avaliarPermissaoGravacao({
             usuarioLogado: usuario,
             funcionarioSelecionadoId: t1.funcionario_id,
@@ -1557,6 +1639,7 @@ async function finalizar() {
             alert(permissao.motivo || 'Sem permissão para gravar.');
             return;
         }
+
         let tokenAutorizado = null;
         if (permissao.exigeToken) {
             tokenAutorizado = await FECHAMENTO_RULES.abrirModalToken();
@@ -1565,17 +1648,23 @@ async function finalizar() {
                 return;
             }
         }
+
         const sobrescrever = !!permissao.sobrescrevendo;
+
         showGravando('Gravando fechamento de ' + t1.funcionario_nome + '...');
         setProgress(10);
-        const totalProd = [...(t2.raspadinha || []).map(r => r.sub), (t2.telesena?.sub || 0)].reduce((a, b) => a + b, 0);
-        const totalFed = (t2.federais || []).reduce((a, f) => a + f.subtotal, 0);
-        const totalBol = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + b.subtotal, 0);
-        const totalDiv = (t1.dividas || []).reduce((a, d) => a + d.valor, 0);
-        const totDeb = t1.troco_inicial + totalProd + totalFed + totalBol + t1.relatorio;
+
+        // FIX: totalProd agora usa o novo modelo t2.produtos
+        const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
+        const totalFed  = (t2.federais || []).reduce((a, f) => a + f.subtotal, 0);
+        const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + b.subtotal, 0);
+        const totalDiv  = (t1.dividas || []).reduce((a, d) => a + d.valor, 0);
+
+        const totDeb  = t1.troco_inicial + totalProd + totalFed + totalBol + t1.relatorio;
         const totCred = t1.troco_sobra + t1.deposito + t1.pix_cnpj + t1.diferenca_pix + t1.premio_raspadinha + t1.resgate_telesena + totalDiv;
-        const quebra = totCred - totDeb;
-        const justif = $('justificativa')?.value?.trim() || '';
+        const quebra  = totCred - totDeb;
+        const justif  = $('justificativa')?.value?.trim() || '';
+
         const payload = {
             loteria_id: loteriaAtiva.id,
             usuario_id: t1.funcionario_id,
@@ -1601,80 +1690,71 @@ async function finalizar() {
             sobrescrito_por: tokenAutorizado?.gerado_por || null,
             updated_at: new Date().toISOString()
         };
+
         setProgress(30);
+
         let fechId;
         if (sobrescrever && existeId) {
-            const { error: delProdErr } = await sb.from('fechamento_produtos').delete().eq('fechamento_id', existeId);
+            const { error: delProdErr }    = await sb.from('fechamento_produtos').delete().eq('fechamento_id', existeId);
             if (delProdErr) throw delProdErr;
             const { error: delFedVendasErr } = await sb.from('federal_vendas').delete().eq('fechamento_id', existeId);
             if (delFedVendasErr) throw delFedVendasErr;
-            const { error: delBolErr } = await sb.from('fechamento_boloes').delete().eq('fechamento_id', existeId);
+            const { error: delBolErr }     = await sb.from('fechamento_boloes').delete().eq('fechamento_id', existeId);
             if (delBolErr) throw delBolErr;
-            const { error: delDivErr } = await sb.from('fechamento_dividas').delete().eq('fechamento_id', existeId);
+            const { error: delDivErr }     = await sb.from('fechamento_dividas').delete().eq('fechamento_id', existeId);
             if (delDivErr) throw delDivErr;
-            const { error: errUpd } = await sb
-                .from('fechamentos')
-                .update(payload)
-                .eq('id', existeId);
+            const { error: errUpd }        = await sb.from('fechamentos').update(payload).eq('id', existeId);
             if (errUpd) throw errUpd;
             fechId = existeId;
         } else {
-            const { data: ins, error: errIns } = await sb
-                .from('fechamentos')
-                .insert(payload)
-                .select('id')
-                .single();
+            const { data: ins, error: errIns } = await sb.from('fechamentos').insert(payload).select('id').single();
             if (errIns) throw errIns;
             fechId = ins.id;
         }
+
         setProgress(55);
-        const prodRows = [];
-        (t2.raspadinha || []).forEach(r => {
-            if (r.qtd > 0) {
-                prodRows.push({
-                    fechamento_id: fechId,
-                    produto_id: r.produto_id || null,
-                    tipo: 'RASPADINHA',
-                    valor_unitario: r.preco,
-                    qtd_vendida: r.qtd,
-                    total: r.sub
-                });
-            }
-        });
-        if ((t2.telesena?.qtd || 0) > 0) {
-            prodRows.push({
+
+        // FIX: prodRows agora usa o novo modelo t2.produtos
+        const prodRows = (t2.produtos || [])
+            .filter(p => Number(p.qtd || 0) > 0)
+            .map(p => ({
                 fechamento_id: fechId,
-                produto_id: t2.telesena.produto_id || null,
-                tipo: 'TELESENA',
-                valor_unitario: t2.telesena.preco,
-                qtd_vendida: t2.telesena.qtd,
-                total: t2.telesena.sub
-            });
-        }
+                produto_id: p.produto_id || null,
+                tipo: p.produto,
+                descricao: p.descricao || '',
+                valor_unit: Number(p.preco || 0),
+                qtd: Number(p.qtd || 0),
+                total: Number(p.sub || 0),
+                raspadinha_id: p.raspadinha_id || null,
+                telesena_item_id: p.telesena_item_id || null
+            }));
+
         if (prodRows.length) {
             const { error } = await sb.from('fechamento_produtos').insert(prodRows);
             if (error) throw error;
         }
+
         setProgress(70);
-       const federaisVendidas = (t2.federais || []).filter(f => Number(f.qtdVendida || 0) > 0);
 
-for (const f of federaisVendidas) {
-    const { error } = await sb.rpc('registrar_venda_federal', {
-        p_federal_id: f.federal_id,
-        p_loteria_vendedora_id: loteriaAtiva.id,
-        p_usuario_id: Number(t1.funcionario_id),
-        p_canal: 'FECHAMENTO',
-        p_qtd_vendida: Number(f.qtdVendida),
-        p_data_referencia: t1.data_ref,
-        p_desconto: 0,
-        p_observacao: 'Lançado no fechamento',
-        p_fechamento_id: fechId
-    });
+        const federaisVendidas = (t2.federais || []).filter(f => Number(f.qtdVendida || 0) > 0);
+        for (const f of federaisVendidas) {
+            const { error } = await sb.rpc('registrar_venda_federal', {
+                p_federal_id: f.federal_id,
+                p_loteria_vendedora_id: loteriaAtiva.id,
+                p_usuario_id: Number(t1.funcionario_id),
+                p_canal: 'FECHAMENTO',
+                p_qtd_vendida: Number(f.qtdVendida),
+                p_data_referencia: t1.data_ref,
+                p_desconto: 0,
+                p_observacao: 'Lançado no fechamento',
+                p_fechamento_id: fechId
+            });
+            if (error) throw error;
+        }
 
-    if (error) throw error;
-}
         setProgress(82);
-        const bolRowsCorretos = [
+
+        const bolRows = [
             ...(t3.internos || []).filter(b => b.qtdVendida > 0).map(b => ({
                 fechamento_id: fechId,
                 bolao_id: b.bolao_id,
@@ -1694,11 +1774,13 @@ for (const f of federaisVendidas) {
                 subtotal: b.subtotal
             }))
         ];
-        if (bolRowsCorretos.length) {
-            const { error } = await sb.from('fechamento_boloes').insert(bolRowsCorretos);
+        if (bolRows.length) {
+            const { error } = await sb.from('fechamento_boloes').insert(bolRows);
             if (error) throw error;
         }
+
         setProgress(93);
+
         const divRows = (t1.dividas || [])
             .filter(d => d.nome)
             .map(d => ({
@@ -1710,6 +1792,7 @@ for (const f of federaisVendidas) {
             const { error } = await sb.from('fechamento_dividas').insert(divRows);
             if (error) throw error;
         }
+
         if (tokenAutorizado?.id) {
             await FECHAMENTO_RULES.consumirTokenSobrescrita({
                 tokenId: tokenAutorizado.id,
@@ -1717,6 +1800,7 @@ for (const f of federaisVendidas) {
                 fechamentoId: fechId
             });
         }
+
         setProgress(100);
         hideGravando();
         $('btn-final-txt').textContent = '✓ Gravado!';
@@ -1739,6 +1823,8 @@ for (const f of federaisVendidas) {
         alert('❌ Erro ao gravar:\n\n' + (e.message || 'Erro desconhecido'));
     }
 }
+
+// ─── MODAIS / UI ──────────────────────────────────────────────────────────────
 
 function fecharModal(id) {
     $(id).classList.remove('show');
@@ -1777,41 +1863,12 @@ function setProgress(pct) {
     $('m-grav-sub').textContent = pct + '%';
 }
 
-function setFS(s) {
-    ['fs-inicial', 'fs-loading', 'fs-erro', 'fs-vazio', 'fs-lista'].forEach(id => {
-        const el = $(id);
-        if (el) el.style.display = 'none';
-    });
-    const alvo = $(s);
-    if (alvo) alvo.style.display = s === 'fs-lista' ? 'block' : 'flex';
-}
-
 function toast(msg, ok = true) {
     console.log((ok ? '[OK] ' : '[ERRO] ') + msg);
 }
-async function carregarFederaisDoFechamento(fechId) {
-    const { data, error } = await sb
-        .from('federal_vendas')
-        .select(`
-            federal_id,
-            qtd_vendida,
-            valor_unitario,
-            desconto,
-            valor_liquido
-        `)
-        .eq('fechamento_id', fechId)
-        .eq('canal', 'FECHAMENTO');
 
-    if (error) throw error;
+// ─── RESET DE ESTADO ──────────────────────────────────────────────────────────
 
-    return (data || []).map(f => ({
-        federal_id: f.federal_id,
-        valorUnit: Number(f.valor_unitario || 0),
-        qtdVendida: Number(f.qtd_vendida || 0),
-        subtotal: Number(f.valor_liquido || 0),
-        desconto: Number(f.desconto || 0)
-    }));
-}
 function resetEstado() {
     ESTADO.tela1 = {};
     ESTADO.tela2 = { produtos: [], federais: [] };
@@ -1820,38 +1877,51 @@ function resetEstado() {
     lstExt = [];
     allBoloes = [];
     federais = [];
+    produtosLista = [];
+    mostrarProdutosSemEstoque = false;
     fechamentoOriginalId = null;
     modoAtual = 'novo';
+
     [
-        'relatorio',
-        'deposito',
-        'troco-ini',
-        'troco-sob',
-        'pix-cnpj',
-        'pix-dif',
-        'premio-rasp',
-        'resgate-tele'
+        'relatorio', 'deposito', 'troco-ini', 'troco-sob',
+        'pix-cnpj', 'pix-dif', 'premio-rasp', 'resgate-tele'
     ].forEach(id => {
         const el = $(id);
         if (el) {
             el.value = '';
-            el.classList.remove('filled');
-            el.classList.remove('has-error');
+            el.classList.remove('filled', 'has-error');
         }
     });
+
     if (FECHAMENTO_RULES.podeSelecionarFuncionario(usuario)) {
         $('funcionario').value = '';
         $('funcionario').classList.remove('filled');
     }
+
     $('dividas-list').innerHTML = '';
     dividaCount = 0;
     renderDivCount();
     calcDivTotal();
+
+    // Reseta filtro de produtos e checkbox
+    const filtroTipo = $('prod-filtro-tipo');
+    if (filtroTipo) filtroTipo.value = '';
+    const toggleTodos = $('toggle-produtos-todos');
+    if (toggleTodos) toggleTodos.checked = false;
+
     renderProdutos();
+
     $('fed-tbody').innerHTML = '';
     $('fed-count').textContent = '0';
     $('fed-tot-lbl').textContent = 'R$ 0,00';
     setFS('fs-inicial');
+
+    $('t2-rasp').textContent = 'R$ 0,00';
+    $('t2-tele').textContent = 'R$ 0,00';
+    $('t2-fed').textContent  = 'R$ 0,00';
+    $('t2-geral').textContent = 'R$ 0,00';
+    $('produtos-tot').textContent = 'R$ 0,00';
+
     $('boloes-wrap').innerHTML = '';
     $('vendas-items').innerHTML = '';
     $('vendas-registradas').classList.remove('show');
@@ -1861,40 +1931,46 @@ function resetEstado() {
     $('tot-bol-geral').textContent = 'R$ 0,00';
     $('tot-cotas').textContent = '0';
     setB3('b3-inicial');
+
     $('modo-banner').className = 'modo-banner';
     $('modo-banner').innerHTML = '';
     $('justificativa').value = '';
     $('just-cnt').textContent = '0';
     $('just-wrap').classList.remove('show');
+
     $('data-ref').value = new Date().toISOString().slice(0, 10);
     hideStatusMsg('status-busca');
 }
 
-window.autoFill = autoFill;
-window.onFuncChange = onFuncChange;
-window.avancarStep = avancarStep;
-window.addDivida = addDivida;
-window.remDivida = remDivida;
-window.ajR = ajR;
-window.recalcR = recalcR;
-window.ajTele = ajTele;
-window.recalcTele = recalcTele;
+// ─── EXPORTS GLOBAIS ──────────────────────────────────────────────────────────
+
+window.autoFill               = autoFill;
+window.onFuncChange           = onFuncChange;
+window.avancarStep            = avancarStep;
+window.addDivida              = addDivida;
+window.remDivida              = remDivida;
+window.ajR                    = ajR;
+window.recalcR                = recalcR;
+window.ajTele                 = ajTele;
+window.recalcTele             = recalcTele;
+window.ajProduto              = ajProduto;
+window.recalcProdutos         = recalcProdutos;
 window.buscarFechamentoExistente = buscarFechamentoExistente;
-window.buscarFederais = buscarFederais;
-window.ajFed = ajFed;
-window.onFed = onFed;
-window.carregarBoloes = carregarBoloes;
-window.ajQ = ajQ;
-window.onQtd = onQtd;
-window.toggleDividas = toggleDividas;
-window.finalizar = finalizar;
-window.fecharModal = fecharModal;
-window.confirmarInicio = confirmarInicio;
-window.confirmarSair = confirmarSair;
-window.executarInicio = executarInicio;
-window.executarSair = executarSair;
-window.trocarLoteria = trocarLoteria;
-window.blurQ = blurQ;
-window.loteriaAtiva = loteriaAtiva;
+window.buscarFederais         = buscarFederais;
+window.ajFed                  = ajFed;
+window.onFed                  = onFed;
+window.carregarBoloes         = carregarBoloes;
+window.ajQ                    = ajQ;
+window.onQtd                  = onQtd;
+window.toggleDividas          = toggleDividas;
+window.finalizar              = finalizar;
+window.fecharModal            = fecharModal;
+window.confirmarInicio        = confirmarInicio;
+window.confirmarSair          = confirmarSair;
+window.executarInicio         = executarInicio;
+window.executarSair           = executarSair;
+window.trocarLoteria          = trocarLoteria;
+window.blurQ                  = blurQ;
+window.loteriaAtiva           = loteriaAtiva;
 
 init();
