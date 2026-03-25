@@ -842,36 +842,37 @@ function coletarTela1() {
 }
 
 function coletarTela2() {
-    const produtos = produtosLista.map(item => {
-        const idItem = item.raspadinha_id || item.telesena_item_id;
-        const qtd = parseInt($(`prod-qtd-${item.produto}-${idItem}`)?.value) || 0;
-        return {
-            produto_id: null,
-            produto: item.produto,
-            descricao: item.item_nome || '',
-            preco: Number(item.valor_venda || 0),
-            qtd,
-            sub: qtd * Number(item.valor_venda || 0),
-            raspadinha_id: item.raspadinha_id || null,
-            telesena_item_id: item.telesena_item_id || null
-        };
-    });
+  const produtos = produtosLista.map(item => {
+    const idItem = item.raspadinha_id || item.telesena_item_id;
+    const qtd = parseInt($(`prod-qtd-${item.produto}-${idItem}`)?.value) || 0;
 
-    const feds = federais.map((f, i) => {
-        const qtdVendida = parseInt($(`fed-qtd-${i}`)?.value) || 0;
-        return {
-            federal_id: f.federal_id,
-            modalidade: f.modalidade,
-            concurso: f.concurso,
-            dtSorteio: f.dtSorteio,
-            valorUnit: Number(f.valorUnit || 0),
-            valorCusto: Number(f.valorCusto || 0),
-            qtdVendida,
-            subtotal: qtdVendida * Number(f.valorUnit || 0)
-        };
-    });
+    return {
+      produto_id: item.produto_id || null,
+      produto: item.produto,
+      descricao: item.item_nome || '',
+      preco: Number(item.valor_venda || 0),
+      qtd,
+      sub: qtd * Number(item.valor_venda || 0),
+      raspadinha_id: item.raspadinha_id || null,
+      telesena_item_id: item.telesena_item_id || null
+    };
+  });
 
-    ESTADO.tela2 = { produtos, federais: feds };
+  const feds = federais.map((f, i) => {
+    const qtdVendida = parseInt($(`fed-qtd-${i}`)?.value) || 0;
+    return {
+      federal_id: f.federal_id,
+      modalidade: f.modalidade,
+      concurso: f.concurso,
+      dtSorteio: f.dtSorteio,
+      valorUnit: Number(f.valorUnit || 0),
+      valorCusto: Number(f.valorCusto || 0),
+      qtdVendida,
+      subtotal: qtdVendida * Number(f.valorUnit || 0)
+    };
+  });
+
+  ESTADO.tela2 = { produtos, federais: feds };
 }
 
 function coletarTela3() {
