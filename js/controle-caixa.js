@@ -420,51 +420,147 @@ const VIEWER = {
    *   return data;
    */
   async _buscarFechamentosDoMes(mes, ano) {
-    const mesStr = String(mes).padStart(2, '0');
-    const prefixo = `${ano}-${mesStr}`;
+  const mesStr = String(mes).padStart(2, '0');
+  const primeiroDia = `${ano}-${mesStr}-01`;
+  const ultimoDiaNum = new Date(ano, mes, 0).getDate();
+  const ultimoDia = `${ano}-${mesStr}-${String(ultimoDiaNum).padStart(2, '0')}`;
 
-    let lista = MOCK.fechamentos.filter(f => f.data.startsWith(prefixo));
+  let query = sb
+    .from('fechamentos')
+    .select('*')
+    .gte('data', primeiroDia)
+    .lte('data', ultimoDia)
+    .order('data', { ascending: true })
+    .order('created_at', { ascending: true });
 
-    // Aplica filtro de loja
-    if (ESTADO.lojaFiltro) {
-      lista = lista.filter(f => String(f.loja_id) === ESTADO.lojaFiltro);
-    }
+  if (ESTADO.lojaFiltro) {
+    query = query.eq('loteria_id', Number(ESTADO.lojaFiltro));
+  }
 
-    // Aplica filtro de funcionário
-    if (ESTADO.funcFiltro) {
-      lista = lista.filter(f => String(f.funcionario_id) === ESTADO.funcFiltro);
-    }
+  if (ESTADO.funcFiltro) {
+    query = query.eq('funcionario_id', Number(ESTADO.funcFiltro));
+  }
 
-    return lista;
-  },
+  const { data, error } = await query;
 
-  /**
-   * Busca produtos de um fechamento específico.
-   * ─── PONTO DE INTEGRAÇÃO ───
-   * Substitua por: supabase.from('fechamento_produtos').select('*').eq('fechamento_id', id)
-   */
-  async _buscarProdutos(fechamentoId) {
-    return MOCK.produtos[fechamentoId] || [];
-  },
+  if (error) {
+    console.error('Erro ao buscar fechamentos do mês:', error);
+    throw error;
+  }
 
-  /**
-   * Busca bolões de um fechamento específico.
-   * ─── PONTO DE INTEGRAÇÃO ───
-   * Substitua por: supabase.from('fechamento_boloes').select('*').eq('fechamento_id', id)
-   */
-  async _buscarBoloes(fechamentoId) {
-    return MOCK.boloes[fechamentoId] || [];
-  },
+  return (data || []).map(row => ({
+    id: row.id,
+    data: row.data || row.data_fechamento || '',
+    funcionario_id: row.funcionario_id ?? row.usuario_id ?? null,
+    funcionario_nome:
+      row.funcionario_nome ||
+      row.nome_funcionario ||
+      row.usuario_nome ||
+      row.funcionario ||
+      '—',
+    loja_id: row.loteria_id ?? row.loja_id ?? null,
+    loja_nome:
+      row.loja_nome ||
+      row.nome_loja ||
+      row.loteria ||
+      row.loja ||
+      '—',
+    status: row.status || 'fechado',
+    criado_em: row.created_at || row.criado_em || row.carimbo || null,
 
-  /**
-   * Busca dívidas de um fechamento específico.
-   * ─── PONTO DE INTEGRAÇÃO ───
-   * Substitua por: supabase.from('fechamento_dividas').select('*').eq('fechamento_id', id)
-   */
-  async _buscarDividas(fechamentoId) {
-    return MOCK.dividas[fechamentoId] || [];
-  },
+    relatorio: Number(row.relatorio || 0),
+    deposito: Number(row.deposito || 0),
+    troco_ini: Number(row.troco_ini || row.troco_inicial || 0),
+    troco_sob: Number(row.troco_sob || row.troco_sobra || 0),
+    pix_cnpj: Number(row.pix_cnpj || 0),
+    pix_dif: Number(row.pix_dif || row.diferenca_pix || 0),
+    premio_rasp: Number(row.premio_rasp || row.premio_raspadinha || 0),
+    resgate_tele: Number(row.resgate_tele || row.resgate_telesena || 0),
+    justificativa: row.justificativa || ''
+  }));
+},
 
+async _buscarProdutos(fechamentoId) {
+  const { data, error } = await sb
+    .from('fechamento_produtos')
+    .select('*')
+    .eq('fechamento_id', fechamentoId)
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Erro ao buscar produtos:', error);
+    throw error;
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    nome:
+      row.nome ||
+      row.produto_nome ||
+      row.descricao ||
+      row.modalidade ||
+      '—',
+    tipo:
+      row.tipo ||
+      row.categoria ||
+      row.grupo ||
+      'PRODUTO',
+    quantidade: Number(row.quantidade || row.qtd_vendida || row.qtd || 0),
+    valor_unit: Number(row.valor_unit || row.valor_unitario || row.valor_cota || 0)
+  }));
+},
+
+async _buscarBoloes(fechamentoId) {
+  const { data, error } = await sb
+    .from('fechamento_boloes')
+    .select('*')
+    .eq('fechamento_id', fechamentoId)
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Erro ao buscar bolões:', error);
+    throw error;
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    descricao:
+      row.descricao ||
+      row.bolao_nome ||
+      row.nome ||
+      [
+        row.modalidade || 'Bolão',
+        row.concurso ? `#${row.concurso}` : ''
+      ].filter(Boolean).join(' '),
+    tipo:
+      row.tipo ||
+      row.origem_tipo ||
+      row.classificacao ||
+      'INTERNO',
+    cotas_vendidas: Number(row.cotas_vendidas || row.qtd_vendida || row.qtd_cotas || 0),
+    valor_cota: Number(row.valor_cota || row.valor_unitario || 0)
+  }));
+},
+
+async _buscarDividas(fechamentoId) {
+  const { data, error } = await sb
+    .from('fechamento_dividas')
+    .select('*')
+    .eq('fechamento_id', fechamentoId)
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Erro ao buscar dívidas:', error);
+    throw error;
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    cliente: row.cliente || row.nome_cliente || '—',
+    valor: Number(row.valor || 0),
+    obs: row.obs || row.observacao || ''
+  }));
+},
   /* ──────────────────────────────────────────────────────────
      3e. ABAS DE DIAS
   ─────────────────────────────────────────────────────────── */
