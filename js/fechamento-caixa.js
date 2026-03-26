@@ -804,25 +804,21 @@ function preencherTela1(fech) {
 async function preencherTela2() {
   await carregarProdutos();
 
-  const t2 = ESTADO.tela2 || {};
-  const produtosSalvos = t2.produtos || [];
-
+  const produtos = ESTADO.tela2?.produtos || [];
   const mapa = {};
 
-  produtosSalvos.forEach(p => {
-    const chave =
-      String(p.produto || '').toUpperCase() === 'RASPADINHA'
-        ? `RASPADINHA|${p.raspadinha_id || ''}`
-        : `TELESENA|${p.telesena_item_id || ''}`;
+  produtos.forEach(p => {
+    const chave = String(p.produto || '').toUpperCase() === 'RASPADINHA'
+      ? `RASPADINHA|${p.raspadinha_id || ''}`
+      : `TELESENA|${p.telesena_item_id || ''}`;
 
     mapa[chave] = Number(p.qtd || 0);
   });
 
   produtosLista.forEach(item => {
-    const chave =
-      String(item.produto || '').toUpperCase() === 'RASPADINHA'
-        ? `RASPADINHA|${item.raspadinha_id || ''}`
-        : `TELESENA|${item.telesena_item_id || ''}`;
+    const chave = String(item.produto || '').toUpperCase() === 'RASPADINHA'
+      ? `RASPADINHA|${item.raspadinha_id || ''}`
+      : `TELESENA|${item.telesena_item_id || ''}`;
 
     const idItem = item.raspadinha_id || item.telesena_item_id;
     const inpQtd = $(`prod-qtd-${item.produto}-${idItem}`);
