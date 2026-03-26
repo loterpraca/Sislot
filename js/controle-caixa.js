@@ -261,15 +261,14 @@ const VIEWER = {
      3a. INICIALIZAÇÃO
   ─────────────────────────────────────────────────────────── */
 
-  init() {
-    this._initRelogio();
-    this._initPeriodo();
-    this._initFiltros();
-    this._initEventos();
-    this._carregarFuncionarios();
-    // Carrega dados do mês atual e gera abas
-    this.recarregar();
-  },
+  async init() {
+  this._initRelogio();
+  this._initPeriodo();
+  this._initFiltros();
+  this._initEventos();
+  await this._carregarFuncionarios();
+  await this.recarregar();
+},
 
   /* ──────────────────────────────────────────────────────────
      3b. RELÓGIO E PERÍODO
@@ -325,31 +324,37 @@ const VIEWER = {
      3c. FILTROS E EVENTOS
   ─────────────────────────────────────────────────────────── */
 
-  _initFiltros() {
-    document.getElementById('sel-mes').addEventListener('change', e => {
-      ESTADO.mes = parseInt(e.target.value);
-      ESTADO.diaAtivo = null;
-      this._atualizarPeriodoLabel();
-      this.recarregar();
-    });
+ _initFiltros() {
+  document.getElementById('sel-mes').addEventListener('change', e => {
+    ESTADO.mes = parseInt(e.target.value, 10);
+    ESTADO.diaAtivo = null;
+    this._atualizarPeriodoLabel();
+    this.recarregar();
+  });
 
-    document.getElementById('sel-ano').addEventListener('change', e => {
-      ESTADO.ano = parseInt(e.target.value);
-      ESTADO.diaAtivo = null;
-      this._atualizarPeriodoLabel();
-      this.recarregar();
-    });
+  document.getElementById('sel-ano').addEventListener('change', e => {
+    ESTADO.ano = parseInt(e.target.value, 10);
+    ESTADO.diaAtivo = null;
+    this._atualizarPeriodoLabel();
+    this.recarregar();
+  });
 
-    document.getElementById('sel-loja').addEventListener('change', e => {
-      ESTADO.lojaFiltro = e.target.value;
-      this.recarregar();
-    });
+  document.getElementById('sel-loja').addEventListener('change', async e => {
+    ESTADO.lojaFiltro = e.target.value || '';
+    ESTADO.funcFiltro = '';
 
-    document.getElementById('sel-func').addEventListener('change', e => {
-      ESTADO.funcFiltro = e.target.value;
-      this.recarregar();
-    });
-  },
+    const selFunc = document.getElementById('sel-func');
+    if (selFunc) selFunc.value = '';
+
+    await this._carregarFuncionarios();
+    this.recarregar();
+  });
+
+  document.getElementById('sel-func').addEventListener('change', e => {
+    ESTADO.funcFiltro = e.target.value || '';
+    this.recarregar();
+  });
+},
 
   _initEventos() {
     document.getElementById('btn-inicio').addEventListener('click', () => {
@@ -367,22 +372,129 @@ const VIEWER = {
     });
   },
 
-  _carregarFuncionarios() {
-    // ─── PONTO DE INTEGRAÇÃO ───
-    // Aqui você buscaria os funcionários do backend.
-    // Exemplo: const lista = await supabase.from('funcionarios').select('*')
-    const sel = document.getElementById('sel-func');
-    // Limpa opções existentes (exceto "Todos")
-    while (sel.options.length > 1) sel.remove(1);
+ async _carregarFuncionarios() {
+  const sel = document.getElementById('sel-func');
+  while (sel.options.length > 1) sel.remove(1);
 
-    MOCK.funcionarios.forEach(f => {
+  try {
+    const sb = this._getSb();
+
+    const { data, error } = await sb
+      .from('usuarios')
+      .select('*')
+      .order('nome', { ascending: true });
+
+    if (error) throw error;
+
+    let lista = (data || [])
+      .filter(row => {
+        const status = String(row.status || 'ATIVO').toUpperCase();
+        return status === 'ATIVO';
+      })
+      .map(row => ({
+        id: row.id ?? row.usuario_id ?? row.key ?? '',
+        nome: row.nome ?? row.usuario_nome ?? row.userid ?? 'Sem nome',
+        loja_id: row.loteria_id ?? row.loja_id ?? row.origem_id ?? ''
+      }));
+
+    if (ESTADO.lojaFiltro) {
+      lista = lista.filter(f => String(f.loja_id) === String(ESTADO.lojaFiltro));
+    }
+
+    lista.forEach(f => {
       const op = document.createElement('option');
       op.value = f.id;
       op.textContent = f.nome;
       sel.appendChild(op);
     });
-  },
+  } catch (err) {
+    console.error('Erro ao carregar funcionários:', err);
+    this.toast('Erro ao carregar funcionários.', 'erro');
+  }
+},
+_getSb() {
+  if (window.sb && typeof window.sb.from === 'function') return window.sb;
+  if (window.SISLOT_SB && typeof window.SISLOT_SB.from === 'function') return window.SISLOT_SB;
+  if (window.supabaseClient && typeof window.supabaseClient.from === 'function') return window.supabaseClient;
 
+  if (
+    window.supabase &&
+    typeof window.supabase.createClient === 'function' &&
+    window.SISLOT_CONFIG?.url &&
+    window.SISLOT_CONFIG?.anonKey
+  ) {
+    if (!window.__sislotViewerSb) {
+      window.__sislotViewerSb = window.supabase.createClient(
+        window.SISLOT_CONFIG.url,
+        window.SISLOT_CONFIG.anonKey
+      );
+    }
+    return window.__sislotViewerSb;
+  }
+
+  throw new Error('Cliente Supabase não encontrado.');
+},
+
+_normalizarDataISO(valor) {
+  if (!valor) return '';
+
+  if (valor instanceof Date && !isNaN(valor)) {
+    const dt = new Date(valor.getTime() - valor.getTimezoneOffset() * 60000);
+    return dt.toISOString().slice(0, 10);
+  }
+
+  const txt = String(valor).trim();
+
+  const iso = txt.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+
+  const br = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+
+  const dt = new Date(txt);
+  if (!isNaN(dt)) {
+    const adj = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+    return adj.toISOString().slice(0, 10);
+  }
+
+  return '';
+},
+
+_normalizarNumero(valor) {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+  if (valor === null || valor === undefined || valor === '') return 0;
+
+  const txt = String(valor).trim();
+
+  if (/^-?\d{1,3}(\.\d{3})*,\d+$/.test(txt)) {
+    const n = Number(txt.replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  if (/^-?\d+,\d+$/.test(txt)) {
+    const n = Number(txt.replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  const n = Number(txt);
+  return Number.isFinite(n) ? n : 0;
+},
+
+_nomeFuncionarioPorId(id) {
+  const sel = document.getElementById('sel-func');
+  if (!sel || id === null || id === undefined || id === '') return '—';
+
+  const op = Array.from(sel.options).find(o => String(o.value) === String(id));
+  return op ? op.textContent : '—';
+},
+
+_nomeLojaPorId(id) {
+  const sel = document.getElementById('sel-loja');
+  if (!sel || id === null || id === undefined || id === '') return '—';
+
+  const op = Array.from(sel.options).find(o => String(o.value) === String(id));
+  return op ? op.textContent : '—';
+},
   /* ──────────────────────────────────────────────────────────
      3d. CARREGAMENTO DE DADOS
   ─────────────────────────────────────────────────────────── */
@@ -420,6 +532,7 @@ const VIEWER = {
    *   return data;
    */
   async _buscarFechamentosDoMes(mes, ano) {
+  const sb = this._getSb();
   const mesStr = String(mes).padStart(2, '0');
   const primeiroDia = `${ano}-${mesStr}-01`;
   const ultimoDiaNum = new Date(ano, mes, 0).getDate();
@@ -448,39 +561,46 @@ const VIEWER = {
     throw error;
   }
 
-  return (data || []).map(row => ({
-    id: row.id,
-    data: row.data || row.data_fechamento || '',
-    funcionario_id: row.funcionario_id ?? row.usuario_id ?? null,
-    funcionario_nome:
-      row.funcionario_nome ||
-      row.nome_funcionario ||
-      row.usuario_nome ||
-      row.funcionario ||
-      '—',
-    loja_id: row.loteria_id ?? row.loja_id ?? null,
-    loja_nome:
-      row.loja_nome ||
-      row.nome_loja ||
-      row.loteria ||
-      row.loja ||
-      '—',
-    status: row.status || 'fechado',
-    criado_em: row.created_at || row.criado_em || row.carimbo || null,
+  return (data || []).map(row => {
+    const funcionarioId = row.funcionario_id ?? row.usuario_id ?? null;
+    const lojaId = row.loteria_id ?? row.loja_id ?? null;
 
-    relatorio: Number(row.relatorio || 0),
-    deposito: Number(row.deposito || 0),
-    troco_ini: Number(row.troco_ini || row.troco_inicial || 0),
-    troco_sob: Number(row.troco_sob || row.troco_sobra || 0),
-    pix_cnpj: Number(row.pix_cnpj || 0),
-    pix_dif: Number(row.pix_dif || row.diferenca_pix || 0),
-    premio_rasp: Number(row.premio_rasp || row.premio_raspadinha || 0),
-    resgate_tele: Number(row.resgate_tele || row.resgate_telesena || 0),
-    justificativa: row.justificativa || ''
-  }));
+    return {
+      id: row.id,
+      data: this._normalizarDataISO(row.data || row.data_fechamento || row.dt_fechamento || ''),
+      funcionario_id: funcionarioId,
+      funcionario_nome:
+        row.funcionario_nome ||
+        row.nome_funcionario ||
+        row.usuario_nome ||
+        row.funcionario ||
+        this._nomeFuncionarioPorId(funcionarioId),
+      loja_id: lojaId,
+      loja_nome:
+        row.loja_nome ||
+        row.nome_loja ||
+        row.loteria ||
+        row.loja ||
+        this._nomeLojaPorId(lojaId),
+      status: String(row.status || 'fechado').toLowerCase(),
+      criado_em: row.created_at || row.criado_em || row.carimbo || null,
+
+      relatorio: this._normalizarNumero(row.relatorio),
+      deposito: this._normalizarNumero(row.deposito),
+      troco_ini: this._normalizarNumero(row.troco_ini ?? row.troco_inicial),
+      troco_sob: this._normalizarNumero(row.troco_sob ?? row.troco_sobra),
+      pix_cnpj: this._normalizarNumero(row.pix_cnpj),
+      pix_dif: this._normalizarNumero(row.pix_dif ?? row.diferenca_pix),
+      premio_rasp: this._normalizarNumero(row.premio_rasp ?? row.premio_raspadinha),
+      resgate_tele: this._normalizarNumero(row.resgate_tele ?? row.resgate_telesena),
+      justificativa: row.justificativa || ''
+    };
+  });
 },
 
 async _buscarProdutos(fechamentoId) {
+  const sb = this._getSb();
+
   const { data, error } = await sb
     .from('fechamento_produtos')
     .select('*')
@@ -500,17 +620,20 @@ async _buscarProdutos(fechamentoId) {
       row.descricao ||
       row.modalidade ||
       '—',
-    tipo:
+    tipo: String(
       row.tipo ||
       row.categoria ||
       row.grupo ||
-      'PRODUTO',
-    quantidade: Number(row.quantidade || row.qtd_vendida || row.qtd || 0),
-    valor_unit: Number(row.valor_unit || row.valor_unitario || row.valor_cota || 0)
+      'PRODUTO'
+    ).toUpperCase(),
+    quantidade: this._normalizarNumero(row.quantidade ?? row.qtd_vendida ?? row.qtd),
+    valor_unit: this._normalizarNumero(row.valor_unit ?? row.valor_unitario ?? row.valor_cota)
   }));
 },
 
 async _buscarBoloes(fechamentoId) {
+  const sb = this._getSb();
+
   const { data, error } = await sb
     .from('fechamento_boloes')
     .select('*')
@@ -532,17 +655,23 @@ async _buscarBoloes(fechamentoId) {
         row.modalidade || 'Bolão',
         row.concurso ? `#${row.concurso}` : ''
       ].filter(Boolean).join(' '),
-    tipo:
+    tipo: String(
       row.tipo ||
       row.origem_tipo ||
       row.classificacao ||
-      'INTERNO',
-    cotas_vendidas: Number(row.cotas_vendidas || row.qtd_vendida || row.qtd_cotas || 0),
-    valor_cota: Number(row.valor_cota || row.valor_unitario || 0)
+      row.interno_externo ||
+      'INTERNO'
+    ).toUpperCase(),
+    cotas_vendidas: this._normalizarNumero(
+      row.cotas_vendidas ?? row.qtd_vendida ?? row.qtd_cotas
+    ),
+    valor_cota: this._normalizarNumero(row.valor_cota ?? row.valor_unitario)
   }));
 },
 
 async _buscarDividas(fechamentoId) {
+  const sb = this._getSb();
+
   const { data, error } = await sb
     .from('fechamento_dividas')
     .select('*')
@@ -557,7 +686,7 @@ async _buscarDividas(fechamentoId) {
   return (data || []).map(row => ({
     id: row.id,
     cliente: row.cliente || row.nome_cliente || '—',
-    valor: Number(row.valor || 0),
+    valor: this._normalizarNumero(row.valor),
     obs: row.obs || row.observacao || ''
   }));
 },
@@ -1217,6 +1346,13 @@ async _buscarDividas(fechamentoId) {
 /* ════════════════════════════════════════════════════════════
    INICIALIZAÇÃO
 ════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  VIEWER.init();
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await VIEWER.init();
+  } catch (err) {
+    console.error('Erro ao iniciar conferência de caixa:', err);
+    if (VIEWER && typeof VIEWER.toast === 'function') {
+      VIEWER.toast('Erro ao iniciar a tela.', 'erro');
+    }
+  }
 });
