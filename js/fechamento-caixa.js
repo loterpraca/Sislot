@@ -442,8 +442,160 @@ async function carregarProdutos() {
 
     produtosLista = data || [];
     renderProdutos();
+
+    if (ESTADO.tela2?.produtos?.length) {
+        restaurarProdutos();
+    }
 }
 
+function restaurarProdutos() {
+    const produtosSalvos = ESTADO.tela2?.produtos || [];
+    const mapa = {};
+
+    produtosSalvos.forEach(p => {
+        const tipo = String(p.produto || '').toUpperCase();
+
+        let chave = '';
+        if (tipo === 'RASPADINHA') {
+            chave = `RASPADINHA|${p.raspadinha_id || ''}`;
+        } else if (tipo === 'TELESENA') {
+            chave = `TELESENA|${p.telesena_item_id || ''}`;
+        } else {
+            chave = `${tipo}|${p.raspadinha_id || ''}|${p.telesena_item_id || ''}|${p.descricao || ''}|${Number(p.preco || 0)}`;
+        }
+
+        mapa[chave] = Number(p.qtd || 0);
+    });
+
+    produtosLista.forEach(item => {
+        const tipo = String(item.produto || '').toUpperCase();
+
+        let chave = '';
+        if (tipo === 'RASPADINHA') {
+            chave = `RASPADINHA|${item.raspadinha_id || ''}`;
+        } else if (tipo === 'TELESENA') {
+            chave = `TELESENA|${item.telesena_item_id || ''}`;
+        } else {
+            chave = `${tipo}|${item.raspadinha_id || ''}|${item.telesena_item_id || ''}|${item.item_nome || ''}|${Number(item.valor_venda || 0)}`;
+        }
+
+        const idItem = item.raspadinha_id || item.telesena_item_id;
+        const inp = $(`prod-qtd-${item.produto}-${idItem}`);
+        if (!inp) return;
+
+        const qtd = Number(mapa[chave] || 0);
+        inp.value = qtd > 0 ? qtd : '';
+    });
+
+    recalcProdutos();
+    updT2Geral();
+}
+
+function renderProdutos() {
+    const wrap = $('produtos-grid');
+    if (!wrap) return;
+
+    const lista = produtosVisiveis();
+
+    if (!lista.length) {
+        wrap.innerHTML = `
+            <div class="state-box" style="grid-column:1/-1">
+                <div class="state-title">Nenhum produto disponível</div>
+                <div class="state-sub">Altere o filtro ou marque "Mostrar sem estoque".</div>
+            </div>`;
+        const totalEl = $('produtos-tot');
+        if (totalEl) totalEl.textContent = 'R$ 0,00';
+        const t2Rasp = $('t2-rasp');
+        if (t2Rasp) t2Rasp.textContent = 'R$ 0,00';
+        updT2Geral();
+        return;
+    }
+
+    wrap.innerHTML = lista.map(buildProdutoCard).join('');
+
+    if (ESTADO.tela2?.produtos?.length) {
+        restaurarProdutos();
+    } else {
+        recalcProdutos();
+    }
+}
+
+function montarTela2DoFechamento(fech, federaisCarregados = []) {
+    const produtos = (fech.fechamento_produtos || []).map(p => ({
+        produto_id: p.produto_id || null,
+        produto: String(p.tipo || '').toUpperCase(),
+        descricao: p.descricao || '',
+        preco: Number(p.valor_unitario || 0),
+        qtd: Number(p.qtd_vendida || 0),
+        sub: Number(p.total || 0),
+        raspadinha_id: p.raspadinha_id || null,
+        telesena_item_id: p.telesena_item_id || null
+    }));
+
+    return {
+        produtos,
+        federais: federaisCarregados
+    };
+}
+
+async function preencherTela2() {
+    await carregarProdutos();
+}
+
+async function buscarFechamentoExistente() {
+    const funcionarioId = parseInt($('funcionario').value, 10);
+    const dataRef = $('data-ref').value;
+
+    if (!funcionarioId || !dataRef) {
+        toast('Selecione funcionário e data.', false);
+        return;
+    }
+
+    try {
+        setSaveLoading(true, 'Buscando fechamento...');
+
+        const { data: fech, error } = await sb
+            .from('fechamentos')
+            .select(`
+                *,
+                fechamento_produtos(*),
+                fechamento_boloes(*),
+                fechamento_dividas(*)
+            `)
+            .eq('loteria_id', loteriaAtiva.id)
+            .eq('usuario_id', funcionarioId)
+            .eq('data_ref', dataRef)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (!fech) {
+            toast('Nenhum fechamento encontrado para este funcionário/data.', false);
+            return;
+        }
+
+        const federaisCarregados = await carregarFederaisDoFechamento(fech.id);
+
+        fechamentoOriginalId = fech.id;
+        ESTADO.tela1 = montarTela1DoFechamento(fech);
+        ESTADO.tela2 = montarTela2DoFechamento(fech, federaisCarregados);
+        ESTADO.tela3 = montarTela3DoFechamento(fech);
+
+        preencherTela1(fech);
+
+        showStep(2);
+
+        await carregarProdutos();
+        await buscarFederaisSupabase(fech.data_ref);
+
+        toast('Fechamento carregado com sucesso.', true);
+    } catch (e) {
+        console.error('Erro ao buscar fechamento:', e);
+        toast(e.message || 'Erro ao buscar fechamento.', false);
+    } finally {
+        setSaveLoading(false);
+    }
+}
 function produtosVisiveis() {
     let lista = [...produtosLista];
 
@@ -523,29 +675,6 @@ function buildProdutoCard(item) {
     `;
 }
 
-function renderProdutos() {
-    const wrap = $('produtos-grid');
-    if (!wrap) return;
-
-    const lista = produtosVisiveis();
-
-    if (!lista.length) {
-        wrap.innerHTML = `
-            <div class="state-box" style="grid-column:1/-1">
-                <div class="state-title">Nenhum produto disponível</div>
-                <div class="state-sub">Altere o filtro ou marque "Mostrar sem estoque".</div>
-            </div>`;
-        const totalEl = $('produtos-tot');
-        if (totalEl) totalEl.textContent = 'R$ 0,00';
-        const t2Rasp = $('t2-rasp');
-        if (t2Rasp) t2Rasp.textContent = 'R$ 0,00';
-        updT2Geral();
-        return;
-    }
-
-    wrap.innerHTML = lista.map(buildProdutoCard).join('');
-    recalcProdutos();
-}
 
 function ajProduto(produto, idItem, delta) {
     const el = $(`prod-qtd-${produto}-${idItem}`);
@@ -640,65 +769,6 @@ function updT2Geral() {
 
 // ─── BUSCA DE FECHAMENTO EXISTENTE ───────────────────────────────────────────
 
-async function buscarFechamentoExistente() {
-    const funcionarioId = parseInt($('funcionario').value, 10);
-    const dataRef = $('data-ref').value;
-    if (!funcionarioId || !dataRef) {
-        toast('Selecione funcionário e data.', false);
-        return;
-    }
-
-    try {
-        setSaveLoading(true, 'Buscando fechamento...');
-        const { data: fech, error } = await sb
-            .from('fechamentos')
-            .select(`
-                *,
-                fechamento_produtos(*),
-                fechamento_boloes(*),
-                fechamento_dividas(*)
-            `)
-            .eq('loteria_id', loteriaAtiva.id)
-            .eq('usuario_id', funcionarioId)
-            .eq('data_ref', dataRef)
-            .maybeSingle();
-
-        if (error) throw error;
-
-        if (!fech) {
-            toast('Nenhum fechamento encontrado para este funcionário/data.', false);
-            return;
-        }
-
-        const federaisCarregados = await carregarFederaisDoFechamento(fech.id);
-        console.log('fechamento_dividas carregadas:', fech.fechamento_dividas);
-
-       fechamentoOriginalId = fech.id;
-
-ESTADO.tela1 = montarTela1DoFechamento(fech);
-ESTADO.tela2 = montarTela2DoFechamento(fech, federaisCarregados);
-ESTADO.tela3 = montarTela3DoFechamento(fech);
-
-preencherTela1(fech);
-
-// mostra a tela primeiro
-showStep(2);
-
-// agora renderiza produtos e reaplica quantidades
-await preencherTela2();
-
-// federais depois
-await buscarFederaisSupabase(fech.data_ref);
-restaurarFederais();
-
-toast('Fechamento carregado com sucesso.', true);
-    } catch (e) {
-        console.error('Erro ao buscar fechamento:', e);
-        toast(e.message || 'Erro ao buscar fechamento.', false);
-    } finally {
-        setSaveLoading(false);
-    }
-}
 
 function setSaveLoading(loading, text = '') {
     const btn = document.querySelector('[onclick="buscarFechamentoExistente()"]');
@@ -735,23 +805,6 @@ function montarTela1DoFechamento(fech) {
     };
 }
 
-function montarTela2DoFechamento(fech, federaisCarregados = []) {
-  const produtos = (fech.fechamento_produtos || []).map(p => ({
-    produto_id: p.produto_id || null,
-    produto: String(p.tipo || '').toUpperCase(),
-    descricao: p.descricao || '',
-    preco: Number(p.valor_unitario || 0),
-    qtd: Number(p.qtd_vendida || 0),
-    sub: Number(p.total || 0),
-    raspadinha_id: p.raspadinha_id || null,
-    telesena_item_id: p.telesena_item_id || null
-  }));
-
-  return {
-    produtos,
-    federais: federaisCarregados
-  };
-}
 function montarTela3DoFechamento(fech) {
     const internos = [];
     const externos = [];
@@ -801,36 +854,6 @@ function preencherTela1(fech) {
     (fech.fechamento_dividas || []).forEach(d => addDivida(d.cliente_nome, d.valor));
 }
 
-async function preencherTela2() {
-  await carregarProdutos();
-
-  const produtos = ESTADO.tela2?.produtos || [];
-  const mapa = {};
-
-  produtos.forEach(p => {
-    const chave = String(p.produto || '').toUpperCase() === 'RASPADINHA'
-      ? `RASPADINHA|${p.raspadinha_id || ''}`
-      : `TELESENA|${p.telesena_item_id || ''}`;
-
-    mapa[chave] = Number(p.qtd || 0);
-  });
-
-  produtosLista.forEach(item => {
-    const chave = String(item.produto || '').toUpperCase() === 'RASPADINHA'
-      ? `RASPADINHA|${item.raspadinha_id || ''}`
-      : `TELESENA|${item.telesena_item_id || ''}`;
-
-    const idItem = item.raspadinha_id || item.telesena_item_id;
-    const inpQtd = $(`prod-qtd-${item.produto}-${idItem}`);
-    if (!inpQtd) return;
-
-    const qtd = mapa[chave] || 0;
-    inpQtd.value = qtd > 0 ? qtd : '';
-  });
-
-  recalcProdutos();
-  updT2Geral();
-}
 
 // ─── COLETA DE DADOS ──────────────────────────────────────────────────────────
 
