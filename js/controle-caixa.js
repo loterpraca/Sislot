@@ -50,9 +50,9 @@ async function _bootstrap() {
 
   // Cria o cliente Supabase (supabase-js CDN expõe window.supabase.createClient)
   _supabase = window.supabase.createClient(
-    window.SISLOT_CONFIG.supabaseUrl,
-    window.SISLOT_CONFIG.supabaseKey
-  );
+  window.SISLOT_CONFIG.url,
+  window.SISLOT_CONFIG.anonKey
+);
 
   // Protege a página via camada de segurança padrão do SISLOT
   try {
