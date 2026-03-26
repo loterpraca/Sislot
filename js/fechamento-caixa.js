@@ -2128,7 +2128,8 @@ async function finalizar() {
 
     const btn = $('btn-final');
     btn.disabled = true;
-
+    let salvouComSucesso = false;
+    
     try {
         let existeId = fechamentoOriginalId;
 
@@ -2314,7 +2315,7 @@ async function finalizar() {
 
         fechamentoOriginalId = fechId;
         modoAtual = 'edicao';
-        toast('Fechamento salvo com sucesso.', true);
+        salvouComSucesso = true;
 
         await carregarProdutos();
         await buscarFederaisSupabase(t1.data_ref);
@@ -2325,6 +2326,10 @@ async function finalizar() {
     } finally {
         hideGravando();
         btn.disabled = false;
+        if (salvouComSucesso) {
+        abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
+    }
+}
     }
 }
 
@@ -2372,7 +2377,18 @@ function toast(msg, ok = true) {
 }
 
 // ─── RESET DE ESTADO ──────────────────────────────────────────────────────────
+function abrirModalSucessoFechamento(msg = 'O fechamento foi salvo com sucesso.') {
+    const msgEl = $('m-sucesso-fechamento-msg');
+    if (msgEl) msgEl.textContent = msg;
 
+    $('m-sucesso-fechamento')?.classList.add('show');
+}
+
+function confirmarSucessoFechamento() {
+    fecharModal('m-sucesso-fechamento');
+    resetEstado();
+    window.SISLOT_SECURITY.irParaInicio();
+}
 function resetEstado() {
     ESTADO.tela1 = {};
     ESTADO.tela2 = { produtos: [], federais: [] };
