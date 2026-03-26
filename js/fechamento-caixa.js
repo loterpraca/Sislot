@@ -1630,6 +1630,80 @@ function toggleDividas() {
     arrow.style.transform = open ? 'rotate(0)' : 'rotate(90deg)';
 }
 
+function getProdutosVendidosTela2(t2 = ESTADO.tela2) {
+    return (t2?.produtos || []).filter(p => Number(p.qtd || 0) > 0);
+}
+
+async function estornarProdutosDoFechamento(fechId) {
+    if (!fechId) return 0;
+
+    const { data, error } = await sb.rpc('estornar_vendas_produto_fechamento', {
+        p_fechamento_id: fechId
+    });
+
+    if (error) throw error;
+    return Number(data || 0);
+}
+
+async function apagarSnapshotProdutosDoFechamento(fechId) {
+    if (!fechId) return;
+
+    const { error } = await sb
+        .from('fechamento_produtos')
+        .delete()
+        .eq('fechamento_id', fechId);
+
+    if (error) throw error;
+}
+
+async function salvarSnapshotProdutosDoFechamento(fechId, produtosVendidos) {
+    if (!produtosVendidos.length) return;
+
+    const prodRows = produtosVendidos.map(p => ({
+        fechamento_id: fechId,
+        produto_id: p.produto_id || null,
+        tipo: p.produto,
+        descricao: p.descricao || '',
+        valor_unitario: Number(p.preco || 0),
+        qtd_vendida: Number(p.qtd || 0),
+        total: Number(p.sub || 0),
+        raspadinha_id: p.raspadinha_id || null,
+        telesena_item_id: p.telesena_item_id || null
+    }));
+
+    const { error } = await sb.from('fechamento_produtos').insert(prodRows);
+    if (error) throw error;
+}
+
+async function registrarVendasProdutosDoFechamento(fechId, t1, produtosVendidos) {
+    if (!produtosVendidos.length) return;
+
+    try {
+        for (const p of produtosVendidos) {
+            const { error } = await sb.rpc('registrar_venda_produto', {
+                p_loteria_vendedora_id: Number(loteriaAtiva.id),
+                p_usuario_id: Number(t1.funcionario_id),
+                p_canal: 'FECHAMENTO',
+                p_produto: String(p.produto || '').toUpperCase(),
+                p_raspadinha_id: p.raspadinha_id || null,
+                p_telesena_item_id: p.telesena_item_id || null,
+                p_qtd_vendida: Number(p.qtd || 0),
+                p_data_referencia: t1.data_ref,
+                p_desconto: 0,
+                p_observacao: 'Lançado no fechamento',
+                p_fechamento_id: fechId
+            });
+
+            if (error) throw error;
+        }
+    } catch (e) {
+        // Compensação local: se falhar no meio, limpa o que já gravou nesse fechamento
+        await estornarProdutosDoFechamento(fechId);
+        await apagarSnapshotProdutosDoFechamento(fechId);
+        throw e;
+    }
+}
+
 // ─── FINALIZAR / GRAVAR ───────────────────────────────────────────────────────
 
 async function finalizar() {
@@ -1652,6 +1726,7 @@ async function finalizar() {
 
     try {
         let existeId = fechamentoOriginalId;
+
         if (!existeId) {
             const { data: existe, error: errExiste } = await sb
                 .from('fechamentos')
@@ -1660,6 +1735,7 @@ async function finalizar() {
                 .eq('usuario_id', t1.funcionario_id)
                 .eq('data_ref', t1.data_ref)
                 .maybeSingle();
+
             if (errExiste) throw errExiste;
             if (existe?.id) existeId = existe.id;
         }
@@ -1669,6 +1745,7 @@ async function finalizar() {
             funcionarioSelecionadoId: t1.funcionario_id,
             existeFechamento: !!existeId
         });
+
         if (!permissao.permitido) {
             btn.disabled = false;
             alert(permissao.motivo || 'Sem permissão para gravar.');
@@ -1689,21 +1766,20 @@ async function finalizar() {
         showGravando('Gravando fechamento de ' + t1.funcionario_nome + '...');
         setProgress(10);
 
-        // FIX: totalProd agora usa o novo modelo t2.produtos
         const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
-        const totalFed  = (t2.federais || []).reduce((a, f) => a + f.subtotal, 0);
-        const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + b.subtotal, 0);
-        const totalDiv  = (t1.dividas || []).reduce((a, d) => a + d.valor, 0);
+        const totalFed = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
+        const totalBol = [...(t3.internos || []), ...(t3.externos || [])]
+            .reduce((a, b) => a + Number(b.subtotal || 0), 0);
+        const totalDiv = (t1.dividas || []).reduce((a, d) => a + Number(d.valor || 0), 0);
 
-        const totDeb  = t1.troco_inicial + totalProd + totalFed + totalBol + t1.relatorio;
-        const totCred = t1.troco_sobra + t1.deposito + t1.pix_cnpj + t1.diferenca_pix + t1.premio_raspadinha + t1.resgate_telesena + totalDiv;
-        const quebra  = totCred - totDeb;
-        const justif  = $('justificativa')?.value?.trim() || '';
+        const totDeb = Number(t1.troco_inicial || 0) + totalProd + totalFed + totalBol + Number(t1.relatorio || 0);
+        const totCred = Number(t1.troco_sobra || 0) + Number(t1.deposito || 0) + Number(t1.pix_cnpj || 0) + Number(t1.diferenca_pix || 0) + Number(t1.premio_raspadinha || 0) + Number(t1.resgate_telesena || 0) + totalDiv;
+        const quebra = totCred - totDeb;
+        const justif = $('justificativa')?.value || '';
 
         const payload = {
             loteria_id: loteriaAtiva.id,
             usuario_id: t1.funcionario_id,
-            funcionario_nome: t1.funcionario_nome,
             data_ref: t1.data_ref,
             troco_inicial: t1.troco_inicial,
             troco_sobra: t1.troco_sobra,
@@ -1730,43 +1806,50 @@ async function finalizar() {
 
         let fechId;
         if (sobrescrever && existeId) {
-            const { error: delProdErr }    = await sb.from('fechamento_produtos').delete().eq('fechamento_id', existeId);
-            if (delProdErr) throw delProdErr;
-            const { error: delFedVendasErr } = await sb.from('federal_vendas').delete().eq('fechamento_id', existeId);
+            await estornarProdutosDoFechamento(existeId);
+            await apagarSnapshotProdutosDoFechamento(existeId);
+
+            const { error: delFedVendasErr } = await sb
+                .from('federal_vendas')
+                .delete()
+                .eq('fechamento_id', existeId);
             if (delFedVendasErr) throw delFedVendasErr;
-            const { error: delBolErr }     = await sb.from('fechamento_boloes').delete().eq('fechamento_id', existeId);
+
+            const { error: delBolErr } = await sb
+                .from('fechamento_boloes')
+                .delete()
+                .eq('fechamento_id', existeId);
             if (delBolErr) throw delBolErr;
-            const { error: delDivErr }     = await sb.from('fechamento_dividas').delete().eq('fechamento_id', existeId);
+
+            const { error: delDivErr } = await sb
+                .from('fechamento_dividas')
+                .delete()
+                .eq('fechamento_id', existeId);
             if (delDivErr) throw delDivErr;
-            const { error: errUpd }        = await sb.from('fechamentos').update(payload).eq('id', existeId);
+
+            const { error: errUpd } = await sb
+                .from('fechamentos')
+                .update(payload)
+                .eq('id', existeId);
             if (errUpd) throw errUpd;
+
             fechId = existeId;
         } else {
-            const { data: ins, error: errIns } = await sb.from('fechamentos').insert(payload).select('id').single();
+            const { data: ins, error: errIns } = await sb
+                .from('fechamentos')
+                .insert(payload)
+                .select('id')
+                .single();
+
             if (errIns) throw errIns;
             fechId = ins.id;
         }
 
         setProgress(55);
 
-const prodRows = (t2.produtos || [])
-  .filter(p => Number(p.qtd || 0) > 0)
-  .map(p => ({
-    fechamento_id: fechId,
-    produto_id: p.produto_id || null,
-    tipo: p.produto,
-    descricao: p.descricao || '',
-    valor_unitario: Number(p.preco || 0),
-    qtd_vendida: Number(p.qtd || 0),
-    total: Number(p.sub || 0),
-    raspadinha_id: p.raspadinha_id || null,
-    telesena_item_id: p.telesena_item_id || null
-  }));
-
-        if (prodRows.length) {
-            const { error } = await sb.from('fechamento_produtos').insert(prodRows);
-            if (error) throw error;
-        }
+        const produtosVendidos = getProdutosVendidosTela2(t2);
+        await salvarSnapshotProdutosDoFechamento(fechId, produtosVendidos);
+        await registrarVendasProdutosDoFechamento(fechId, t1, produtosVendidos);
 
         setProgress(70);
 
@@ -1789,7 +1872,7 @@ const prodRows = (t2.produtos || [])
         setProgress(82);
 
         const bolRows = [
-            ...(t3.internos || []).filter(b => b.qtdVendida > 0).map(b => ({
+            ...(t3.internos || []).filter(b => Number(b.qtdVendida || 0) > 0).map(b => ({
                 fechamento_id: fechId,
                 bolao_id: b.bolao_id,
                 tipo: 'INTERNO',
@@ -1798,7 +1881,7 @@ const prodRows = (t2.produtos || [])
                 valor_cota: b.valorCota,
                 subtotal: b.subtotal
             })),
-            ...(t3.externos || []).filter(b => b.qtdVendida > 0).map(b => ({
+            ...(t3.externos || []).filter(b => Number(b.qtdVendida || 0) > 0).map(b => ({
                 fechamento_id: fechId,
                 bolao_id: b.bolao_id,
                 tipo: 'EXTERNO',
@@ -1808,6 +1891,7 @@ const prodRows = (t2.produtos || [])
                 subtotal: b.subtotal
             }))
         ];
+
         if (bolRows.length) {
             const { error } = await sb.from('fechamento_boloes').insert(bolRows);
             if (error) throw error;
@@ -1816,45 +1900,32 @@ const prodRows = (t2.produtos || [])
         setProgress(93);
 
         const divRows = (t1.dividas || [])
-            .filter(d => d.nome)
+            .filter(d => String(d.nome || d.cliente_nome || '').trim())
             .map(d => ({
                 fechamento_id: fechId,
-                cliente_nome: d.nome,
-                valor: d.valor
+                cliente_nome: d.nome || d.cliente_nome,
+                valor: Number(d.valor || 0)
             }));
+
         if (divRows.length) {
             const { error } = await sb.from('fechamento_dividas').insert(divRows);
             if (error) throw error;
         }
 
-        if (tokenAutorizado?.id) {
-            await FECHAMENTO_RULES.consumirTokenSobrescrita({
-                tokenId: tokenAutorizado.id,
-                usadoPor: usuario.id,
-                fechamentoId: fechId
-            });
-        }
-
         setProgress(100);
-        hideGravando();
-        $('btn-final-txt').textContent = '✓ Gravado!';
-        $('btn-final').style.background = '#00e8ad';
-        setTimeout(() => {
-            alert(
-                `✅ Fechamento gravado com sucesso!\n\n` +
-                `Funcionário: ${t1.funcionario_nome}\n` +
-                `Loteria: ${loteriaAtiva.nome}\n` +
-                `Data: ${fmtData(t1.data_ref)}\n` +
-                `Quebra: ${fmtBRL(quebra)}`
-            );
-            resetEstado();
-            showStep(1);
-        }, 500);
+
+        fechamentoOriginalId = fechId;
+        modoAtual = 'edicao';
+        toast('Fechamento salvo com sucesso.', true);
+
+        await carregarProdutos();
+        await buscarFederaisSupabase(t1.data_ref);
     } catch (e) {
+        console.error('Erro ao gravar fechamento:', e);
+        toast('Erro ao gravar: ' + (e.message || e), false);
+    } finally {
         hideGravando();
         btn.disabled = false;
-        console.error(e);
-        alert('❌ Erro ao gravar:\n\n' + (e.message || 'Erro desconhecido'));
     }
 }
 
