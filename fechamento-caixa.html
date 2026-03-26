@@ -374,7 +374,22 @@
 <div class="overlay" id="m-inicio"><div class="modal-box"><div class="modal-icon">🏠</div><div class="modal-title">Voltar ao menu?</div><div class="modal-desc">Você sairá da tela de fechamento e retornará ao menu principal.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-inicio')">Cancelar</button><button class="modal-ok verde" onclick="executarInicio()">Sim, voltar</button></div></div></div>
 
 <div class="overlay" id="m-sair"><div class="modal-box"><div class="modal-icon">🔒</div><div class="modal-title">Sair do sistema?</div><div class="modal-desc">Sua sessão será encerrada.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-sair')">Cancelar</button><button class="modal-ok vermelho" onclick="executarSair()">Sim, sair</button></div></div></div>
+<div class="modal" id="m-sucesso-fechamento">
+  <div class="modal-card">
+    <div class="modal-icon ok">✓</div>
+    <div class="modal-title">Fechamento salvo</div>
+    <div class="modal-text" id="m-sucesso-fechamento-msg">
+      O fechamento foi salvo com sucesso.
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-primary" onclick="confirmarSucessoFechamento()">
+        OK
+      </button>
+    </div>
+  </div>
+</div>
 
+  
 <div class="overlay" id="m-token">
   <div class="modal-box" style="text-align:left">
     <div class="modal-title" style="color:var(--amber);margin-bottom:6px">Token de autorização</div>
