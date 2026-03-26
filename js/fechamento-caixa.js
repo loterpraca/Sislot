@@ -955,6 +955,8 @@ async function buscarFechamentoExistente() {
         preencherTela1(fech);
         await carregarProdutos();
         await buscarFederaisSupabase(fech.data_ref);
+        await carregarBoloes();
+
 
         toast('Fechamento carregado com sucesso.', true);
     } catch (e) {
@@ -1043,7 +1045,6 @@ function coletarTela3() {
         externos: coleta('EXTERNO')
     };
 }
-
 // ─── FEDERAIS ─────────────────────────────────────────────────────────────────
 
 async function buscarFederais() {
@@ -2194,27 +2195,32 @@ async function finalizar() {
         const justif = $('justificativa')?.value || '';
 
         const payload = {
-            loteria_id: loteriaAtiva.id,
-            usuario_id: t1.funcionario_id,
-            data_ref: t1.data_ref,
-            troco_inicial: t1.troco_inicial,
-            troco_sobra: t1.troco_sobra,
-            relatorio: t1.relatorio,
-            deposito: t1.deposito,
-            pix_cnpj: t1.pix_cnpj,
-            diferenca_pix: t1.diferenca_pix,
-            premio_raspadinha: t1.premio_raspadinha,
-            resgate_telesena: t1.resgate_telesena,
-            total_produtos: totalProd,
-            total_federais: totalFed,
-            total_boloes: totalBol,
-            total_dividas: totalDiv,
-            total_debitos: totDeb,
-            total_creditos: totCred,
-            quebra,
-            justificativa: justif || null,
-            token_autorizacao: tokenAutorizado || null
-        };
+    loteria_id: Number(loteriaAtiva.id),
+    usuario_id: Number(t1.funcionario_id),
+    funcionario_nome: t1.funcionario_nome || '',
+    data_ref: t1.data_ref,
+    troco_inicial: Number(t1.troco_inicial || 0),
+    troco_sobra: Number(t1.troco_sobra || 0),
+    relatorio: Number(t1.relatorio || 0),
+    deposito: Number(t1.deposito || 0),
+    pix_cnpj: Number(t1.pix_cnpj || 0),
+    diferenca_pix: Number(t1.diferenca_pix || 0),
+    premio_raspadinha: Number(t1.premio_raspadinha || 0),
+    resgate_telesena: Number(t1.resgate_telesena || 0),
+    total_produtos: Number(totalProd || 0),
+    total_federais: Number(totalFed || 0),
+    total_boloes: Number(totalBol || 0),
+    total_fiado: Number(totalDiv || 0),
+    total_debitos: Number(totDeb || 0),
+    total_creditos: Number(totCred || 0),
+    quebra: Number(quebra || 0),
+    justificativa: justif || null,
+    criado_por: Number(usuario?.id || 0),
+    sobrescrito_por: tokenAutorizado?.gerado_por
+        ? Number(tokenAutorizado.gerado_por)
+        : null,
+    updated_at: new Date().toISOString()
+};
 
         let fechId = existeId;
 
