@@ -409,6 +409,42 @@ function remDivida(btn) {
 }
 
 // ─── PRODUTOS ────────────────────────────────────────────────────────────────
+function chaveProdutoItem(item) {
+    const tipo = String(item.produto || '').toUpperCase();
+
+    if (tipo === 'RASPADINHA') {
+        return `RASPADINHA|${item.raspadinha_id || ''}`;
+    }
+
+    if (tipo === 'TELESENA') {
+        return `TELESENA|${item.telesena_item_id || ''}`;
+    }
+
+    return `${tipo}|${item.raspadinha_id || ''}|${item.telesena_item_id || ''}`;
+}
+
+function aplicarContextoEdicaoProdutos(lista) {
+    const produtosSalvos = ESTADO.tela2?.produtos || [];
+    const mapa = {};
+
+    produtosSalvos.forEach(p => {
+        mapa[chaveProdutoItem(p)] = Number(p.qtd || 0);
+    });
+
+    return (lista || []).map(item => {
+        const qtdSalva = Number(mapa[chaveProdutoItem(item)] || 0);
+        const saldoAtual = Number(item.saldo_atual || 0);
+        const saldoEditavel = saldoAtual + qtdSalva;
+
+        return {
+            ...item,
+            qtd_salva_edicao: qtdSalva,
+            saldo_editavel: saldoEditavel,
+            em_edicao: !!fechamentoOriginalId
+        };
+    });
+}
+
 
 async function carregarProdutos() {
     const tipo = $('prod-filtro-tipo')?.value || '';
@@ -440,14 +476,13 @@ async function carregarProdutos() {
         return;
     }
 
-    produtosLista = data || [];
+    produtosLista = aplicarContextoEdicaoProdutos(data || []);
     renderProdutos();
 
     if (ESTADO.tela2?.produtos?.length) {
         restaurarProdutos();
     }
 }
-
 function restaurarProdutos() {
     const produtosSalvos = ESTADO.tela2?.produtos || [];
     const mapa = {};
@@ -598,16 +633,22 @@ function produtosVisiveis() {
     let lista = [...produtosLista];
 
     if (!mostrarProdutosSemEstoque) {
-        lista = lista.filter(p => Number(p.saldo_atual || 0) > 0);
+        lista = lista.filter(item =>
+            Number(item.saldo_atual || 0) > 0 ||
+            Number(item.qtd_salva_edicao || 0) > 0
+        );
     }
 
     lista.sort((a, b) => {
-        const sa = Number(a.saldo_atual || 0);
-        const sb = Number(b.saldo_atual || 0);
+        const sa = Number(a.saldo_editavel ?? a.saldo_atual ?? 0);
+        const sb = Number(b.saldo_editavel ?? b.saldo_atual ?? 0);
+
         if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
+
         if (String(a.produto || '') !== String(b.produto || '')) {
             return String(a.produto || '').localeCompare(String(b.produto || ''));
         }
+
         return String(a.item_nome || '').localeCompare(String(b.item_nome || ''));
     });
 
@@ -615,9 +656,13 @@ function produtosVisiveis() {
 }
 
 function buildProdutoCard(item) {
-    const saldo = Number(item.saldo_atual || 0);
+    const saldoBase = Number(item.saldo_atual || 0);
+    const qtdSalva = Number(item.qtd_salva_edicao || 0);
+    const saldo = Number(item.saldo_editavel ?? saldoBase);
+
     const semEstoque = saldo <= 0;
     const estoqueBaixo = saldo > 0 && saldo <= 5;
+
     const badge = semEstoque ? 'Sem estoque' : estoqueBaixo ? 'Baixo' : 'Disponível';
     const badgeClass = semEstoque ? 'badge-r' : estoqueBaixo ? 'badge-t' : 'badge';
 
@@ -632,10 +677,10 @@ function buildProdutoCard(item) {
                     <div class="prod-nome">${nome}</div>
                     <div style="font-size:10px;color:var(--muted);margin-top:2px">${tipo}</div>
                 </div>
-                <span class="badge ${badgeClass}">${badge}</span>
+                <span class="${badgeClass}">${badge}</span>
             </div>
 
-            <div class="g2" style="margin-bottom:10px">
+            <div class="prod-body">
                 <div>
                     <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Valor</label>
                     <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">
@@ -646,6 +691,9 @@ function buildProdutoCard(item) {
                     <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Estoque</label>
                     <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:${semEstoque ? 'var(--err)' : 'var(--text)'}">
                         ${saldo}
+                    </div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px">
+                        Atual: ${saldoBase}${qtdSalva > 0 ? ` • no fechamento: ${qtdSalva}` : ''}
                     </div>
                 </div>
             </div>
@@ -695,7 +743,7 @@ function recalcProdutos() {
         const elSub = $(`prod-sub-${item.produto}-${idItem}`);
         if (!elQtd || !elSub) return;
 
-        const saldo = Number(item.saldo_atual || 0);
+        const saldo = Number(item.saldo_editavel ?? item.saldo_atual ?? 0);
         let qtd = Number(elQtd.value || 0);
 
         if (qtd > saldo) {
@@ -708,7 +756,6 @@ function recalcProdutos() {
         elSub.classList.toggle('on', subtotal > 0);
         elQtd.classList.toggle('filled', qtd > 0);
 
-        // FIX: ativa destaque visual no card quando há quantidade
         const card = elQtd.closest('.prod-card');
         if (card) card.classList.toggle('has-val', qtd > 0);
 
