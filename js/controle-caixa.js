@@ -144,27 +144,31 @@ const API = {
      Fonte: vw_usuarios_loterias_ativos
      Retorna lista única de usuários (deduplicada por id).
   ─────────────────────────────────────────────────────────── */
-  async buscarFuncionarios(lojaIds) {
-    let query = _supabase
-      .from('vw_usuarios_loterias_ativos')
-      .select('usuario_id, nome, loteria_id')
-      .order('nome');
+ async buscarFuncionarios(lojaIds) {
+  let query = _supabase
+    .from('vw_usuarios_loterias_ativos')
+    .select('usuario_id, usuario_nome, loteria_id')
+    .order('usuario_nome');
 
-    if (lojaIds && lojaIds.length > 0) {
-      query = query.in('loteria_id', lojaIds);
-    }
+  if (lojaIds && lojaIds.length > 0) {
+    query = query.in('loteria_id', lojaIds);
+  }
 
-    const { data, error } = await query;
-    if (error) throw error;
+  const { data, error } = await query;
+  if (error) throw error;
 
-    // Deduplica por usuario_id — o mesmo usuário pode estar em várias lojas
-    const vistos = new Set();
-    return (data || []).filter(u => {
+  const vistos = new Set();
+  return (data || [])
+    .filter(u => {
       if (vistos.has(u.usuario_id)) return false;
       vistos.add(u.usuario_id);
       return true;
-    }).map(u => ({ id: u.usuario_id, nome: u.nome }));
-  },
+    })
+    .map(u => ({
+      id: u.usuario_id,
+      nome: u.usuario_nome
+    }));
+},
 
   /* ──────────────────────────────────────────────────────────
      3c. Fechamentos do mês
@@ -251,113 +255,121 @@ const API = {
      mesclados na mesma lista, normalizados com tipo='FEDERAL'.
   ─────────────────────────────────────────────────────────── */
   async buscarProdutos(fechamentoId) {
-    const [resProd, resFed] = await Promise.all([
-      _supabase
-        .from('fechamento_produtos')
-        .select('id, descricao, tipo, qtd_vendida, valor_unitario, total')
-        .eq('fechamento_id', fechamentoId),
+  const { data: produtosRows, error: errProd } = await _supabase
+    .from('fechamento_produtos')
+    .select('id, descricao, tipo, qtd_vendida, valor_unitario, total')
+    .eq('fechamento_id', fechamentoId);
 
-      _supabase
-        .from('federal_vendas')
-        .select('id, qtd_vendida, valor_unitario, valor_liquido, federais(modalidade, concurso)')
-        .eq('fechamento_id', fechamentoId),
-    ]);
+  if (errProd) throw errProd;
 
-    if (resProd.error) throw resProd.error;
-    if (resFed.error)  throw resFed.error;
+  const { data: vendasFed, error: errFed } = await _supabase
+    .from('federal_vendas')
+    .select('id, federal_id, qtd_vendida, valor_unitario, valor_liquido')
+    .eq('fechamento_id', fechamentoId);
 
-    // Normaliza produtos (RASPADINHA / TELESENA)
-    const produtos = (resProd.data || []).map(p => ({
-      id:          p.id,
-      nome:        p.descricao || '—',
-      tipo:        p.tipo,                        // 'RASPADINHA' | 'TELESENA'
-      quantidade:  Number(p.qtd_vendida   || 0),
-      valor_unit:  Number(p.valor_unitario || 0),
-      total:       Number(p.total          || 0),
-    }));
+  if (errFed) throw errFed;
 
-    // Normaliza federais
-    const federais = (resFed.data || []).map(f => {
-      const modalidade = f.federais?.modalidade || 'Federal';
-      const concurso   = f.federais?.concurso   || '';
-      return {
-        id:         f.id,
-        nome:       concurso ? `${modalidade} #${concurso}` : modalidade,
-        tipo:       'FEDERAL',
-        quantidade: Number(f.qtd_vendida    || 0),
-        valor_unit: Number(f.valor_unitario || 0),
-        total:      Number(f.valor_liquido  || 0),
-      };
-    });
+  const federalIds = [...new Set((vendasFed || []).map(f => f.federal_id).filter(Boolean))];
 
-    return [...produtos, ...federais];
-  },
+  let federaisRows = [];
+  if (federalIds.length > 0) {
+    const { data, error } = await _supabase
+      .from('federais')
+      .select('id, modalidade, concurso')
+      .in('id', federalIds);
 
+    if (error) throw error;
+    federaisRows = data || [];
+  }
+
+  const mapaFederal = Object.fromEntries(
+    federaisRows.map(f => [String(f.id), f])
+  );
+
+  const produtos = (produtosRows || []).map(p => ({
+    id: p.id,
+    nome: p.descricao || '—',
+    tipo: p.tipo,
+    quantidade: Number(p.qtd_vendida || 0),
+    valor_unit: Number(p.valor_unitario || 0),
+    total: Number(p.total || 0),
+  }));
+
+  const federais = (vendasFed || []).map(f => {
+    const fed = mapaFederal[String(f.federal_id)] || {};
+    const modalidade = fed.modalidade || 'Federal';
+    const concurso = fed.concurso || '';
+
+    return {
+      id: f.id,
+      nome: concurso ? `${modalidade} #${concurso}` : modalidade,
+      tipo: 'FEDERAL',
+      quantidade: Number(f.qtd_vendida || 0),
+      valor_unit: Number(f.valor_unitario || 0),
+      total: Number(f.valor_liquido || 0),
+    };
+  });
+
+  return [...produtos, ...federais];
+},
   /* ──────────────────────────────────────────────────────────
      3e. Bolões de um fechamento
      Fonte: fechamento_boloes + JOIN boloes
      O campo tipo (INTERNO/EXTERNO) vem diretamente da tabela
      fechamento_boloes, que é preenchido no momento da venda.
   ─────────────────────────────────────────────────────────── */
-  async buscarBoloes(fechamentoId) {
-    const { data, error } = await _supabase
-      .from('fechamento_boloes')
-      .select(`
-        id,
-        tipo,
-        modalidade,
-        concurso,
-        qtd_vendida,
-        valor_cota,
-        subtotal,
-        boloes ( descricao )
-      `)
-      .eq('fechamento_id', fechamentoId);
+ async buscarBoloes(fechamentoId) {
+  const { data, error } = await _supabase
+    .from('fechamento_boloes')
+    .select(`
+      id,
+      bolao_id,
+      tipo,
+      modalidade,
+      concurso,
+      qtd_vendida,
+      valor_cota,
+      subtotal
+    `)
+    .eq('fechamento_id', fechamentoId);
 
-    if (error) throw error;
+  if (error) throw error;
 
-    return (data || []).map(b => {
-      const descBolao = b.boloes?.descricao || '';
-      const concurso  = b.concurso  || '';
-      const modalidade = b.modalidade || '';
-      const nome = descBolao
-        || (concurso ? `${modalidade} ${concurso}` : modalidade)
-        || '—';
+  return (data || []).map(b => {
+    const nome =
+      (b.concurso ? `${b.modalidade} ${b.concurso}` : b.modalidade) || '—';
 
-      return {
-        id:             b.id,
-        descricao:      nome,
-        tipo:           b.tipo,                       // 'INTERNO' | 'EXTERNO'
-        cotas_vendidas: Number(b.qtd_vendida || 0),
-        valor_cota:     Number(b.valor_cota  || 0),
-        subtotal:       Number(b.subtotal    || 0),
-      };
-    });
-  },
+    return {
+      id: b.id,
+      descricao: nome,
+      tipo: b.tipo,
+      cotas_vendidas: Number(b.qtd_vendida || 0),
+      valor_cota: Number(b.valor_cota || 0),
+      subtotal: Number(b.subtotal || 0),
+    };
+  });
+},
 
   /* ──────────────────────────────────────────────────────────
      3f. Dívidas de um fechamento
      Fonte: fechamento_dividas
   ─────────────────────────────────────────────────────────── */
-  async buscarDividas(fechamentoId) {
-    const { data, error } = await _supabase
-      .from('fechamento_dividas')
-      .select('id, cliente_nome, valor, observacao')
-      .eq('fechamento_id', fechamentoId)
-      .order('valor', { ascending: false });
+ async buscarDividas(fechamentoId) {
+  const { data, error } = await _supabase
+    .from('fechamento_dividas')
+    .select('id, cliente_nome, valor')
+    .eq('fechamento_id', fechamentoId)
+    .order('valor', { ascending: false });
 
-    if (error) throw error;
+  if (error) throw error;
 
-    return (data || []).map(d => ({
-      id:       d.id,
-      cliente:  d.cliente_nome || '—',
-      valor:    Number(d.valor || 0),
-      obs:      d.observacao || '',
-    }));
-  },
-
-};
-
+  return (data || []).map(d => ({
+    id: d.id,
+    cliente: d.cliente_nome || '—',
+    valor: Number(d.valor || 0),
+    obs: '',
+  }));
+},
 
 /* ════════════════════════════════════════════════════════════
    4. VIEWER — MÓDULO PRINCIPAL DE UI
