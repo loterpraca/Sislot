@@ -324,7 +324,7 @@ const VIEWER = {
      3c. FILTROS E EVENTOS
   ─────────────────────────────────────────────────────────── */
 
- _initFiltros() {
+_initFiltros() {
   document.getElementById('sel-mes').addEventListener('change', e => {
     ESTADO.mes = parseInt(e.target.value, 10);
     ESTADO.diaAtivo = null;
@@ -347,12 +347,12 @@ const VIEWER = {
     if (selFunc) selFunc.value = '';
 
     await this._carregarFuncionarios();
-    this.recarregar();
+    await this.recarregar();
   });
 
-  document.getElementById('sel-func').addEventListener('change', e => {
+  document.getElementById('sel-func').addEventListener('change', async e => {
     ESTADO.funcFiltro = e.target.value || '';
-    this.recarregar();
+    await this.recarregar();
   });
 },
 
@@ -372,39 +372,52 @@ const VIEWER = {
     });
   },
 
- async _carregarFuncionarios() {
+async _carregarFuncionarios() {
   const sel = document.getElementById('sel-func');
   while (sel.options.length > 1) sel.remove(1);
 
   try {
     const sb = this._getSb();
 
-    const { data, error } = await sb
-      .from('usuarios')
-      .select('*')
-      .order('nome', { ascending: true });
-
-    if (error) throw error;
-
-    let lista = (data || [])
-      .filter(row => {
-        const status = String(row.status || 'ATIVO').toUpperCase();
-        return status === 'ATIVO';
-      })
-      .map(row => ({
-        id: row.id ?? row.usuario_id ?? row.key ?? '',
-        nome: row.nome ?? row.usuario_nome ?? row.userid ?? 'Sem nome',
-        loja_id: row.loteria_id ?? row.loja_id ?? row.origem_id ?? ''
-      }));
+    let qVinculos = sb
+      .from('usuarios_loterias')
+      .select('usuario_id, loteria_id, principal, ativo')
+      .eq('ativo', true)
+      .order('principal', { ascending: false })
+      .order('usuario_id', { ascending: true });
 
     if (ESTADO.lojaFiltro) {
-      lista = lista.filter(f => String(f.loja_id) === String(ESTADO.lojaFiltro));
+      qVinculos = qVinculos.eq('loteria_id', ESTADO.lojaFiltro);
     }
 
-    lista.forEach(f => {
+    const { data: vinculos, error: errVinculos } = await qVinculos;
+    if (errVinculos) throw errVinculos;
+
+    const usuarioIds = [...new Set((vinculos || []).map(v => v.usuario_id).filter(Boolean))];
+
+    if (!usuarioIds.length) return;
+
+    const { data, error } = await sb
+  .from('vw_fechamentos_html')
+  .select('*')
+  .gte('data_ref', primeiroDia)
+  .lte('data_ref', ultimoDia)
+  .order('data_ref', { ascending: true })
+  .order('created_at', { ascending: true });
+     
+    if (errUsuarios) throw errUsuarios;
+
+    const mapaUsuarios = new Map((usuarios || []).map(u => [String(u.id), u]));
+
+    const listaFinal = usuarioIds
+      .map(id => mapaUsuarios.get(String(id)))
+      .filter(Boolean)
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+
+    listaFinal.forEach(row => {
       const op = document.createElement('option');
-      op.value = f.id;
-      op.textContent = f.nome;
+      op.value = row.id;
+      op.textContent = row.nome;
       sel.appendChild(op);
     });
   } catch (err) {
@@ -412,6 +425,7 @@ const VIEWER = {
     this.toast('Erro ao carregar funcionários.', 'erro');
   }
 },
+   
 _getSb() {
   if (window.sb && typeof window.sb.from === 'function') return window.sb;
   if (window.SISLOT_SB && typeof window.SISLOT_SB.from === 'function') return window.SISLOT_SB;
@@ -539,22 +553,16 @@ _nomeLojaPorId(id) {
   const ultimoDia = `${ano}-${mesStr}-${String(ultimoDiaNum).padStart(2, '0')}`;
 
   let query = sb
-    .from('fechamentos')
-    .select('*')
-    .gte('data', primeiroDia)
-    .lte('data', ultimoDia)
-    .order('data', { ascending: true })
-    .order('created_at', { ascending: true });
+  .from('vw_usuarios_loterias_ativos')
+  .select('usuario_id, usuario_nome, loteria_id, principal')
+  .order('principal', { ascending: false })
+  .order('usuario_nome', { ascending: true });
 
-  if (ESTADO.lojaFiltro) {
-    query = query.eq('loteria_id', Number(ESTADO.lojaFiltro));
-  }
+if (ESTADO.lojaFiltro) {
+  query = query.eq('loteria_id', ESTADO.lojaFiltro);
+}
 
-  if (ESTADO.funcFiltro) {
-    query = query.eq('funcionario_id', Number(ESTADO.funcFiltro));
-  }
-
-  const { data, error } = await query;
+const { data, error } = await query;
 
   if (error) {
     console.error('Erro ao buscar fechamentos do mês:', error);
