@@ -1,229 +1,77 @@
 /* ════════════════════════════════════════════════════════════
-   SISLOT — Conferência de Caixa  |  JavaScript v2.0
+   SISLOT — Conferência de Caixa  |  JavaScript v3.0
+   Integração Supabase + sislot-security.js
    ─────────────────────────────────────────────────────────
    Estrutura:
-     1. DADOS MOCK (substitua pelas funções reais do backend)
+     1. BOOTSTRAP — autenticação e contexto de segurança
      2. ESTADO GLOBAL
-     3. VIEWER — módulo principal
-        3a. Inicialização
-        3b. Relógio e período
-        3c. Abas de dias
-        3d. Carregamento de dados
-        3e. Renderização do painel esquerdo
-        3f. Renderização do painel direito (tabelas)
-        3g. Interações UI
-        3h. Utilitários
+     3. API — funções de acesso ao banco (Supabase)
+     4. VIEWER — módulo principal de UI
+        4a. Inicialização
+        4b. Relógio e período
+        4c. Filtros e eventos
+        4d. Carregamento de dados
+        4e. Abas de dias
+        4f. Seleção de dia e carregamento
+        4g. Renderização do painel esquerdo
+        4h. Renderização do painel direito (tabelas)
+        4i. Estados da UI
+        4j. Controles das seções (accordion)
+        4k. Edição
+        4l. Modais
+        4m. Toast
+        4n. Cálculos
+        4o. Utilitários
 ════════════════════════════════════════════════════════════ */
 
 'use strict';
 
 /* ════════════════════════════════════════════════════════════
-   1. DADOS MOCK
-   ─────────────────────────────────────────────────────────
-   Estes dados simulam o que viria do seu backend.
-   Substitua as funções de carregamento por chamadas reais
-   ao Supabase ou à sua API.
+   1. BOOTSTRAP — autenticação e contexto de segurança
+
+   O sislot-security.js expõe window.SISLOT_SECURITY.
+   Ele resolve o usuário via Supabase Auth (auth.uid() →
+   tabela usuarios) e devolve:
+     ctx.usuario        — { id, nome, email, perfil, ... }
+     ctx.lojasPermitidas — array de { loteria_id, nome, ... }
+   A página só monta se protegerPagina() resolver com sucesso.
 ════════════════════════════════════════════════════════════ */
 
-const MOCK = {
+let _supabase = null;   // cliente Supabase (window.supabase criado pelo CDN)
+let _ctx      = null;   // contexto de segurança resolvido
 
-  // Funcionários disponíveis
-  funcionarios: [
-    { id: 1, nome: 'Ana Costa',     loja_id: 1 },
-    { id: 2, nome: 'Bruno Mendes',  loja_id: 1 },
-    { id: 3, nome: 'Carla Souza',   loja_id: 2 },
-    { id: 4, nome: 'Diego Lima',    loja_id: 2 },
-  ],
+async function _bootstrap() {
+  // O sislot-config.js define window.SISLOT_CONFIG = { supabaseUrl, supabaseKey }
+  if (!window.SISLOT_CONFIG) {
+    console.error('[SISLOT] sislot-config.js não carregou ou não definiu SISLOT_CONFIG.');
+    document.body.innerHTML = '<p style="color:#ff4f4f;padding:32px;font-family:monospace">Erro de configuração: sislot-config.js ausente.</p>';
+    return;
+  }
 
-  // Fechamentos do mês (todos os funcionários)
-  // data: 'YYYY-MM-DD'
-  fechamentos: [
-    {
-      id: 101, data: '2026-03-03',
-      funcionario_id: 1, funcionario_nome: 'Ana Costa',
-      loja_id: 1, loja_nome: 'Centro',
-      status: 'fechado', criado_em: '2026-03-03T17:42:11',
-      relatorio: 3120.50, deposito: 2900.00,
-      troco_ini: 200.00, troco_sob: 180.00,
-      pix_cnpj: 480.00, pix_dif: 0.00,
-      premio_rasp: 150.00, resgate_tele: 80.00,
-      justificativa: '',
-    },
-    {
-      id: 102, data: '2026-03-03',
-      funcionario_id: 2, funcionario_nome: 'Bruno Mendes',
-      loja_id: 1, loja_nome: 'Centro',
-      status: 'fechado', criado_em: '2026-03-03T18:10:04',
-      relatorio: 1850.00, deposito: 1600.00,
-      troco_ini: 200.00, troco_sob: 210.00,
-      pix_cnpj: 280.00, pix_dif: 0.00,
-      premio_rasp: 60.00, resgate_tele: 0.00,
-      justificativa: '',
-    },
-    {
-      id: 103, data: '2026-03-07',
-      funcionario_id: 1, funcionario_nome: 'Ana Costa',
-      loja_id: 1, loja_nome: 'Centro',
-      status: 'fechado', criado_em: '2026-03-07T17:55:00',
-      relatorio: 2780.00, deposito: 2600.00,
-      troco_ini: 200.00, troco_sob: 195.00,
-      pix_cnpj: 390.00, pix_dif: -15.00,
-      premio_rasp: 100.00, resgate_tele: 110.00,
-      justificativa: 'Diferença de PIX identificada em extrato bancário, valor em análise.',
-    },
-    {
-      id: 104, data: '2026-03-10',
-      funcionario_id: 3, funcionario_nome: 'Carla Souza',
-      loja_id: 2, loja_nome: 'Norte',
-      status: 'fechado', criado_em: '2026-03-10T18:30:22',
-      relatorio: 4200.00, deposito: 4000.00,
-      troco_ini: 250.00, troco_sob: 240.00,
-      pix_cnpj: 620.00, pix_dif: 0.00,
-      premio_rasp: 300.00, resgate_tele: 220.00,
-      justificativa: '',
-    },
-    {
-      id: 105, data: '2026-03-14',
-      funcionario_id: 2, funcionario_nome: 'Bruno Mendes',
-      loja_id: 1, loja_nome: 'Centro',
-      status: 'pendente', criado_em: '2026-03-14T17:20:00',
-      relatorio: 1950.00, deposito: 1700.00,
-      troco_ini: 200.00, troco_sob: 215.00,
-      pix_cnpj: 310.00, pix_dif: 0.00,
-      premio_rasp: 80.00, resgate_tele: 55.00,
-      justificativa: '',
-    },
-    {
-      id: 106, data: '2026-03-17',
-      funcionario_id: 1, funcionario_nome: 'Ana Costa',
-      loja_id: 1, loja_nome: 'Centro',
-      status: 'fechado', criado_em: '2026-03-17T18:05:44',
-      relatorio: 3450.00, deposito: 3200.00,
-      troco_ini: 200.00, troco_sob: 190.00,
-      pix_cnpj: 520.00, pix_dif: 0.00,
-      premio_rasp: 200.00, resgate_tele: 165.00,
-      justificativa: '',
-    },
-    {
-      id: 107, data: '2026-03-20',
-      funcionario_id: 4, funcionario_nome: 'Diego Lima',
-      loja_id: 2, loja_nome: 'Norte',
-      status: 'fechado', criado_em: '2026-03-20T17:48:33',
-      relatorio: 2200.00, deposito: 1980.00,
-      troco_ini: 250.00, troco_sob: 248.00,
-      pix_cnpj: 350.00, pix_dif: 20.00,
-      premio_rasp: 90.00, resgate_tele: 40.00,
-      justificativa: '',
-    },
-    {
-      id: 108, data: '2026-03-24',
-      funcionario_id: 1, funcionario_nome: 'Ana Costa',
-      loja_id: 1, loja_nome: 'Centro',
-      status: 'fechado', criado_em: '2026-03-24T18:22:15',
-      relatorio: 2900.00, deposito: 2750.00,
-      troco_ini: 200.00, troco_sob: 185.00,
-      pix_cnpj: 410.00, pix_dif: 0.00,
-      premio_rasp: 130.00, resgate_tele: 95.00,
-      justificativa: '',
-    },
-  ],
+  // Cria o cliente Supabase (supabase-js CDN expõe window.supabase.createClient)
+  _supabase = window.supabase.createClient(
+    window.SISLOT_CONFIG.supabaseUrl,
+    window.SISLOT_CONFIG.supabaseKey
+  );
 
-  // Produtos por fechamento
-  produtos: {
-    101: [
-      { id: 1, nome: 'Raspadinha R$ 5,00',   tipo: 'RASPADINHA', quantidade: 40, valor_unit: 5.00 },
-      { id: 2, nome: 'Raspadinha R$ 10,00',  tipo: 'RASPADINHA', quantidade: 22, valor_unit: 10.00 },
-      { id: 3, nome: 'Raspadinha R$ 20,00',  tipo: 'RASPADINHA', quantidade: 8,  valor_unit: 20.00 },
-      { id: 4, nome: 'Tele Sena Maio',       tipo: 'TELESENA',   quantidade: 6,  valor_unit: 55.00 },
-      { id: 5, nome: 'Mega-Sena #2750',      tipo: 'FEDERAL',    quantidade: 12, valor_unit: 4.50 },
-      { id: 6, nome: 'Lotofácil #3122',      tipo: 'FEDERAL',    quantidade: 8,  valor_unit: 2.50 },
-    ],
-    102: [
-      { id: 7, nome: 'Raspadinha R$ 5,00',   tipo: 'RASPADINHA', quantidade: 30, valor_unit: 5.00 },
-      { id: 8, nome: 'Raspadinha R$ 10,00',  tipo: 'RASPADINHA', quantidade: 12, valor_unit: 10.00 },
-      { id: 9, nome: 'Mega-Sena #2750',      tipo: 'FEDERAL',    quantidade: 6,  valor_unit: 4.50 },
-    ],
-    103: [
-      { id: 10, nome: 'Raspadinha R$ 5,00',  tipo: 'RASPADINHA', quantidade: 50, valor_unit: 5.00 },
-      { id: 11, nome: 'Raspadinha R$ 20,00', tipo: 'RASPADINHA', quantidade: 10, valor_unit: 20.00 },
-      { id: 12, nome: 'Tele Sena Maio',      tipo: 'TELESENA',   quantidade: 4,  valor_unit: 55.00 },
-      { id: 13, nome: 'Lotofácil #3125',     tipo: 'FEDERAL',    quantidade: 15, valor_unit: 2.50 },
-    ],
-    104: [
-      { id: 14, nome: 'Raspadinha R$ 5,00',  tipo: 'RASPADINHA', quantidade: 60, valor_unit: 5.00 },
-      { id: 15, nome: 'Raspadinha R$ 10,00', tipo: 'RASPADINHA', quantidade: 40, valor_unit: 10.00 },
-      { id: 16, nome: 'Raspadinha R$ 25,00', tipo: 'RASPADINHA', quantidade: 15, valor_unit: 25.00 },
-      { id: 17, nome: 'Tele Sena Maio',      tipo: 'TELESENA',   quantidade: 8,  valor_unit: 55.00 },
-      { id: 18, nome: 'Mega-Sena #2752',     tipo: 'FEDERAL',    quantidade: 20, valor_unit: 4.50 },
-    ],
-    105: [
-      { id: 19, nome: 'Raspadinha R$ 5,00',  tipo: 'RASPADINHA', quantidade: 28, valor_unit: 5.00 },
-      { id: 20, nome: 'Raspadinha R$ 10,00', tipo: 'RASPADINHA', quantidade: 15, valor_unit: 10.00 },
-      { id: 21, nome: 'Lotofácil #3130',     tipo: 'FEDERAL',    quantidade: 10, valor_unit: 2.50 },
-    ],
-    106: [
-      { id: 22, nome: 'Raspadinha R$ 5,00',  tipo: 'RASPADINHA', quantidade: 45, valor_unit: 5.00 },
-      { id: 23, nome: 'Raspadinha R$ 10,00', tipo: 'RASPADINHA', quantidade: 28, valor_unit: 10.00 },
-      { id: 24, nome: 'Raspadinha R$ 20,00', tipo: 'RASPADINHA', quantidade: 12, valor_unit: 20.00 },
-      { id: 25, nome: 'Tele Sena Junho',     tipo: 'TELESENA',   quantidade: 5,  valor_unit: 55.00 },
-      { id: 26, nome: 'Mega-Sena #2758',     tipo: 'FEDERAL',    quantidade: 18, valor_unit: 4.50 },
-      { id: 27, nome: 'Quina #6400',         tipo: 'FEDERAL',    quantidade: 14, valor_unit: 2.00 },
-    ],
-    107: [
-      { id: 28, nome: 'Raspadinha R$ 5,00',  tipo: 'RASPADINHA', quantidade: 35, valor_unit: 5.00 },
-      { id: 29, nome: 'Raspadinha R$ 10,00', tipo: 'RASPADINHA', quantidade: 20, valor_unit: 10.00 },
-      { id: 30, nome: 'Mega-Sena #2760',     tipo: 'FEDERAL',    quantidade: 10, valor_unit: 4.50 },
-    ],
-    108: [
-      { id: 31, nome: 'Raspadinha R$ 5,00',  tipo: 'RASPADINHA', quantidade: 42, valor_unit: 5.00 },
-      { id: 32, nome: 'Raspadinha R$ 10,00', tipo: 'RASPADINHA', quantidade: 25, valor_unit: 10.00 },
-      { id: 33, nome: 'Raspadinha R$ 20,00', tipo: 'RASPADINHA', quantidade: 6,  valor_unit: 20.00 },
-      { id: 34, nome: 'Tele Sena Junho',     tipo: 'TELESENA',   quantidade: 4,  valor_unit: 55.00 },
-      { id: 35, nome: 'Lotofácil #3142',     tipo: 'FEDERAL',    quantidade: 12, valor_unit: 2.50 },
-    ],
-  },
+  // Protege a página via camada de segurança padrão do SISLOT
+  try {
+    _ctx = await window.SISLOT_SECURITY.protegerPagina(_supabase, {
+      // Perfis que podem acessar a conferência de caixa
+      perfisPermitidos: ['OPERADOR', 'GERENTE', 'SOCIO', 'ADMIN'],
+    });
+  } catch (err) {
+    // protegerPagina já faz redirect para login em caso de falha;
+    // só cai aqui se houver erro inesperado.
+    console.error('[SISLOT] Falha na proteção de página:', err);
+    return;
+  }
 
-  // Bolões por fechamento
-  boloes: {
-    101: [
-      { id: 1, descricao: 'Mega-Sena 2750 — 6 dezenas',  tipo: 'INTERNO', cotas_vendidas: 8,  valor_cota: 25.00 },
-      { id: 2, descricao: 'Lotofácil 3122 — Externo SP', tipo: 'EXTERNO', cotas_vendidas: 5,  valor_cota: 15.00 },
-    ],
-    103: [
-      { id: 3, descricao: 'Mega-Sena 2753 — 7 dezenas',  tipo: 'INTERNO', cotas_vendidas: 10, valor_cota: 30.00 },
-    ],
-    104: [
-      { id: 4, descricao: 'Lotofácil 3128 — Interno',    tipo: 'INTERNO', cotas_vendidas: 12, valor_cota: 20.00 },
-      { id: 5, descricao: 'Mega-Sena 2752 — Externo RJ', tipo: 'EXTERNO', cotas_vendidas: 8,  valor_cota: 35.00 },
-      { id: 6, descricao: 'Quina 6399 — Interno',        tipo: 'INTERNO', cotas_vendidas: 6,  valor_cota: 18.00 },
-    ],
-    106: [
-      { id: 7, descricao: 'Mega-Sena 2758 — 6 dezenas',  tipo: 'INTERNO', cotas_vendidas: 9,  valor_cota: 28.00 },
-    ],
-    108: [
-      { id: 8, descricao: 'Mega-Sena 2762 — Interno',    tipo: 'INTERNO', cotas_vendidas: 7,  valor_cota: 25.00 },
-      { id: 9, descricao: 'Lotofácil 3142 — Externo MG', tipo: 'EXTERNO', cotas_vendidas: 4,  valor_cota: 20.00 },
-    ],
-  },
+  // Com contexto resolvido, inicializa o viewer
+  VIEWER.init();
+}
 
-  // Dívidas por fechamento
-  dividas: {
-    101: [
-      { id: 1, cliente: 'João da Silva',      valor: 50.00,  obs: 'Bolão pendente' },
-      { id: 2, cliente: 'Maria Aparecida',    valor: 25.00,  obs: '' },
-    ],
-    103: [
-      { id: 3, cliente: 'Roberto Ferreira',   valor: 30.00,  obs: 'Raspadinha fiada' },
-    ],
-    104: [
-      { id: 4, cliente: 'Cláudia Moreira',    valor: 80.00,  obs: 'Bolão externo RJ' },
-      { id: 5, cliente: 'Paulo Andrade',      valor: 35.00,  obs: '' },
-    ],
-    107: [
-      { id: 6, cliente: 'Fernanda Costa',     valor: 45.00,  obs: 'Telesena pendente' },
-    ],
-  },
-};
+document.addEventListener('DOMContentLoaded', _bootstrap);
 
 
 /* ════════════════════════════════════════════════════════════
@@ -234,17 +82,21 @@ const ESTADO = {
   mes:              new Date().getMonth() + 1,
   ano:              new Date().getFullYear(),
   diaAtivo:         null,
-  lojaFiltro:       '',
-  funcFiltro:       '',
-  // Cache de dados do mês
+  lojaFiltro:       '',   // loteria_id selecionada no select (string)
+  funcFiltro:       '',   // usuario_id selecionado no select (string)
+
+  // Cache de dados do mês atual
   fechamentosDoMes: [],
+
   // Fechamento atualmente exibido
   fechamentoAtual:  null,
-  fechamentoIdx:    0,      // índice quando há múltiplos no mesmo dia
-  // Dados das tabelas filhas
+  fechamentoIdx:    0,    // índice quando há múltiplos fechamentos no mesmo dia
+
+  // Dados das tabelas filhas do fechamento ativo
   produtosAtuais:   [],
   boloesAtuais:     [],
   dividasAtuais:    [],
+
   // Controle de UI
   secoesAbertas:    { produtos: true, boloes: true, dividas: true, geral: false },
   modoEdicao:       false,
@@ -252,35 +104,293 @@ const ESTADO = {
 
 
 /* ════════════════════════════════════════════════════════════
-   3. VIEWER — MÓDULO PRINCIPAL
+   3. API — funções de acesso ao banco via Supabase
+
+   Todas as funções retornam dados normalizados para o
+   formato que o VIEWER espera. Erros são lançados para
+   que o chamador decida o que exibir ao usuário.
+════════════════════════════════════════════════════════════ */
+
+const API = {
+
+  /* ──────────────────────────────────────────────────────────
+     3a. Lojas permitidas para o usuário logado
+     Usa ctx.lojasPermitidas resolvido pela camada de segurança.
+     Fallback: consulta view_usuarios_acesso direto.
+  ─────────────────────────────────────────────────────────── */
+  async buscarLojasDoUsuario() {
+    // ctx.lojasPermitidas já vem do sislot-security — prefira sempre isso
+    if (_ctx && _ctx.lojasPermitidas && _ctx.lojasPermitidas.length > 0) {
+      return _ctx.lojasPermitidas.map(l => ({
+        id:   l.loteria_id,
+        nome: l.nome,
+      }));
+    }
+
+    // Fallback: consulta direta à view
+    const { data, error } = await _supabase
+      .from('view_usuarios_acesso')
+      .select('loteria_id, nome')
+      .eq('usuario_id', _ctx.usuario.id)
+      .eq('ativo', true)
+      .order('nome');
+
+    if (error) throw error;
+    return (data || []).map(l => ({ id: l.loteria_id, nome: l.nome }));
+  },
+
+  /* ──────────────────────────────────────────────────────────
+     3b. Funcionários vinculados às lojas permitidas
+     Fonte: vw_usuarios_loterias_ativos
+     Retorna lista única de usuários (deduplicada por id).
+  ─────────────────────────────────────────────────────────── */
+  async buscarFuncionarios(lojaIds) {
+    let query = _supabase
+      .from('vw_usuarios_loterias_ativos')
+      .select('usuario_id, nome, loteria_id')
+      .order('nome');
+
+    if (lojaIds && lojaIds.length > 0) {
+      query = query.in('loteria_id', lojaIds);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Deduplica por usuario_id — o mesmo usuário pode estar em várias lojas
+    const vistos = new Set();
+    return (data || []).filter(u => {
+      if (vistos.has(u.usuario_id)) return false;
+      vistos.add(u.usuario_id);
+      return true;
+    }).map(u => ({ id: u.usuario_id, nome: u.nome }));
+  },
+
+  /* ──────────────────────────────────────────────────────────
+     3c. Fechamentos do mês
+     Fonte: vw_fechamentos_html — view oficial de leitura.
+     Normaliza os campos da view para o formato interno.
+  ─────────────────────────────────────────────────────────── */
+  async buscarFechamentosDoMes(mes, ano, lojaId, usuarioId) {
+    const mesStr   = String(mes).padStart(2, '0');
+    const dataIni  = `${ano}-${mesStr}-01`;
+    // Último dia do mês
+    const dataFim  = new Date(ano, mes, 0).toISOString().split('T')[0];
+
+    let query = _supabase
+      .from('vw_fechamentos_html')
+      .select('*')
+      .gte('data_ref', dataIni)
+      .lte('data_ref', dataFim)
+      .order('data_ref', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    // Aplica restrição de lojas permitidas (segurança multi-loja)
+    const lojaIdsPermitidas = (_ctx.lojasPermitidas || []).map(l => l.loteria_id);
+    if (lojaIdsPermitidas.length > 0) {
+      query = query.in('loteria_id', lojaIdsPermitidas);
+    }
+
+    // Filtros opcionais de UI
+    if (lojaId)    query = query.eq('loteria_id', lojaId);
+    if (usuarioId) query = query.eq('usuario_id', usuarioId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Normaliza campos da view para o formato que o VIEWER consome
+    return (data || []).map(f => this._normalizarFechamento(f));
+  },
+
+  /* ──────────────────────────────────────────────────────────
+     Normaliza um registro da vw_fechamentos_html para o
+     formato interno do VIEWER. Centraliza o mapeamento de
+     nomes de colunas — se a view mudar, ajusta só aqui.
+  ─────────────────────────────────────────────────────────── */
+  _normalizarFechamento(f) {
+    return {
+      // Identificação
+      id:               f.id,
+      data:             f.data_ref,               // 'YYYY-MM-DD'
+      loteria_id:       f.loteria_id,
+      loja_nome:        f.nome || f.loja_nome || '—',
+      usuario_id:       f.usuario_id,
+      funcionario_nome: f.funcionario_nome || f.criado_por || '—',
+      status:           f.status || 'fechado',
+      criado_em:        f.created_at,
+      canal_venda:      f.canal_venda,
+      sobrescrito_por:  f.sobrescrito_por,
+
+      // Valores financeiros
+      relatorio:        Number(f.relatorio      || 0),
+      deposito:         Number(f.deposito        || 0),
+      troco_ini:        Number(f.troco_inicial   || 0),
+      troco_sob:        Number(f.troco_sobra     || 0),
+      pix_cnpj:         Number(f.pix_cnpj        || 0),
+      pix_dif:          Number(f.diferenca_pix   || 0),
+      premio_rasp:      Number(f.premio_raspadinha || 0),
+      resgate_tele:     Number(f.resgate_telesena  || 0),
+
+      // Totais já calculados pelo banco (use-os; não recalcule)
+      total_produtos:   Number(f.total_produtos  || 0),
+      total_federais:   Number(f.total_federais  || 0),
+      total_boloes:     Number(f.total_boloes    || 0),
+      total_fiado:      Number(f.total_fiado     || 0),
+      total_debitos:    Number(f.total_debitos   || 0),
+      total_creditos:   Number(f.total_creditos  || 0),
+      quebra:           Number(f.quebra          || 0),
+
+      justificativa:    f.justificativa || '',
+    };
+  },
+
+  /* ──────────────────────────────────────────────────────────
+     3d. Produtos de um fechamento
+     Fonte: fechamento_produtos + JOIN produtos
+     Federais (federal_vendas) são buscados separadamente e
+     mesclados na mesma lista, normalizados com tipo='FEDERAL'.
+  ─────────────────────────────────────────────────────────── */
+  async buscarProdutos(fechamentoId) {
+    const [resProd, resFed] = await Promise.all([
+      _supabase
+        .from('fechamento_produtos')
+        .select('id, descricao, tipo, qtd_vendida, valor_unitario, total')
+        .eq('fechamento_id', fechamentoId),
+
+      _supabase
+        .from('federal_vendas')
+        .select('id, qtd_vendida, valor_unitario, valor_liquido, federais(modalidade, concurso)')
+        .eq('fechamento_id', fechamentoId),
+    ]);
+
+    if (resProd.error) throw resProd.error;
+    if (resFed.error)  throw resFed.error;
+
+    // Normaliza produtos (RASPADINHA / TELESENA)
+    const produtos = (resProd.data || []).map(p => ({
+      id:          p.id,
+      nome:        p.descricao || '—',
+      tipo:        p.tipo,                        // 'RASPADINHA' | 'TELESENA'
+      quantidade:  Number(p.qtd_vendida   || 0),
+      valor_unit:  Number(p.valor_unitario || 0),
+      total:       Number(p.total          || 0),
+    }));
+
+    // Normaliza federais
+    const federais = (resFed.data || []).map(f => {
+      const modalidade = f.federais?.modalidade || 'Federal';
+      const concurso   = f.federais?.concurso   || '';
+      return {
+        id:         f.id,
+        nome:       concurso ? `${modalidade} #${concurso}` : modalidade,
+        tipo:       'FEDERAL',
+        quantidade: Number(f.qtd_vendida    || 0),
+        valor_unit: Number(f.valor_unitario || 0),
+        total:      Number(f.valor_liquido  || 0),
+      };
+    });
+
+    return [...produtos, ...federais];
+  },
+
+  /* ──────────────────────────────────────────────────────────
+     3e. Bolões de um fechamento
+     Fonte: fechamento_boloes + JOIN boloes
+     O campo tipo (INTERNO/EXTERNO) vem diretamente da tabela
+     fechamento_boloes, que é preenchido no momento da venda.
+  ─────────────────────────────────────────────────────────── */
+  async buscarBoloes(fechamentoId) {
+    const { data, error } = await _supabase
+      .from('fechamento_boloes')
+      .select(`
+        id,
+        tipo,
+        modalidade,
+        concurso,
+        qtd_vendida,
+        valor_cota,
+        subtotal,
+        boloes ( descricao )
+      `)
+      .eq('fechamento_id', fechamentoId);
+
+    if (error) throw error;
+
+    return (data || []).map(b => {
+      const descBolao = b.boloes?.descricao || '';
+      const concurso  = b.concurso  || '';
+      const modalidade = b.modalidade || '';
+      const nome = descBolao
+        || (concurso ? `${modalidade} ${concurso}` : modalidade)
+        || '—';
+
+      return {
+        id:             b.id,
+        descricao:      nome,
+        tipo:           b.tipo,                       // 'INTERNO' | 'EXTERNO'
+        cotas_vendidas: Number(b.qtd_vendida || 0),
+        valor_cota:     Number(b.valor_cota  || 0),
+        subtotal:       Number(b.subtotal    || 0),
+      };
+    });
+  },
+
+  /* ──────────────────────────────────────────────────────────
+     3f. Dívidas de um fechamento
+     Fonte: fechamento_dividas
+  ─────────────────────────────────────────────────────────── */
+  async buscarDividas(fechamentoId) {
+    const { data, error } = await _supabase
+      .from('fechamento_dividas')
+      .select('id, cliente_nome, valor, observacao')
+      .eq('fechamento_id', fechamentoId)
+      .order('valor', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(d => ({
+      id:       d.id,
+      cliente:  d.cliente_nome || '—',
+      valor:    Number(d.valor || 0),
+      obs:      d.observacao || '',
+    }));
+  },
+
+};
+
+
+/* ════════════════════════════════════════════════════════════
+   4. VIEWER — MÓDULO PRINCIPAL DE UI
 ════════════════════════════════════════════════════════════ */
 
 const VIEWER = {
 
   /* ──────────────────────────────────────────────────────────
-     3a. INICIALIZAÇÃO
+     4a. INICIALIZAÇÃO
   ─────────────────────────────────────────────────────────── */
 
   async init() {
-  this._initRelogio();
-  this._initPeriodo();
-  this._initFiltros();
-  this._initEventos();
-  await this._carregarFuncionarios();
-  await this.recarregar();
-},
+    this._initRelogio();
+    this._initPeriodo();
+    this._initEventos();
+
+    try {
+      await this._carregarLojas();
+      await this._carregarFuncionarios();
+      await this.recarregar();
+    } catch (err) {
+      console.error('[VIEWER.init]', err);
+      this.toast('Erro ao inicializar a página.', 'erro');
+    }
+  },
 
   /* ──────────────────────────────────────────────────────────
-     3b. RELÓGIO E PERÍODO
+     4b. RELÓGIO E PERÍODO
   ─────────────────────────────────────────────────────────── */
 
-  _inicioRelogio: null,
-
   _initRelogio() {
-    const el = document.getElementById('app-clock');
-    const tick = () => {
-      if (el) el.textContent = new Date().toLocaleTimeString('pt-BR');
-    };
+    const el   = document.getElementById('app-clock');
+    const tick = () => { if (el) el.textContent = new Date().toLocaleTimeString('pt-BR'); };
     tick();
     setInterval(tick, 1000);
   },
@@ -289,7 +399,6 @@ const VIEWER = {
     const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-    // Preenche select de meses
     const selMes = document.getElementById('sel-mes');
     MESES.forEach((nome, i) => {
       const op = document.createElement('option');
@@ -299,8 +408,7 @@ const VIEWER = {
       selMes.appendChild(op);
     });
 
-    // Preenche select de anos (3 atrás até 1 à frente)
-    const selAno = document.getElementById('sel-ano');
+    const selAno  = document.getElementById('sel-ano');
     const anoAtual = new Date().getFullYear();
     for (let a = anoAtual - 3; a <= anoAtual + 1; a++) {
       const op = document.createElement('option');
@@ -321,42 +429,37 @@ const VIEWER = {
   },
 
   /* ──────────────────────────────────────────────────────────
-     3c. FILTROS E EVENTOS
+     4c. FILTROS E EVENTOS
   ─────────────────────────────────────────────────────────── */
 
-_initFiltros() {
-  document.getElementById('sel-mes').addEventListener('change', e => {
-    ESTADO.mes = parseInt(e.target.value, 10);
-    ESTADO.diaAtivo = null;
-    this._atualizarPeriodoLabel();
-    this.recarregar();
-  });
-
-  document.getElementById('sel-ano').addEventListener('change', e => {
-    ESTADO.ano = parseInt(e.target.value, 10);
-    ESTADO.diaAtivo = null;
-    this._atualizarPeriodoLabel();
-    this.recarregar();
-  });
-
-  document.getElementById('sel-loja').addEventListener('change', async e => {
-    ESTADO.lojaFiltro = e.target.value || '';
-    ESTADO.funcFiltro = '';
-
-    const selFunc = document.getElementById('sel-func');
-    if (selFunc) selFunc.value = '';
-
-    await this._carregarFuncionarios();
-    await this.recarregar();
-  });
-
-  document.getElementById('sel-func').addEventListener('change', async e => {
-    ESTADO.funcFiltro = e.target.value || '';
-    await this.recarregar();
-  });
-},
-
   _initEventos() {
+    document.getElementById('sel-mes').addEventListener('change', e => {
+      ESTADO.mes = parseInt(e.target.value);
+      ESTADO.diaAtivo = null;
+      this._atualizarPeriodoLabel();
+      this.recarregar();
+    });
+
+    document.getElementById('sel-ano').addEventListener('change', e => {
+      ESTADO.ano = parseInt(e.target.value);
+      ESTADO.diaAtivo = null;
+      this._atualizarPeriodoLabel();
+      this.recarregar();
+    });
+
+    document.getElementById('sel-loja').addEventListener('change', async e => {
+      ESTADO.lojaFiltro = e.target.value;
+      ESTADO.diaAtivo = null;
+      // Ao mudar loja, recarrega funcionários filtrados por ela
+      await this._carregarFuncionarios();
+      this.recarregar();
+    });
+
+    document.getElementById('sel-func').addEventListener('change', e => {
+      ESTADO.funcFiltro = e.target.value;
+      this.recarregar();
+    });
+
     document.getElementById('btn-inicio').addEventListener('click', () => {
       this.abrirModal('modal-inicio');
     });
@@ -372,351 +475,117 @@ _initFiltros() {
     });
   },
 
-async _carregarFuncionarios() {
-  const sel = document.getElementById('sel-func');
-  while (sel.options.length > 1) sel.remove(1);
-
-  try {
-    const sb = this._getSb();
-
-    let qVinculos = sb
-      .from('usuarios_loterias')
-      .select('usuario_id, loteria_id, principal, ativo')
-      .eq('ativo', true)
-      .order('principal', { ascending: false })
-      .order('usuario_id', { ascending: true });
-
-    if (ESTADO.lojaFiltro) {
-      qVinculos = qVinculos.eq('loteria_id', ESTADO.lojaFiltro);
+  /* ──────────────────────────────────────────────────────────
+     Popula select de lojas com as lojas permitidas ao usuário
+  ─────────────────────────────────────────────────────────── */
+  async _carregarLojas() {
+    let lojas;
+    try {
+      lojas = await API.buscarLojasDoUsuario();
+    } catch (err) {
+      console.error('[_carregarLojas]', err);
+      this.toast('Erro ao carregar lojas.', 'erro');
+      return;
     }
 
-    const { data: vinculos, error: errVinculos } = await qVinculos;
-    if (errVinculos) throw errVinculos;
+    const sel = document.getElementById('sel-loja');
+    // Mantém opção "Todas" e remove o restante
+    while (sel.options.length > 1) sel.remove(1);
 
-    const usuarioIds = [...new Set((vinculos || []).map(v => v.usuario_id).filter(Boolean))];
-
-    if (!usuarioIds.length) return;
-
-    const { data, error } = await sb
-  .from('vw_fechamentos_html')
-  .select('*')
-  .gte('data_ref', primeiroDia)
-  .lte('data_ref', ultimoDia)
-  .order('data_ref', { ascending: true })
-  .order('created_at', { ascending: true });
-     
-    if (errUsuarios) throw errUsuarios;
-
-    const mapaUsuarios = new Map((usuarios || []).map(u => [String(u.id), u]));
-
-    const listaFinal = usuarioIds
-      .map(id => mapaUsuarios.get(String(id)))
-      .filter(Boolean)
-      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
-
-    listaFinal.forEach(row => {
+    lojas.forEach(l => {
       const op = document.createElement('option');
-      op.value = row.id;
-      op.textContent = row.nome;
+      op.value = l.id;
+      op.textContent = l.nome;
       sel.appendChild(op);
     });
-  } catch (err) {
-    console.error('Erro ao carregar funcionários:', err);
-    this.toast('Erro ao carregar funcionários.', 'erro');
-  }
-},
-   
-_getSb() {
-  if (window.sb && typeof window.sb.from === 'function') return window.sb;
-  if (window.SISLOT_SB && typeof window.SISLOT_SB.from === 'function') return window.SISLOT_SB;
-  if (window.supabaseClient && typeof window.supabaseClient.from === 'function') return window.supabaseClient;
 
-  if (
-    window.supabase &&
-    typeof window.supabase.createClient === 'function' &&
-    window.SISLOT_CONFIG?.url &&
-    window.SISLOT_CONFIG?.anonKey
-  ) {
-    if (!window.__sislotViewerSb) {
-      window.__sislotViewerSb = window.supabase.createClient(
-        window.SISLOT_CONFIG.url,
-        window.SISLOT_CONFIG.anonKey
-      );
+    // Se o usuário só tem acesso a uma loja, pré-seleciona ela
+    if (lojas.length === 1) {
+      sel.value = lojas[0].id;
+      ESTADO.lojaFiltro = String(lojas[0].id);
     }
-    return window.__sislotViewerSb;
-  }
+  },
 
-  throw new Error('Cliente Supabase não encontrado.');
-},
-
-_normalizarDataISO(valor) {
-  if (!valor) return '';
-
-  if (valor instanceof Date && !isNaN(valor)) {
-    const dt = new Date(valor.getTime() - valor.getTimezoneOffset() * 60000);
-    return dt.toISOString().slice(0, 10);
-  }
-
-  const txt = String(valor).trim();
-
-  const iso = txt.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (iso) return iso[1];
-
-  const br = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
-
-  const dt = new Date(txt);
-  if (!isNaN(dt)) {
-    const adj = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
-    return adj.toISOString().slice(0, 10);
-  }
-
-  return '';
-},
-
-_normalizarNumero(valor) {
-  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
-  if (valor === null || valor === undefined || valor === '') return 0;
-
-  const txt = String(valor).trim();
-
-  if (/^-?\d{1,3}(\.\d{3})*,\d+$/.test(txt)) {
-    const n = Number(txt.replace(/\./g, '').replace(',', '.'));
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  if (/^-?\d+,\d+$/.test(txt)) {
-    const n = Number(txt.replace(',', '.'));
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  const n = Number(txt);
-  return Number.isFinite(n) ? n : 0;
-},
-
-_nomeFuncionarioPorId(id) {
-  const sel = document.getElementById('sel-func');
-  if (!sel || id === null || id === undefined || id === '') return '—';
-
-  const op = Array.from(sel.options).find(o => String(o.value) === String(id));
-  return op ? op.textContent : '—';
-},
-
-_nomeLojaPorId(id) {
-  const sel = document.getElementById('sel-loja');
-  if (!sel || id === null || id === undefined || id === '') return '—';
-
-  const op = Array.from(sel.options).find(o => String(o.value) === String(id));
-  return op ? op.textContent : '—';
-},
   /* ──────────────────────────────────────────────────────────
-     3d. CARREGAMENTO DE DADOS
+     Popula select de funcionários considerando filtro de loja
+  ─────────────────────────────────────────────────────────── */
+  async _carregarFuncionarios() {
+    // Determina quais IDs de lojas considerar para filtrar funcionários
+    const lojaIds = ESTADO.lojaFiltro
+      ? [ESTADO.lojaFiltro]
+      : (_ctx.lojasPermitidas || []).map(l => String(l.loteria_id));
+
+    let funcionarios;
+    try {
+      funcionarios = await API.buscarFuncionarios(lojaIds);
+    } catch (err) {
+      console.error('[_carregarFuncionarios]', err);
+      this.toast('Erro ao carregar funcionários.', 'erro');
+      return;
+    }
+
+    const sel = document.getElementById('sel-func');
+    while (sel.options.length > 1) sel.remove(1);
+
+    funcionarios.forEach(f => {
+      const op = document.createElement('option');
+      op.value = f.id;
+      op.textContent = f.nome;
+      sel.appendChild(op);
+    });
+
+    // Se o funcionário selecionado não existe mais na nova lista, reseta
+    const ids = funcionarios.map(f => String(f.id));
+    if (ESTADO.funcFiltro && !ids.includes(ESTADO.funcFiltro)) {
+      ESTADO.funcFiltro = '';
+      sel.value = '';
+    }
+  },
+
+  /* ──────────────────────────────────────────────────────────
+     4d. CARREGAMENTO DE DADOS
   ─────────────────────────────────────────────────────────── */
 
-  /**
-   * Recarrega todos os dados do mês selecionado e regenera abas.
-   */
   async recarregar() {
+    const btn = document.getElementById('btn-atualizar');
+    if (btn) btn.classList.add('girando');
+
     try {
-      ESTADO.fechamentosDoMes = await this._buscarFechamentosDoMes(ESTADO.mes, ESTADO.ano);
+      ESTADO.fechamentosDoMes = await API.buscarFechamentosDoMes(
+        ESTADO.mes,
+        ESTADO.ano,
+        ESTADO.lojaFiltro  || null,
+        ESTADO.funcFiltro  || null,
+      );
       this._gerarAbasDias();
 
-      // Se havia um dia selecionado, recarrega
       if (ESTADO.diaAtivo) {
-        this._selecionarDia(ESTADO.diaAtivo, true);
+        await this._selecionarDia(ESTADO.diaAtivo, true);
       } else {
         this._mostrarEstadoInicial();
       }
     } catch (err) {
-      console.error('Erro ao recarregar:', err);
+      console.error('[recarregar]', err);
       this.toast('Erro ao carregar dados do mês.', 'erro');
+    } finally {
+      if (btn) btn.classList.remove('girando');
     }
   },
 
-  /**
-   * Busca fechamentos do mês/ano com filtros aplicados.
-   * ─── PONTO DE INTEGRAÇÃO ───
-   * Substitua o corpo desta função pela chamada real ao backend.
-   * Exemplo Supabase:
-   *   const { data } = await supabase
-   *     .from('fechamentos')
-   *     .select('*')
-   *     .gte('data', `${ano}-${String(mes).padStart(2,'0')}-01`)
-   *     .lte('data', `${ano}-${String(mes).padStart(2,'0')}-31`)
-   *   return data;
-   */
-  async _buscarFechamentosDoMes(mes, ano) {
-  const sb = this._getSb();
-  const mesStr = String(mes).padStart(2, '0');
-  const primeiroDia = `${ano}-${mesStr}-01`;
-  const ultimoDiaNum = new Date(ano, mes, 0).getDate();
-  const ultimoDia = `${ano}-${mesStr}-${String(ultimoDiaNum).padStart(2, '0')}`;
-
-  let query = sb
-  .from('vw_usuarios_loterias_ativos')
-  .select('usuario_id, usuario_nome, loteria_id, principal')
-  .order('principal', { ascending: false })
-  .order('usuario_nome', { ascending: true });
-
-if (ESTADO.lojaFiltro) {
-  query = query.eq('loteria_id', ESTADO.lojaFiltro);
-}
-
-const { data, error } = await query;
-
-  if (error) {
-    console.error('Erro ao buscar fechamentos do mês:', error);
-    throw error;
-  }
-
-  return (data || []).map(row => {
-    const funcionarioId = row.funcionario_id ?? row.usuario_id ?? null;
-    const lojaId = row.loteria_id ?? row.loja_id ?? null;
-
-    return {
-      id: row.id,
-      data: this._normalizarDataISO(row.data || row.data_fechamento || row.dt_fechamento || ''),
-      funcionario_id: funcionarioId,
-      funcionario_nome:
-        row.funcionario_nome ||
-        row.nome_funcionario ||
-        row.usuario_nome ||
-        row.funcionario ||
-        this._nomeFuncionarioPorId(funcionarioId),
-      loja_id: lojaId,
-      loja_nome:
-        row.loja_nome ||
-        row.nome_loja ||
-        row.loteria ||
-        row.loja ||
-        this._nomeLojaPorId(lojaId),
-      status: String(row.status || 'fechado').toLowerCase(),
-      criado_em: row.created_at || row.criado_em || row.carimbo || null,
-
-      relatorio: this._normalizarNumero(row.relatorio),
-      deposito: this._normalizarNumero(row.deposito),
-      troco_ini: this._normalizarNumero(row.troco_ini ?? row.troco_inicial),
-      troco_sob: this._normalizarNumero(row.troco_sob ?? row.troco_sobra),
-      pix_cnpj: this._normalizarNumero(row.pix_cnpj),
-      pix_dif: this._normalizarNumero(row.pix_dif ?? row.diferenca_pix),
-      premio_rasp: this._normalizarNumero(row.premio_rasp ?? row.premio_raspadinha),
-      resgate_tele: this._normalizarNumero(row.resgate_tele ?? row.resgate_telesena),
-      justificativa: row.justificativa || ''
-    };
-  });
-},
-
-async _buscarProdutos(fechamentoId) {
-  const sb = this._getSb();
-
-  const { data, error } = await sb
-    .from('fechamento_produtos')
-    .select('*')
-    .eq('fechamento_id', fechamentoId)
-    .order('id', { ascending: true });
-
-  if (error) {
-    console.error('Erro ao buscar produtos:', error);
-    throw error;
-  }
-
-  return (data || []).map(row => ({
-    id: row.id,
-    nome:
-      row.nome ||
-      row.produto_nome ||
-      row.descricao ||
-      row.modalidade ||
-      '—',
-    tipo: String(
-      row.tipo ||
-      row.categoria ||
-      row.grupo ||
-      'PRODUTO'
-    ).toUpperCase(),
-    quantidade: this._normalizarNumero(row.quantidade ?? row.qtd_vendida ?? row.qtd),
-    valor_unit: this._normalizarNumero(row.valor_unit ?? row.valor_unitario ?? row.valor_cota)
-  }));
-},
-
-async _buscarBoloes(fechamentoId) {
-  const sb = this._getSb();
-
-  const { data, error } = await sb
-    .from('fechamento_boloes')
-    .select('*')
-    .eq('fechamento_id', fechamentoId)
-    .order('id', { ascending: true });
-
-  if (error) {
-    console.error('Erro ao buscar bolões:', error);
-    throw error;
-  }
-
-  return (data || []).map(row => ({
-    id: row.id,
-    descricao:
-      row.descricao ||
-      row.bolao_nome ||
-      row.nome ||
-      [
-        row.modalidade || 'Bolão',
-        row.concurso ? `#${row.concurso}` : ''
-      ].filter(Boolean).join(' '),
-    tipo: String(
-      row.tipo ||
-      row.origem_tipo ||
-      row.classificacao ||
-      row.interno_externo ||
-      'INTERNO'
-    ).toUpperCase(),
-    cotas_vendidas: this._normalizarNumero(
-      row.cotas_vendidas ?? row.qtd_vendida ?? row.qtd_cotas
-    ),
-    valor_cota: this._normalizarNumero(row.valor_cota ?? row.valor_unitario)
-  }));
-},
-
-async _buscarDividas(fechamentoId) {
-  const sb = this._getSb();
-
-  const { data, error } = await sb
-    .from('fechamento_dividas')
-    .select('*')
-    .eq('fechamento_id', fechamentoId)
-    .order('id', { ascending: true });
-
-  if (error) {
-    console.error('Erro ao buscar dívidas:', error);
-    throw error;
-  }
-
-  return (data || []).map(row => ({
-    id: row.id,
-    cliente: row.cliente || row.nome_cliente || '—',
-    valor: this._normalizarNumero(row.valor),
-    obs: row.obs || row.observacao || ''
-  }));
-},
   /* ──────────────────────────────────────────────────────────
-     3e. ABAS DE DIAS
+     4e. ABAS DE DIAS
   ─────────────────────────────────────────────────────────── */
 
-  /**
-   * Gera dinamicamente as abas de dias do mês na barra inferior.
-   * Ajusta automaticamente para 28, 29, 30 ou 31 dias.
-   */
   _gerarAbasDias() {
-    const container = document.getElementById('dias-scroll');
+    const container   = document.getElementById('dias-scroll');
     const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
     const DIAS_FULL   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
-    // Quantos dias tem o mês?
-    const totalDias = new Date(ESTADO.ano, ESTADO.mes, 0).getDate();
-    const hoje      = new Date();
+    const totalDias  = new Date(ESTADO.ano, ESTADO.mes, 0).getDate();
+    const hoje       = new Date();
     const ehMesAtual = hoje.getMonth() + 1 === ESTADO.mes && hoje.getFullYear() === ESTADO.ano;
 
-    // Mapa de dias que têm dados (para exibir o ponto indicador)
+    // Mapa de dias que têm fechamentos
     const diasComDados = {};
     ESTADO.fechamentosDoMes.forEach(f => {
       const dia = parseInt(f.data.split('-')[2]);
@@ -728,26 +597,27 @@ async _buscarDividas(fechamentoId) {
 
     for (let d = 1; d <= totalDias; d++) {
       const data   = new Date(ESTADO.ano, ESTADO.mes - 1, d);
-      const dow    = data.getDay(); // 0=dom, 6=sáb
+      const dow    = data.getDay();
       const ehFds  = dow === 0 || dow === 6;
       const ehHoje = ehMesAtual && d === hoje.getDate();
 
-      const temDados   = !!diasComDados[d];
-      const temQuebra  = temDados && diasComDados[d].some(f => Math.abs(this._calcularQuebra(f)) > 0.01);
-      const ehAtivo    = d === ESTADO.diaAtivo;
+      const temDados  = !!diasComDados[d];
+      // Quebra: usa o campo já calculado pelo banco
+      const temQuebra = temDados && diasComDados[d].some(f => Math.abs(f.quebra) > 0.01);
+      const ehAtivo   = d === ESTADO.diaAtivo;
 
       const tab = document.createElement('button');
       tab.className = [
         'dia-tab',
-        temDados   ? 'tem-dados' : 'sem-dados',
-        temQuebra  ? 'tem-quebra' : '',
-        ehFds      ? 'fds' : '',
-        ehHoje     ? 'hoje' : '',
-        ehAtivo    ? 'ativo' : '',
+        temDados  ? 'tem-dados'  : 'sem-dados',
+        temQuebra ? 'tem-quebra' : '',
+        ehFds     ? 'fds'        : '',
+        ehHoje    ? 'hoje'       : '',
+        ehAtivo   ? 'ativo'      : '',
       ].filter(Boolean).join(' ');
 
       tab.dataset.dia = d;
-      tab.title       = `${String(d).padStart(2,'0')} — ${DIAS_FULL[dow]}${temDados ? ' (tem fechamento)' : ''}`;
+      tab.title = `${String(d).padStart(2,'0')} — ${DIAS_FULL[dow]}${temDados ? ' (tem fechamento)' : ''}`;
 
       tab.innerHTML = `
         <div class="dia-num-wrap">
@@ -761,7 +631,7 @@ async _buscarDividas(fechamentoId) {
       container.appendChild(tab);
     }
 
-    // Scroll até o dia ativo ou o dia de hoje
+    // Rola até o dia ativo ou hoje
     setTimeout(() => {
       const alvo = ESTADO.diaAtivo || (ehMesAtual ? hoje.getDate() : 1);
       this._scrollParaDia(alvo);
@@ -770,9 +640,7 @@ async _buscarDividas(fechamentoId) {
 
   _scrollParaDia(dia) {
     const tab = document.querySelector(`.dia-tab[data-dia="${dia}"]`);
-    if (tab) {
-      tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
+    if (tab) tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   },
 
   scrollDias(direcao) {
@@ -781,11 +649,11 @@ async _buscarDividas(fechamentoId) {
   },
 
   /* ──────────────────────────────────────────────────────────
-     3f. SELEÇÃO DE DIA E CARREGAMENTO
+     4f. SELEÇÃO DE DIA E CARREGAMENTO
   ─────────────────────────────────────────────────────────── */
 
   async _selecionarDia(dia, silencioso = false) {
-    ESTADO.diaAtivo = dia;
+    ESTADO.diaAtivo      = dia;
     ESTADO.fechamentoIdx = 0;
 
     // Atualiza destaque das abas
@@ -793,29 +661,22 @@ async _buscarDividas(fechamentoId) {
       t.classList.toggle('ativo', parseInt(t.dataset.dia) === dia);
     });
 
-    // Busca fechamentos do dia (pode haver mais de um)
-    const diaStr    = String(dia).padStart(2, '0');
-    const mesStr    = String(ESTADO.mes).padStart(2, '0');
-    const dataRef   = `${ESTADO.ano}-${mesStr}-${diaStr}`;
-    const lista     = ESTADO.fechamentosDoMes.filter(f => f.data === dataRef);
+    const diaStr  = String(dia).padStart(2, '0');
+    const mesStr  = String(ESTADO.mes).padStart(2, '0');
+    const dataRef = `${ESTADO.ano}-${mesStr}-${diaStr}`;
+    const lista   = ESTADO.fechamentosDoMes.filter(f => f.data === dataRef);
 
     if (lista.length === 0) {
       this._mostrarSemDados(dia);
       return;
     }
 
-    // Exibe o estado de loading
     this._mostrarLoading();
 
     try {
-      // Simula delay de rede (remova em produção)
-      await new Promise(r => setTimeout(r, 180));
-
-      // Carrega dados do primeiro fechamento (ou do índice atual)
       await this._carregarFechamento(lista, ESTADO.fechamentoIdx);
-
     } catch (err) {
-      console.error('Erro ao carregar fechamento:', err);
+      console.error('[_selecionarDia]', err);
       this.toast('Erro ao carregar fechamento.', 'erro');
       this._mostrarSemDados(dia);
     }
@@ -827,29 +688,37 @@ async _buscarDividas(fechamentoId) {
 
     // Busca dados das tabelas filhas em paralelo
     const [produtos, boloes, dividas] = await Promise.all([
-      this._buscarProdutos(fech.id),
-      this._buscarBoloes(fech.id),
-      this._buscarDividas(fech.id),
+      API.buscarProdutos(fech.id),
+      API.buscarBoloes(fech.id),
+      API.buscarDividas(fech.id),
     ]);
 
     ESTADO.produtosAtuais = produtos;
     ESTADO.boloesAtuais   = boloes;
     ESTADO.dividasAtuais  = dividas;
 
-    // Renderiza tudo
     this._renderizarPainelEsq(fech, lista);
     this._renderizarPainelDir(fech, produtos, boloes, dividas);
   },
 
+  _trocarFechamento(idx) {
+    const diaStr  = String(ESTADO.diaAtivo).padStart(2, '0');
+    const mesStr  = String(ESTADO.mes).padStart(2, '0');
+    const dataRef = `${ESTADO.ano}-${mesStr}-${diaStr}`;
+    const lista   = ESTADO.fechamentosDoMes.filter(f => f.data === dataRef);
+
+    ESTADO.fechamentoIdx = idx;
+    this._carregarFechamento(lista, idx);
+  },
+
   /* ──────────────────────────────────────────────────────────
-     3g. RENDERIZAÇÃO — PAINEL ESQUERDO
+     4g. RENDERIZAÇÃO — PAINEL ESQUERDO
   ─────────────────────────────────────────────────────────── */
 
   _renderizarPainelEsq(fech, lista) {
     const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     const DIAS_EXT    = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
-    // Oculta estados e exibe dados
     this._setPainelEsqEstado('dados');
 
     // ── Status ──
@@ -859,10 +728,12 @@ async _buscarDividas(fechamentoId) {
     document.getElementById('fech-status-txt').textContent = statusMap[fech.status] || fech.status;
 
     // ── Hora ──
-    const hora = fech.criado_em ? new Date(fech.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const hora = fech.criado_em
+      ? new Date(fech.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : '—';
     document.getElementById('fech-hora').textContent = hora;
 
-    // ── Múltiplos fechamentos ──
+    // ── Múltiplos fechamentos no mesmo dia ──
     const multiFech = document.getElementById('multi-fech');
     if (lista.length > 1) {
       multiFech.style.display = 'block';
@@ -870,7 +741,7 @@ async _buscarDividas(fechamentoId) {
       tabs.innerHTML = lista.map((f, i) => {
         const nome = f.funcionario_nome.split(' ')[0];
         return `<button class="mf-tab ${i === ESTADO.fechamentoIdx ? 'ativo' : ''}"
-                  onclick="VIEWER._trocarFechamento(${i})">${nome}</button>`;
+                  onclick="VIEWER._trocarFechamento(${i})">${this._esc(nome)}</button>`;
       }).join('');
     } else {
       multiFech.style.display = 'none';
@@ -878,49 +749,39 @@ async _buscarDividas(fechamentoId) {
 
     // ── Identificação ──
     const inicial = fech.funcionario_nome ? fech.funcionario_nome.charAt(0).toUpperCase() : '?';
-    document.getElementById('func-avatar').textContent = inicial;
-    document.getElementById('func-nome').textContent   = fech.funcionario_nome || '—';
-    document.getElementById('func-loja-txt').textContent = fech.loja_nome || '—';
+    document.getElementById('func-avatar').textContent    = inicial;
+    document.getElementById('func-nome').textContent      = fech.funcionario_nome;
+    document.getElementById('func-loja-txt').textContent  = fech.loja_nome;
 
     // ── Data ──
-    const dataObj  = new Date(fech.data + 'T12:00:00');
-    const dia      = dataObj.getDate();
-    const mesIdx   = dataObj.getMonth();
-    const dow      = dataObj.getDay();
+    const dataObj = new Date(fech.data + 'T12:00:00');
+    document.getElementById('data-dia').textContent = String(dataObj.getDate()).padStart(2, '0');
+    document.getElementById('data-mes').textContent = MESES_ABREV[dataObj.getMonth()];
+    document.getElementById('data-dow').textContent = DIAS_EXT[dataObj.getDay()];
 
-    document.getElementById('data-dia').textContent  = String(dia).padStart(2, '0');
-    document.getElementById('data-mes').textContent  = MESES_ABREV[mesIdx];
-    document.getElementById('data-dow').textContent  = DIAS_EXT[dow];
-
-    // ── Totais ──
-    const totProd = this._somarProdutos(ESTADO.produtosAtuais);
-    const totBol  = this._somarBoloes(ESTADO.boloesAtuais);
-    const totDiv  = this._somarDividas(ESTADO.dividasAtuais);
-
+    // ── Totais — usa valores pré-calculados do banco ──
     document.getElementById('rc-relatorio').textContent = this._moeda(fech.relatorio);
     document.getElementById('rc-deposito').textContent  = this._moeda(fech.deposito);
-    document.getElementById('rc-pix').textContent       = this._moeda((fech.pix_cnpj || 0) + (fech.pix_dif || 0));
-    document.getElementById('rc-produtos').textContent  = this._moeda(totProd);
-    document.getElementById('rc-boloes').textContent    = this._moeda(totBol);
-    document.getElementById('rc-dividas').textContent   = this._moeda(totDiv);
+    document.getElementById('rc-pix').textContent       = this._moeda(fech.pix_cnpj + fech.pix_dif);
+    document.getElementById('rc-produtos').textContent  = this._moeda(fech.total_produtos + fech.total_federais);
+    document.getElementById('rc-boloes').textContent    = this._moeda(fech.total_boloes);
+    document.getElementById('rc-dividas').textContent   = this._moeda(fech.total_fiado);
 
-    // ── Balanço ──
-    const { debitos, creditos } = this._calcularBalanco(fech, totProd, totBol, totDiv);
-    document.getElementById('bl-deb').textContent  = this._moeda(debitos);
-    document.getElementById('bl-cred').textContent = this._moeda(creditos);
+    // ── Balanço — usa colunas já calculadas pelo banco ──
+    document.getElementById('bl-deb').textContent  = this._moeda(fech.total_debitos);
+    document.getElementById('bl-cred').textContent = this._moeda(fech.total_creditos);
 
-    // ── Quebra ──
-    const quebra    = creditos - debitos;
-    const quebraEl  = document.getElementById('quebra-card');
-    const valorEl   = document.getElementById('qc-valor');
-    const descEl    = document.getElementById('qc-desc');
+    // ── Quebra — vem direto do banco ──
+    const quebra   = fech.quebra;
+    const quebraEl = document.getElementById('quebra-card');
+    const valorEl  = document.getElementById('qc-valor');
+    const descEl   = document.getElementById('qc-desc');
 
     valorEl.textContent = this._moeda(Math.abs(quebra));
     quebraEl.className  = 'quebra-card';
 
     if (Math.abs(quebra) < 0.01) {
       descEl.textContent = 'Caixa equilibrado';
-      quebraEl.classList.add('');
     } else if (quebra < 0) {
       descEl.textContent = 'Caixa negativo';
       quebraEl.classList.add('negativa');
@@ -939,25 +800,15 @@ async _buscarDividas(fechamentoId) {
     }
 
     // ── Campos adicionais ──
-    document.getElementById('ca-troco-ini').textContent   = this._moeda(fech.troco_ini);
-    document.getElementById('ca-troco-sob').textContent   = this._moeda(fech.troco_sob);
-    document.getElementById('ca-pix-dif').textContent     = this._moeda(fech.pix_dif);
-    document.getElementById('ca-premio-rasp').textContent = this._moeda(fech.premio_rasp);
-    document.getElementById('ca-resgate-tele').textContent= this._moeda(fech.resgate_tele);
-  },
-
-  _trocarFechamento(idx) {
-    const diaStr  = String(ESTADO.diaAtivo).padStart(2, '0');
-    const mesStr  = String(ESTADO.mes).padStart(2, '0');
-    const dataRef = `${ESTADO.ano}-${mesStr}-${diaStr}`;
-    const lista   = ESTADO.fechamentosDoMes.filter(f => f.data === dataRef);
-
-    ESTADO.fechamentoIdx = idx;
-    this._carregarFechamento(lista, idx);
+    document.getElementById('ca-troco-ini').textContent    = this._moeda(fech.troco_ini);
+    document.getElementById('ca-troco-sob').textContent    = this._moeda(fech.troco_sob);
+    document.getElementById('ca-pix-dif').textContent      = this._moeda(fech.pix_dif);
+    document.getElementById('ca-premio-rasp').textContent  = this._moeda(fech.premio_rasp);
+    document.getElementById('ca-resgate-tele').textContent = this._moeda(fech.resgate_tele);
   },
 
   /* ──────────────────────────────────────────────────────────
-     3h. RENDERIZAÇÃO — PAINEL DIREITO (TABELAS)
+     4h. RENDERIZAÇÃO — PAINEL DIREITO (TABELAS)
   ─────────────────────────────────────────────────────────── */
 
   _renderizarPainelDir(fech, produtos, boloes, dividas) {
@@ -965,43 +816,34 @@ async _buscarDividas(fechamentoId) {
     area.style.display = 'flex';
     area.classList.add('fade-in');
 
-    // Oculta elementos decorativos
     document.getElementById('dir-grid-bg').classList.add('oculto');
     document.getElementById('dir-vazio-center').classList.add('oculto');
 
     // ── Barra de contexto ──
     const dataObj = new Date(fech.data + 'T12:00:00');
-    document.getElementById('ctx-data').textContent  = dataObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
-    document.getElementById('ctx-func').textContent  = fech.funcionario_nome || '—';
-    document.getElementById('ctx-loja').textContent  = fech.loja_nome || '—';
+    document.getElementById('ctx-data').textContent =
+      dataObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+    document.getElementById('ctx-func').textContent = fech.funcionario_nome;
+    document.getElementById('ctx-loja').textContent = fech.loja_nome;
 
-    const totProd = this._somarProdutos(produtos);
-    const totBol  = this._somarBoloes(boloes);
-    const totDiv  = this._somarDividas(dividas);
-    const totGeral = totProd + totBol + (fech.deposito || 0) + (fech.pix_cnpj || 0);
+    // Total geral: produtos + federais + bolões + depósito + pix
+    const totGeral = fech.total_produtos + fech.total_federais + fech.total_boloes
+                   + fech.deposito + fech.pix_cnpj;
     document.getElementById('ctx-total-geral').textContent = this._moeda(totGeral);
 
-    // ── Produtos ──
     this._renderizarTabelaProdutos(produtos);
-
-    // ── Bolões ──
     this._renderizarTabelaBoloes(boloes);
-
-    // ── Dívidas ──
     this._renderizarTabelaDividas(dividas);
-
-    // ── Dados Gerais ──
-    this._renderizarDadosGerais(fech, totProd, totBol, totDiv);
+    this._renderizarDadosGerais(fech);
   },
 
   _renderizarTabelaProdutos(produtos) {
-    const tbody   = document.getElementById('tbody-produtos');
-    const count   = document.getElementById('count-produtos');
-    const stotal  = document.getElementById('stotal-produtos');
-    const tf      = document.getElementById('tf-produtos');
+    const tbody  = document.getElementById('tbody-produtos');
+    const count  = document.getElementById('count-produtos');
+    const stotal = document.getElementById('stotal-produtos');
+    const tf     = document.getElementById('tf-produtos');
 
     const total = this._somarProdutos(produtos);
-
     count.textContent  = produtos.length + (produtos.length === 1 ? ' item' : ' itens');
     stotal.textContent = this._moeda(total);
     tf.textContent     = this._moeda(total);
@@ -1012,12 +854,11 @@ async _buscarDividas(fechamentoId) {
     }
 
     tbody.innerHTML = produtos.map(p => {
-      const subtotal = (p.quantidade || 0) * (p.valor_unit || 0);
-      const chipCls  = this._chipTipo(p.tipo);
+      const subtotal = p.total || (p.quantidade * p.valor_unit);
       return `
         <tr>
           <td>${this._esc(p.nome)}</td>
-          <td><span class="chip-tipo ${chipCls}">${p.tipo}</span></td>
+          <td><span class="chip-tipo ${this._chipTipo(p.tipo)}">${p.tipo}</span></td>
           <td class="col-r">${p.quantidade}</td>
           <td class="col-r">${this._moeda(p.valor_unit)}</td>
           <td class="col-r-accent">${this._moeda(subtotal)}</td>
@@ -1027,19 +868,20 @@ async _buscarDividas(fechamentoId) {
   },
 
   _renderizarTabelaBoloes(boloes) {
-    const tbody      = document.getElementById('tbody-boloes');
-    const count      = document.getElementById('count-boloes');
-    const stotal     = document.getElementById('stotal-boloes');
-    const tf         = document.getElementById('tf-boloes');
-    const tfIntInfo  = document.getElementById('tf-bol-int-info');
+    const tbody     = document.getElementById('tbody-boloes');
+    const count     = document.getElementById('count-boloes');
+    const stotal    = document.getElementById('stotal-boloes');
+    const tf        = document.getElementById('tf-boloes');
+    const tfIntInfo = document.getElementById('tf-bol-int-info');
 
-    const total       = this._somarBoloes(boloes);
-    const totalInt    = boloes.filter(b => b.tipo === 'INTERNO').reduce((s, b) => s + b.cotas_vendidas * b.valor_cota, 0);
-    const cotasInt    = boloes.filter(b => b.tipo === 'INTERNO').reduce((s, b) => s + (b.cotas_vendidas || 0), 0);
+    const total    = this._somarBoloes(boloes);
+    const cotasInt = boloes
+      .filter(b => b.tipo === 'INTERNO')
+      .reduce((s, b) => s + (b.cotas_vendidas || 0), 0);
 
-    count.textContent  = boloes.length + (boloes.length === 1 ? ' item' : ' itens');
-    stotal.textContent = this._moeda(total);
-    tf.textContent     = this._moeda(total);
+    count.textContent    = boloes.length + (boloes.length === 1 ? ' item' : ' itens');
+    stotal.textContent   = this._moeda(total);
+    tf.textContent       = this._moeda(total);
     tfIntInfo.textContent = `${cotasInt} cotas int.`;
 
     if (boloes.length === 0) {
@@ -1048,15 +890,15 @@ async _buscarDividas(fechamentoId) {
     }
 
     tbody.innerHTML = boloes.map(b => {
-      const subtotal = (b.cotas_vendidas || 0) * (b.valor_cota || 0);
-      const chipCls  = b.tipo === 'INTERNO' ? 'chip-int' : 'chip-ext';
+      const sub     = b.subtotal || (b.cotas_vendidas * b.valor_cota);
+      const chipCls = b.tipo === 'INTERNO' ? 'chip-int' : 'chip-ext';
       return `
         <tr>
           <td>${this._esc(b.descricao)}</td>
           <td><span class="chip-tipo ${chipCls}">${b.tipo}</span></td>
           <td class="col-r">${b.cotas_vendidas}</td>
           <td class="col-r">${this._moeda(b.valor_cota)}</td>
-          <td class="col-r-accent">${this._moeda(subtotal)}</td>
+          <td class="col-r-accent">${this._moeda(sub)}</td>
         </tr>
       `;
     }).join('');
@@ -1069,7 +911,6 @@ async _buscarDividas(fechamentoId) {
     const tf     = document.getElementById('tf-dividas');
 
     const total = this._somarDividas(dividas);
-
     count.textContent  = dividas.length + (dividas.length === 1 ? ' cliente' : ' clientes');
     stotal.textContent = this._moeda(total);
     tf.textContent     = this._moeda(total);
@@ -1088,63 +929,58 @@ async _buscarDividas(fechamentoId) {
     `).join('');
   },
 
-  _renderizarDadosGerais(fech, totProd, totBol, totDiv) {
+  _renderizarDadosGerais(fech) {
     const tbody = document.getElementById('tbody-geral');
 
-    const { debitos, creditos } = this._calcularBalanco(fech, totProd, totBol, totDiv);
-    const quebra = creditos - debitos;
+    // Usa exclusivamente os valores calculados pelo banco
+    const quebra = fech.quebra;
 
     const linhas = [
-      ['Relatório do Dia',     this._moeda(fech.relatorio),   ''],
-      ['Depósito Bancário',    this._moeda(fech.deposito),    ''],
-      ['Troco Inicial (Fundo)',this._moeda(fech.troco_ini),   ''],
-      ['Troco Sobra (Final)',  this._moeda(fech.troco_sob),   ''],
-      ['PIX CNPJ Recebido',   this._moeda(fech.pix_cnpj),    'val-pos'],
-      ['Diferença de PIX',    this._moeda(fech.pix_dif),     (fech.pix_dif < 0 ? 'val-neg' : '')],
-      ['Prêmio Raspadinha',   this._moeda(fech.premio_rasp), 'val-pos'],
-      ['Resgate Telesena',    this._moeda(fech.resgate_tele),'val-pos'],
-      ['— Total Débitos',     this._moeda(debitos),          'val-neg'],
-      ['— Total Créditos',    this._moeda(creditos),         'val-pos'],
-      ['— Quebra de Caixa',   this._moeda(quebra),           quebra < 0 ? 'val-neg' : quebra > 0 ? 'val-pos' : 'val-zero'],
-      ['ID do Fechamento',    '#' + fech.id,                 ''],
-      ['Status',              fech.status,                   ''],
-      ['Registrado em',       fech.criado_em ? new Date(fech.criado_em).toLocaleString('pt-BR') : '—', ''],
+      ['Relatório do Dia',      this._moeda(fech.relatorio),    ''],
+      ['Depósito Bancário',     this._moeda(fech.deposito),     ''],
+      ['Troco Inicial (Fundo)', this._moeda(fech.troco_ini),    ''],
+      ['Troco Sobra (Final)',   this._moeda(fech.troco_sob),    ''],
+      ['PIX CNPJ Recebido',     this._moeda(fech.pix_cnpj),     'val-pos'],
+      ['Diferença de PIX',      this._moeda(fech.pix_dif),      fech.pix_dif < 0 ? 'val-neg' : ''],
+      ['Prêmio Raspadinha',     this._moeda(fech.premio_rasp),  'val-pos'],
+      ['Resgate Telesena',      this._moeda(fech.resgate_tele), 'val-pos'],
+      ['Total Produtos + Fed.', this._moeda(fech.total_produtos + fech.total_federais), 'val-pos'],
+      ['Total Bolões',          this._moeda(fech.total_boloes), 'val-pos'],
+      ['Total Fiado/Dívidas',   this._moeda(fech.total_fiado),  fech.total_fiado > 0 ? 'val-neg' : ''],
+      ['— Total Débitos',       this._moeda(fech.total_debitos),  'val-neg'],
+      ['— Total Créditos',      this._moeda(fech.total_creditos), 'val-pos'],
+      ['— Quebra de Caixa',     this._moeda(quebra), quebra < 0 ? 'val-neg' : quebra > 0 ? 'val-pos' : 'val-zero'],
+      ['Canal de Venda',        fech.canal_venda || '—',          ''],
+      ['ID do Fechamento',      '#' + fech.id,                    ''],
+      ['Status',                fech.status,                      ''],
+      ['Registrado em',         fech.criado_em ? new Date(fech.criado_em).toLocaleString('pt-BR') : '—', ''],
+      ['Sobrescrito por',       fech.sobrescrito_por || '—',      ''],
     ];
 
     tbody.innerHTML = linhas.map(([label, valor, cls]) => `
       <tr>
         <td>${label}</td>
-        <td class="${cls}">${valor}</td>
+        <td class="${cls}">${this._esc(String(valor))}</td>
       </tr>
     `).join('');
   },
 
   /* ──────────────────────────────────────────────────────────
-     3i. ESTADOS DA UI
+     4i. ESTADOS DA UI
   ─────────────────────────────────────────────────────────── */
 
   _setPainelEsqEstado(estado) {
-    const ids = ['esq-vazio', 'esq-loading', 'esq-sem-dados', 'esq-dados'];
-    ids.forEach(id => {
+    const mapa = { vazio: 'esq-vazio', loading: 'esq-loading', sem: 'esq-sem-dados', dados: 'esq-dados' };
+    ['esq-vazio', 'esq-loading', 'esq-sem-dados', 'esq-dados'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
-
-    const alvo = {
-      vazio:    'esq-vazio',
-      loading:  'esq-loading',
-      sem:      'esq-sem-dados',
-      dados:    'esq-dados',
-    }[estado];
-
-    const el = document.getElementById(alvo);
+    const el = document.getElementById(mapa[estado]);
     if (el) el.style.display = '';
   },
 
   _mostrarEstadoInicial() {
     this._setPainelEsqEstado('vazio');
-
-    // Painel direito: mostra decoração
     document.getElementById('detalhe-area').style.display = 'none';
     document.getElementById('dir-grid-bg').classList.remove('oculto');
     document.getElementById('dir-vazio-center').classList.remove('oculto');
@@ -1157,30 +993,28 @@ async _buscarDividas(fechamentoId) {
 
   _mostrarSemDados(dia) {
     this._setPainelEsqEstado('sem');
-    const diaStr  = String(dia).padStart(2, '0');
-    const mesStr  = String(ESTADO.mes).padStart(2, '0');
+    const diaStr = String(dia).padStart(2, '0');
+    const mesStr = String(ESTADO.mes).padStart(2, '0');
     document.getElementById('esq-sem-dados-txt').textContent =
       `Nenhum fechamento registrado para ${diaStr}/${mesStr}/${ESTADO.ano}.`;
-
     document.getElementById('detalhe-area').style.display = 'none';
     document.getElementById('dir-grid-bg').classList.remove('oculto');
     document.getElementById('dir-vazio-center').classList.add('oculto');
   },
 
   /* ──────────────────────────────────────────────────────────
-     3j. CONTROLES DAS SEÇÕES (ACCORDION)
+     4j. CONTROLES DAS SEÇÕES (ACCORDION)
   ─────────────────────────────────────────────────────────── */
 
   toggleSecao(headerEl) {
     const sec     = headerEl.closest('.sec');
     const secName = headerEl.dataset.sec;
-
     sec.classList.toggle('collapsed');
     ESTADO.secoesAbertas[secName] = !sec.classList.contains('collapsed');
   },
 
   /* ──────────────────────────────────────────────────────────
-     3k. EDIÇÃO
+     4k. EDIÇÃO
   ─────────────────────────────────────────────────────────── */
 
   toggleEdicao() {
@@ -1192,15 +1026,17 @@ async _buscarDividas(fechamentoId) {
         : '<i class="fas fa-pen"></i> Editar';
     }
     this.toast(ESTADO.modoEdicao ? 'Modo de edição ativado' : 'Edição cancelada', 'info');
-    // ─── PONTO DE INTEGRAÇÃO ───
-    // Aqui você ativaria os campos editáveis dos cartões do painel esquerdo
   },
 
   iniciarNovo() {
-    this.toast('Redirecionando para o fechamento...', 'ok');
-    // ─── PONTO DE INTEGRAÇÃO ───
-    // Redirecione para a tela de fechamento de caixa existente
-    // Exemplo: window.location.href = './fechamento-caixa.html';
+    // Redireciona para a tela de fechamento passando loja e data como parâmetros.
+    // A tela de fechamento deve verificar override via verificar_override_fechamento().
+    const diaStr = String(ESTADO.diaAtivo || new Date().getDate()).padStart(2, '0');
+    const mesStr = String(ESTADO.mes).padStart(2, '0');
+    const data   = `${ESTADO.ano}-${mesStr}-${diaStr}`;
+    const loja   = ESTADO.lojaFiltro || '';
+
+    window.location.href = `./fechamento-caixa.html?data=${data}${loja ? '&loja=' + loja : ''}`;
   },
 
   imprimir() {
@@ -1208,33 +1044,29 @@ async _buscarDividas(fechamentoId) {
   },
 
   /* ──────────────────────────────────────────────────────────
-     3l. MODAIS
+     4l. MODAIS
   ─────────────────────────────────────────────────────────── */
 
-  abrirModal(id) {
-    document.getElementById(id).classList.add('aberto');
-  },
-
-  fecharModal(id) {
-    document.getElementById(id).classList.remove('aberto');
-  },
+  abrirModal(id)  { document.getElementById(id).classList.add('aberto');    },
+  fecharModal(id) { document.getElementById(id).classList.remove('aberto'); },
 
   irInicio() {
     this.fecharModal('modal-inicio');
-    // ─── PONTO DE INTEGRAÇÃO ───
-    // window.location.href = './index.html';
-    this.toast('Voltando ao menu...', 'ok');
+    window.location.href = './index.html';
   },
 
-  sair() {
+  async sair() {
     this.fecharModal('modal-sair');
-    // ─── PONTO DE INTEGRAÇÃO ───
-    // Chame sua função de logout aqui
-    this.toast('Encerrando sessão...', 'info');
+    try {
+      await _supabase.auth.signOut();
+    } catch (err) {
+      console.warn('[sair] Erro no signOut:', err);
+    }
+    window.location.href = './login.html';
   },
 
   /* ──────────────────────────────────────────────────────────
-     3m. TOAST DE NOTIFICAÇÃO
+     4m. TOAST DE NOTIFICAÇÃO
   ─────────────────────────────────────────────────────────── */
 
   _toastTimer: null,
@@ -1261,47 +1093,18 @@ async _buscarDividas(fechamentoId) {
   },
 
   /* ──────────────────────────────────────────────────────────
-     3n. CÁLCULOS
+     4n. CÁLCULOS LOCAIS (apenas para tabelas filhas)
+     Os totais do fechamento em si vêm sempre do banco.
+     Estas funções só somam as listas de produtos/bolões/dívidas
+     buscadas para exibição nas tabelas detalhadas.
   ─────────────────────────────────────────────────────────── */
 
-  _calcularBalanco(fech, totProd, totBol, totDiv) {
-    // DÉBITOS: o que a lotérica devia ter recebido
-    const debitos = (fech.troco_ini   || 0)
-                  + totProd
-                  + totBol
-                  + (fech.relatorio   || 0);
-
-    // CRÉDITOS: o que efetivamente entrou/foi contabilizado
-    const creditos = (fech.troco_sob    || 0)
-                   + (fech.deposito     || 0)
-                   + (fech.pix_cnpj     || 0)
-                   + (fech.pix_dif      || 0)
-                   + (fech.premio_rasp  || 0)
-                   + (fech.resgate_tele || 0)
-                   + totDiv;
-
-    return { debitos, creditos };
-  },
-
-  _calcularQuebra(fech) {
-    // Versão simplificada para indicador nas abas (sem tabelas filhas)
-    const creditos = (fech.troco_sob    || 0)
-                   + (fech.deposito     || 0)
-                   + (fech.pix_cnpj     || 0)
-                   + (fech.pix_dif      || 0)
-                   + (fech.premio_rasp  || 0)
-                   + (fech.resgate_tele || 0);
-    const debitos  = (fech.troco_ini   || 0)
-                   + (fech.relatorio   || 0);
-    return creditos - debitos;
-  },
-
   _somarProdutos(lista) {
-    return lista.reduce((s, p) => s + (p.quantidade || 0) * (p.valor_unit || 0), 0);
+    return lista.reduce((s, p) => s + (p.total || (p.quantidade * p.valor_unit) || 0), 0);
   },
 
   _somarBoloes(lista) {
-    return lista.reduce((s, b) => s + (b.cotas_vendidas || 0) * (b.valor_cota || 0), 0);
+    return lista.reduce((s, b) => s + (b.subtotal || (b.cotas_vendidas * b.valor_cota) || 0), 0);
   },
 
   _somarDividas(lista) {
@@ -1309,22 +1112,14 @@ async _buscarDividas(fechamentoId) {
   },
 
   /* ──────────────────────────────────────────────────────────
-     3o. UTILITÁRIOS
+     4o. UTILITÁRIOS
   ─────────────────────────────────────────────────────────── */
 
-  /**
-   * Formata valor como moeda brasileira.
-   * @param {number} val
-   * @returns {string}
-   */
   _moeda(val) {
     const n = parseFloat(val) || 0;
     return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   },
 
-  /**
-   * Escapa HTML para evitar XSS ao inserir dados no DOM.
-   */
   _esc(str) {
     if (!str) return '';
     return String(str)
@@ -1334,33 +1129,14 @@ async _buscarDividas(fechamentoId) {
       .replace(/"/g, '&quot;');
   },
 
-  /**
-   * Retorna a classe CSS correta para o chip de tipo.
-   */
   _chipTipo(tipo) {
-    const mapa = {
+    return {
       'RASPADINHA': 'chip-rasp',
       'TELESENA':   'chip-tele',
       'FEDERAL':    'chip-fed',
       'INTERNO':    'chip-int',
       'EXTERNO':    'chip-ext',
-    };
-    return mapa[tipo] || '';
+    }[tipo] || '';
   },
 
 };
-
-
-/* ════════════════════════════════════════════════════════════
-   INICIALIZAÇÃO
-════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    await VIEWER.init();
-  } catch (err) {
-    console.error('Erro ao iniciar conferência de caixa:', err);
-    if (VIEWER && typeof VIEWER.toast === 'function') {
-      VIEWER.toast('Erro ao iniciar a tela.', 'erro');
-    }
-  }
-});
