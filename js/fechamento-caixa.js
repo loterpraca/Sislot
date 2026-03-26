@@ -583,9 +583,7 @@ async function buscarFechamentoExistente() {
 
         preencherTela1(fech);
 
-        showStep(2);
-
-        await carregarProdutos();
+                await carregarProdutos();
         await buscarFederaisSupabase(fech.data_ref);
 
         toast('Fechamento carregado com sucesso.', true);
