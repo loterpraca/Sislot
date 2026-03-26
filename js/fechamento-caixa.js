@@ -1181,6 +1181,8 @@ function setB3(s) {
 
 // ─── BOLÕES ───────────────────────────────────────────────────────────────────
 
+
+
 async function carregarBoloes() {
     const dataRef = $('data-ref').value;
     if (!dataRef) return;
@@ -1751,6 +1753,79 @@ async function registrarVendasProdutosDoFechamento(fechId, t1, produtosVendidos)
     }
 }
 
+function getBoloesVendidosTela3(t3 = ESTADO.tela3) {
+    return [
+        ...((t3?.internos || []).filter(b => Number(b.qtdVendida || 0) > 0).map(b => ({ ...b, tipo: 'INTERNO' }))),
+        ...((t3?.externos || []).filter(b => Number(b.qtdVendida || 0) > 0).map(b => ({ ...b, tipo: 'EXTERNO' })))
+    ];
+}
+
+async function estornarBoloesDoFechamento(fechId) {
+    if (!fechId) return 0;
+
+    const { data, error } = await sb.rpc('estornar_vendas_bolao_fechamento', {
+        p_fechamento_id: fechId
+    });
+
+    if (error) throw error;
+    return Number(data || 0);
+}
+
+async function apagarSnapshotBoloesDoFechamento(fechId) {
+    if (!fechId) return;
+
+    const { error } = await sb
+        .from('fechamento_boloes')
+        .delete()
+        .eq('fechamento_id', fechId);
+
+    if (error) throw error;
+}
+
+async function salvarSnapshotBoloesDoFechamento(fechId, boloesVendidos) {
+    if (!boloesVendidos.length) return;
+
+    const bolRows = boloesVendidos.map(b => ({
+        fechamento_id: fechId,
+        bolao_id: b.bolao_id,
+        tipo: b.tipo,
+        modalidade: b.modalidade,
+        qtd_vendida: Number(b.qtdVendida || 0),
+        valor_cota: Number(b.valorCota || 0),
+        subtotal: Number(b.subtotal || 0)
+    }));
+
+    const { error } = await sb.from('fechamento_boloes').insert(bolRows);
+    if (error) throw error;
+}
+
+async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
+    if (!boloesVendidos.length) return;
+
+    try {
+        for (const b of boloesVendidos) {
+            const { error } = await sb.rpc('registrar_venda_bolao', {
+                p_bolao_id: Number(b.bolao_id),
+                p_loteria_vendedora_id: Number(loteriaAtiva.id),
+                p_usuario_id: Number(t1.funcionario_id),
+                p_canal: 'FECHAMENTO',
+                p_origem_lancamento: 'FECHAMENTO_CAIXA',
+                p_qtd_vendida: Number(b.qtdVendida || 0),
+                p_data_referencia: t1.data_ref,
+                p_observacao: 'Lançado no fechamento',
+                p_fechamento_id: fechId,
+                p_fechamento_keyid: null
+            });
+
+            if (error) throw error;
+        }
+    } catch (e) {
+        await estornarBoloesDoFechamento(fechId);
+        await apagarSnapshotBoloesDoFechamento(fechId);
+        throw e;
+    }
+}
+
 // ─── FINALIZAR / GRAVAR ───────────────────────────────────────────────────────
 
 async function finalizar() {
@@ -1855,18 +1930,14 @@ async function finalizar() {
         if (sobrescrever && existeId) {
             await estornarProdutosDoFechamento(existeId);
             await apagarSnapshotProdutosDoFechamento(existeId);
-
+            await estornarBoloesDoFechamento(existeId);
+            await apagarSnapshotBoloesDoFechamento(existeId);
+            
             const { error: delFedVendasErr } = await sb
                 .from('federal_vendas')
                 .delete()
                 .eq('fechamento_id', existeId);
             if (delFedVendasErr) throw delFedVendasErr;
-
-            const { error: delBolErr } = await sb
-                .from('fechamento_boloes')
-                .delete()
-                .eq('fechamento_id', existeId);
-            if (delBolErr) throw delBolErr;
 
             const { error: delDivErr } = await sb
                 .from('fechamento_dividas')
@@ -1893,7 +1964,7 @@ async function finalizar() {
         }
 
         setProgress(55);
-
+        
         const produtosVendidos = getProdutosVendidosTela2(t2);
         await salvarSnapshotProdutosDoFechamento(fechId, produtosVendidos);
         await registrarVendasProdutosDoFechamento(fechId, t1, produtosVendidos);
@@ -1918,31 +1989,9 @@ async function finalizar() {
 
         setProgress(82);
 
-        const bolRows = [
-            ...(t3.internos || []).filter(b => Number(b.qtdVendida || 0) > 0).map(b => ({
-                fechamento_id: fechId,
-                bolao_id: b.bolao_id,
-                tipo: 'INTERNO',
-                modalidade: b.modalidade,
-                qtd_vendida: b.qtdVendida,
-                valor_cota: b.valorCota,
-                subtotal: b.subtotal
-            })),
-            ...(t3.externos || []).filter(b => Number(b.qtdVendida || 0) > 0).map(b => ({
-                fechamento_id: fechId,
-                bolao_id: b.bolao_id,
-                tipo: 'EXTERNO',
-                modalidade: b.modalidade,
-                qtd_vendida: b.qtdVendida,
-                valor_cota: b.valorCota,
-                subtotal: b.subtotal
-            }))
-        ];
-
-        if (bolRows.length) {
-            const { error } = await sb.from('fechamento_boloes').insert(bolRows);
-            if (error) throw error;
-        }
+        const boloesVendidos = getBoloesVendidosTela3(t3);
+        await salvarSnapshotBoloesDoFechamento(fechId, boloesVendidos);
+        await registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos);
 
         setProgress(93);
 
