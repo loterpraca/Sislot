@@ -770,6 +770,7 @@ async function buscarFechamentoExistente() {
         ESTADO.tela3 = montarTela3DoFechamento(fech);
 
         preencherTela1(fech);
+        await CF.carregarFechamentoExistente({ fechamentoId: fech.id });
         await carregarProdutos();
         await buscarFederaisSupabase(fech.data_ref);
         await carregarBoloes();
