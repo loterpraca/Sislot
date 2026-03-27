@@ -42,8 +42,8 @@ const CF = (() => {
         if (!estado.tela1.clienteFechamento) {
             estado.tela1.clienteFechamento = {
                 clienteSelecionado: null,
-                lancamentos: [],
-                pagamentos: []
+                lancamentos: []
+                
             };
         }
 
@@ -608,28 +608,13 @@ const CF = (() => {
         const totDebito = _lancamentos
             .filter(l => l.tipo_movimento === 'DEBITO')
             .reduce((a, l) => a + Number(l.valor_total || 0), 0);
-
-        const totAbatimento = _pagamentos
-            .filter(p => p.gera_abatimento_divida)
-            .reduce((a, p) => a + Number(p.valor_total || 0), 0);
-
-        const totPix = _pagamentos
-            .filter(p => p.gera_pix_quitacao)
-            .reduce((a, p) => a + Number(p.valor_total || 0), 0);
-
+      
         wrap.innerHTML = `
             <div class="cf-resumo-linha">
                 <span>Crédito p/ fechamento (débitos)</span>
                 <span class="cf-val-pos">${_fmtBRL(totDebito)}</span>
             </div>
-            <div class="cf-resumo-linha">
-                <span>Abatimento dívida</span>
-                <span class="cf-val-neg">${_fmtBRL(totAbatimento)}</span>
-            </div>
-            ${totPix > 0 ? `<div class="cf-resumo-linha">
-                <span>PIX Quitação</span>
-                <span class="cf-val-pix">${_fmtBRL(totPix)}</span>
-            </div>` : ''}
+          
         `;
 
         renderListaLancamentos();
@@ -716,19 +701,7 @@ const CF = (() => {
             .reduce((a, l) => a + Number(l.valor_total || 0), 0);
     }
 
-    function getTotalAbatimento() {
-        // Todo pagamento que reduz dívida entra aqui: dinheiro e PIX
-        return _pagamentos
-            .filter(p => p.gera_abatimento_divida)
-            .reduce((a, p) => a + Number(p.valor_total || 0), 0);
-    }
-
-    function getTotalPixQuitacao() {
-        // PIX Quitação aparece no crédito quando o pagamento foi lançado via PIX
-        return _pagamentos
-            .filter(p => p.gera_pix_quitacao)
-            .reduce((a, p) => a + Number(p.valor_total || 0), 0);
-    }
+     
 
     // ── GRAVAÇÃO NO SUPABASE ───────────────────────────────────────────────
     async function gravarNoSupabase(fechamentoId, t1) {
@@ -769,8 +742,8 @@ const CF = (() => {
                     qtd_jogos: it.qtd_jogos || null,
                     qtd_dezenas: it.qtd_dezenas || null,
                     valor_unitario: Number(it.valor_unitario || 0),
-                    qtd_vendida: Number(it.qtd_vendida || 1),
-                    valor_total: Number(it.valor_total || 0)
+                    qtd_vendida: Number(it.qtd_vendida || 1)
+                    
                 }));
 
                 const { error: errIt } = await _sb
