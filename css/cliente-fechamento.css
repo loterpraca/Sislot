@@ -1,0 +1,858 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   ÁREA DO CLIENTE — estilos para integrar em fechamento-caixa.css
+   Prefixo: .cf-
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── BOTÃO DE ABERTURA (Tela 1) ──────────────────────────────────────── */
+.btn-area-cliente {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px dashed rgba(167,139,250,.4);
+    border-radius: 8px;
+    color: var(--purple);
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: 'IBM Plex Sans', sans-serif;
+    width: 100%;
+    margin-top: 8px;
+    justify-content: center;
+}
+.btn-area-cliente:hover {
+    border-color: var(--purple);
+    background: rgba(167,139,250,.06);
+}
+.cf-btn-badge {
+    background: rgba(167,139,250,.15);
+    border: 1px solid rgba(167,139,250,.3);
+    border-radius: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 1px 6px;
+    color: var(--purple);
+}
+
+/* ── MODAL PRINCIPAL ─────────────────────────────────────────────────── */
+.modal-cf {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(10,22,40,.92);
+    backdrop-filter: blur(6px);
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    overflow-y: auto;
+}
+.modal-cf.show {
+    display: flex;
+}
+.modal-cf-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: min(92vw, 640px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: auto;
+}
+.modal-cf-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(167,139,250,.04);
+}
+.modal-cf-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--purple);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.modal-cf-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all .2s;
+}
+.modal-cf-close:hover {
+    border-color: var(--err);
+    color: var(--err);
+    background: rgba(255,82,82,.08);
+}
+.modal-cf-body {
+    padding: 20px;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ── VIEW: LISTA DE CLIENTES ─────────────────────────────────────────── */
+.cf-search-wrap {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    align-items: center;
+}
+.cf-search-wrap input {
+    flex: 1;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--bright);
+    outline: none;
+    transition: border-color .2s;
+}
+.cf-search-wrap input:focus {
+    border-color: var(--purple);
+}
+.cf-btn-novo {
+    background: rgba(167,139,250,.1);
+    border: 1px solid rgba(167,139,250,.3);
+    color: var(--purple);
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .2s;
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+.cf-btn-novo:hover {
+    background: rgba(167,139,250,.18);
+}
+.cf-clientes-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.cf-clientes-lista::-webkit-scrollbar {
+    width: 4px;
+}
+.cf-clientes-lista::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+.cf-cliente-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--mid);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 13px;
+    cursor: pointer;
+    transition: all .18s;
+}
+.cf-cliente-card:hover {
+    border-color: rgba(167,139,250,.35);
+    background: rgba(167,139,250,.04);
+}
+.cf-cliente-card.tem-divida {
+    border-left: 3px solid var(--amber);
+}
+.cf-cli-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.cf-cli-nome {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--bright);
+}
+.cf-cli-tel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+}
+.cf-cli-saldo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--dim);
+}
+.cf-badge-devendo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: rgba(245,166,35,.1);
+    border: 1px solid rgba(245,166,35,.25);
+    color: var(--amber);
+    padding: 2px 7px;
+    border-radius: 10px;
+}
+.cf-badge-ok {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+}
+
+/* ── VIEW: CLIENTE SELECIONADO ───────────────────────────────────────── */
+.cf-btn-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0 0 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: color .2s;
+}
+.cf-btn-back:hover {
+    color: var(--bright);
+}
+.cf-cliente-header-box {
+    background: rgba(167,139,250,.05);
+    border: 1px solid rgba(167,139,250,.15);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+.cf-cli-nome-lg {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--bright);
+    margin-bottom: 2px;
+}
+.cf-saldo-info {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--amber);
+    margin-top: 4px;
+}
+
+.cf-acoes {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.cf-btn-acao {
+    flex: 1;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+.cf-btn-acao.debito {
+    background: rgba(255,82,82,.08);
+    border: 1px solid rgba(255,82,82,.2);
+    color: var(--err);
+}
+.cf-btn-acao.debito:hover {
+    background: rgba(255,82,82,.14);
+}
+.cf-btn-acao.pagamento {
+    background: rgba(0,200,150,.08);
+    border: 1px solid rgba(0,200,150,.2);
+    color: var(--accent);
+}
+.cf-btn-acao.pagamento:hover {
+    background: rgba(0,200,150,.14);
+}
+
+/* Extrato sessão */
+.cf-extrato-sessao {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.cf-extrato-linha {
+    background: var(--mid);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border-left-width: 3px;
+}
+.cf-extrato-deb { border-left-color: var(--err); }
+.cf-extrato-pag { border-left-color: var(--accent); }
+.cf-extrato-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+.cf-extrato-tipo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+}
+.cf-extrato-itens {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+}
+.cf-extrato-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    padding: 0 4px;
+}
+.cf-extrato-bottom {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+.cf-extrato-vazio {
+    font-size: 11px;
+    color: var(--dim);
+    text-align: center;
+    padding: 20px;
+}
+
+/* ── VIEW: CARRINHO ──────────────────────────────────────────────────── */
+.cf-tipos-wrap {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.cf-btn-tipo {
+    flex: 1;
+    min-width: 70px;
+    background: var(--mid);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: 'IBM Plex Mono', monospace;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.cf-btn-tipo:hover {
+    border-color: var(--purple);
+    color: var(--purple);
+    background: rgba(167,139,250,.06);
+}
+.cf-carrinho-itens {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+.cf-carrinho-item {
+    background: var(--mid);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+}
+.cf-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.cf-tipo-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-weight: 600;
+}
+.cf-tipo-badge.bolao  { background: rgba(0,200,150,.1); border: 1px solid rgba(0,200,150,.25); color: var(--accent); }
+.cf-tipo-badge.federal{ background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.25); color: var(--purple); }
+.cf-tipo-badge.produto{ background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.25); color: var(--amber); }
+.cf-tipo-badge.conta  { background: rgba(56,189,248,.1); border: 1px solid rgba(56,189,248,.25); color: var(--sky); }
+
+.cf-btn-rm-item {
+    background: transparent;
+    border: 1px solid rgba(255,82,82,.2);
+    color: rgba(255,82,82,.5);
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all .2s;
+}
+.cf-btn-rm-item:hover {
+    background: rgba(255,82,82,.1);
+    border-color: var(--err);
+    color: var(--err);
+}
+.cf-item-campos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+@media (max-width: 500px) {
+    .cf-item-campos { grid-template-columns: 1fr; }
+}
+.cf-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.cf-campo-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--dim);
+}
+.cf-inp {
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--bright);
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+    -moz-appearance: textfield;
+}
+.cf-inp::-webkit-outer-spin-button,
+.cf-inp::-webkit-inner-spin-button { -webkit-appearance: none; }
+.cf-inp:focus {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 2px rgba(167,139,250,.1);
+}
+.cf-item-subtotal {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+.cf-item-subtotal strong {
+    color: var(--accent);
+}
+
+.cf-total-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0,200,150,.06);
+    border: 1px solid rgba(0,200,150,.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+}
+.cf-total-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--muted);
+}
+.cf-total-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+/* obs do débito */
+.cf-obs-field {
+    margin-bottom: 10px;
+}
+.cf-obs-field textarea {
+    width: 100%;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    color: var(--bright);
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    min-height: 52px;
+    transition: border-color .2s;
+}
+.cf-obs-field textarea:focus {
+    border-color: var(--purple);
+}
+.cf-obs-field textarea::placeholder {
+    color: var(--dim);
+}
+
+/* ── VIEW: PAGAMENTO ─────────────────────────────────────────────────── */
+.cf-pag-saldo-box {
+    background: rgba(245,166,35,.06);
+    border: 1px solid rgba(245,166,35,.2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--amber);
+}
+.cf-pag-saldo-lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--dim);
+    margin-bottom: 2px;
+}
+.cf-pag-saldo-val {
+    font-size: 20px;
+    font-weight: 600;
+}
+.cf-radio-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.cf-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 100px;
+    background: var(--mid);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all .2s;
+    user-select: none;
+}
+.cf-radio-label:has(input:checked) {
+    border-color: var(--purple);
+    background: rgba(167,139,250,.06);
+    color: var(--bright);
+}
+.cf-radio-label input[type=radio] {
+    accent-color: var(--purple);
+    width: 14px;
+    height: 14px;
+}
+.cf-pag-valor-field {
+    margin-bottom: 12px;
+}
+.cf-pag-valor-field label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--dim);
+    margin-bottom: 5px;
+}
+.cf-pag-aviso-pix {
+    background: rgba(56,189,248,.06);
+    border: 1px solid rgba(56,189,248,.2);
+    border-radius: 7px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--sky);
+    margin-bottom: 12px;
+    line-height: 1.5;
+    display: none;
+}
+
+/* ── VIEW: NOVO CADASTRO ─────────────────────────────────────────────── */
+.cf-novo-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.cf-novo-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.cf-novo-campo label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--dim);
+}
+.cf-novo-campo.req label::after {
+    content: ' *';
+    color: var(--purple);
+}
+.cf-err {
+    font-size: 11px;
+    color: var(--err);
+    margin-top: 4px;
+    display: none;
+}
+
+/* ── RESUMO DA SESSÃO (no topo do modal lista) ───────────────────────── */
+.cf-resumo-sessao {
+    background: rgba(167,139,250,.04);
+    border: 1px solid rgba(167,139,250,.12);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.cf-resumo-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+}
+.cf-lista-lancamentos {
+    max-height: 160px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+}
+.cf-lanc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--mid);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+}
+.cf-lanc-esq {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+.cf-lanc-cli {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--bright);
+}
+.cf-lanc-forma {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--sky);
+    background: rgba(56,189,248,.08);
+    border: 1px solid rgba(56,189,248,.2);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+.cf-empty-small {
+    font-size: 11px;
+    color: var(--dim);
+    text-align: center;
+    padding: 12px;
+}
+
+/* ── STATUS BADGES ───────────────────────────────────────────────────── */
+.cf-status-pendente, .cf-s-pend {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    background: rgba(245,166,35,.1);
+    border: 1px solid rgba(245,166,35,.25);
+    color: var(--amber);
+    padding: 1px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+.cf-status-proc, .cf-s-proc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    background: rgba(56,189,248,.1);
+    border: 1px solid rgba(56,189,248,.25);
+    color: var(--sky);
+    padding: 1px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+.cf-status-ok, .cf-s-ok {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    background: rgba(0,200,150,.1);
+    border: 1px solid rgba(0,200,150,.25);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+.cf-forma {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    background: rgba(167,139,250,.08);
+    border: 1px solid rgba(167,139,250,.2);
+    color: var(--purple);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+.cf-obs {
+    font-size: 10px;
+    color: var(--dim);
+    font-style: italic;
+}
+
+/* ── VALORES ─────────────────────────────────────────────────────────── */
+.v-neg { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: var(--err); }
+.v-pos { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: var(--accent); }
+.cf-val-pos { font-family: 'IBM Plex Mono', monospace; color: var(--accent); }
+.cf-val-neg { font-family: 'IBM Plex Mono', monospace; color: var(--err); }
+.cf-val-pix { font-family: 'IBM Plex Mono', monospace; color: var(--sky); }
+
+/* ── BOTÕES DO FOOTER DO MODAL ───────────────────────────────────────── */
+.modal-cf-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.cf-btn-primary {
+    background: var(--purple);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    padding: 10px 22px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+.cf-btn-primary:hover:not(:disabled) {
+    background: #b39fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(167,139,250,.3);
+}
+.cf-btn-primary:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+.cf-btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+.cf-btn-secondary:hover {
+    border-color: var(--muted);
+    color: var(--bright);
+}
+.cf-btn-link {
+    background: none;
+    border: none;
+    color: var(--purple);
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: 'IBM Plex Sans', sans-serif;
+    padding: 4px 0;
+}
+
+/* ── EMPTY STATE ─────────────────────────────────────────────────────── */
+.cf-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 32px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+}
+.cf-empty-icon {
+    font-size: 28px;
+    margin-bottom: 2px;
+}
+
+/* ── LINHA DE RESUMO NO FECHAMENTO (Tela 4) ──────────────────────────── */
+.cf-resumo-bloco {
+    background: rgba(167,139,250,.04);
+    border: 1px solid rgba(167,139,250,.15);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+.cf-resumo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(30,58,110,.4);
+    font-size: 11px;
+    color: var(--muted);
+}
+.cf-resumo-row:last-child { border-bottom: none; }
+.cf-resumo-row .cf-rval {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* ── PIX AVISO TOGGLE ────────────────────────────────────────────────── */
+#cf-pag-aviso-pix-wrap {
+    display: none;
+}
