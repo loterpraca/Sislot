@@ -1807,7 +1807,7 @@ async function finalizar() {
         const totDeb = Number(t1.troco_inicial || 0)
             + totalProd + totalFed + totalBol
             + Number(t1.relatorio || 0)
-            + totCFAbatimento;
+            
 
         const totCred = Number(t1.troco_sobra || 0)
             + Number(t1.deposito || 0)
@@ -1816,7 +1816,7 @@ async function finalizar() {
             + Number(t1.premio_raspadinha || 0)
             + Number(t1.resgate_telesena || 0)
             + totCFCredito
-            + totCFPix;
+            
 
         const quebra = totCred - totDeb;
         const justif = $('justificativa')?.value || '';
