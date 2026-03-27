@@ -2129,7 +2129,7 @@ async function finalizar() {
     const btn = $('btn-final');
     btn.disabled = true;
     let salvouComSucesso = false;
-    
+
     try {
         let existeId = fechamentoOriginalId;
 
@@ -2196,32 +2196,32 @@ async function finalizar() {
         const justif = $('justificativa')?.value || '';
 
         const payload = {
-    loteria_id: Number(loteriaAtiva.id),
-    usuario_id: Number(t1.funcionario_id),
-    funcionario_nome: t1.funcionario_nome || '',
-    data_ref: t1.data_ref,
-    troco_inicial: Number(t1.troco_inicial || 0),
-    troco_sobra: Number(t1.troco_sobra || 0),
-    relatorio: Number(t1.relatorio || 0),
-    deposito: Number(t1.deposito || 0),
-    pix_cnpj: Number(t1.pix_cnpj || 0),
-    diferenca_pix: Number(t1.diferenca_pix || 0),
-    premio_raspadinha: Number(t1.premio_raspadinha || 0),
-    resgate_telesena: Number(t1.resgate_telesena || 0),
-    total_produtos: Number(totalProd || 0),
-    total_federais: Number(totalFed || 0),
-    total_boloes: Number(totalBol || 0),
-    total_fiado: Number(totalDiv || 0),
-    total_debitos: Number(totDeb || 0),
-    total_creditos: Number(totCred || 0),
-    quebra: Number(quebra || 0),
-    justificativa: justif || null,
-    criado_por: Number(usuario?.id || 0),
-    sobrescrito_por: tokenAutorizado?.gerado_por
-        ? Number(tokenAutorizado.gerado_por)
-        : null,
-    updated_at: new Date().toISOString()
-};
+            loteria_id: Number(loteriaAtiva.id),
+            usuario_id: Number(t1.funcionario_id),
+            funcionario_nome: t1.funcionario_nome || '',
+            data_ref: t1.data_ref,
+            troco_inicial: Number(t1.troco_inicial || 0),
+            troco_sobra: Number(t1.troco_sobra || 0),
+            relatorio: Number(t1.relatorio || 0),
+            deposito: Number(t1.deposito || 0),
+            pix_cnpj: Number(t1.pix_cnpj || 0),
+            diferenca_pix: Number(t1.diferenca_pix || 0),
+            premio_raspadinha: Number(t1.premio_raspadinha || 0),
+            resgate_telesena: Number(t1.resgate_telesena || 0),
+            total_produtos: Number(totalProd || 0),
+            total_federais: Number(totalFed || 0),
+            total_boloes: Number(totalBol || 0),
+            total_fiado: Number(totalDiv || 0),
+            total_debitos: Number(totDeb || 0),
+            total_creditos: Number(totCred || 0),
+            quebra: Number(quebra || 0),
+            justificativa: justif || null,
+            criado_por: Number(usuario?.id || 0),
+            sobrescrito_por: tokenAutorizado?.gerado_por
+                ? Number(tokenAutorizado.gerado_por)
+                : null,
+            updated_at: new Date().toISOString()
+        };
 
         let fechId = existeId;
 
@@ -2320,16 +2320,17 @@ async function finalizar() {
         await carregarProdutos();
         await buscarFederaisSupabase(t1.data_ref);
         await carregarBoloes();
+
     } catch (e) {
         console.error('Erro ao gravar fechamento:', e);
         toast('Erro ao gravar: ' + (e.message || e), false);
     } finally {
         hideGravando();
         btn.disabled = false;
+
         if (salvouComSucesso) {
-        abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
-    }
-}
+            abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
+        }
     }
 }
 
