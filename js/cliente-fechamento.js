@@ -20,6 +20,11 @@ const CF = (() => {
     let _lancamentos = [];      // lançamentos da sessão (extrato)
     let _pagamentos = [];       // pagamentos da sessão
 
+    // Base/hidratação para edição de fechamento e extrato real
+    let _historicoBancoCliente = [];
+    let _fechamentoIdEmEdicao = null;
+    let _snapshotSessaoOriginal = { lancamentos: [], pagamentos: [] };
+
     // Refs de Supabase e loja (injetadas via CF.init)
     let _sb = null;
     let _getLoteriaAtiva = null;
@@ -47,12 +52,181 @@ const CF = (() => {
             };
         }
 
+        _hidratarSessaoDoEstado();
         _bindEvents();
+        renderChipResumo();
     }
 
     function _bindEvents() {
         document.getElementById('btn-abrir-area-cliente')
             ?.addEventListener('click', openModal);
+    }
+
+    function _clone(v) {
+        return JSON.parse(JSON.stringify(v ?? null));
+    }
+
+    function _normalizarSessaoMov(m) {
+        return {
+            ...m,
+            cliente_id: Number(m.cliente_id || 0),
+            valor_total: Number(m.valor_total || 0),
+            itens: Array.isArray(m.itens) ? m.itens.map(it => ({
+                ...it,
+                valor_unitario: Number(it.valor_unitario || 0),
+                qtd_vendida: Number(it.qtd_vendida || 1),
+                valor_total: Number(it.valor_total || 0)
+            })) : [],
+            created_at: m.created_at || new Date().toISOString()
+        };
+    }
+
+    function _hidratarSessaoDoEstado() {
+        const cf = _getEstado()?.tela1?.clienteFechamento || {};
+
+        _lancamentos = Array.isArray(cf.lancamentos)
+            ? cf.lancamentos.map(_normalizarSessaoMov)
+            : [];
+
+        _pagamentos = Array.isArray(cf.pagamentos)
+            ? cf.pagamentos.map(_normalizarSessaoMov)
+            : [];
+
+        const cliSel = cf.clienteSelecionado || null;
+        if (!cliSel) {
+            _clienteAtivo = null;
+            return;
+        }
+
+        const achado = _clientes.find(x => Number(x.id || x.cliente_id) === Number(cliSel.id));
+        _clienteAtivo = achado || { id: Number(cliSel.id), nome: cliSel.nome || 'Cliente' };
+    }
+
+    function _efeitoSaldoColecoes(clienteId, colecoes) {
+        const deb = (colecoes.lancamentos || [])
+            .filter(l => Number(l.cliente_id) === Number(clienteId) && l.tipo_movimento === 'DEBITO')
+            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+
+        const quit = (colecoes.pagamentos || [])
+            .filter(p => Number(p.cliente_id) === Number(clienteId) && p.status === 'QUITADO')
+            .reduce((a, p) => a + Number(p.valor_total || 0), 0);
+
+        return deb - quit;
+    }
+
+    function _efeitoSaldoOriginal(clienteId) {
+        return _efeitoSaldoColecoes(clienteId, _snapshotSessaoOriginal);
+    }
+
+    function _efeitoSaldoSessaoAtual(clienteId) {
+        return _efeitoSaldoColecoes(clienteId, {
+            lancamentos: _lancamentos,
+            pagamentos: _pagamentos
+        });
+    }
+
+    function _saldoAbertoCliente(clienteId) {
+        const cli = _clientes.find(c => Number(c.id) === Number(clienteId)) || _clienteAtivo || {};
+        const saldoView = Number(cli.saldo_aberto || 0);
+
+        // remove o que já estava salvo naquele fechamento que está em edição
+        const baseSemFechamentoEditado = saldoView - _efeitoSaldoOriginal(clienteId);
+
+        // reaplica o estado atual da sessão
+        return Math.max(0, baseSemFechamentoEditado + _efeitoSaldoSessaoAtual(clienteId));
+    }
+
+    async function _carregarExtratoBancoCliente(clienteId) {
+        const loteria = _getLoteriaAtiva();
+        if (!loteria || !clienteId) {
+            _historicoBancoCliente = [];
+            return;
+        }
+
+        try {
+            const { data, error } = await _sb
+                .from('vw_cliente_fechamento_extrato')
+                .select(`
+                    extrato_id,
+                    cliente_id,
+                    loteria_id,
+                    tipo_movimento,
+                    forma_pagamento,
+                    status,
+                    valor_movimento,
+                    data_movimento,
+                    fechamento_id,
+                    usuario_id,
+                    observacao,
+                    created_at,
+                    item_id,
+                    tipo_origem,
+                    origem_id,
+                    data_venda,
+                    descricao,
+                    modalidade,
+                    concurso,
+                    produto,
+                    qtd_jogos,
+                    qtd_dezenas,
+                    valor_unitario,
+                    qtd_vendida,
+                    valor_item
+                `)
+                .eq('loteria_id', loteria.id)
+                .eq('cliente_id', Number(clienteId))
+                .order('data_movimento', { ascending: true })
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            const rows = (data || []).filter(r =>
+                !_fechamentoIdEmEdicao || String(r.fechamento_id || '') !== String(_fechamentoIdEmEdicao)
+            );
+
+            const mapa = new Map();
+
+            rows.forEach(r => {
+                if (!mapa.has(r.extrato_id)) {
+                    mapa.set(r.extrato_id, {
+                        extrato_id: r.extrato_id,
+                        cliente_id: Number(r.cliente_id),
+                        tipo_movimento: r.tipo_movimento,
+                        forma_pagamento: r.forma_pagamento || null,
+                        status: r.status,
+                        valor_total: Number(r.valor_movimento || 0),
+                        data_movimento: r.data_movimento,
+                        fechamento_id: r.fechamento_id || null,
+                        observacao: r.observacao || null,
+                        created_at: r.created_at || new Date().toISOString(),
+                        itens: []
+                    });
+                }
+
+                if (r.item_id) {
+                    mapa.get(r.extrato_id).itens.push({
+                        item_id: r.item_id,
+                        tipo_origem: r.tipo_origem,
+                        origem_id: r.origem_id || null,
+                        data_venda: r.data_venda || null,
+                        descricao: r.descricao || null,
+                        modalidade: r.modalidade || null,
+                        concurso: r.concurso || null,
+                        produto: r.produto || null,
+                        qtd_jogos: r.qtd_jogos || null,
+                        qtd_dezenas: r.qtd_dezenas || null,
+                        valor_unitario: Number(r.valor_unitario || 0),
+                        qtd_vendida: Number(r.qtd_vendida || 1),
+                        valor_total: Number(r.valor_item || 0)
+                    });
+                }
+            });
+
+            _historicoBancoCliente = [...mapa.values()];
+        } catch (e) {
+            console.error('Erro ao carregar extrato real do cliente:', e);
+            _historicoBancoCliente = [];
+        }
     }
 
     // ── SINCRONIZA ESTADO GLOBAL ──────────────────────────────────────────
@@ -69,10 +243,11 @@ const CF = (() => {
 
     // ── ABRIR / FECHAR MODAL ──────────────────────────────────────────────
     async function openModal() {
+        _hidratarSessaoDoEstado();
         _setModalView('cf-view-lista');
+        await _carregarClientes();
         _renderResumoSessao();
         renderListaLancamentos();
-        await _carregarClientes();
         document.getElementById('m-area-cliente')?.classList.add('show');
     }
 
@@ -97,18 +272,52 @@ const CF = (() => {
 
         try {
             const { data, error } = await _sb
-                .from('cliente_fechamento_cadastro')
-                .select('id, nome, telefone, documento, observacao')
+                .from('vw_cliente_fechamento_saldos')
+                .select(`
+                    cliente_id,
+                    loteria_id,
+                    nome,
+                    telefone,
+                    documento,
+                    observacao,
+                    total_debitos,
+                    total_pagamentos_quitados,
+                    total_pagamentos_processamento,
+                    saldo_aberto,
+                    ultima_movimentacao
+                `)
                 .eq('loteria_id', loteria.id)
-                .eq('ativo', true)
                 .order('nome');
 
             if (error) throw error;
-            _clientes = data || [];
+
+            _clientes = (data || []).map(c => ({
+                ...c,
+                id: Number(c.cliente_id)
+            }));
+
+            if (_clienteAtivo?.id) {
+                _clienteAtivo = _clientes.find(c => Number(c.id) === Number(_clienteAtivo.id)) || _clienteAtivo;
+            }
+
             _renderListaClientes();
         } catch (e) {
             console.error('Erro ao carregar clientes:', e);
-            _clientes = [];
+
+            try {
+                const { data } = await _sb
+                    .from('cliente_fechamento_cadastro')
+                    .select('id, nome, telefone, documento, observacao')
+                    .eq('loteria_id', loteria.id)
+                    .eq('ativo', true)
+                    .order('nome');
+
+                _clientes = data || [];
+            } catch (fallbackErr) {
+                console.error('Erro no fallback de cadastro:', fallbackErr);
+                _clientes = [];
+            }
+
             _renderListaClientes();
         }
     }
@@ -141,10 +350,7 @@ const CF = (() => {
         }
 
         wrap.innerHTML = filtrados.map(c => {
-            const lancDeste = _lancamentos.filter(l => l.cliente_id === c.id);
-            const totalDevendo = lancDeste
-                .filter(l => l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-                .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+            const totalDevendo = _saldoAbertoCliente(c.id);
 
             return `
             <div class="cf-cliente-card ${totalDevendo > 0 ? 'tem-divida' : ''}"
@@ -167,7 +373,7 @@ const CF = (() => {
         }).join('');
     }
 
-    function selecionarCliente(idOuObj) {
+    async function selecionarCliente(idOuObj) {
         const c = typeof idOuObj === 'object'
             ? idOuObj
             : _clientes.find(x => Number(x.id) === Number(idOuObj));
@@ -175,6 +381,8 @@ const CF = (() => {
         if (!c) return;
         _clienteAtivo = c;
         _carrinhoItens = [];
+
+        await _carregarExtratoBancoCliente(_clienteAtivo.id);
 
         _renderViewCliente();
         _setModalView('cf-view-cliente');
@@ -191,21 +399,19 @@ const CF = (() => {
             ${c.telefone ? `<div class="cf-cli-tel">${c.telefone}</div>` : ''}
         `;
 
-        // Histórico desta sessão para esse cliente
         _renderExtratoCurrent();
 
-        // Botão de pagamento: só aparece se tem dívida pendente nesta sessão
-        const totalPendente = _lancamentos
-            .filter(l => l.cliente_id === c.id && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+        const totalPendente = _saldoAbertoCliente(c.id);
 
         const btnPag = document.getElementById('cf-btn-registrar-pag');
         if (btnPag) btnPag.style.display = totalPendente > 0 ? 'flex' : 'none';
 
         const saldoEl = document.getElementById('cf-saldo-pendente');
-        if (saldoEl) saldoEl.textContent = totalPendente > 0
-            ? `Saldo em aberto: ${_fmtBRL(totalPendente)}`
-            : 'Nenhuma dívida nesta sessão';
+        if (saldoEl) {
+            saldoEl.textContent = totalPendente > 0
+                ? `Saldo em aberto: ${_fmtBRL(totalPendente)}`
+                : 'Nenhuma dívida em aberto';
+        }
     }
 
     function _renderExtratoCurrent() {
@@ -213,12 +419,13 @@ const CF = (() => {
         if (!wrap || !_clienteAtivo) return;
 
         const movs = [
-            ..._lancamentos.filter(l => l.cliente_id === _clienteAtivo.id),
-            ..._pagamentos.filter(p => p.cliente_id === _clienteAtivo.id)
+            ..._historicoBancoCliente,
+            ..._lancamentos.filter(l => Number(l.cliente_id) === Number(_clienteAtivo.id)),
+            ..._pagamentos.filter(p => Number(p.cliente_id) === Number(_clienteAtivo.id))
         ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
         if (!movs.length) {
-            wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum movimento nesta sessão</div>`;
+            wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum movimento encontrado</div>`;
             return;
         }
 
@@ -232,9 +439,13 @@ const CF = (() => {
 
             const itensHtml = (m.itens || []).map(it => `
                 <div class="cf-extrato-item">
-                    <span>${it.descricao || it.produto || `${it.modalidade} ${it.concurso}`}</span>
+                    <span>${it.descricao || it.produto || `${it.modalidade || ''} ${it.concurso || ''}`.trim()}</span>
                     <span>${it.qtd_vendida || 1}x ${_fmtBRL(it.valor_unitario || 0)}</span>
                 </div>`).join('');
+
+            const origemTag = m.extrato_id
+                ? '<span class="cf-forma">BANCO</span>'
+                : '<span class="cf-forma">SESSÃO</span>';
 
             return `
             <div class="cf-extrato-linha ${isDebito ? 'cf-extrato-deb' : 'cf-extrato-pag'}">
@@ -246,9 +457,8 @@ const CF = (() => {
                 </div>
                 ${itensHtml ? `<div class="cf-extrato-itens">${itensHtml}</div>` : ''}
                 <div class="cf-extrato-bottom">
-                    ${m.forma_pagamento
-                        ? `<span class="cf-forma">${m.forma_pagamento}</span>`
-                        : ''}
+                    ${origemTag}
+                    ${m.forma_pagamento ? `<span class="cf-forma">${m.forma_pagamento}</span>` : ''}
                     <span class="${statusClass}">${m.status}</span>
                     ${m.observacao ? `<span class="cf-obs">${m.observacao}</span>` : ''}
                 </div>
@@ -489,9 +699,7 @@ const CF = (() => {
     function abrirPagamento() {
         if (!_clienteAtivo) return;
 
-        const totalPend = _lancamentos
-            .filter(l => l.cliente_id === _clienteAtivo.id && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+        const totalPend = _saldoAbertoCliente(_clienteAtivo.id);
 
         const elSaldo = document.getElementById('cf-pag-saldo');
         if (elSaldo) elSaldo.textContent = _fmtBRL(totalPend);
@@ -764,6 +972,118 @@ const CF = (() => {
         if (error) throw error;
     }
 
+    async function carregarFechamentoExistente({ fechamentoId } = {}) {
+        _fechamentoIdEmEdicao = fechamentoId || null;
+        _historicoBancoCliente = [];
+        _snapshotSessaoOriginal = { lancamentos: [], pagamentos: [] };
+
+        if (!fechamentoId) {
+            _hidratarSessaoDoEstado();
+            renderChipResumo();
+            renderListaLancamentos();
+            return;
+        }
+
+        const loteria = _getLoteriaAtiva();
+        if (!loteria) return;
+
+        const { data, error } = await _sb
+            .from('cliente_fechamento_extrato')
+            .select(`
+                id,
+                cliente_id,
+                tipo_movimento,
+                forma_pagamento,
+                status,
+                valor_total,
+                gera_credito_fechamento,
+                gera_abatimento_divida,
+                gera_pix_quitacao,
+                data_movimento,
+                observacao,
+                created_at,
+                cliente_fechamento_cadastro (
+                    id,
+                    nome,
+                    telefone,
+                    documento,
+                    observacao
+                ),
+                cliente_fechamento_itens (
+                    id,
+                    tipo_origem,
+                    origem_id,
+                    data_venda,
+                    descricao,
+                    modalidade,
+                    concurso,
+                    produto,
+                    qtd_jogos,
+                    qtd_dezenas,
+                    valor_unitario,
+                    qtd_vendida,
+                    valor_total
+                )
+            `)
+            .eq('loteria_id', loteria.id)
+            .eq('fechamento_id', fechamentoId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        const lista = (data || []).map(r => ({
+            _sessao_id: r.id,
+            extrato_id: r.id,
+            cliente_id: Number(r.cliente_id),
+            cliente_nome: r.cliente_fechamento_cadastro?.nome || 'Cliente',
+            tipo_movimento: r.tipo_movimento,
+            forma_pagamento: r.forma_pagamento || null,
+            status: r.status,
+            valor_total: Number(r.valor_total || 0),
+            gera_credito_fechamento: !!r.gera_credito_fechamento,
+            gera_abatimento_divida: !!r.gera_abatimento_divida,
+            gera_pix_quitacao: !!r.gera_pix_quitacao,
+            data_movimento: r.data_movimento,
+            observacao: r.observacao || null,
+            created_at: r.created_at || new Date().toISOString(),
+            itens: (r.cliente_fechamento_itens || []).map(it => ({
+                ...it,
+                valor_unitario: Number(it.valor_unitario || 0),
+                qtd_vendida: Number(it.qtd_vendida || 1),
+                valor_total: Number(it.valor_total || 0)
+            }))
+        }));
+
+        _lancamentos = lista.filter(x => x.tipo_movimento === 'DEBITO');
+        _pagamentos = lista.filter(x => x.tipo_movimento === 'PAGAMENTO');
+
+        _snapshotSessaoOriginal = {
+            lancamentos: _clone(_lancamentos),
+            pagamentos: _clone(_pagamentos)
+        };
+
+        await _carregarClientes();
+
+        const cliSelEstado = _getEstado()?.tela1?.clienteFechamento?.clienteSelecionado?.id;
+        const cliPreferido = cliSelEstado || lista[0]?.cliente_id || null;
+
+        if (cliPreferido) {
+            _clienteAtivo =
+                _clientes.find(c => Number(c.id) === Number(cliPreferido)) ||
+                { id: Number(cliPreferido), nome: lista.find(x => Number(x.cliente_id) === Number(cliPreferido))?.cliente_nome || 'Cliente' };
+
+            await _carregarExtratoBancoCliente(cliPreferido);
+        }
+
+        _syncEstado();
+        renderChipResumo();
+        renderListaLancamentos();
+
+        if (_clienteAtivo && document.getElementById('m-area-cliente')?.classList.contains('show')) {
+            _renderViewCliente();
+        }
+    }
+
     // ── RESET ──────────────────────────────────────────────────────────────
     function reset() {
         _clientes = [];
@@ -771,6 +1091,9 @@ const CF = (() => {
         _carrinhoItens = [];
         _lancamentos = [];
         _pagamentos = [];
+        _historicoBancoCliente = [];
+        _fechamentoIdEmEdicao = null;
+        _snapshotSessaoOriginal = { lancamentos: [], pagamentos: [] };
         renderChipResumo();
 
         const estado = _getEstado();
@@ -818,6 +1141,7 @@ const CF = (() => {
         getTotalPixQuitacao,
         gravarNoSupabase,
         estornarDoFechamento,
+        carregarFechamentoExistente,
         reset,
         // Para buscas reativas
         filtrarClientes: () => {
