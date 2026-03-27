@@ -97,20 +97,80 @@ const CF = (() => {
 
         try {
             const { data, error } = await _sb
-                .from('cliente_fechamento_cadastro')
-                .select('id, nome, telefone, documento, observacao')
+                .from('vw_cliente_fechamento_saldos')
+                .select(`
+                    cliente_id,
+                    loteria_id,
+                    nome,
+                    telefone,
+                    documento,
+                    observacao,
+                    total_debitos,
+                    total_pagamentos_quitados,
+                    total_pagamentos_processamento,
+                    saldo_aberto,
+                    ultima_movimentacao
+                `)
                 .eq('loteria_id', loteria.id)
-                .eq('ativo', true)
                 .order('nome');
 
             if (error) throw error;
-            _clientes = data || [];
+
+            _clientes = (data || []).map(c => ({
+                id: Number(c.cliente_id),
+                nome: c.nome,
+                telefone: c.telefone,
+                documento: c.documento,
+                observacao: c.observacao,
+                saldo_aberto: Number(c.saldo_aberto || 0),
+                total_pagamentos_processamento: Number(c.total_pagamentos_processamento || 0)
+            }));
+
             _renderListaClientes();
         } catch (e) {
-            console.error('Erro ao carregar clientes:', e);
-            _clientes = [];
+            console.error('Erro ao carregar saldos dos clientes:', e);
+
+            try {
+                const { data, error } = await _sb
+                    .from('cliente_fechamento_cadastro')
+                    .select('id, nome, telefone, documento, observacao')
+                    .eq('loteria_id', loteria.id)
+                    .eq('ativo', true)
+                    .order('nome');
+
+                if (error) throw error;
+
+                _clientes = (data || []).map(c => ({
+                    ...c,
+                    saldo_aberto: 0,
+                    total_pagamentos_processamento: 0
+                }));
+            } catch (e2) {
+                console.error('Erro ao carregar clientes:', e2);
+                _clientes = [];
+            }
+
             _renderListaClientes();
         }
+    }
+
+    function _getSaldoAbertoCliente(clienteId) {
+        const cli = _clientes.find(c => Number(c.id) === Number(clienteId));
+        const saldoBanco = Number(cli?.saldo_aberto || 0);
+
+        const debitosSessao = _lancamentos
+            .filter(l => Number(l.cliente_id) === Number(clienteId) && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
+            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+
+        const pagamentosSessao = _pagamentos
+            .filter(p =>
+                Number(p.cliente_id) === Number(clienteId) &&
+                p.tipo_movimento === 'PAGAMENTO' &&
+                (p.status === 'QUITADO' || p.status === 'PROCESSAMENTO')
+            )
+            .reduce((a, p) => a + Number(p.valor_total || 0), 0);
+
+        return Math.max(0, saldoBanco + debitosSessao - pagamentosSessao);
     }
 
     function _renderListaClientes() {
@@ -141,10 +201,7 @@ const CF = (() => {
         }
 
         wrap.innerHTML = filtrados.map(c => {
-            const lancDeste = _lancamentos.filter(l => l.cliente_id === c.id);
-            const totalDevendo = lancDeste
-                .filter(l => l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-                .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+            const totalDevendo = _getSaldoAbertoCliente(c.id);
 
             return `
             <div class="cf-cliente-card ${totalDevendo > 0 ? 'tem-divida' : ''}"
@@ -184,20 +241,15 @@ const CF = (() => {
         const c = _clienteAtivo;
         if (!c) return;
 
-        // Cabeçalho
         const hdr = document.getElementById('cf-cliente-header');
         if (hdr) hdr.innerHTML = `
             <div class="cf-cli-nome-lg">${c.nome}</div>
             ${c.telefone ? `<div class="cf-cli-tel">${c.telefone}</div>` : ''}
         `;
 
-        // Histórico desta sessão para esse cliente
         _renderExtratoCurrent();
 
-        // Botão de pagamento: só aparece se tem dívida pendente nesta sessão
-        const totalPendente = _lancamentos
-            .filter(l => l.cliente_id === c.id && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+        const totalPendente = _getSaldoAbertoCliente(c.id);
 
         const btnPag = document.getElementById('cf-btn-registrar-pag');
         if (btnPag) btnPag.style.display = totalPendente > 0 ? 'flex' : 'none';
@@ -205,7 +257,7 @@ const CF = (() => {
         const saldoEl = document.getElementById('cf-saldo-pendente');
         if (saldoEl) saldoEl.textContent = totalPendente > 0
             ? `Saldo em aberto: ${_fmtBRL(totalPendente)}`
-            : 'Nenhuma dívida nesta sessão';
+            : 'Nenhuma dívida em aberto';
     }
 
     function _renderExtratoCurrent() {
@@ -489,9 +541,7 @@ const CF = (() => {
     function abrirPagamento() {
         if (!_clienteAtivo) return;
 
-        const totalPend = _lancamentos
-            .filter(l => l.cliente_id === _clienteAtivo.id && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+        const totalPend = _getSaldoAbertoCliente(_clienteAtivo.id);
 
         const elSaldo = document.getElementById('cf-pag-saldo');
         if (elSaldo) elSaldo.textContent = _fmtBRL(totalPend);
@@ -499,12 +549,11 @@ const CF = (() => {
         const inpVal = document.getElementById('cf-pag-valor');
         if (inpVal) inpVal.value = totalPend > 0 ? totalPend.toFixed(2) : '';
 
-        // Reseta radio para dinheiro
         const rdDin = document.getElementById('cf-pag-dinheiro');
         if (rdDin) rdDin.checked = true;
 
-        document.getElementById('cf-pag-err')?.style
-            && (document.getElementById('cf-pag-err').style.display = 'none');
+        const err = document.getElementById('cf-pag-err');
+        if (err) err.style.display = 'none';
 
         _setModalView('cf-view-pagamento');
     }
@@ -721,7 +770,7 @@ const CF = (() => {
                     qtd_dezenas: it.qtd_dezenas || null,
                     valor_unitario: Number(it.valor_unitario || 0),
                     qtd_vendida: Number(it.qtd_vendida || 1),
-                    
+                    valor_total: Number(it.valor_total || 0)
                 }));
 
                 const { error: errIt } = await _sb
