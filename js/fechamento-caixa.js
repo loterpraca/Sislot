@@ -1801,8 +1801,7 @@ async function finalizar() {
 
         // Totais CF
         const totCFCredito    = CF.getTotalCredito();
-        const totCFAbatimento = CF.getTotalAbatimento();
-        const totCFPix        = CF.getTotalPixQuitacao();
+      
 
         // Fórmula conforme INTEGRACAO.md
         const totDeb = Number(t1.troco_inicial || 0)
