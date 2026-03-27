@@ -1,26 +1,17 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // MÓDULO: ÁREA DO CLIENTE — cliente_fechamento_*
-// Substitui a lógica simples de fechamento_dividas
-// Encaixa em tela 1 do fechamento-caixa.js
+// Fluxo simplificado: dentro do fechamento só lança dívida de cliente.
+// Pagamentos serão lançados em outra área do sistema.
 // ═══════════════════════════════════════════════════════════════════════════
-
-// ─── ESTADO DO MÓDULO ────────────────────────────────────────────────────────
-// Expande ESTADO.tela1 com:
-// ESTADO.tela1.clienteFechamento = {
-//   clienteSelecionado: null,
-//   lancamentos: [],    // DEBITOs pendentes desta sessão
-//   pagamentos: []      // PAGAMENTOs desta sessão
-// }
 
 const CF = (() => {
     // Estado interno do módulo
-    let _clientes = [];         // lista de clientes da loja
-    let _clienteAtivo = null;   // cliente selecionado no modal
-    let _carrinhoItens = [];    // itens do carrinho atual
-    let _lancamentos = [];      // lançamentos da sessão (extrato)
-   
+    let _clientes = [];
+    let _clienteAtivo = null;
+    let _carrinhoItens = [];
+    let _lancamentos = [];
 
-    // Refs de Supabase e loja (injetadas via CF.init)
+    // Dependências injetadas via CF.init
     let _sb = null;
     let _getLoteriaAtiva = null;
     let _getUsuario = null;
@@ -37,17 +28,22 @@ const CF = (() => {
         _fmtBRL = deps.fmtBRL;
         _fmtData = deps.fmtData;
 
-        // Garante subestado no ESTADO global
         const estado = _getEstado();
         if (!estado.tela1.clienteFechamento) {
             estado.tela1.clienteFechamento = {
                 clienteSelecionado: null,
                 lancamentos: []
-                
             };
         }
 
+        // Reidrata do estado caso a tela já venha carregada
+        const cfEstado = estado.tela1.clienteFechamento || {};
+        _lancamentos = Array.isArray(cfEstado.lancamentos)
+            ? [...cfEstado.lancamentos]
+            : [];
+
         _bindEvents();
+        renderChipResumo();
     }
 
     function _bindEvents() {
@@ -55,7 +51,7 @@ const CF = (() => {
             ?.addEventListener('click', openModal);
     }
 
-    // ── SINCRONIZA ESTADO GLOBAL ──────────────────────────────────────────
+    // ── ESTADO GLOBAL ────────────────────────────────────────────────────
     function _syncEstado() {
         const estado = _getEstado();
         estado.tela1.clienteFechamento = {
@@ -63,11 +59,10 @@ const CF = (() => {
                 ? { id: _clienteAtivo.id, nome: _clienteAtivo.nome }
                 : null,
             lancamentos: [..._lancamentos]
-           
         };
     }
 
-    // ── ABRIR / FECHAR MODAL ──────────────────────────────────────────────
+    // ── MODAL ────────────────────────────────────────────────────────────
     async function openModal() {
         _setModalView('cf-view-lista');
         _renderResumoSessao();
@@ -83,14 +78,14 @@ const CF = (() => {
     }
 
     function _setModalView(viewId) {
-        ['cf-view-lista', 'cf-view-cliente', 'cf-view-carrinho',
-         'cf-view-novo-cliente'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = id === viewId ? 'block' : 'none';
-        });
+        ['cf-view-lista', 'cf-view-cliente', 'cf-view-carrinho', 'cf-view-novo-cliente']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = id === viewId ? 'block' : 'none';
+            });
     }
 
-    // ── CLIENTES ──────────────────────────────────────────────────────────
+    // ── CLIENTES ────────────────────────────────────────────────────────
     async function _carregarClientes() {
         const loteria = _getLoteriaAtiva();
         if (!loteria) return;
@@ -122,8 +117,7 @@ const CF = (() => {
                 telefone: c.telefone,
                 documento: c.documento,
                 observacao: c.observacao,
-                saldo_aberto: Number(c.saldo_aberto || 0),
-                total_pagamentos_processamento: Number(c.total_pagamentos_processamento || 0)
+                saldo_aberto: Number(c.saldo_aberto || 0)
             }));
 
             _renderListaClientes();
@@ -141,9 +135,12 @@ const CF = (() => {
                 if (error) throw error;
 
                 _clientes = (data || []).map(c => ({
-                    ...c,
-                    saldo_aberto: 0,
-                    total_pagamentos_processamento: 0
+                    id: Number(c.id),
+                    nome: c.nome,
+                    telefone: c.telefone,
+                    documento: c.documento,
+                    observacao: c.observacao,
+                    saldo_aberto: 0
                 }));
             } catch (e2) {
                 console.error('Erro ao carregar clientes:', e2);
@@ -155,21 +152,23 @@ const CF = (() => {
     }
 
     function _getSaldoAbertoCliente(clienteId) {
-    const cli = _clientes.find(c => Number(c.id) === Number(clienteId));
-    const saldoBanco = Number(cli?.saldo_aberto || 0);
+        const cli = _clientes.find(c => Number(c.id) === Number(clienteId));
+        const saldoBanco = Number(cli?.saldo_aberto || 0);
 
-    const debitosSessao = _lancamentos
-        .filter(l => Number(l.cliente_id) === Number(clienteId) && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-        .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+        const debitosSessao = _lancamentos
+            .filter(l => Number(l.cliente_id) === Number(clienteId) && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
+            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
 
-    return Math.max(0, saldoBanco + debitosSessao);
-}
+        return Math.max(0, saldoBanco + debitosSessao);
+    }
+
     function _renderListaClientes() {
         const wrap = document.getElementById('cf-clientes-lista');
         if (!wrap) return;
 
         const busca = (document.getElementById('cf-busca-cliente')?.value || '')
-            .toLowerCase().trim();
+            .toLowerCase()
+            .trim();
 
         const filtrados = busca
             ? _clientes.filter(c =>
@@ -221,9 +220,9 @@ const CF = (() => {
             : _clientes.find(x => Number(x.id) === Number(idOuObj));
 
         if (!c) return;
+
         _clienteAtivo = c;
         _carrinhoItens = [];
-
         _renderViewCliente();
         _setModalView('cf-view-cliente');
     }
@@ -233,19 +232,22 @@ const CF = (() => {
         if (!c) return;
 
         const hdr = document.getElementById('cf-cliente-header');
-        if (hdr) hdr.innerHTML = `
-            <div class="cf-cli-nome-lg">${c.nome}</div>
-            ${c.telefone ? `<div class="cf-cli-tel">${c.telefone}</div>` : ''}
-        `;
+        if (hdr) {
+            hdr.innerHTML = `
+                <div class="cf-cli-nome-lg">${c.nome}</div>
+                ${c.telefone ? `<div class="cf-cli-tel">${c.telefone}</div>` : ''}
+            `;
+        }
 
         _renderExtratoCurrent();
 
         const totalPendente = _getSaldoAbertoCliente(c.id);
-
         const saldoEl = document.getElementById('cf-saldo-pendente');
-        if (saldoEl) saldoEl.textContent = totalPendente > 0
-            ? `Saldo em aberto: ${_fmtBRL(totalPendente)}`
-            : 'Nenhuma dívida em aberto';
+        if (saldoEl) {
+            saldoEl.textContent = totalPendente > 0
+                ? `Saldo em aberto: ${_fmtBRL(totalPendente)}`
+                : 'Nenhuma dívida em aberto';
+        }
     }
 
     function _renderExtratoCurrent() {
@@ -253,51 +255,38 @@ const CF = (() => {
         if (!wrap || !_clienteAtivo) return;
 
         const movs = _lancamentos
-    .filter(l => l.cliente_id === _clienteAtivo.id)
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        
+            .filter(l => Number(l.cliente_id) === Number(_clienteAtivo.id))
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
         if (!movs.length) {
             wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum movimento nesta sessão</div>`;
             return;
         }
 
         wrap.innerHTML = movs.map(m => {
-            const isDebito = m.tipo_movimento === 'DEBITO';
-            const statusClass = {
-                PENDENTE: 'cf-status-pendente',
-                PROCESSAMENTO: 'cf-status-proc',
-                QUITADO: 'cf-status-ok'
-            }[m.status] || '';
-
             const itensHtml = (m.itens || []).map(it => `
                 <div class="cf-extrato-item">
-                    <span>${it.descricao || it.produto || `${it.modalidade} ${it.concurso}`}</span>
+                    <span>${it.descricao || it.produto || `${it.modalidade || ''} ${it.concurso || ''}`.trim()}</span>
                     <span>${it.qtd_vendida || 1}x ${_fmtBRL(it.valor_unitario || 0)}</span>
                 </div>`).join('');
 
             return `
-            <div class="cf-extrato-linha ${isDebito ? 'cf-extrato-deb' : 'cf-extrato-pag'}">
+            <div class="cf-extrato-linha cf-extrato-deb">
                 <div class="cf-extrato-top">
-                   <span class="cf-extrato-tipo">↓ Débito</span>
-                    <span class="cf-extrato-valor ${isDebito ? 'v-neg' : 'v-pos'}">
-                        ${isDebito ? '-' : '+'}${_fmtBRL(m.valor_total || 0)}
-                    </span>
+                    <span class="cf-extrato-tipo">↓ Débito</span>
+                    <span class="cf-extrato-valor v-neg">-${_fmtBRL(m.valor_total || 0)}</span>
                 </div>
                 ${itensHtml ? `<div class="cf-extrato-itens">${itensHtml}</div>` : ''}
                 <div class="cf-extrato-bottom">
-                    ${m.forma_pagamento
-                        ? `<span class="cf-forma">${m.forma_pagamento}</span>`
-                        : ''}
-                    <span class="${statusClass}">${m.status}</span>
+                    <span class="cf-status-pendente">${m.status}</span>
                     ${m.observacao ? `<span class="cf-obs">${m.observacao}</span>` : ''}
                 </div>
             </div>`;
         }).join('');
     }
 
-    // ── NOVO CADASTRO ─────────────────────────────────────────────────────
+    // ── NOVO CADASTRO ────────────────────────────────────────────────────
     function iniciarNovoCadastro() {
-        // Limpa campos
         ['cf-novo-nome', 'cf-novo-tel', 'cf-novo-doc', 'cf-novo-obs'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
@@ -314,7 +303,10 @@ const CF = (() => {
 
         const loteria = _getLoteriaAtiva();
         const btn = document.getElementById('cf-btn-salvar-novo');
-        if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Salvando...';
+        }
 
         try {
             const { data, error } = await _sb
@@ -332,48 +324,89 @@ const CF = (() => {
 
             if (error) throw error;
 
-            _clientes.unshift(data);
-            selecionarCliente(data);
+            _clientes.unshift({
+                id: Number(data.id),
+                nome: data.nome,
+                telefone: data.telefone,
+                documento: data.documento,
+                observacao: data.observacao,
+                saldo_aberto: 0
+            });
+
+            selecionarCliente({
+                id: Number(data.id),
+                nome: data.nome,
+                telefone: data.telefone,
+                documento: data.documento,
+                observacao: data.observacao,
+                saldo_aberto: 0
+            });
         } catch (e) {
             _showCFError('cf-novo-err', e.message || 'Erro ao cadastrar.');
         } finally {
-            if (btn) { btn.disabled = false; btn.textContent = 'Cadastrar'; }
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Cadastrar';
+            }
         }
     }
 
-    // ── CARRINHO DE DÉBITO ────────────────────────────────────────────────
+    // ── CARRINHO DE DÍVIDA ───────────────────────────────────────────────
     function abrirCarrinho() {
         _carrinhoItens = [];
+        const obs = document.getElementById('cf-obs-debito');
+        if (obs) obs.value = '';
         _renderCarrinho();
         _setModalView('cf-view-carrinho');
     }
 
     function adicionarItemCarrinho(tipo) {
-        // tipo: BOLAO | FEDERAL | PRODUTO | CONTA
         const templates = {
             BOLAO: {
-                tipo_origem: 'BOLAO', modalidade: '', concurso: '',
-                qtd_jogos: 0, qtd_dezenas: 0,
-                valor_unitario: 0, qtd_vendida: 1, valor_total: 0,
-                data_venda: _hoje(), descricao: ''
+                tipo_origem: 'BOLAO',
+                modalidade: '',
+                concurso: '',
+                qtd_jogos: 0,
+                qtd_dezenas: 0,
+                valor_unitario: 0,
+                qtd_vendida: 1,
+                valor_total: 0,
+                data_venda: _hoje(),
+                descricao: ''
             },
             FEDERAL: {
-                tipo_origem: 'FEDERAL', modalidade: '', concurso: '',
-                valor_unitario: 0, qtd_vendida: 1, valor_total: 0,
-                data_venda: _hoje(), descricao: ''
+                tipo_origem: 'FEDERAL',
+                modalidade: '',
+                concurso: '',
+                valor_unitario: 0,
+                qtd_vendida: 1,
+                valor_total: 0,
+                data_venda: _hoje(),
+                descricao: ''
             },
             PRODUTO: {
-                tipo_origem: 'PRODUTO', produto: '',
-                valor_unitario: 0, qtd_vendida: 1, valor_total: 0,
-                data_venda: _hoje(), descricao: ''
+                tipo_origem: 'PRODUTO',
+                produto: '',
+                valor_unitario: 0,
+                qtd_vendida: 1,
+                valor_total: 0,
+                data_venda: _hoje(),
+                descricao: ''
             },
             CONTA: {
-                tipo_origem: 'CONTA', descricao: '',
-                valor_unitario: 0, qtd_vendida: 1, valor_total: 0,
+                tipo_origem: 'CONTA',
+                descricao: '',
+                valor_unitario: 0,
+                qtd_vendida: 1,
+                valor_total: 0,
                 data_venda: _hoje()
             }
         };
-        _carrinhoItens.push({ ...templates[tipo], _id: Date.now() + Math.random() });
+
+        _carrinhoItens.push({
+            ...templates[tipo],
+            _id: Date.now() + Math.random()
+        });
         _renderCarrinho();
     }
 
@@ -420,36 +453,36 @@ const CF = (() => {
         let html = '';
 
         if (tipo === 'BOLAO') {
-            html += _field(`Modalidade`, `<input class="cf-inp" type="text" placeholder="Ex: Mega Sena"
+            html += _field('Modalidade', `<input class="cf-inp" type="text" placeholder="Ex: Mega Sena"
                 value="${item.modalidade || ''}"
                 oninput="CF.updateItem(${idx}, 'modalidade', this.value)">`);
-            html += _field(`Concurso`, `<input class="cf-inp" type="text" placeholder="Ex: 2800"
+            html += _field('Concurso', `<input class="cf-inp" type="text" placeholder="Ex: 2800"
                 value="${item.concurso || ''}"
                 oninput="CF.updateItem(${idx}, 'concurso', this.value)">`);
-            html += _field(`Qtd. Jogos`, `<input class="cf-inp" type="number" min="0" placeholder="0"
+            html += _field('Qtd. Jogos', `<input class="cf-inp" type="number" min="0" placeholder="0"
                 value="${item.qtd_jogos || ''}"
                 oninput="CF.updateItem(${idx}, 'qtd_jogos', +this.value)">`);
-            html += _field(`Dezenas`, `<input class="cf-inp" type="number" min="0" placeholder="0"
+            html += _field('Dezenas', `<input class="cf-inp" type="number" min="0" placeholder="0"
                 value="${item.qtd_dezenas || ''}"
                 oninput="CF.updateItem(${idx}, 'qtd_dezenas', +this.value)">`);
         } else if (tipo === 'FEDERAL') {
-            html += _field(`Modalidade`, `<input class="cf-inp" type="text" placeholder="Ex: Quina"
+            html += _field('Modalidade', `<input class="cf-inp" type="text" placeholder="Ex: Quina"
                 value="${item.modalidade || ''}"
                 oninput="CF.updateItem(${idx}, 'modalidade', this.value)">`);
-            html += _field(`Concurso`, `<input class="cf-inp" type="text" placeholder="Ex: 5000"
+            html += _field('Concurso', `<input class="cf-inp" type="text" placeholder="Ex: 5000"
                 value="${item.concurso || ''}"
                 oninput="CF.updateItem(${idx}, 'concurso', this.value)">`);
         } else if (tipo === 'PRODUTO') {
-            html += _field(`Produto`, `<input class="cf-inp" type="text" placeholder="Ex: Raspadinha Sorte Grande"
+            html += _field('Produto', `<input class="cf-inp" type="text" placeholder="Ex: Raspadinha Sorte Grande"
                 value="${item.produto || ''}"
                 oninput="CF.updateItem(${idx}, 'produto', this.value)">`);
         } else if (tipo === 'CONTA') {
-            html += _field(`Descrição`, `<input class="cf-inp" type="text" placeholder="Ex: Ajuste / compra diversa"
+            html += _field('Descrição', `<input class="cf-inp" type="text" placeholder="Ex: Ajuste / compra diversa"
                 value="${item.descricao || ''}"
                 oninput="CF.updateItem(${idx}, 'descricao', this.value)">`);
         }
 
-        html += _field(`Valor Unitário`, `<div class="pfx-wrap">
+        html += _field('Valor Unitário', `<div class="pfx-wrap">
             <span class="pfx">R$</span>
             <input class="cf-inp" type="number" step="0.01" min="0" placeholder="0,00"
                 style="padding-left:32px"
@@ -457,7 +490,7 @@ const CF = (() => {
                 oninput="CF.updateItem(${idx}, 'valor_unitario', +this.value)">
         </div>`);
 
-        html += _field(`Qtd.`, `<input class="cf-inp" type="number" min="1" placeholder="1"
+        html += _field('Qtd.', `<input class="cf-inp" type="number" min="1" placeholder="1"
             value="${item.qtd_vendida || 1}"
             oninput="CF.updateItem(${idx}, 'qtd_vendida', +this.value)">`);
 
@@ -474,11 +507,13 @@ const CF = (() => {
     function updateItem(idx, campo, valor) {
         const item = _carrinhoItens[idx];
         if (!item) return;
+
         item[campo] = valor;
         item.valor_total = Number(item.valor_unitario || 0) * Number(item.qtd_vendida || 0);
 
         const subEl = document.getElementById(`cf-sub-${idx}`);
-        if (subEl) subEl.textContent = _fmtBRL(item.valor_total);
+        if (subEl) subEl.textContent = _fmtBRL(item.valor_total || 0);
+
         _atualizarTotalCarrinho();
     }
 
@@ -486,6 +521,7 @@ const CF = (() => {
         const total = _carrinhoItens.reduce((a, i) => a + Number(i.valor_total || 0), 0);
         const el = document.getElementById('cf-total-carrinho');
         if (el) el.textContent = _fmtBRL(total);
+
         const btn = document.getElementById('cf-btn-confirmar-debito');
         if (btn) btn.disabled = total <= 0;
     }
@@ -497,7 +533,6 @@ const CF = (() => {
         if (totalCarrinho <= 0) return;
 
         const obs = document.getElementById('cf-obs-debito')?.value?.trim() || '';
-        const data = _hoje();
 
         const lancamento = {
             _sessao_id: Date.now(),
@@ -509,7 +544,7 @@ const CF = (() => {
             gera_credito_fechamento: true,
             gera_abatimento_divida: false,
             gera_pix_quitacao: false,
-            data_movimento: data,
+            data_movimento: _hoje(),
             observacao: obs,
             itens: _carrinhoItens.map(i => ({ ...i })),
             created_at: new Date().toISOString()
@@ -524,11 +559,7 @@ const CF = (() => {
         _renderResumoSessao();
     }
 
-    // ── PAGAMENTO ──────────────────────────────────────────────────────────
-    
-    
-
-    // ── RESUMO DA SESSÃO (dentro do modal e no chip externo) ──────────────
+    // ── RESUMO DA SESSÃO ─────────────────────────────────────────────────
     function _renderResumoSessao() {
         const wrap = document.getElementById('cf-resumo-sessao');
         if (!wrap) return;
@@ -536,13 +567,12 @@ const CF = (() => {
         const totDebito = _lancamentos
             .filter(l => l.tipo_movimento === 'DEBITO')
             .reduce((a, l) => a + Number(l.valor_total || 0), 0);
-      
+
         wrap.innerHTML = `
             <div class="cf-resumo-linha">
-                <span>Crédito p/ fechamento (débitos)</span>
+                <span>Crédito p/ fechamento (dívidas)</span>
                 <span class="cf-val-pos">${_fmtBRL(totDebito)}</span>
             </div>
-          
         `;
 
         renderListaLancamentos();
@@ -552,39 +582,28 @@ const CF = (() => {
         const wrap = document.getElementById('cf-lista-lancamentos');
         if (!wrap) return;
 
-       const todos = [..._lancamentos]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
+        const todos = [..._lancamentos]
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
         if (!todos.length) {
             wrap.innerHTML = `<div class="cf-empty-small">Nenhum lançamento nesta sessão</div>`;
             return;
         }
 
-        wrap.innerHTML = todos.map(m => {
-            const isDebito = m.tipo_movimento === 'DEBITO';
-            const statusClass = {
-                PENDENTE: 'cf-s-pend',
-                PROCESSAMENTO: 'cf-s-proc',
-                QUITADO: 'cf-s-ok'
-            }[m.status] || '';
-
-            return `
+        wrap.innerHTML = todos.map(m => `
             <div class="cf-lanc-row">
                 <div class="cf-lanc-esq">
                     <span class="cf-lanc-cli">${m.cliente_nome}</span>
-                    <span class="${statusClass}">${m.status}</span>
-                    ${m.forma_pagamento ? `<span class="cf-lanc-forma">${m.forma_pagamento}</span>` : ''}
+                    <span class="cf-s-pend">${m.status}</span>
                 </div>
                 <div class="cf-lanc-dir">
-                    <span class="${isDebito ? 'v-neg' : 'v-pos'}">
-                        ${isDebito ? '-' : '+'}${_fmtBRL(m.valor_total || 0)}
-                    </span>
+                    <span class="v-neg">-${_fmtBRL(m.valor_total || 0)}</span>
                 </div>
-            </div>`;
-        }).join('');
+            </div>
+        `).join('');
     }
 
-    // ── CHIP EXTERNO (botão na tela 1) ────────────────────────────────────
+    // ── CHIP EXTERNO ─────────────────────────────────────────────────────
     function renderChipResumo() {
         const btn = document.getElementById('btn-abrir-area-cliente');
         if (!btn) return;
@@ -593,10 +612,8 @@ const CF = (() => {
             .filter(l => l.tipo_movimento === 'DEBITO')
             .reduce((a, l) => a + Number(l.valor_total || 0), 0);
 
-        const countClientes = new Set(
-    _lancamentos.map(l => l.cliente_id)
-        ).size;
-        
+        const countClientes = new Set(_lancamentos.map(l => l.cliente_id)).size;
+
         if (countClientes > 0) {
             btn.innerHTML = `
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -618,19 +635,15 @@ const CF = (() => {
         }
     }
 
-    // ── ACUMULADORES PARA O RESUMO DO FECHAMENTO ──────────────────────────
+    // ── ACUMULADOR PARA O RESUMO DO FECHAMENTO ───────────────────────────
     function getTotalCredito() {
-        // Débitos pendentes → viram crédito no fechamento
         return _lancamentos
             .filter(l => l.tipo_movimento === 'DEBITO' && l.gera_credito_fechamento)
             .reduce((a, l) => a + Number(l.valor_total || 0), 0);
     }
 
-     
-
-    // ── GRAVAÇÃO NO SUPABASE ───────────────────────────────────────────────
+    // ── GRAVAÇÃO NO SUPABASE ─────────────────────────────────────────────
     async function gravarNoSupabase(fechamentoId, t1) {
-        // Grava os lançamentos de débito
         for (const lanc of _lancamentos) {
             const { data: extrato, error: errExt } = await _sb
                 .from('cliente_fechamento_extrato')
@@ -653,7 +666,6 @@ const CF = (() => {
 
             if (errExt) throw errExt;
 
-            // Grava os itens
             if (lanc.itens?.length) {
                 const itenRows = lanc.itens.map(it => ({
                     extrato_id: extrato.id,
@@ -668,7 +680,6 @@ const CF = (() => {
                     qtd_dezenas: it.qtd_dezenas || null,
                     valor_unitario: Number(it.valor_unitario || 0),
                     qtd_vendida: Number(it.qtd_vendida || 1)
-                    
                 }));
 
                 const { error: errIt } = await _sb
@@ -678,39 +689,37 @@ const CF = (() => {
                 if (errIt) throw errIt;
             }
         }
-
-        // Grava os pagamentos
-
-        }
     }
 
     async function estornarDoFechamento(fechamentoId) {
         if (!fechamentoId) return;
+
         const { error } = await _sb
             .from('cliente_fechamento_extrato')
             .delete()
             .eq('fechamento_id', fechamentoId);
+
         if (error) throw error;
     }
 
-    // ── RESET ──────────────────────────────────────────────────────────────
+    // ── RESET ────────────────────────────────────────────────────────────
     function reset() {
-    _clientes = [];
-    _clienteAtivo = null;
-    _carrinhoItens = [];
-    _lancamentos = [];
-    renderChipResumo();
+        _clientes = [];
+        _clienteAtivo = null;
+        _carrinhoItens = [];
+        _lancamentos = [];
+        renderChipResumo();
 
-    const estado = _getEstado();
-    if (estado.tela1) {
-        estado.tela1.clienteFechamento = {
-            clienteSelecionado: null,
-            lancamentos: []
-        };
+        const estado = _getEstado();
+        if (estado.tela1) {
+            estado.tela1.clienteFechamento = {
+                clienteSelecionado: null,
+                lancamentos: []
+            };
+        }
     }
-}
 
-    // ── HELPERS INTERNOS ──────────────────────────────────────────────────
+    // ── HELPERS ──────────────────────────────────────────────────────────
     function _hoje() {
         return new Date().toISOString().slice(0, 10);
     }
@@ -723,30 +732,29 @@ const CF = (() => {
         }
     }
 
-    // ── API PÚBLICA ───────────────────────────────────────────────────────
+    // ── API PÚBLICA ──────────────────────────────────────────────────────
     return {
-    init,
-    openModal,
-    closeModal,
-    selecionarCliente,
-    iniciarNovoCadastro,
-    salvarNovoCadastro,
-    abrirCarrinho,
-    adicionarItemCarrinho,
-    removerItemCarrinho,
-    updateItem,
-    confirmarDebito,
-    renderChipResumo,
-    renderListaLancamentos,
-    getTotalCredito,
-    gravarNoSupabase,
-    estornarDoFechamento,
-    reset,
-    filtrarClientes: () => {
-        _renderListaClientes();
-    }
-};
+        init,
+        openModal,
+        closeModal,
+        selecionarCliente,
+        iniciarNovoCadastro,
+        salvarNovoCadastro,
+        abrirCarrinho,
+        adicionarItemCarrinho,
+        removerItemCarrinho,
+        updateItem,
+        confirmarDebito,
+        renderChipResumo,
+        renderListaLancamentos,
+        getTotalCredito,
+        gravarNoSupabase,
+        estornarDoFechamento,
+        reset,
+        filtrarClientes: () => {
+            _renderListaClientes();
+        }
+    };
 })();
 
-// Expõe globalmente
 window.CF = CF;
