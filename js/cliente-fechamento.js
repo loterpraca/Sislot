@@ -18,7 +18,7 @@ const CF = (() => {
     let _clienteAtivo = null;   // cliente selecionado no modal
     let _carrinhoItens = [];    // itens do carrinho atual
     let _lancamentos = [];      // lançamentos da sessão (extrato)
-    let _pagamentos = [];       // pagamentos da sessão
+   
 
     // Refs de Supabase e loja (injetadas via CF.init)
     let _sb = null;
@@ -62,8 +62,8 @@ const CF = (() => {
             clienteSelecionado: _clienteAtivo
                 ? { id: _clienteAtivo.id, nome: _clienteAtivo.nome }
                 : null,
-            lancamentos: [..._lancamentos],
-            pagamentos: [..._pagamentos]
+            lancamentos: [..._lancamentos]
+           
         };
     }
 
@@ -84,7 +84,7 @@ const CF = (() => {
 
     function _setModalView(viewId) {
         ['cf-view-lista', 'cf-view-cliente', 'cf-view-carrinho',
-         'cf-view-pagamento', 'cf-view-novo-cliente'].forEach(id => {
+         'cf-view-novo-cliente'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = id === viewId ? 'block' : 'none';
         });
@@ -155,24 +155,15 @@ const CF = (() => {
     }
 
     function _getSaldoAbertoCliente(clienteId) {
-        const cli = _clientes.find(c => Number(c.id) === Number(clienteId));
-        const saldoBanco = Number(cli?.saldo_aberto || 0);
+    const cli = _clientes.find(c => Number(c.id) === Number(clienteId));
+    const saldoBanco = Number(cli?.saldo_aberto || 0);
 
-        const debitosSessao = _lancamentos
-            .filter(l => Number(l.cliente_id) === Number(clienteId) && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
+    const debitosSessao = _lancamentos
+        .filter(l => Number(l.cliente_id) === Number(clienteId) && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
+        .reduce((a, l) => a + Number(l.valor_total || 0), 0);
 
-        const pagamentosSessao = _pagamentos
-            .filter(p =>
-                Number(p.cliente_id) === Number(clienteId) &&
-                p.tipo_movimento === 'PAGAMENTO' &&
-                (p.status === 'QUITADO' || p.status === 'PROCESSAMENTO')
-            )
-            .reduce((a, p) => a + Number(p.valor_total || 0), 0);
-
-        return Math.max(0, saldoBanco + debitosSessao - pagamentosSessao);
-    }
-
+    return Math.max(0, saldoBanco + debitosSessao);
+}
     function _renderListaClientes() {
         const wrap = document.getElementById('cf-clientes-lista');
         if (!wrap) return;
@@ -251,9 +242,6 @@ const CF = (() => {
 
         const totalPendente = _getSaldoAbertoCliente(c.id);
 
-        const btnPag = document.getElementById('cf-btn-registrar-pag');
-        if (btnPag) btnPag.style.display = totalPendente > 0 ? 'flex' : 'none';
-
         const saldoEl = document.getElementById('cf-saldo-pendente');
         if (saldoEl) saldoEl.textContent = totalPendente > 0
             ? `Saldo em aberto: ${_fmtBRL(totalPendente)}`
@@ -264,11 +252,10 @@ const CF = (() => {
         const wrap = document.getElementById('cf-extrato-sessao');
         if (!wrap || !_clienteAtivo) return;
 
-        const movs = [
-            ..._lancamentos.filter(l => l.cliente_id === _clienteAtivo.id),
-            ..._pagamentos.filter(p => p.cliente_id === _clienteAtivo.id)
-        ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
+        const movs = _lancamentos
+    .filter(l => l.cliente_id === _clienteAtivo.id)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        
         if (!movs.length) {
             wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum movimento nesta sessão</div>`;
             return;
@@ -291,7 +278,7 @@ const CF = (() => {
             return `
             <div class="cf-extrato-linha ${isDebito ? 'cf-extrato-deb' : 'cf-extrato-pag'}">
                 <div class="cf-extrato-top">
-                    <span class="cf-extrato-tipo">${isDebito ? '↓ Débito' : '↑ Pagamento'}</span>
+                   <span class="cf-extrato-tipo">↓ Débito</span>
                     <span class="cf-extrato-valor ${isDebito ? 'v-neg' : 'v-pos'}">
                         ${isDebito ? '-' : '+'}${_fmtBRL(m.valor_total || 0)}
                     </span>
@@ -538,67 +525,8 @@ const CF = (() => {
     }
 
     // ── PAGAMENTO ──────────────────────────────────────────────────────────
-    function abrirPagamento() {
-        if (!_clienteAtivo) return;
-
-        const totalPend = _getSaldoAbertoCliente(_clienteAtivo.id);
-
-        const elSaldo = document.getElementById('cf-pag-saldo');
-        if (elSaldo) elSaldo.textContent = _fmtBRL(totalPend);
-
-        const inpVal = document.getElementById('cf-pag-valor');
-        if (inpVal) inpVal.value = totalPend > 0 ? totalPend.toFixed(2) : '';
-
-        const rdDin = document.getElementById('cf-pag-dinheiro');
-        if (rdDin) rdDin.checked = true;
-
-        const err = document.getElementById('cf-pag-err');
-        if (err) err.style.display = 'none';
-
-        _setModalView('cf-view-pagamento');
-    }
-
-    function confirmarPagamento() {
-        if (!_clienteAtivo) return;
-
-        const forma = document.querySelector('input[name="cf-forma-pag"]:checked')?.value;
-        const valor = parseFloat(document.getElementById('cf-pag-valor')?.value || '0');
-        const obs = document.getElementById('cf-pag-obs')?.value?.trim() || '';
-
-        if (!forma || valor <= 0) {
-            _showCFError('cf-pag-err', 'Selecione a forma e informe um valor válido.');
-            return;
-        }
-
-        // Regras de negócio
-        // Compra anotada → Crédito Cliente (via confirmarDebito)
-        // Pagamento em dinheiro → só Abatimento Dívida
-        // Pagamento em PIX → PIX Quitação + Abatimento Dívida, mesmo em PROCESSAMENTO
-        const isPixPag = forma === 'PIX';
-        const pagamento = {
-            _sessao_id: Date.now(),
-            cliente_id: _clienteAtivo.id,
-            cliente_nome: _clienteAtivo.nome,
-            tipo_movimento: 'PAGAMENTO',
-            forma_pagamento: forma,
-            status: isPixPag ? 'PROCESSAMENTO' : 'QUITADO',
-            valor_total: valor,
-            gera_credito_fechamento: false,
-            gera_abatimento_divida: true,
-            gera_pix_quitacao: isPixPag,
-            data_movimento: _hoje(),
-            observacao: obs,
-            itens: [],
-            created_at: new Date().toISOString()
-        };
-
-        _pagamentos.push(pagamento);
-        _syncEstado();
-
-        _renderViewCliente();
-        _setModalView('cf-view-cliente');
-        _renderResumoSessao();
-    }
+    
+    
 
     // ── RESUMO DA SESSÃO (dentro do modal e no chip externo) ──────────────
     function _renderResumoSessao() {
@@ -624,11 +552,9 @@ const CF = (() => {
         const wrap = document.getElementById('cf-lista-lancamentos');
         if (!wrap) return;
 
-        const todos = [
-            ..._lancamentos.map(l => ({ ...l, _tipo: 'lancamento' })),
-            ..._pagamentos.map(p => ({ ...p, _tipo: 'pagamento' }))
-        ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
+       const todos = [..._lancamentos]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
         if (!todos.length) {
             wrap.innerHTML = `<div class="cf-empty-small">Nenhum lançamento nesta sessão</div>`;
             return;
@@ -667,11 +593,10 @@ const CF = (() => {
             .filter(l => l.tipo_movimento === 'DEBITO')
             .reduce((a, l) => a + Number(l.valor_total || 0), 0);
 
-        const countClientes = new Set([
-            ..._lancamentos.map(l => l.cliente_id),
-            ..._pagamentos.map(p => p.cliente_id)
-        ]).size;
-
+        const countClientes = new Set(
+    _lancamentos.map(l => l.cliente_id)
+        ).size;
+        
         if (countClientes > 0) {
             btn.innerHTML = `
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -755,26 +680,7 @@ const CF = (() => {
         }
 
         // Grava os pagamentos
-        for (const pag of _pagamentos) {
-            const { error: errPag } = await _sb
-                .from('cliente_fechamento_extrato')
-                .insert({
-                    cliente_id: pag.cliente_id,
-                    loteria_id: _getLoteriaAtiva().id,
-                    tipo_movimento: 'PAGAMENTO',
-                    forma_pagamento: pag.forma_pagamento,
-                    status: pag.status,
-                    valor_total: pag.valor_total,
-                    gera_credito_fechamento: false,
-                    gera_abatimento_divida: pag.gera_abatimento_divida,
-                    gera_pix_quitacao: pag.gera_pix_quitacao,
-                    data_movimento: pag.data_movimento,
-                    fechamento_id: fechamentoId,
-                    usuario_id: Number(t1.funcionario_id),
-                    observacao: pag.observacao || null
-                });
 
-            if (errPag) throw errPag;
         }
     }
 
@@ -789,22 +695,20 @@ const CF = (() => {
 
     // ── RESET ──────────────────────────────────────────────────────────────
     function reset() {
-        _clientes = [];
-        _clienteAtivo = null;
-        _carrinhoItens = [];
-        _lancamentos = [];
-        _pagamentos = [];
-        renderChipResumo();
+    _clientes = [];
+    _clienteAtivo = null;
+    _carrinhoItens = [];
+    _lancamentos = [];
+    renderChipResumo();
 
-        const estado = _getEstado();
-        if (estado.tela1) {
-            estado.tela1.clienteFechamento = {
-                clienteSelecionado: null,
-                lancamentos: [],
-                pagamentos: []
-            };
-        }
+    const estado = _getEstado();
+    if (estado.tela1) {
+        estado.tela1.clienteFechamento = {
+            clienteSelecionado: null,
+            lancamentos: []
+        };
     }
+}
 
     // ── HELPERS INTERNOS ──────────────────────────────────────────────────
     function _hoje() {
@@ -821,32 +725,27 @@ const CF = (() => {
 
     // ── API PÚBLICA ───────────────────────────────────────────────────────
     return {
-        init,
-        openModal,
-        closeModal,
-        selecionarCliente,
-        iniciarNovoCadastro,
-        salvarNovoCadastro,
-        abrirCarrinho,
-        adicionarItemCarrinho,
-        removerItemCarrinho,
-        updateItem,
-        confirmarDebito,
-        abrirPagamento,
-        confirmarPagamento,
-        renderChipResumo,
-        renderListaLancamentos,
-        getTotalCredito,
-        getTotalAbatimento,
-        getTotalPixQuitacao,
-        gravarNoSupabase,
-        estornarDoFechamento,
-        reset,
-        // Para buscas reativas
-        filtrarClientes: () => {
-            _renderListaClientes();
-        }
-    };
+    init,
+    openModal,
+    closeModal,
+    selecionarCliente,
+    iniciarNovoCadastro,
+    salvarNovoCadastro,
+    abrirCarrinho,
+    adicionarItemCarrinho,
+    removerItemCarrinho,
+    updateItem,
+    confirmarDebito,
+    renderChipResumo,
+    renderListaLancamentos,
+    getTotalCredito,
+    gravarNoSupabase,
+    estornarDoFechamento,
+    reset,
+    filtrarClientes: () => {
+        _renderListaClientes();
+    }
+};
 })();
 
 // Expõe globalmente
