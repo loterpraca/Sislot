@@ -721,7 +721,7 @@ const CF = (() => {
                     qtd_dezenas: it.qtd_dezenas || null,
                     valor_unitario: Number(it.valor_unitario || 0),
                     qtd_vendida: Number(it.qtd_vendida || 1),
-                    valor_total: Number(it.valor_total || 0)
+                    
                 }));
 
                 const { error: errIt } = await _sb
