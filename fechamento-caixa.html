@@ -9,12 +9,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fechamento de Caixa — SISLOT</title>
 
-  <title>Fechamento de Caixa — SISLOT</title>
-
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./css/fechamento-caixa.css">
-<link rel="stylesheet" href="./css/cliente-fechamento.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/fechamento-caixa.css">
+  <link rel="stylesheet" href="./css/cliente-fechamento.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 </head>
 <body data-loja="centro">
 
@@ -32,8 +30,8 @@
     <div id="relogio">--:--:--</div>
 
     <button type="button" class="btn-menu" id="btnInicio">
-  <i class="fas fa-home"></i> <span>Início</span>
-</button>
+      <i class="fas fa-home"></i> <span>Início</span>
+    </button>
 
     <button type="button" class="btn-menu" id="btnSair">
       <span>Sair</span>
@@ -52,86 +50,138 @@
 </div>
 
 <main class="main">
-<div class="step-content active" id="step1">
-  <div class="page-header">
-    <div>
-      <div class="page-title">Entrada de Dados Externos</div>
-      <div class="page-sub">Preencha os valores conforme os relatórios físicos do dia</div>
-    </div>
-    <div class="step-badge">Tela 1 de 4</div>
-  </div>
 
-  <div class="section">
-    <div class="section-label">Identificação</div>
-    <div class="g3">
-      <div class="field">
-        <label class="field-label req">Funcionário</label>
-        <select id="funcionario" class="sel" onchange="onFuncChange()">
-          <option value="">Selecione...</option>
-        </select>
+  <!-- ═══════════════════════════════════════════════════════ TELA 1 ══ -->
+  <div class="step-content active" id="step1">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Entrada de Dados Externos</div>
+        <div class="page-sub">Preencha os valores conforme os relatórios físicos do dia</div>
       </div>
-      <div class="field">
-        <label class="field-label req">Data do Fechamento</label>
-        <input type="date" id="data-ref">
+      <div class="step-badge">Tela 1 de 4</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Identificação</div>
+      <div class="g3">
+        <div class="field">
+          <label class="field-label req">Funcionário</label>
+          <select id="funcionario" class="sel" onchange="onFuncChange()">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label req">Data do Fechamento</label>
+          <input type="date" id="data-ref">
+        </div>
+        <div class="field">
+          <label class="field-label" style="opacity:0">.</label>
+          <button type="button" id="btn-buscar-fech" class="btn-back"
+                  style="justify-content:center;height:42px"
+                  onclick="buscarFechamentoExistente()">Buscar Fechamento</button>
+        </div>
       </div>
-      <div class="field">
-        <label class="field-label" style="opacity:0">.</label>
-        <button type="button" id="btn-buscar-fech" class="btn-back" style="justify-content:center;height:42px" onclick="buscarFechamentoExistente()">Buscar Fechamento</button>
+      <div class="status-chip" id="status-busca"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Relatório e Movimentação Bancária</div>
+      <div class="g2">
+        <div class="field">
+          <label class="field-label req">Valor do Relatório</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="relatorio" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label req">Depósito Bancário</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="deposito" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
       </div>
     </div>
-    <div class="status-chip" id="status-busca"></div>
-  </div>
 
-  <div class="section">
-    <div class="section-label">Relatório e Movimentação Bancária</div>
-    <div class="g2">
-      <div class="field"><label class="field-label req">Valor do Relatório</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="relatorio" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
-      <div class="field"><label class="field-label req">Depósito Bancário</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="deposito" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+    <div class="section">
+      <div class="section-label">Controle de Troco</div>
+      <div class="g2">
+        <div class="field">
+          <label class="field-label req">Troco Inicial (Fundo)</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="troco-ini" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label req">Troco Sobra (Final)</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="troco-sob" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="section">
-    <div class="section-label">Controle de Troco</div>
-    <div class="g2">
-      <div class="field"><label class="field-label req">Troco Inicial (Fundo)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-ini" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
-      <div class="field"><label class="field-label req">Troco Sobra (Final)</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="troco-sob" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+    <div class="section">
+      <div class="section-label">PIX e Prêmios</div>
+      <div class="g3">
+        <div class="field">
+          <label class="field-label req">PIX CNPJ Recebido</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="pix-cnpj" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label req">Diferença de PIX</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="pix-dif" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label req">Prêmio Raspadinha</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="premio-rasp" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;max-width:300px">
+        <div class="field">
+          <label class="field-label req">Resgate Telesena</label>
+          <div class="pfx-wrap"><span class="pfx">R$</span>
+            <input type="number" id="resgate-tele" placeholder="0,00" step="0.01" oninput="autoFill(this)">
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="section">
-    <div class="section-label">PIX e Prêmios</div>
-    <div class="g3">
-      <div class="field"><label class="field-label req">PIX CNPJ Recebido</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-cnpj" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
-      <div class="field"><label class="field-label req">Diferença de PIX</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="pix-dif" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
-      <div class="field"><label class="field-label req">Prêmio Raspadinha</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="premio-rasp" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+    <!-- ── ÁREA DO CLIENTE (substitui "Dívidas de Clientes") ── -->
+    <div class="section" id="section-area-cliente">
+      <div class="section-label">Área do Cliente</div>
+      <button
+          type="button"
+          class="btn-area-cliente"
+          id="btn-abrir-area-cliente">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
+        </svg>
+        Área do Cliente
+      </button>
     </div>
-    <div style="margin-top:12px;max-width:300px">
-      <div class="field"><label class="field-label req">Resgate Telesena</label><div class="pfx-wrap"><span class="pfx">R$</span><input type="number" id="resgate-tele" placeholder="0,00" step="0.01" oninput="autoFill(this)"></div></div>
+
+    <div class="form-footer">
+      <div style="font-size:10px;color:var(--dim);font-style:italic">
+        <span style="color:var(--accent)">*</span> Campos obrigatórios
+      </div>
+      <button class="btn-next" onclick="avancarStep(2)">
+        Avançar para Tela 2
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 8h10M9 4l4 4-4 4"/>
+        </svg>
+      </button>
     </div>
-  </div>
+  </div><!-- /step1 -->
 
-  <div class="section">
-    <div class="section-label">Dívidas de Clientes</div>
-    <div class="dividas-list" id="dividas-list"></div>
-    <div class="div-footer">
-      <div class="div-counter" id="div-counter">0 / 9 clientes</div>
-      <div class="chip chip-amber show" id="div-total-chip" style="opacity:0">Total: R$ 0,00</div>
-    </div>
-    <button type="button" class="btn-add" id="btn-add-div" onclick="addDivida()">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
-      Adicionar Cliente em Dívida
-    </button>
-  </div>
-
-  <div class="form-footer">
-    <div style="font-size:10px;color:var(--dim);font-style:italic"><span style="color:var(--accent)">*</span> Campos obrigatórios</div>
-    <button class="btn-next" onclick="avancarStep(2)">
-      Avançar para Tela 2
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-    </button>
-  </div>
-</div>
-
+  <!-- ═══════════════════════════════════════════════════════ TELA 2 ══ -->
   <div class="step-content" id="step2">
     <div class="page-header">
       <div>
@@ -142,36 +192,33 @@
     </div>
 
     <div class="section">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-    <div class="section-label" style="margin-bottom:0">Produtos Físicos</div>
-
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <select id="prod-filtro-tipo" class="sel" style="min-width:160px">
-        <option value="">Todos</option>
-        <option value="RASPADINHA">Raspadinha</option>
-        <option value="TELESENA">Tele Sena</option>
-      </select>
-
-      <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);cursor:pointer">
-        <input type="checkbox" id="toggle-produtos-todos">
-        <span>Mostrar sem estoque</span>
-      </label>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">Produtos Físicos</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <select id="prod-filtro-tipo" class="sel" style="min-width:160px">
+            <option value="">Todos</option>
+            <option value="RASPADINHA">Raspadinha</option>
+            <option value="TELESENA">Tele Sena</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);cursor:pointer">
+            <input type="checkbox" id="toggle-produtos-todos">
+            <span>Mostrar sem estoque</span>
+          </label>
+        </div>
+      </div>
+      <div class="prod-grid" id="produtos-grid"></div>
+      <div class="prod-footer" style="margin-top:12px">
+        <span class="prod-tot-lbl">Total Produtos</span>
+        <span class="prod-tot-val" id="produtos-tot">R$ 0,00</span>
+      </div>
     </div>
-  </div>
-
-  <div class="prod-grid" id="produtos-grid"></div>
-
-  <div class="prod-footer" style="margin-top:12px">
-    <span class="prod-tot-lbl">Total Produtos</span>
-    <span class="prod-tot-val" id="produtos-tot">R$ 0,00</span>
-  </div>
-</div>
-
 
     <div class="section">
       <div class="section-label">Bilhetes Federais</div>
       <button class="btn-buscar-fed" id="btn-fed" onclick="buscarFederais()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
         Buscar Federais
       </button>
       <div id="fs-inicial" class="state-box">
@@ -194,8 +241,12 @@
       </div>
       <div id="fs-lista" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)"><strong id="fed-count" style="color:var(--purple)">0</strong> federais</div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--purple)">Total: <strong id="fed-tot-lbl">R$ 0,00</strong></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)">
+            <strong id="fed-count" style="color:var(--purple)">0</strong> federais
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--purple)">
+            Total: <strong id="fed-tot-lbl">R$ 0,00</strong>
+          </div>
         </div>
         <div class="fed-table-wrap">
           <table class="fed-table">
@@ -219,16 +270,21 @@
 
     <div class="form-footer">
       <button class="btn-back" onclick="avancarStep(1)">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 8H3M7 12l-4-4 4-4"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M13 8H3M7 12l-4-4 4-4"/>
+        </svg>
         Voltar
       </button>
       <button class="btn-next" onclick="avancarStep(3)">
         Avançar para Tela 3
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 8h10M9 4l4 4-4 4"/>
+        </svg>
       </button>
     </div>
-  </div>
+  </div><!-- /step2 -->
 
+  <!-- ═══════════════════════════════════════════════════════ TELA 3 ══ -->
   <div class="step-content" id="step3">
     <div class="page-header">
       <div>
@@ -258,7 +314,6 @@
 
     <div id="b3-lista" style="display:none">
       <div id="boloes-wrap"></div>
-
       <div style="display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,200,150,.1),rgba(0,200,150,.04));border:1px solid rgba(0,200,150,.3);border-radius:10px;padding:14px 20px;margin-top:20px;margin-bottom:10px;gap:16px">
         <div>
           <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:2px">Total Bolões Vendidos</div>
@@ -266,13 +321,11 @@
         </div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--accent)" id="tot-bol-geral">R$ 0,00</div>
       </div>
-
       <div class="totais-bar">
         <div class="tot-item"><div class="tot-lbl">🟢 Internos</div><div class="tot-val tv-ic" id="tot-int">R$ 0,00</div></div>
         <div class="tot-item"><div class="tot-lbl">🔵 Externos</div><div class="tot-val tv-ec" id="tot-ext">R$ 0,00</div></div>
         <div class="tot-item"><div class="tot-lbl">Total</div><div class="tot-val tv-b" id="tot-bol">R$ 0,00</div></div>
       </div>
-
       <div class="vendas-list" id="vendas-registradas">
         <div class="vendas-list-title">Cotas vendidas registradas</div>
         <div id="vendas-items"></div>
@@ -281,16 +334,21 @@
 
     <div class="form-footer">
       <button class="btn-back" onclick="avancarStep(2)">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 8H3M7 12l-4-4 4-4"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M13 8H3M7 12l-4-4 4-4"/>
+        </svg>
         Voltar
       </button>
       <button class="btn-next" onclick="avancarStep(4)">
         Avançar para Resumo
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 8h10M9 4l4 4-4 4"/>
+        </svg>
       </button>
     </div>
-  </div>
+  </div><!-- /step3 -->
 
+  <!-- ═══════════════════════════════════════════════════════ TELA 4 ══ -->
   <div class="step-content" id="step4">
     <div class="page-header">
       <div>
@@ -303,15 +361,29 @@
     <div class="modo-banner" id="modo-banner"></div>
 
     <div class="info-bar">
-      <div class="info-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>Funcionário: <strong id="r-func">—</strong></div>
-      <div class="info-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Data: <strong id="r-data">—</strong></div>
-      <div class="info-chip"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Loteria: <strong id="r-loteria">—</strong></div>
+      <div class="info-chip">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+        Funcionário: <strong id="r-func">—</strong>
+      </div>
+      <div class="info-chip">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Data: <strong id="r-data">—</strong>
+      </div>
+      <div class="info-chip">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        Loteria: <strong id="r-loteria">—</strong>
+      </div>
     </div>
 
     <div class="grade">
+      <!-- BLOCO DÉBITOS -->
       <div class="bloco bloco-deb">
         <div class="bloco-head">
-          <div class="bloco-head-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+          <div class="bloco-head-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+            </svg>
+          </div>
           <span class="bloco-head-title">Débitos</span>
           <span class="bloco-head-tot" id="r-tot-deb">R$ 0,00</span>
         </div>
@@ -320,11 +392,24 @@
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Total Federais</div><div class="linha-val" id="r-federais">R$ 0,00</div></div>
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Total Bolões</div><div class="linha-val" id="r-boloes">R$ 0,00</div></div>
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Relatório Diário</div><div class="linha-val" id="r-relatorio">R$ 0,00</div></div>
+        <!-- CF: Abatimento Dívida (pagamentos em dinheiro do cliente) -->
+        <div class="linha" id="cf-r-abatimento">
+          <div class="linha-label">
+            <div class="linha-dot"></div>
+            Abatimento Dívida
+          </div>
+          <div class="linha-val" id="cf-r-abatimento-val">R$ 0,00</div>
+        </div>
       </div>
 
+      <!-- BLOCO CRÉDITOS -->
       <div class="bloco bloco-cred">
         <div class="bloco-head">
-          <div class="bloco-head-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c896" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+          <div class="bloco-head-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c896" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </div>
           <span class="bloco-head-title">Créditos</span>
           <span class="bloco-head-tot" id="r-tot-cred">R$ 0,00</span>
         </div>
@@ -334,13 +419,35 @@
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Diferença PIX</div><div class="linha-val" id="r-pix-dif">R$ 0,00</div></div>
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Prêmio Raspadinha</div><div class="linha-val" id="r-rasp">R$ 0,00</div></div>
         <div class="linha"><div class="linha-label"><div class="linha-dot"></div>Resgate Telesena</div><div class="linha-val" id="r-tele">R$ 0,00</div></div>
-        <div class="linha" id="div-linha" style="cursor:pointer" onclick="toggleDividas()">
-          <div class="linha-label"><div class="linha-dot"></div>Dívidas Clientes <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2);color:var(--purple);margin-left:4px" id="div-badge">0</span> <span id="div-arrow" style="font-size:9px;color:var(--dim);margin-left:4px;transition:transform .2s;display:inline-block">▶</span></div>
-          <div class="linha-val" id="r-dividas">R$ 0,00</div>
+        <!-- CF: Crédito Cliente (débitos do cliente → crédito no fechamento) -->
+        <div class="linha" id="cf-r-credito">
+          <div class="linha-label">
+            <div class="linha-dot"></div>
+            Crédito Cliente
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;
+                         padding:1px 6px;border-radius:3px;
+                         background:rgba(167,139,250,.1);
+                         border:1px solid rgba(167,139,250,.2);
+                         color:var(--purple);margin-left:4px"
+                  id="cf-r-credito-badge">0</span>
+          </div>
+          <div class="linha-val" id="cf-r-credito-val">R$ 0,00</div>
         </div>
-        <div id="div-sub-wrap" style="display:none"></div>
+        <!-- CF: PIX Quitação (aparece apenas quando há pagamentos PIX validados) -->
+        <div class="linha" id="cf-r-pix" style="display:none">
+          <div class="linha-label">
+            <div class="linha-dot"></div>
+            PIX Quitação
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;
+                         padding:1px 5px;border-radius:3px;
+                         background:rgba(56,189,248,.08);
+                         border:1px solid rgba(56,189,248,.2);
+                         color:var(--sky);margin-left:4px">validado</span>
+          </div>
+          <div class="linha-val" id="cf-r-pix-val">R$ 0,00</div>
+        </div>
       </div>
-    </div>
+    </div><!-- /grade -->
 
     <div class="quebra-card q-eq" id="quebra-card">
       <div class="q-icon" id="q-icon">✓</div>
@@ -362,37 +469,58 @@
 
     <div class="form-footer">
       <button class="btn-back" onclick="avancarStep(3)">
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 8H3M7 12l-4-4 4-4"/></svg>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M13 8H3M7 12l-4-4 4-4"/>
+        </svg>
         Voltar
       </button>
       <button class="btn-finalizar salvar" id="btn-final" onclick="finalizar()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
         <span id="btn-final-txt">Finalizar Fechamento</span>
       </button>
     </div>
-  </div>
+  </div><!-- /step4 -->
 
 </main>
 
-<div class="overlay" id="m-inicio"><div class="modal-box"><div class="modal-icon">🏠</div><div class="modal-title">Voltar ao menu?</div><div class="modal-desc">Você sairá da tela de fechamento e retornará ao menu principal.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-inicio')">Cancelar</button><button class="modal-ok verde" onclick="executarInicio()">Sim, voltar</button></div></div></div>
-
-<div class="overlay" id="m-sair"><div class="modal-box"><div class="modal-icon">🔒</div><div class="modal-title">Sair do sistema?</div><div class="modal-desc">Sua sessão será encerrada.</div><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal('m-sair')">Cancelar</button><button class="modal-ok vermelho" onclick="executarSair()">Sim, sair</button></div></div></div>
-<div class="modal" id="m-sucesso-fechamento">
-  <div class="modal-card">
-    <div class="modal-icon ok">✓</div>
-    <div class="modal-title">Fechamento salvo</div>
-    <div class="modal-text" id="m-sucesso-fechamento-msg">
-      O fechamento foi salvo com sucesso.
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn-primary" onclick="confirmarSucessoFechamento()">
-        OK
-      </button>
+<!-- ═══════════════════════════════════════════════ MODAIS SISTEMA ══ -->
+<div class="overlay" id="m-inicio">
+  <div class="modal-box">
+    <div class="modal-icon">🏠</div>
+    <div class="modal-title">Voltar ao menu?</div>
+    <div class="modal-desc">Você sairá da tela de fechamento e retornará ao menu principal.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fecharModal('m-inicio')">Cancelar</button>
+      <button class="modal-ok verde" onclick="executarInicio()">Sim, voltar</button>
     </div>
   </div>
 </div>
 
-  
+<div class="overlay" id="m-sair">
+  <div class="modal-box">
+    <div class="modal-icon">🔒</div>
+    <div class="modal-title">Sair do sistema?</div>
+    <div class="modal-desc">Sua sessão será encerrada.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="fecharModal('m-sair')">Cancelar</button>
+      <button class="modal-ok vermelho" onclick="executarSair()">Sim, sair</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-sucesso-fechamento">
+  <div class="modal-box">
+    <div class="modal-icon">✅</div>
+    <div class="modal-title">Fechamento salvo</div>
+    <div class="modal-desc" id="m-sucesso-fechamento-msg">O fechamento foi salvo com sucesso.</div>
+    <div class="modal-btns">
+      <button class="modal-ok verde" onclick="confirmarSucessoFechamento()">OK</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-token">
   <div class="modal-box" style="text-align:left">
     <div class="modal-title" style="color:var(--amber);margin-bottom:6px">Token de autorização</div>
@@ -419,11 +547,269 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════ MODAL ÁREA DO CLIENTE ══ -->
+<div class="modal-cf" id="m-area-cliente">
+  <div class="modal-cf-box">
+
+    <!-- HEADER DO MODAL -->
+    <div class="modal-cf-header">
+      <div class="modal-cf-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
+        </svg>
+        Área do Cliente
+      </div>
+      <button class="modal-cf-close" onclick="CF.closeModal()">✕</button>
+    </div>
+
+    <!-- ── VIEW: LISTA DE CLIENTES ─────────────────────────────── -->
+    <div id="cf-view-lista">
+      <div class="modal-cf-body">
+        <div class="cf-resumo-sessao" id="cf-resumo-sessao"></div>
+        <div class="cf-search-wrap">
+          <input
+              type="text"
+              id="cf-busca-cliente"
+              placeholder="Buscar por nome, telefone ou documento..."
+              oninput="CF.filtrarClientes()">
+          <button class="cf-btn-novo" onclick="CF.iniciarNovoCadastro()">+ Novo</button>
+        </div>
+        <div class="cf-lista-lancamentos" id="cf-lista-lancamentos"></div>
+        <div class="cf-clientes-lista" id="cf-clientes-lista">
+          <div class="cf-empty">
+            <div class="spinner" style="margin-bottom:6px"></div>
+            <div>Carregando clientes...</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-cf-footer">
+        <button class="cf-btn-secondary" onclick="CF.closeModal()">Fechar</button>
+      </div>
+    </div>
+
+    <!-- ── VIEW: CLIENTE SELECIONADO ──────────────────────────── -->
+    <div id="cf-view-cliente" style="display:none">
+      <div class="modal-cf-body">
+        <button class="cf-btn-back" onclick="CF.openModal()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Voltar à lista
+        </button>
+        <div class="cf-cliente-header-box">
+          <div id="cf-cliente-header"></div>
+          <div class="cf-saldo-info" id="cf-saldo-pendente"></div>
+        </div>
+        <div class="cf-acoes">
+          <button type="button" class="cf-btn-acao debito" onclick="CF.abrirCarrinho()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+            </svg>
+            Lançar Débito
+          </button>
+          <button type="button" class="cf-btn-acao pagamento"
+                  id="cf-btn-registrar-pag"
+                  style="display:none"
+                  onclick="CF.abrirPagamento()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+            </svg>
+            Registrar Pagamento
+          </button>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
+                    text-transform:uppercase;letter-spacing:.12em;
+                    color:var(--dim);margin-bottom:8px">
+          Movimentos desta sessão
+        </div>
+        <div class="cf-extrato-sessao" id="cf-extrato-sessao"></div>
+      </div>
+      <div class="modal-cf-footer">
+        <button class="cf-btn-secondary" onclick="CF.openModal()">Voltar</button>
+      </div>
+    </div>
+
+    <!-- ── VIEW: CARRINHO DE DÉBITO ───────────────────────────── -->
+    <div id="cf-view-carrinho" style="display:none">
+      <div class="modal-cf-body">
+        <button class="cf-btn-back" onclick="CF.selecionarCliente(window._cfClienteAtual)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Voltar ao cliente
+        </button>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
+                    text-transform:uppercase;letter-spacing:.12em;
+                    color:var(--dim);margin-bottom:8px">
+          Adicionar itens ao débito
+        </div>
+        <div class="cf-tipos-wrap">
+          <button class="cf-btn-tipo" onclick="CF.adicionarItemCarrinho('BOLAO')">+ Bolão</button>
+          <button class="cf-btn-tipo" onclick="CF.adicionarItemCarrinho('FEDERAL')">+ Federal</button>
+          <button class="cf-btn-tipo" onclick="CF.adicionarItemCarrinho('PRODUTO')">+ Produto</button>
+          <button class="cf-btn-tipo" onclick="CF.adicionarItemCarrinho('CONTA')">+ Conta</button>
+        </div>
+        <div class="cf-carrinho-itens" id="cf-carrinho-itens">
+          <div class="cf-empty" style="padding:16px">
+            <div style="font-size:11px;color:var(--dim)">Use os botões acima para adicionar itens.</div>
+          </div>
+        </div>
+        <div class="cf-obs-field">
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:9px;
+                        text-transform:uppercase;letter-spacing:.1em;
+                        color:var(--dim);display:block;margin-bottom:4px">
+            Observação (opcional)
+          </label>
+          <textarea id="cf-obs-debito" maxlength="300"
+                    placeholder="Anotação sobre este lançamento..."></textarea>
+        </div>
+        <div class="cf-total-bar">
+          <div class="cf-total-label">Total do Débito</div>
+          <div class="cf-total-val" id="cf-total-carrinho">R$ 0,00</div>
+        </div>
+      </div>
+      <div class="modal-cf-footer">
+        <button class="cf-btn-secondary" onclick="CF.openModal()">Cancelar</button>
+        <button class="cf-btn-primary" id="cf-btn-confirmar-debito"
+                disabled onclick="CF.confirmarDebito()">
+          Confirmar Débito
+        </button>
+      </div>
+    </div>
+
+    <!-- ── VIEW: REGISTRAR PAGAMENTO ──────────────────────────── -->
+    <div id="cf-view-pagamento" style="display:none">
+      <div class="modal-cf-body">
+        <button class="cf-btn-back" onclick="CF.selecionarCliente(window._cfClienteAtual)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Voltar ao cliente
+        </button>
+        <div class="cf-pag-saldo-box">
+          <div class="cf-pag-saldo-lbl">Saldo em aberto</div>
+          <div class="cf-pag-saldo-val" id="cf-pag-saldo">R$ 0,00</div>
+        </div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;
+                    text-transform:uppercase;letter-spacing:.1em;
+                    color:var(--dim);margin-bottom:8px">
+          Forma de pagamento
+        </div>
+        <div class="cf-radio-group">
+          <label class="cf-radio-label">
+            <input type="radio" name="cf-forma-pag"
+                   id="cf-pag-dinheiro" value="DINHEIRO" checked
+                   onchange="toggleAvisoPix(false)">
+            💵 Dinheiro
+          </label>
+          <label class="cf-radio-label">
+            <input type="radio" name="cf-forma-pag"
+                   id="cf-pag-pix" value="PIX"
+                   onchange="toggleAvisoPix(true)">
+            📲 PIX
+          </label>
+        </div>
+        <div id="cf-pag-aviso-pix-wrap" style="display:none">
+          <div class="cf-pag-aviso-pix">
+            ℹ️ Pagamento via PIX ficará em <strong>PROCESSAMENTO</strong>
+            até confirmação do administrador na área de Pendências.
+            O efeito no fechamento ocorre somente após a validação.
+          </div>
+        </div>
+        <div class="cf-pag-valor-field">
+          <label>Valor do pagamento</label>
+          <div class="pfx-wrap">
+            <span class="pfx">R$</span>
+            <input type="number" step="0.01" min="0.01"
+                   id="cf-pag-valor" placeholder="0,00"
+                   style="padding-left:32px"
+                   class="cf-inp" oninput="autoFill(this)">
+          </div>
+        </div>
+        <div class="cf-obs-field">
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:9px;
+                        text-transform:uppercase;letter-spacing:.1em;
+                        color:var(--dim);display:block;margin-bottom:4px">
+            Observação (opcional)
+          </label>
+          <textarea id="cf-pag-obs" maxlength="200"
+                    placeholder="Referência do PIX, anotação..."></textarea>
+        </div>
+        <div class="cf-err" id="cf-pag-err"></div>
+      </div>
+      <div class="modal-cf-footer">
+        <button class="cf-btn-secondary" onclick="CF.abrirPagamento()">Cancelar</button>
+        <button class="cf-btn-primary" onclick="CF.confirmarPagamento()">
+          Confirmar Pagamento
+        </button>
+      </div>
+    </div>
+
+    <!-- ── VIEW: NOVO CADASTRO ────────────────────────────────── -->
+    <div id="cf-view-novo-cliente" style="display:none">
+      <div class="modal-cf-body">
+        <button class="cf-btn-back" onclick="CF.openModal()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          Voltar à lista
+        </button>
+        <div class="cf-novo-form">
+          <div class="cf-novo-campo req">
+            <label>Nome do Cliente</label>
+            <input type="text" id="cf-novo-nome" class="cf-inp" placeholder="Nome completo">
+          </div>
+          <div class="cf-novo-campo">
+            <label>Telefone</label>
+            <input type="text" id="cf-novo-tel" class="cf-inp" placeholder="(00) 00000-0000">
+          </div>
+          <div class="cf-novo-campo">
+            <label>CPF / Documento</label>
+            <input type="text" id="cf-novo-doc" class="cf-inp" placeholder="Opcional">
+          </div>
+          <div class="cf-novo-campo">
+            <label>Observação</label>
+            <textarea id="cf-novo-obs" class="cf-inp"
+                      style="min-height:52px;resize:none;font-size:12px;line-height:1.5;font-family:'IBM Plex Sans',sans-serif"
+                      placeholder="Notas internas..."></textarea>
+          </div>
+          <div class="cf-err" id="cf-novo-err"></div>
+        </div>
+      </div>
+      <div class="modal-cf-footer">
+        <button class="cf-btn-secondary" onclick="CF.openModal()">Cancelar</button>
+        <button class="cf-btn-primary" id="cf-btn-salvar-novo"
+                onclick="CF.salvarNovoCadastro()">
+          Cadastrar Cliente
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /modal-cf-box -->
+</div><!-- /modal-cf -->
+
+<!-- ══════════════════════════════════════════════════════ SCRIPTS ══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./sislot-config.js"></script>
 <script src="./sislot-security.js"></script>
 <script src="./js/fechamento-rules.js"></script>
 <script src="./js/cliente-fechamento.js"></script>
 <script src="./js/fechamento-caixa.js"></script>
+<script>
+// ── Helper: aviso do PIX no modal de pagamento ───────────────────────────────
+function toggleAvisoPix(show) {
+    const w = document.getElementById('cf-pag-aviso-pix-wrap');
+    if (w) w.style.display = show ? 'block' : 'none';
+}
+</script>
+
 </body>
 </html>
