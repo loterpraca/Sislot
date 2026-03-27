@@ -1493,8 +1493,7 @@ function montarResumo() {
 
     // ── Totais do módulo CF ────────────────────────────────────────────────
     const totCFCredito    = CF.getTotalCredito();
-    const totCFAbatimento = CF.getTotalAbatimento();
-    const totCFPix        = CF.getTotalPixQuitacao();
+ 
 
     const s_cf = (id, v) => {
         const el = $(id);
@@ -1504,8 +1503,7 @@ function montarResumo() {
     };
 
     s_cf('cf-r-credito-val',    totCFCredito);
-    s_cf('cf-r-abatimento-val', totCFAbatimento);
-    s_cf('cf-r-pix-val',        totCFPix);
+  
 
     // Badge: conta quantos lançamentos de DEBITO existem
     const lans = ESTADO.tela1?.clienteFechamento?.lancamentos || [];
@@ -1521,8 +1519,7 @@ function montarResumo() {
     const totDeb = Number(t1.troco_inicial || 0)
         + totalProd + totalFed + totalBol
         + Number(t1.relatorio || 0)
-        + totCFAbatimento;          // ← Abatimento é DÉBITO
-
+        
     // Créditos = troco_sobra + depósito + pix_cnpj + diferença_pix + prêmio_rasp +
     //            resgate_tele + crédito_cliente + pix_quitacao
     const totCred = Number(t1.troco_sobra || 0)
@@ -1532,7 +1529,7 @@ function montarResumo() {
         + Number(t1.premio_raspadinha || 0)
         + Number(t1.resgate_telesena || 0)
         + totCFCredito              // ← Débito do cliente = crédito no fechamento
-        + totCFPix;                 // ← PIX quitado (entra no crédito e se anula)
+        
 
     s('r-tot-deb', totDeb);
     s('r-troco-sob', t1.troco_sobra);
