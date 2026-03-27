@@ -803,7 +803,10 @@ function coletarTela1() {
         premio_raspadinha: n('premio-rasp'),
         resgate_telesena: n('resgate-tele'),
         // clienteFechamento é mantido pelo módulo CF dentro de ESTADO.tela1
-        clienteFechamento: ESTADO.tela1?.clienteFechamento || { clienteSelecionado: null, lancamentos: [], pagamentos: [] }
+       clienteFechamento: ESTADO.tela1?.clienteFechamento || {
+    clienteSelecionado: null,
+    lancamentos: []
+}
     };
 }
 
@@ -1476,7 +1479,8 @@ function montarResumo() {
 
     const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
     const totalFed  = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
-    const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + Number(b.subtotal || 0), 0);
+    const totalBol  = [...(t3.internos || []), ...(t3.externos || [])]
+        .reduce((a, b) => a + Number(b.subtotal || 0), 0);
 
     const s = (id, v) => {
         const el = $(id);
@@ -1491,9 +1495,7 @@ function montarResumo() {
     s('r-boloes', totalBol);
     s('r-relatorio', t1.relatorio);
 
-    // ── Totais do módulo CF ────────────────────────────────────────────────
-    const totCFCredito    = CF.getTotalCredito();
- 
+    const totCFCredito = CF.getTotalCredito();
 
     const s_cf = (id, v) => {
         const el = $(id);
@@ -1502,34 +1504,27 @@ function montarResumo() {
         el.classList.toggle('zero', v === 0);
     };
 
-    s_cf('cf-r-credito-val',    totCFCredito);
-  
+    s_cf('cf-r-credito-val', totCFCredito);
 
-    // Badge: conta quantos lançamentos de DEBITO existem
     const lans = ESTADO.tela1?.clienteFechamento?.lancamentos || [];
     const badge = $('cf-r-credito-badge');
-    if (badge) badge.textContent = lans.filter(l => l.tipo_movimento === 'DEBITO').length;
+    if (badge) {
+        badge.textContent = lans.filter(l => l.tipo_movimento === 'DEBITO').length;
+    }
 
-    // Linha PIX só aparece quando há pagamentos PIX validados
-    const pixLinha = $('cf-r-pix');
-    if (pixLinha) pixLinha.style.display = totCFPix > 0 ? 'flex' : 'none';
-
-    // ── Fórmula final do fechamento (conforme INTEGRACAO.md) ───────────────
-    // Débitos = troco_inicial + produtos + federais + bolões + relatório + abatimento_divida
     const totDeb = Number(t1.troco_inicial || 0)
-        + totalProd + totalFed + totalBol
-        + Number(t1.relatorio || 0)
-        
-    // Créditos = troco_sobra + depósito + pix_cnpj + diferença_pix + prêmio_rasp +
-    //            resgate_tele + crédito_cliente + pix_quitacao
+        + totalProd
+        + totalFed
+        + totalBol
+        + Number(t1.relatorio || 0);
+
     const totCred = Number(t1.troco_sobra || 0)
         + Number(t1.deposito || 0)
         + Number(t1.pix_cnpj || 0)
         + Number(t1.diferenca_pix || 0)
         + Number(t1.premio_raspadinha || 0)
         + Number(t1.resgate_telesena || 0)
-        + totCFCredito              // ← Débito do cliente = crédito no fechamento
-        
+        + totCFCredito;
 
     s('r-tot-deb', totDeb);
     s('r-troco-sob', t1.troco_sobra);
@@ -1799,15 +1794,13 @@ async function finalizar() {
         const totalFed  = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
         const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + Number(b.subtotal || 0), 0);
 
-        // Totais CF
-        const totCFCredito    = CF.getTotalCredito();
-      
+        const totCFCredito = CF.getTotalCredito();
 
-        // Fórmula conforme INTEGRACAO.md
         const totDeb = Number(t1.troco_inicial || 0)
-            + totalProd + totalFed + totalBol
-            + Number(t1.relatorio || 0)
-            
+            + totalProd
+            + totalFed
+            + totalBol
+            + Number(t1.relatorio || 0);
 
         const totCred = Number(t1.troco_sobra || 0)
             + Number(t1.deposito || 0)
@@ -1815,7 +1808,7 @@ async function finalizar() {
             + Number(t1.diferenca_pix || 0)
             + Number(t1.premio_raspadinha || 0)
             + Number(t1.resgate_telesena || 0)
-            + totCFCredito
+            + totCFCredito;
             
 
         const quebra = totCred - totDeb;
