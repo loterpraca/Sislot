@@ -803,6 +803,58 @@ function updT2Geral() {
     if (fed) fed.textContent = fmtBRL(getFedTot());
 }
 
+function chaveFederalItem(item) {
+    return `FEDERAL|${Number(item.federal_id || 0)}`;
+}
+
+function aplicarContextoEdicaoFederais(lista) {
+    const salvos = ESTADO.tela2?.federais || [];
+    const mapa = {};
+
+    salvos.forEach(f => {
+        mapa[chaveFederalItem(f)] = Number(f.qtdVendida || 0);
+    });
+
+    return (lista || []).map(item => {
+        const qtdSalva = Number(mapa[chaveFederalItem(item)] || 0);
+        const saldoAtual = Number(item.saldo_atual || 0);
+        const saldoEditavel = saldoAtual + qtdSalva;
+
+        return {
+            ...item,
+            qtd_salva_edicao: qtdSalva,
+            saldo_editavel: saldoEditavel,
+            em_edicao: !!fechamentoOriginalId
+        };
+    });
+}
+
+function federaisVisiveis() {
+    return [...federais]
+        .filter(item =>
+            Number(item.saldo_atual || 0) > 0 ||
+            Number(item.qtd_salva_edicao || 0) > 0
+        )
+        .sort((a, b) => {
+            const sa = Number(a.saldo_editavel ?? a.saldo_atual ?? 0);
+            const sb = Number(b.saldo_editavel ?? b.saldo_atual ?? 0);
+
+            if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
+
+            const cmpData = String(a.dtSorteio || '').localeCompare(String(b.dtSorteio || ''));
+            if (cmpData !== 0) return cmpData;
+
+            const cmpMod = String(a.modalidade || '').localeCompare(String(b.modalidade || ''), 'pt-BR');
+            if (cmpMod !== 0) return cmpMod;
+
+            return String(a.concurso || '').localeCompare(String(b.concurso || ''), 'pt-BR');
+        });
+}
+
+function getSaldoFederal(item) {
+    return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0);
+}
+
 // ─── BUSCA DE FECHAMENTO EXISTENTE ───────────────────────────────────────────
 
 function setSaveLoading(loading, text = '') {
@@ -1046,6 +1098,20 @@ function coletarTela3() {
     };
 }
 // ─── FEDERAIS ─────────────────────────────────────────────────────────────────
+//
+// Padrão adotado nas federais:
+// - valorUnit = valor unitário da fração
+// - qtdVendida = quantidade lançada no fechamento
+// - subtotal = qtdVendida * valorUnit
+// - saldo_atual = saldo vindo da view
+// - saldo_editavel = saldo_atual + quantidade já salva no fechamento em edição
+//
+// A lógica agora fica igual à de produtos e bolões:
+// 1) busca a base
+// 2) aplica contexto de edição
+// 3) filtra o que deve aparecer
+// 4) renderiza usando saldo editável
+// 5) restaura o que já estava salvo no fechamento
 
 async function buscarFederais() {
     const dataRef = $('data-ref').value;
@@ -1053,6 +1119,7 @@ async function buscarFederais() {
         alert('Defina a data do fechamento antes de buscar federais.');
         return;
     }
+
     await buscarFederaisSupabase(dataRef);
 }
 
@@ -1061,6 +1128,10 @@ async function buscarFederaisSupabase(dataRef) {
         setFS('fs-loading');
         $('fs-load-sub').textContent = 'Consultando federais disponíveis para esta loja...';
 
+        // Importante:
+        // Não filtramos mais por estoque_atual > 0 na query.
+        // Se a federal já foi lançada no fechamento, ela precisa continuar visível
+        // na edição, mesmo que o estoque atual esteja zerado.
         const { data, error } = await sb
             .from('view_resumo_federal')
             .select(`
@@ -1083,20 +1154,13 @@ async function buscarFederaisSupabase(dataRef) {
             `)
             .eq('loteria_id', loteriaAtiva.id)
             .gte('dt_sorteio', dataRef)
-            .gt('estoque_atual', 0)
             .order('dt_sorteio', { ascending: true })
             .order('concurso', { ascending: true });
 
         if (error) throw error;
 
-        if (!data || !data.length) {
-            federais = [];
-            renderFed();
-            setFS('fs-vazio');
-            return;
-        }
-
-        federais = data.map(f => ({
+        // Base crua da view com nomes padronizados
+        const base = (data || []).map(f => ({
             federal_id: f.federal_id,
             loteriaId: Number(f.loteria_id),
             lojaOrigem: f.loja_origem,
@@ -1111,13 +1175,23 @@ async function buscarFederaisSupabase(dataRef) {
             qtdVendidaCaixa: Number(f.qtd_vendida_caixa || 0),
             qtdVendidaCambista: Number(f.qtd_vendida_cambista_interno || 0),
             qtdVendaInternaTotal: Number(f.qtd_venda_interna_total || 0),
-            saldo: Number(f.estoque_atual || 0),
+            saldo_atual: Number(f.estoque_atual || 0),
             resultado: Number(f.resultado || 0)
         }));
 
+        federais = aplicarContextoEdicaoFederais(base);
+        federais = federaisVisiveis();
+
         renderFed();
+
+        if (!federais.length) {
+            setFS('fs-vazio');
+            return;
+        }
+
         setFS('fs-lista');
 
+        // Restaura as quantidades já salvas quando estivermos editando
         if (ESTADO.tela2?.federais?.length) {
             restaurarFederais();
         }
@@ -1135,19 +1209,56 @@ function renderFed() {
     $('fed-count').textContent = federais.length;
 
     federais.forEach((f, i) => {
+        const saldoBase = Number(f.saldo_atual || 0);
+        const qtdSalva = Number(f.qtd_salva_edicao || 0);
+        const saldo = getSaldoFederal(f);
+        const semSaldo = saldo <= 0;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="mono">${f.modalidade}</td>
             <td class="mono" style="color:var(--purple);font-weight:600">${f.concurso}</td>
             <td class="mono" style="color:var(--amber)">${fmtData(f.dtSorteio)}</td>
-            <td class="mono" style="color:var(--accent)">R$ ${Number(f.valorUnit).toFixed(2).replace('.', ',')}</td>
-            <td class="mono" style="text-align:center;color:var(--sky)">${f.saldo}</td>
+            <td class="mono" style="color:var(--accent)">
+                R$ ${Number(f.valorUnit || 0).toFixed(2).replace('.', ',')}
+            </td>
+            <td class="mono" style="text-align:center;color:var(--sky)">
+                ${saldo}
+                <div style="font-size:10px;color:var(--muted);margin-top:2px">
+                    Atual: ${saldoBase}${qtdSalva > 0 ? ` • no fechamento: ${qtdSalva}` : ''}
+                </div>
+            </td>
             <td>
                 <div class="qtd-wrap" style="justify-content:center">
-                    <button type="button" class="btn-q" style="border-color:rgba(167,139,250,.3)" onclick="ajFed(${i},-1)">−</button>
-                    <input type="number" class="inp-fed" id="fed-qtd-${i}" min="0" max="${f.saldo}" placeholder="0" oninput="onFed(${i})" onblur="blurQ('fed-qtd-${i}')">
-                    <button type="button" class="btn-q" style="border-color:rgba(167,139,250,.3)" onclick="ajFed(${i},+1)">+</button>
+                    <button
+                        type="button"
+                        class="btn-q"
+                        style="border-color:rgba(167,139,250,.3)"
+                        onclick="ajFed(${i},-1)"
+                        ${semSaldo ? 'disabled' : ''}
+                    >−</button>
+
+                    <input
+                        type="number"
+                        class="inp-fed"
+                        id="fed-qtd-${i}"
+                        min="0"
+                        max="${Math.max(0, saldo)}"
+                        placeholder="0"
+                        oninput="onFed(${i})"
+                        onblur="blurQ('fed-qtd-${i}')"
+                        ${semSaldo ? 'disabled' : ''}
+                    >
+
+                    <button
+                        type="button"
+                        class="btn-q"
+                        style="border-color:rgba(167,139,250,.3)"
+                        onclick="ajFed(${i},+1)"
+                        ${semSaldo ? 'disabled' : ''}
+                    >+</button>
                 </div>
+
                 <div class="fed-sub" id="fed-sub-${i}">—</div>
             </td>
         `;
@@ -1161,10 +1272,15 @@ function renderFed() {
     updT2Geral();
 }
 
-function ajFed(i, d) {
+function ajFed(i, delta) {
     const inp = $(`fed-qtd-${i}`);
-    const max = federais[i]?.saldo || 999;
-    inp.value = Math.min(max, Math.max(0, (parseInt(inp.value) || 0) + d)) || '';
+    if (!inp || inp.disabled) return;
+
+    const max = getSaldoFederal(federais[i]);
+    const atual = parseInt(inp.value, 10) || 0;
+    const novo = Math.min(max, Math.max(0, atual + delta));
+
+    inp.value = novo || '';
     onFed(i);
     inp.focus();
 }
@@ -1172,11 +1288,20 @@ function ajFed(i, d) {
 function onFed(i) {
     const inp = $(`fed-qtd-${i}`);
     const sub = $(`fed-sub-${i}`);
-    const qtd = parseInt(inp.value) || 0;
+    if (!inp || !sub) return;
+
     const f = federais[i];
+    const max = getSaldoFederal(f);
+
+    let qtd = parseInt(inp.value, 10) || 0;
+
+    if (qtd > max) {
+        qtd = max;
+        inp.value = max || '';
+    }
 
     if (qtd > 0) {
-        sub.textContent = 'R$ ' + (qtd * Number(f.valorUnit || 0)).toFixed(2).replace('.', ',');
+        sub.textContent = fmtBRL(qtd * Number(f.valorUnit || 0));
         sub.classList.add('on');
         inp.classList.add('filled');
         inp.closest('tr')?.classList.add('hv');
@@ -1194,19 +1319,22 @@ function onFed(i) {
 function restaurarFederais() {
     const mapa = {};
 
-    ESTADO.tela2.federais.forEach(f => {
-        if (f.qtdVendida > 0) mapa[f.federal_id || f.concurso] = f.qtdVendida;
+    (ESTADO.tela2?.federais || []).forEach(f => {
+        if (Number(f.qtdVendida || 0) > 0) {
+            mapa[chaveFederalItem(f)] = Number(f.qtdVendida || 0);
+        }
     });
 
     federais.forEach((f, i) => {
-        const qtd = mapa[f.federal_id || f.concurso];
+        const qtd = Number(mapa[chaveFederalItem(f)] || 0);
         if (!qtd) return;
 
         const inp = $(`fed-qtd-${i}`);
-        if (inp) {
-            inp.value = qtd;
-            onFed(i);
-        }
+        if (!inp) return;
+
+        const max = getSaldoFederal(f);
+        inp.value = Math.min(qtd, max) || '';
+        onFed(i);
     });
 }
 
@@ -1870,8 +1998,11 @@ function montarResumo() {
     s('r-tot-cred', totCred);
 
     const quebra = totCred - totDeb;
-    renderQuebra(quebra, totCred, totDeb);
+
+    // Primeiro define o modo visual (novo/edição) e só depois
+    // aplica a regra da quebra/justificativa no botão final.
     detectarModo();
+    renderQuebra(quebra, totCred, totDeb);
 }
 
 function renderQuebra(quebra, cred, deb) {
@@ -1934,22 +2065,25 @@ function detectarModo() {
     const banner = $('modo-banner');
     banner.className = 'modo-banner';
 
+    const btnFinal = $('btn-final');
+    const btnFinalTxt = $('btn-final-txt');
+
     if (!fechamentoOriginalId) {
         modoAtual = 'novo';
         banner.innerHTML = '<span>Novo fechamento — será gravado ao finalizar.</span>';
         banner.classList.add('show', 'novo');
-        $('btn-final').className = 'btn-finalizar salvar';
-        $('btn-final-txt').textContent = 'Finalizar Fechamento';
-        $('btn-final').disabled = false;
+
+        if (btnFinal) btnFinal.className = 'btn-finalizar salvar';
+        if (btnFinalTxt) btnFinalTxt.textContent = 'Finalizar Fechamento';
         return;
     }
 
     modoAtual = 'edicao';
     banner.innerHTML = '<span>Modo <strong>edição</strong> — ao finalizar o registro existente será sobrescrito.</span>';
     banner.classList.add('show', 'edicao');
-    $('btn-final').className = 'btn-finalizar salvar';
-    $('btn-final-txt').textContent = 'Salvar Alterações';
-    $('btn-final').disabled = false;
+
+    if (btnFinal) btnFinal.className = 'btn-finalizar salvar';
+    if (btnFinalTxt) btnFinalTxt.textContent = 'Salvar Alterações';
 }
 
 function toggleDividas() {
@@ -2317,9 +2451,13 @@ async function finalizar() {
         modoAtual = 'edicao';
         salvouComSucesso = true;
 
-        await carregarProdutos();
-        await buscarFederaisSupabase(t1.data_ref);
-        await carregarBoloes();
+        // A gravação já aconteceu. A recarga da interface não pode derrubar
+        // a sensação de sucesso caso alguma consulta falhe depois.
+        await Promise.allSettled([
+            carregarProdutos(),
+            buscarFederaisSupabase(t1.data_ref),
+            carregarBoloes()
+        ]);
 
     } catch (e) {
         console.error('Erro ao gravar fechamento:', e);
