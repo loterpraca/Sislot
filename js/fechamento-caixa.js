@@ -1,6 +1,6 @@
 /**
  * SISLOT - Fechamento de Caixa
- * Versão refatorada com utils
+ * Versão integrada com módulo Área do Cliente (CF)
  */
 
 const sb = supabase.createClient(
@@ -28,7 +28,6 @@ const startClock = utils.startClock || (() => {
     setInterval(updateClock, 1000);
 });
 
-// Inicia o relógio
 startClock();
 
 const LOJA_CONFIG = {
@@ -130,6 +129,9 @@ function bindStepClicks() {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
 async function init() {
     try {
         const ctx = await window.SISLOT_SECURITY.protegerPagina('fechamento');
@@ -179,7 +181,16 @@ async function init() {
 
         bindHeaderActions();
         bindStepClicks();
-        renderDivCount();
+
+        // ── Inicializa o módulo Área do Cliente ────────────────────────────
+        CF.init({
+            sb,
+            getLoteriaAtiva: () => loteriaAtiva,
+            getUsuario:      () => usuario,
+            getEstado:       () => ESTADO,
+            fmtBRL,
+            fmtData
+        });
 
         setFS('fs-inicial');
         setB3('b3-inicial');
@@ -270,7 +281,6 @@ async function carregarFuncionarios() {
             } else {
                 hideStatusMsg('status-busca');
             }
-
             return;
         }
 
@@ -387,121 +397,26 @@ function validarStep1() {
     return ok;
 }
 
-let dividaCount = 0;
-const MAX_DIV = 9;
-
-function renderDivCount() {
-    const counter = $('div-counter');
-    const btn = $('btn-add-div');
-    if (counter) counter.textContent = `${dividaCount} / ${MAX_DIV} clientes`;
-    if (btn) btn.disabled = dividaCount >= MAX_DIV;
-}
-
-function calcDivTotal() {
-    let t = 0;
-    document.querySelectorAll('.div-valor').forEach(i => {
-        t += parseFloat(i.value) || 0;
-    });
-
-    const chip = $('div-total-chip');
-    if (!chip) return;
-
-    if (dividaCount > 0) {
-        chip.textContent = `Total dívidas: R$ ${t.toFixed(2).replace('.', ',')}`;
-        chip.style.opacity = '1';
-    } else {
-        chip.style.opacity = '0';
-    }
-}
-
-function addDivida(nome = '', valor = '') {
-    if (dividaCount >= MAX_DIV) return;
-
-    dividaCount++;
-    const list = $('dividas-list');
-    if (!list) return;
-
-    const idx = dividaCount;
-    const row = document.createElement('div');
-    row.className = 'divida-row';
-    row.innerHTML = `
-        <div>
-            <div class="divida-num">CLIENTE ${String(idx).padStart(2, '0')}</div>
-            <input type="text" class="div-nome" placeholder="Nome do cliente" value="${nome}" oninput="autoFill(this)">
-        </div>
-        <div class="pfx-wrap">
-            <span class="pfx">R$</span>
-            <input type="number" class="div-valor" placeholder="0,00" step="0.01" value="${valor}" oninput="calcDivTotal()" style="padding-left:32px">
-        </div>
-        <button type="button" class="btn-rm" onclick="remDivida(this)" title="Remover">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <path d="M3 3l10 10M13 3L3 13"/>
-            </svg>
-        </button>
-    `;
-
-    list.appendChild(row);
-    renderDivCount();
-    calcDivTotal();
-    row.querySelector('.div-nome')?.focus();
-}
-
-function remDivida(btn) {
-    const row = btn.closest('.divida-row');
-    if (!row) return;
-
-    row.style.opacity = '0';
-    row.style.transform = 'translateX(10px)';
-    row.style.transition = 'all .2s';
-
-    setTimeout(() => {
-        row.remove();
-        dividaCount--;
-
-        document.querySelectorAll('.divida-num').forEach((el, i) => {
-            el.textContent = `CLIENTE ${String(i + 1).padStart(2, '0')}`;
-        });
-
-        renderDivCount();
-        calcDivTotal();
-    }, 200);
-}
-
-// ─── PRODUTOS ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PRODUTOS
+// ─────────────────────────────────────────────────────────────────────────────
 
 function chaveProdutoItem(item) {
     const tipo = String(item.produto || '').toUpperCase();
-
-    if (tipo === 'RASPADINHA') {
-        return `RASPADINHA|${item.raspadinha_id || ''}`;
-    }
-
-    if (tipo === 'TELESENA') {
-        return `TELESENA|${item.telesena_item_id || ''}`;
-    }
-
+    if (tipo === 'RASPADINHA') return `RASPADINHA|${item.raspadinha_id || ''}`;
+    if (tipo === 'TELESENA') return `TELESENA|${item.telesena_item_id || ''}`;
     return `${tipo}|${item.raspadinha_id || ''}|${item.telesena_item_id || ''}`;
 }
 
 function aplicarContextoEdicaoProdutos(lista) {
     const produtosSalvos = ESTADO.tela2?.produtos || [];
     const mapa = {};
-
-    produtosSalvos.forEach(p => {
-        mapa[chaveProdutoItem(p)] = Number(p.qtd || 0);
-    });
+    produtosSalvos.forEach(p => { mapa[chaveProdutoItem(p)] = Number(p.qtd || 0); });
 
     return (lista || []).map(item => {
         const qtdSalva = Number(mapa[chaveProdutoItem(item)] || 0);
         const saldoAtual = Number(item.saldo_atual || 0);
-        const saldoEditavel = saldoAtual + qtdSalva;
-
-        return {
-            ...item,
-            qtd_salva_edicao: qtdSalva,
-            saldo_editavel: saldoEditavel,
-            em_edicao: !!fechamentoOriginalId
-        };
+        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
     });
 }
 
@@ -510,16 +425,7 @@ async function carregarProdutos() {
 
     let query = sb
         .from('view_produtos_saldo_loja')
-        .select(`
-            loteria_id,
-            produto,
-            campanha_nome,
-            item_nome,
-            raspadinha_id,
-            telesena_item_id,
-            valor_venda,
-            saldo_atual
-        `)
+        .select(`loteria_id,produto,campanha_nome,item_nome,raspadinha_id,telesena_item_id,valor_venda,saldo_atual`)
         .eq('loteria_id', loteriaAtiva.id)
         .order('produto')
         .order('item_nome');
@@ -538,9 +444,7 @@ async function carregarProdutos() {
     produtosLista = aplicarContextoEdicaoProdutos(data || []);
     renderProdutos();
 
-    if (ESTADO.tela2?.produtos?.length) {
-        restaurarProdutos();
-    }
+    if (ESTADO.tela2?.produtos?.length) restaurarProdutos();
 }
 
 function restaurarProdutos() {
@@ -549,35 +453,23 @@ function restaurarProdutos() {
 
     produtosSalvos.forEach(p => {
         const tipo = String(p.produto || '').toUpperCase();
-
         let chave = '';
-        if (tipo === 'RASPADINHA') {
-            chave = `RASPADINHA|${p.raspadinha_id || ''}`;
-        } else if (tipo === 'TELESENA') {
-            chave = `TELESENA|${p.telesena_item_id || ''}`;
-        } else {
-            chave = `${tipo}|${p.raspadinha_id || ''}|${p.telesena_item_id || ''}|${p.descricao || ''}|${Number(p.preco || 0)}`;
-        }
-
+        if (tipo === 'RASPADINHA') chave = `RASPADINHA|${p.raspadinha_id || ''}`;
+        else if (tipo === 'TELESENA') chave = `TELESENA|${p.telesena_item_id || ''}`;
+        else chave = `${tipo}|${p.raspadinha_id || ''}|${p.telesena_item_id || ''}|${p.descricao || ''}|${Number(p.preco || 0)}`;
         mapa[chave] = Number(p.qtd || 0);
     });
 
     produtosLista.forEach(item => {
         const tipo = String(item.produto || '').toUpperCase();
-
         let chave = '';
-        if (tipo === 'RASPADINHA') {
-            chave = `RASPADINHA|${item.raspadinha_id || ''}`;
-        } else if (tipo === 'TELESENA') {
-            chave = `TELESENA|${item.telesena_item_id || ''}`;
-        } else {
-            chave = `${tipo}|${item.raspadinha_id || ''}|${item.telesena_item_id || ''}|${item.item_nome || ''}|${Number(item.valor_venda || 0)}`;
-        }
+        if (tipo === 'RASPADINHA') chave = `RASPADINHA|${item.raspadinha_id || ''}`;
+        else if (tipo === 'TELESENA') chave = `TELESENA|${item.telesena_item_id || ''}`;
+        else chave = `${tipo}|${item.raspadinha_id || ''}|${item.telesena_item_id || ''}|${item.item_nome || ''}|${Number(item.valor_venda || 0)}`;
 
         const idItem = item.raspadinha_id || item.telesena_item_id;
         const inp = $(`prod-qtd-${item.produto}-${idItem}`);
         if (!inp) return;
-
         const qtd = Number(mapa[chave] || 0);
         inp.value = qtd > 0 ? qtd : '';
     });
@@ -599,13 +491,8 @@ function produtosVisiveis() {
     lista.sort((a, b) => {
         const sa = Number(a.saldo_editavel ?? a.saldo_atual ?? 0);
         const sb = Number(b.saldo_editavel ?? b.saldo_atual ?? 0);
-
         if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
-
-        if (String(a.produto || '') !== String(b.produto || '')) {
-            return String(a.produto || '').localeCompare(String(b.produto || ''));
-        }
-
+        if (String(a.produto || '') !== String(b.produto || '')) return String(a.produto || '').localeCompare(String(b.produto || ''));
         return String(a.item_nome || '').localeCompare(String(b.item_nome || ''));
     });
 
@@ -616,13 +503,10 @@ function buildProdutoCard(item) {
     const saldoBase = Number(item.saldo_atual || 0);
     const qtdSalva = Number(item.qtd_salva_edicao || 0);
     const saldo = Number(item.saldo_editavel ?? saldoBase);
-
     const semEstoque = saldo <= 0;
     const estoqueBaixo = saldo > 0 && saldo <= 5;
-
     const badge = semEstoque ? 'Sem estoque' : estoqueBaixo ? 'Baixo' : 'Disponível';
     const badgeClass = semEstoque ? 'badge-r' : estoqueBaixo ? 'badge-t' : 'badge';
-
     const idItem = item.raspadinha_id || item.telesena_item_id;
     const nome = item.item_nome || 'Sem nome';
     const tipo = item.produto === 'RASPADINHA' ? 'Raspadinha' : 'Tele Sena';
@@ -636,46 +520,27 @@ function buildProdutoCard(item) {
                 </div>
                 <span class="${badgeClass}">${badge}</span>
             </div>
-
             <div class="prod-body">
                 <div>
                     <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Valor</label>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">
-                        ${fmtBRL(item.valor_venda || 0)}
-                    </div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--accent)">${fmtBRL(item.valor_venda || 0)}</div>
                 </div>
                 <div>
                     <label style="font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:5px">Estoque</label>
-                    <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:${semEstoque ? 'var(--err)' : 'var(--text)'}">
-                        ${saldo}
-                    </div>
-                    <div style="font-size:10px;color:var(--muted);margin-top:2px">
-                        Atual: ${saldoBase}${qtdSalva > 0 ? ` • no fechamento: ${qtdSalva}` : ''}
-                    </div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:${semEstoque ? 'var(--err)' : 'var(--text)'}">${saldo}</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:2px">Atual: ${saldoBase}${qtdSalva > 0 ? ` • no fechamento: ${qtdSalva}` : ''}</div>
                 </div>
             </div>
-
             <div class="qtd-wrap">
                 <button type="button" class="btn-q" onclick="ajProduto('${item.produto}', '${idItem}', -1)" ${semEstoque ? 'disabled' : ''}>−</button>
-                <input
-                    type="number"
-                    class="inp-qtd"
-                    id="prod-qtd-${item.produto}-${idItem}"
-                    placeholder="0"
-                    min="0"
-                    max="${Math.max(0, saldo)}"
-                    oninput="recalcProdutos()"
-                    onblur="blurQ('prod-qtd-${item.produto}-${idItem}')"
-                    ${semEstoque ? 'disabled' : ''}>
+                <input type="number" class="inp-qtd" id="prod-qtd-${item.produto}-${idItem}" placeholder="0" min="0" max="${Math.max(0, saldo)}" oninput="recalcProdutos()" onblur="blurQ('prod-qtd-${item.produto}-${idItem}')" ${semEstoque ? 'disabled' : ''}>
                 <button type="button" class="btn-q" onclick="ajProduto('${item.produto}', '${idItem}', 1)" ${semEstoque ? 'disabled' : ''}>+</button>
             </div>
-
             <div class="prod-footer">
                 <span class="prod-tot-lbl">Subtotal</span>
                 <span class="prod-tot-val" id="prod-sub-${item.produto}-${idItem}">R$ 0,00</span>
             </div>
-        </div>
-    `;
+        </div>`;
 }
 
 function renderProdutos() {
@@ -689,32 +554,22 @@ function renderProdutos() {
             <div class="state-box" style="grid-column:1/-1">
                 <div class="state-title">Nenhum produto disponível</div>
                 <div class="state-sub">Altere o filtro ou marque "Mostrar sem estoque".</div>
-            </div>
-        `;
-
+            </div>`;
         const totalEl = $('produtos-tot');
         if (totalEl) totalEl.textContent = 'R$ 0,00';
-
-        const t2Rasp = $('t2-rasp');
-        if (t2Rasp) t2Rasp.textContent = 'R$ 0,00';
-
         updT2Geral();
         return;
     }
 
     wrap.innerHTML = lista.map(buildProdutoCard).join('');
 
-    if (ESTADO.tela2?.produtos?.length) {
-        restaurarProdutos();
-    } else {
-        recalcProdutos();
-    }
+    if (ESTADO.tela2?.produtos?.length) restaurarProdutos();
+    else recalcProdutos();
 }
 
 function ajProduto(produto, idItem, delta) {
     const el = $(`prod-qtd-${produto}-${idItem}`);
     if (!el || el.disabled) return;
-
     const atual = Number(el.value || 0);
     const max = Number(el.max || 999999);
     const novo = Math.max(0, Math.min(max, atual + delta));
@@ -734,11 +589,7 @@ function recalcProdutos() {
 
         const saldo = Number(item.saldo_editavel ?? item.saldo_atual ?? 0);
         let qtd = Number(elQtd.value || 0);
-
-        if (qtd > saldo) {
-            qtd = saldo;
-            elQtd.value = saldo || '';
-        }
+        if (qtd > saldo) { qtd = saldo; elQtd.value = saldo || ''; }
 
         const subtotal = qtd * Number(item.valor_venda || 0);
         elSub.textContent = fmtBRL(subtotal);
@@ -753,16 +604,12 @@ function recalcProdutos() {
 
     const totalEl = $('produtos-tot');
     if (totalEl) totalEl.textContent = fmtBRL(total);
-
     const t2Rasp = $('t2-rasp');
     if (t2Rasp) t2Rasp.textContent = fmtBRL(total);
-
     updT2Geral();
 }
 
-function buildRaspadinha() {
-    renderProdutos();
-}
+function buildRaspadinha() { renderProdutos(); }
 
 // Stubs de compatibilidade
 function ajR() {}
@@ -781,86 +628,29 @@ function getRaspTot() {
     return t;
 }
 
-function getTeleTot() {
-    return 0;
-}
+function getTeleTot() { return 0; }
 
 function getFedTot() {
     let t = 0;
-    federais.forEach((f, i) => {
-        t += (parseInt($(`fed-qtd-${i}`)?.value) || 0) * Number(f.valorUnit || 0);
-    });
+    federais.forEach((f, i) => { t += (parseInt($(`fed-qtd-${i}`)?.value) || 0) * Number(f.valorUnit || 0); });
     return t;
 }
 
 function updT2Geral() {
     const g = getRaspTot() + getTeleTot() + getFedTot();
-
     const el = $('t2-geral');
     if (el) el.textContent = fmtBRL(g);
-
     const fed = $('t2-fed');
     if (fed) fed.textContent = fmtBRL(getFedTot());
 }
 
-function chaveFederalItem(item) {
-    return `FEDERAL|${Number(item.federal_id || 0)}`;
-}
-
-function aplicarContextoEdicaoFederais(lista) {
-    const salvos = ESTADO.tela2?.federais || [];
-    const mapa = {};
-
-    salvos.forEach(f => {
-        mapa[chaveFederalItem(f)] = Number(f.qtdVendida || 0);
-    });
-
-    return (lista || []).map(item => {
-        const qtdSalva = Number(mapa[chaveFederalItem(item)] || 0);
-        const saldoAtual = Number(item.saldo_atual || 0);
-        const saldoEditavel = saldoAtual + qtdSalva;
-
-        return {
-            ...item,
-            qtd_salva_edicao: qtdSalva,
-            saldo_editavel: saldoEditavel,
-            em_edicao: !!fechamentoOriginalId
-        };
-    });
-}
-
-function federaisVisiveis() {
-    return [...federais]
-        .filter(item =>
-            Number(item.saldo_atual || 0) > 0 ||
-            Number(item.qtd_salva_edicao || 0) > 0
-        )
-        .sort((a, b) => {
-            const sa = Number(a.saldo_editavel ?? a.saldo_atual ?? 0);
-            const sb = Number(b.saldo_editavel ?? b.saldo_atual ?? 0);
-
-            if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
-
-            const cmpData = String(a.dtSorteio || '').localeCompare(String(b.dtSorteio || ''));
-            if (cmpData !== 0) return cmpData;
-
-            const cmpMod = String(a.modalidade || '').localeCompare(String(b.modalidade || ''), 'pt-BR');
-            if (cmpMod !== 0) return cmpMod;
-
-            return String(a.concurso || '').localeCompare(String(b.concurso || ''), 'pt-BR');
-        });
-}
-
-function getSaldoFederal(item) {
-    return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0);
-}
-
-// ─── BUSCA DE FECHAMENTO EXISTENTE ───────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSCA DE FECHAMENTO EXISTENTE
+// ─────────────────────────────────────────────────────────────────────────────
 
 function setSaveLoading(loading, text = '') {
     const btn = document.querySelector('[onclick="buscarFechamentoExistente()"]');
     if (!btn) return;
-
     if (loading) {
         btn.disabled = true;
         btn.dataset.oldText = btn.textContent;
@@ -870,8 +660,6 @@ function setSaveLoading(loading, text = '') {
         btn.textContent = btn.dataset.oldText || 'Buscar Fechamento';
     }
 }
-
-// ─── MONTAR / PREENCHER TELAS ─────────────────────────────────────────────────
 
 function montarTela1DoFechamento(fech) {
     return {
@@ -884,12 +672,8 @@ function montarTela1DoFechamento(fech) {
         pix_cnpj: Number(fech.pix_cnpj || 0),
         diferenca_pix: Number(fech.diferenca_pix || 0),
         premio_raspadinha: Number(fech.premio_raspadinha || 0),
-        resgate_telesena: Number(fech.resgate_telesena || 0),
-        dividas: (fech.fechamento_dividas || []).map(d => ({
-            id: d.id,
-            cliente_nome: d.cliente_nome || '',
-            valor: Number(d.valor || 0)
-        }))
+        resgate_telesena: Number(fech.resgate_telesena || 0)
+        // dividas removidas — substituídas pelo módulo CF
     };
 }
 
@@ -904,17 +688,12 @@ function montarTela2DoFechamento(fech, federaisCarregados = []) {
         raspadinha_id: p.raspadinha_id || null,
         telesena_item_id: p.telesena_item_id || null
     }));
-
-    return {
-        produtos,
-        federais: federaisCarregados
-    };
+    return { produtos, federais: federaisCarregados };
 }
 
 function montarTela3DoFechamento(fech) {
     const internos = [];
     const externos = [];
-
     (fech.fechamento_boloes || []).forEach(b => {
         const item = {
             bolao_id: b.bolao_id,
@@ -926,11 +705,9 @@ function montarTela3DoFechamento(fech) {
             origem: b.origem || null,
             tipo: b.tipo || null
         };
-
         if (b.tipo === 'EXTERNO' || b.origem) externos.push(item);
         else internos.push(item);
     });
-
     return { internos, externos };
 }
 
@@ -955,14 +732,7 @@ function preencherTela1(fech) {
     set('pix-dif', fech.diferenca_pix);
     set('premio-rasp', fech.premio_raspadinha);
     set('resgate-tele', fech.resgate_telesena);
-
-    $('dividas-list').innerHTML = '';
-    dividaCount = 0;
-    (fech.fechamento_dividas || []).forEach(d => addDivida(d.cliente_nome, d.valor));
-}
-
-async function preencherTela2() {
-    await carregarProdutos();
+    // Seção de dívidas removida — módulo CF carrega o histórico pelo próprio modal
 }
 
 async function buscarFechamentoExistente() {
@@ -979,12 +749,7 @@ async function buscarFechamentoExistente() {
 
         const { data: fech, error } = await sb
             .from('fechamentos')
-            .select(`
-                *,
-                fechamento_produtos(*),
-                fechamento_boloes(*),
-                fechamento_dividas(*)
-            `)
+            .select(`*, fechamento_produtos(*), fechamento_boloes(*)`)
             .eq('loteria_id', loteriaAtiva.id)
             .eq('usuario_id', funcionarioId)
             .eq('data_ref', dataRef)
@@ -1009,7 +774,6 @@ async function buscarFechamentoExistente() {
         await buscarFederaisSupabase(fech.data_ref);
         await carregarBoloes();
 
-
         toast('Fechamento carregado com sucesso.', true);
     } catch (e) {
         console.error('Erro ao buscar fechamento:', e);
@@ -1019,17 +783,12 @@ async function buscarFechamentoExistente() {
     }
 }
 
-// ─── COLETA DE DADOS ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// COLETA DE DADOS
+// ─────────────────────────────────────────────────────────────────────────────
 
 function coletarTela1() {
-    const dividas = [];
-
-    document.querySelectorAll('.divida-row').forEach(row => {
-        const nome = row.querySelector('.div-nome')?.value?.trim();
-        const valor = parseFloat(row.querySelector('.div-valor')?.value) || 0;
-        if (nome) dividas.push({ nome, valor });
-    });
-
+    // Sem coleta de dívidas — substituído pelo módulo CF
     ESTADO.tela1 = {
         funcionario_id: $('funcionario').value,
         funcionario_nome: $('funcionario').options[$('funcionario').selectedIndex]?.text || '',
@@ -1042,7 +801,8 @@ function coletarTela1() {
         diferenca_pix: n('pix-dif'),
         premio_raspadinha: n('premio-rasp'),
         resgate_telesena: n('resgate-tele'),
-        dividas
+        // clienteFechamento é mantido pelo módulo CF dentro de ESTADO.tela1
+        clienteFechamento: ESTADO.tela1?.clienteFechamento || { clienteSelecionado: null, lancamentos: [], pagamentos: [] }
     };
 }
 
@@ -1050,7 +810,6 @@ function coletarTela2() {
     const produtos = produtosLista.map(item => {
         const idItem = item.raspadinha_id || item.telesena_item_id;
         const qtd = parseInt($(`prod-qtd-${item.produto}-${idItem}`)?.value) || 0;
-
         return {
             produto_id: item.produto_id || null,
             produto: item.produto,
@@ -1092,34 +851,47 @@ function coletarTela3() {
             subtotal: (parseInt($(`qtd-${idx}`)?.value) || 0) * Number(data.valorCota || 0)
         }));
 
-    ESTADO.tela3 = {
-        internos: coleta('INTERNO'),
-        externos: coleta('EXTERNO')
-    };
+    ESTADO.tela3 = { internos: coleta('INTERNO'), externos: coleta('EXTERNO') };
 }
-// ─── FEDERAIS ─────────────────────────────────────────────────────────────────
-//
-// Padrão adotado nas federais:
-// - valorUnit = valor unitário da fração
-// - qtdVendida = quantidade lançada no fechamento
-// - subtotal = qtdVendida * valorUnit
-// - saldo_atual = saldo vindo da view
-// - saldo_editavel = saldo_atual + quantidade já salva no fechamento em edição
-//
-// A lógica agora fica igual à de produtos e bolões:
-// 1) busca a base
-// 2) aplica contexto de edição
-// 3) filtra o que deve aparecer
-// 4) renderiza usando saldo editável
-// 5) restaura o que já estava salvo no fechamento
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEDERAIS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function chaveFederalItem(item) { return `FEDERAL|${Number(item.federal_id || 0)}`; }
+
+function aplicarContextoEdicaoFederais(lista) {
+    const salvos = ESTADO.tela2?.federais || [];
+    const mapa = {};
+    salvos.forEach(f => { mapa[chaveFederalItem(f)] = Number(f.qtdVendida || 0); });
+
+    return (lista || []).map(item => {
+        const qtdSalva = Number(mapa[chaveFederalItem(item)] || 0);
+        const saldoAtual = Number(item.saldo_atual || 0);
+        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
+    });
+}
+
+function federaisVisiveis() {
+    return [...federais]
+        .filter(item => Number(item.saldo_atual || 0) > 0 || Number(item.qtd_salva_edicao || 0) > 0)
+        .sort((a, b) => {
+            const sa = Number(a.saldo_editavel ?? a.saldo_atual ?? 0);
+            const sb = Number(b.saldo_editavel ?? b.saldo_atual ?? 0);
+            if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
+            const cmpData = String(a.dtSorteio || '').localeCompare(String(b.dtSorteio || ''));
+            if (cmpData !== 0) return cmpData;
+            const cmpMod = String(a.modalidade || '').localeCompare(String(b.modalidade || ''), 'pt-BR');
+            if (cmpMod !== 0) return cmpMod;
+            return String(a.concurso || '').localeCompare(String(b.concurso || ''), 'pt-BR');
+        });
+}
+
+function getSaldoFederal(item) { return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0); }
 
 async function buscarFederais() {
     const dataRef = $('data-ref').value;
-    if (!dataRef) {
-        alert('Defina a data do fechamento antes de buscar federais.');
-        return;
-    }
-
+    if (!dataRef) { alert('Defina a data do fechamento antes de buscar federais.'); return; }
     await buscarFederaisSupabase(dataRef);
 }
 
@@ -1128,30 +900,9 @@ async function buscarFederaisSupabase(dataRef) {
         setFS('fs-loading');
         $('fs-load-sub').textContent = 'Consultando federais disponíveis para esta loja...';
 
-        // Importante:
-        // Não filtramos mais por estoque_atual > 0 na query.
-        // Se a federal já foi lançada no fechamento, ela precisa continuar visível
-        // na edição, mesmo que o estoque atual esteja zerado.
         const { data, error } = await sb
             .from('view_resumo_federal')
-            .select(`
-                federal_id,
-                loteria_id,
-                loja_origem,
-                modalidade,
-                concurso,
-                dt_sorteio,
-                valor_fracao,
-                valor_custo,
-                qtd_inicial,
-                qtd_vendida_funcionarios,
-                qtd_vendida_whatsapp,
-                qtd_vendida_caixa,
-                qtd_vendida_cambista_interno,
-                qtd_venda_interna_total,
-                estoque_atual,
-                resultado
-            `)
+            .select(`federal_id,loteria_id,loja_origem,modalidade,concurso,dt_sorteio,valor_fracao,valor_custo,qtd_inicial,qtd_vendida_funcionarios,qtd_vendida_whatsapp,qtd_vendida_caixa,qtd_vendida_cambista_interno,qtd_venda_interna_total,estoque_atual,resultado`)
             .eq('loteria_id', loteriaAtiva.id)
             .gte('dt_sorteio', dataRef)
             .order('dt_sorteio', { ascending: true })
@@ -1159,7 +910,6 @@ async function buscarFederaisSupabase(dataRef) {
 
         if (error) throw error;
 
-        // Base crua da view com nomes padronizados
         const base = (data || []).map(f => ({
             federal_id: f.federal_id,
             loteriaId: Number(f.loteria_id),
@@ -1184,17 +934,11 @@ async function buscarFederaisSupabase(dataRef) {
 
         renderFed();
 
-        if (!federais.length) {
-            setFS('fs-vazio');
-            return;
-        }
+        if (!federais.length) { setFS('fs-vazio'); return; }
 
         setFS('fs-lista');
 
-        // Restaura as quantidades já salvas quando estivermos editando
-        if (ESTADO.tela2?.federais?.length) {
-            restaurarFederais();
-        }
+        if (ESTADO.tela2?.federais?.length) restaurarFederais();
     } catch (e) {
         console.error('Erro ao buscar federais:', e);
         federais = [];
@@ -1219,49 +963,19 @@ function renderFed() {
             <td class="mono">${f.modalidade}</td>
             <td class="mono" style="color:var(--purple);font-weight:600">${f.concurso}</td>
             <td class="mono" style="color:var(--amber)">${fmtData(f.dtSorteio)}</td>
-            <td class="mono" style="color:var(--accent)">
-                R$ ${Number(f.valorUnit || 0).toFixed(2).replace('.', ',')}
-            </td>
+            <td class="mono" style="color:var(--accent)">R$ ${Number(f.valorUnit || 0).toFixed(2).replace('.', ',')}</td>
             <td class="mono" style="text-align:center;color:var(--sky)">
                 ${saldo}
-                <div style="font-size:10px;color:var(--muted);margin-top:2px">
-                    Atual: ${saldoBase}${qtdSalva > 0 ? ` • no fechamento: ${qtdSalva}` : ''}
-                </div>
+                <div style="font-size:10px;color:var(--muted);margin-top:2px">Atual: ${saldoBase}${qtdSalva > 0 ? ` • no fechamento: ${qtdSalva}` : ''}</div>
             </td>
             <td>
                 <div class="qtd-wrap" style="justify-content:center">
-                    <button
-                        type="button"
-                        class="btn-q"
-                        style="border-color:rgba(167,139,250,.3)"
-                        onclick="ajFed(${i},-1)"
-                        ${semSaldo ? 'disabled' : ''}
-                    >−</button>
-
-                    <input
-                        type="number"
-                        class="inp-fed"
-                        id="fed-qtd-${i}"
-                        min="0"
-                        max="${Math.max(0, saldo)}"
-                        placeholder="0"
-                        oninput="onFed(${i})"
-                        onblur="blurQ('fed-qtd-${i}')"
-                        ${semSaldo ? 'disabled' : ''}
-                    >
-
-                    <button
-                        type="button"
-                        class="btn-q"
-                        style="border-color:rgba(167,139,250,.3)"
-                        onclick="ajFed(${i},+1)"
-                        ${semSaldo ? 'disabled' : ''}
-                    >+</button>
+                    <button type="button" class="btn-q" style="border-color:rgba(167,139,250,.3)" onclick="ajFed(${i},-1)" ${semSaldo ? 'disabled' : ''}>−</button>
+                    <input type="number" class="inp-fed" id="fed-qtd-${i}" min="0" max="${Math.max(0, saldo)}" placeholder="0" oninput="onFed(${i})" onblur="blurQ('fed-qtd-${i}')" ${semSaldo ? 'disabled' : ''}>
+                    <button type="button" class="btn-q" style="border-color:rgba(167,139,250,.3)" onclick="ajFed(${i},+1)" ${semSaldo ? 'disabled' : ''}>+</button>
                 </div>
-
                 <div class="fed-sub" id="fed-sub-${i}">—</div>
-            </td>
-        `;
+            </td>`;
         tb.appendChild(tr);
     });
 
@@ -1275,11 +989,9 @@ function renderFed() {
 function ajFed(i, delta) {
     const inp = $(`fed-qtd-${i}`);
     if (!inp || inp.disabled) return;
-
     const max = getSaldoFederal(federais[i]);
     const atual = parseInt(inp.value, 10) || 0;
     const novo = Math.min(max, Math.max(0, atual + delta));
-
     inp.value = novo || '';
     onFed(i);
     inp.focus();
@@ -1289,16 +1001,10 @@ function onFed(i) {
     const inp = $(`fed-qtd-${i}`);
     const sub = $(`fed-sub-${i}`);
     if (!inp || !sub) return;
-
     const f = federais[i];
     const max = getSaldoFederal(f);
-
     let qtd = parseInt(inp.value, 10) || 0;
-
-    if (qtd > max) {
-        qtd = max;
-        inp.value = max || '';
-    }
+    if (qtd > max) { qtd = max; inp.value = max || ''; }
 
     if (qtd > 0) {
         sub.textContent = fmtBRL(qtd * Number(f.valorUnit || 0));
@@ -1318,20 +1024,14 @@ function onFed(i) {
 
 function restaurarFederais() {
     const mapa = {};
-
     (ESTADO.tela2?.federais || []).forEach(f => {
-        if (Number(f.qtdVendida || 0) > 0) {
-            mapa[chaveFederalItem(f)] = Number(f.qtdVendida || 0);
-        }
+        if (Number(f.qtdVendida || 0) > 0) mapa[chaveFederalItem(f)] = Number(f.qtdVendida || 0);
     });
-
     federais.forEach((f, i) => {
         const qtd = Number(mapa[chaveFederalItem(f)] || 0);
         if (!qtd) return;
-
         const inp = $(`fed-qtd-${i}`);
         if (!inp) return;
-
         const max = getSaldoFederal(f);
         inp.value = Math.min(qtd, max) || '';
         onFed(i);
@@ -1341,18 +1041,10 @@ function restaurarFederais() {
 async function carregarFederaisDoFechamento(fechId) {
     const { data, error } = await sb
         .from('federal_vendas')
-        .select(`
-            federal_id,
-            qtd_vendida,
-            valor_unitario,
-            desconto,
-            valor_liquido
-        `)
+        .select(`federal_id,qtd_vendida,valor_unitario,desconto,valor_liquido`)
         .eq('fechamento_id', fechId)
         .eq('canal', 'FECHAMENTO');
-
     if (error) throw error;
-
     return (data || []).map(f => ({
         federal_id: f.federal_id,
         valorUnit: Number(f.valor_unitario || 0),
@@ -1362,14 +1054,15 @@ async function carregarFederaisDoFechamento(fechId) {
     }));
 }
 
-// ─── ESTADO FS / B3 ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ESTADO FS / B3
+// ─────────────────────────────────────────────────────────────────────────────
 
 function setFS(s) {
     ['fs-inicial', 'fs-loading', 'fs-erro', 'fs-vazio', 'fs-lista'].forEach(id => {
         const el = $(id);
         if (el) el.style.display = 'none';
     });
-
     const alvo = $(s);
     if (alvo) alvo.style.display = s === 'fs-lista' ? 'block' : 'flex';
 }
@@ -1379,39 +1072,28 @@ function setB3(s) {
         const el = $(id);
         if (el) el.style.display = 'none';
     });
-
     const alvo = $(s);
     if (alvo) alvo.style.display = s === 'b3-lista' ? 'block' : 'flex';
 }
 
-// ─── BOLÕES ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// BOLÕES
+// ─────────────────────────────────────────────────────────────────────────────
 
-function chaveBolaoItem(item) {
-    return `${String(item.tipo || '').toUpperCase()}|${Number(item.bolao_id || 0)}`;
-}
+function chaveBolaoItem(item) { return `${String(item.tipo || '').toUpperCase()}|${Number(item.bolao_id || 0)}`; }
 
 function aplicarContextoEdicaoBoloes(lista) {
     const salvos = [
         ...(ESTADO.tela3?.internos || []).map(b => ({ ...b, tipo: 'INTERNO' })),
         ...(ESTADO.tela3?.externos || []).map(b => ({ ...b, tipo: 'EXTERNO' }))
     ];
-
     const mapa = {};
-    salvos.forEach(b => {
-        mapa[chaveBolaoItem(b)] = Number(b.qtdVendida || 0);
-    });
+    salvos.forEach(b => { mapa[chaveBolaoItem(b)] = Number(b.qtdVendida || 0); });
 
     return (lista || []).map(item => {
         const qtdSalva = Number(mapa[chaveBolaoItem(item)] || 0);
         const saldoAtual = Number(item.saldo_atual || 0);
-        const saldoEditavel = saldoAtual + qtdSalva;
-
-        return {
-            ...item,
-            qtd_salva_edicao: qtdSalva,
-            saldo_editavel: saldoEditavel,
-            em_edicao: !!fechamentoOriginalId
-        };
+        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
     });
 }
 
@@ -1422,39 +1104,28 @@ function boloesVisiveis() {
     ];
 
     return todos
-        .filter(item =>
-            Number(item.saldo_atual || 0) > 0 ||
-            Number(item.qtd_salva_edicao || 0) > 0
-        )
+        .filter(item => Number(item.saldo_atual || 0) > 0 || Number(item.qtd_salva_edicao || 0) > 0)
         .sort((a, b) => {
             const sa = Number(a.saldo_editavel ?? a.saldo_atual ?? 0);
             const sb = Number(b.saldo_editavel ?? b.saldo_atual ?? 0);
-
             if ((sb > 0) !== (sa > 0)) return (sb > 0) - (sa > 0);
-
             const espA = isModalidadeEspecial(a.modalidade);
             const espB = isModalidadeEspecial(b.modalidade);
             if (espA !== espB) return Number(espA) - Number(espB);
-
             const cmpMod = String(a.modalidade || '').localeCompare(String(b.modalidade || ''), 'pt-BR');
             if (cmpMod !== 0) return cmpMod;
-
             const valA = Number(a.valorCota || 0);
             const valB = Number(b.valorCota || 0);
             if (valA !== valB) return valA - valB;
-
             return Number(a.concurso || 0) - Number(b.concurso || 0);
         });
 }
 
-function getSaldoBolao(item) {
-    return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0);
-}
+function getSaldoBolao(item) { return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0); }
 
 async function carregarBoloes() {
     const dataRef = $('data-ref').value;
     if (!dataRef) return;
-
     setB3('b3-loading');
 
     try {
@@ -1463,57 +1134,9 @@ async function carregarBoloes() {
             { data: movsExt, error: errExt },
             { data: vendasBolao, error: errVend }
         ] = await Promise.all([
-            sb
-                .from('boloes')
-                .select(`
-                    id,
-                    modalidade,
-                    concurso,
-                    valor_cota,
-                    qtd_cotas_total,
-                    qtd_jogos,
-                    qtd_dezenas,
-                    dt_inicial,
-                    dt_concurso,
-                    status,
-                    loteria_id
-                `)
-                .eq('loteria_id', loteriaAtiva.id)
-                .eq('status', 'ATIVO')
-                .lte('dt_inicial', dataRef)
-                .gte('dt_concurso', dataRef),
-
-            sb
-                .from('movimentacoes_cotas')
-                .select(`
-                    bolao_id,
-                    qtd_cotas,
-                    status,
-                    loteria_destino,
-                    boloes(
-                        id,
-                        loteria_id,
-                        modalidade,
-                        concurso,
-                        valor_cota,
-                        qtd_jogos,
-                        qtd_dezenas,
-                        dt_inicial,
-                        dt_concurso,
-                        status,
-                        loterias(nome, cod_loterico)
-                    )
-                `)
-                .eq('loteria_destino', loteriaAtiva.id)
-                .eq('status', 'ATIVO'),
-
-            sb
-                .from('boloes_vendas')
-                .select(`
-                    bolao_id,
-                    qtd_vendida
-                `)
-                .eq('loteria_vendedora_id', loteriaAtiva.id)
+            sb.from('boloes').select(`id,modalidade,concurso,valor_cota,qtd_cotas_total,qtd_jogos,qtd_dezenas,dt_inicial,dt_concurso,status,loteria_id`).eq('loteria_id', loteriaAtiva.id).eq('status', 'ATIVO').lte('dt_inicial', dataRef).gte('dt_concurso', dataRef),
+            sb.from('movimentacoes_cotas').select(`bolao_id,qtd_cotas,status,loteria_destino,boloes(id,loteria_id,modalidade,concurso,valor_cota,qtd_jogos,qtd_dezenas,dt_inicial,dt_concurso,status,loterias(nome,cod_loterico))`).eq('loteria_destino', loteriaAtiva.id).eq('status', 'ATIVO'),
+            sb.from('boloes_vendas').select(`bolao_id,qtd_vendida`).eq('loteria_vendedora_id', loteriaAtiva.id)
         ]);
 
         if (errInt) throw errInt;
@@ -1532,11 +1155,7 @@ async function carregarBoloes() {
             const b = Array.isArray(m.boloes) ? m.boloes[0] : m.boloes;
             if (!b || b.status !== 'ATIVO') return;
             if (b.dt_inicial > dataRef || b.dt_concurso < dataRef) return;
-
-            if (!mapaExt[m.bolao_id]) {
-                mapaExt[m.bolao_id] = { bolao: b, qtdCotas: 0 };
-            }
-
+            if (!mapaExt[m.bolao_id]) mapaExt[m.bolao_id] = { bolao: b, qtdCotas: 0 };
             mapaExt[m.bolao_id].qtdCotas += Number(m.qtd_cotas || 0);
         });
 
@@ -1544,23 +1163,13 @@ async function carregarBoloes() {
             (boloesInt || []).map(b => {
                 const saldoBase = Number(b.qtd_cotas_total || 0);
                 const qtdVendidaTotal = Number(mapaVendido[b.id] || 0);
-                const saldoAtual = Math.max(0, saldoBase - qtdVendidaTotal);
-
                 return {
-                    bolao_id: b.id,
-                    modalidade: b.modalidade,
-                    concurso: b.concurso,
-                    qtdJogos: b.qtd_jogos,
-                    qtdDezenas: b.qtd_dezenas,
-                    valorCota: Number(b.valor_cota || 0),
-                    dtInicial: b.dt_inicial,
-                    dtConcurso: b.dt_concurso,
-                    saldo_base: saldoBase,
-                    qtd_vendida_total: qtdVendidaTotal,
-                    saldo_atual: saldoAtual,
-                    saldoEnviado: null,
-                    origem: loteriaAtiva.nome,
-                    tipo: 'INTERNO'
+                    bolao_id: b.id, modalidade: b.modalidade, concurso: b.concurso,
+                    qtdJogos: b.qtd_jogos, qtdDezenas: b.qtd_dezenas,
+                    valorCota: Number(b.valor_cota || 0), dtInicial: b.dt_inicial, dtConcurso: b.dt_concurso,
+                    saldo_base: saldoBase, qtd_vendida_total: qtdVendidaTotal,
+                    saldo_atual: Math.max(0, saldoBase - qtdVendidaTotal),
+                    saldoEnviado: null, origem: loteriaAtiva.nome, tipo: 'INTERNO'
                 };
             })
         );
@@ -1569,42 +1178,25 @@ async function carregarBoloes() {
             Object.values(mapaExt).map(({ bolao: b, qtdCotas }) => {
                 const saldoBase = Number(qtdCotas || 0);
                 const qtdVendidaTotal = Number(mapaVendido[b.id] || 0);
-                const saldoAtual = Math.max(0, saldoBase - qtdVendidaTotal);
-
                 return {
-                    bolao_id: b.id,
-                    modalidade: b.modalidade,
-                    concurso: b.concurso,
-                    qtdJogos: b.qtd_jogos,
-                    qtdDezenas: b.qtd_dezenas,
-                    valorCota: Number(b.valor_cota || 0),
-                    dtInicial: b.dt_inicial,
-                    dtConcurso: b.dt_concurso,
-                    saldo_base: saldoBase,
-                    qtd_vendida_total: qtdVendidaTotal,
-                    saldo_atual: saldoAtual,
-                    saldoEnviado: saldoBase,
-                    origem: b.loterias?.nome || '',
-                    origemCodLoterico: b.loterias?.cod_loterico || '',
-                    tipo: 'EXTERNO'
+                    bolao_id: b.id, modalidade: b.modalidade, concurso: b.concurso,
+                    qtdJogos: b.qtd_jogos, qtdDezenas: b.qtd_dezenas,
+                    valorCota: Number(b.valor_cota || 0), dtInicial: b.dt_inicial, dtConcurso: b.dt_concurso,
+                    saldo_base: saldoBase, qtd_vendida_total: qtdVendidaTotal,
+                    saldo_atual: Math.max(0, saldoBase - qtdVendidaTotal),
+                    saldoEnviado: saldoBase, origem: b.loterias?.nome || '',
+                    origemCodLoterico: b.loterias?.cod_loterico || '', tipo: 'EXTERNO'
                 };
             })
         );
 
         const total = lstInt.length + lstExt.length;
-        if (!total) {
-            allBoloes = [];
-            renderBoloes();
-            setB3('b3-vazio');
-            return;
-        }
+        if (!total) { allBoloes = []; renderBoloes(); setB3('b3-vazio'); return; }
 
         renderBoloes();
         setB3('b3-lista');
 
-        if (ESTADO.tela3.internos?.length || ESTADO.tela3.externos?.length) {
-            restaurarBoloes();
-        }
+        if (ESTADO.tela3.internos?.length || ESTADO.tela3.externos?.length) restaurarBoloes();
     } catch (e) {
         console.error(e);
         $('b3-err-msg').textContent = e.message || 'Erro ao carregar bolões.';
@@ -1624,18 +1216,13 @@ function renderBoloes() {
             <div class="state-box" style="grid-column:1/-1">
                 <div class="state-title">Nenhum bolão disponível</div>
                 <div class="state-sub">Sem saldo disponível para esta loja nesta data.</div>
-            </div>
-        `;
+            </div>`;
         updBolTotais();
         return;
     }
 
-    const especiais = ordenarBoloesFechamento(
-        todos.filter(b => isModalidadeEspecial(b.modalidade))
-    );
-    const regulares = ordenarBoloesFechamento(
-        todos.filter(b => !isModalidadeEspecial(b.modalidade))
-    );
+    const especiais = ordenarBoloesFechamento(todos.filter(b => isModalidadeEspecial(b.modalidade)));
+    const regulares = ordenarBoloesFechamento(todos.filter(b => !isModalidadeEspecial(b.modalidade)));
 
     const agruparPorModalidade = lista => {
         const mapa = {};
@@ -1657,8 +1244,7 @@ function renderBoloes() {
                 <div class="bloco-label">${tituloBloco}</div>
                 <div class="bloco-line"></div>
                 <div class="bloco-tot" id="bloco-tot-${tituloBloco.replace(/\s+/g, '-').toLowerCase()}">R$ 0,00</div>
-            </div>
-        `;
+            </div>`;
         wrap.appendChild(bloco);
 
         const grupos = agruparPorModalidade(lista);
@@ -1674,8 +1260,7 @@ function renderBoloes() {
                     <div class="mod-nome">${mod}</div>
                     <div class="mod-count">${boloes.length}</div>
                     <div class="mod-subtot" id="mod-tot-${modKey}">R$ 0,00</div>
-                </div>
-            `;
+                </div>`;
 
             boloes.forEach((b, i) => {
                 const gi = allBoloes.length;
@@ -1692,7 +1277,6 @@ function renderBoloes() {
                 if (b.qtdDezenas) metas.push(`<span class="meta-tag">${b.qtdDezenas} dez.</span>`);
                 metas.push(`<span class="meta-tag" style="color:var(--accent);border-color:rgba(0,200,150,.2)">R$ ${Number(b.valorCota).toFixed(2).replace('.', ',')} / cota</span>`);
                 metas.push(`<span class="meta-tag meta-saldo">saldo ${saldo}</span>`);
-
                 if (b.tipo === 'EXTERNO') {
                     const origemTxt = [b.origem, b.origemCodLoterico].filter(Boolean).join(' · ');
                     metas.push(`<span class="meta-tag meta-dest">externo${origemTxt ? ' · ' + origemTxt : ''}</span>`);
@@ -1700,11 +1284,7 @@ function renderBoloes() {
                     metas.push(`<span class="meta-tag">interno</span>`);
                 }
 
-                const infoSaldo = `
-                    <div style="font-size:10px;color:var(--muted);margin-top:6px">
-                        Base: ${saldoBase} · Vendido: ${qtdVendidaTotal}${qtdSalva > 0 ? ` · no fechamento: ${qtdSalva}` : ''}
-                    </div>
-                `;
+                const infoSaldo = `<div style="font-size:10px;color:var(--muted);margin-top:6px">Base: ${saldoBase} · Vendido: ${qtdVendidaTotal}${qtdSalva > 0 ? ` · no fechamento: ${qtdSalva}` : ''}</div>`;
 
                 const card = document.createElement('div');
                 card.className = `bolao-card is-${b.tipo === 'INTERNO' ? 'int' : 'ext'} ${semSaldo ? 'is-off' : ''}`;
@@ -1721,21 +1301,11 @@ function renderBoloes() {
                         <div class="qtd-lbl">Cotas Vendidas</div>
                         <div class="qtd-wrap">
                             <button type="button" class="btn-q" onclick="ajQ(${gi},-1)" ${semSaldo ? 'disabled' : ''}>−</button>
-                            <input
-                                type="number"
-                                class="inp-qtd"
-                                id="qtd-${gi}"
-                                min="0"
-                                max="${Math.max(0, saldo)}"
-                                placeholder="0"
-                                oninput="onQtd(${gi})"
-                                onblur="blurQ('qtd-${gi}')"
-                                ${semSaldo ? 'disabled' : ''}>
+                            <input type="number" class="inp-qtd" id="qtd-${gi}" min="0" max="${Math.max(0, saldo)}" placeholder="0" oninput="onQtd(${gi})" onblur="blurQ('qtd-${gi}')" ${semSaldo ? 'disabled' : ''}>
                             <button type="button" class="btn-q" onclick="ajQ(${gi},+1)" ${semSaldo ? 'disabled' : ''}>+</button>
                         </div>
                         <div class="qtd-sub" id="sub-${gi}">—</div>
-                    </div>
-                `;
+                    </div>`;
                 grp.appendChild(card);
             });
 
@@ -1751,11 +1321,9 @@ function renderBoloes() {
 function ajQ(idx, d) {
     const inp = $(`qtd-${idx}`);
     if (!inp || inp.disabled) return;
-
     const max = getSaldoBolao(allBoloes[idx]?.data);
     const atual = Number(inp.value || 0);
     const novo = Math.max(0, Math.min(max, atual + d));
-
     inp.value = novo || '';
     onQtd(idx);
     inp.focus();
@@ -1764,18 +1332,12 @@ function ajQ(idx, d) {
 function onQtd(idx) {
     const inp = $(`qtd-${idx}`);
     if (!inp) return;
-
     const sub = $(`sub-${idx}`);
     const card = inp.closest('.bolao-card');
     const b = allBoloes[idx].data;
-
     const max = getSaldoBolao(b);
     let qtd = parseInt(inp.value, 10) || 0;
-
-    if (qtd > max) {
-        qtd = max;
-        inp.value = max || '';
-    }
+    if (qtd > max) { qtd = max; inp.value = max || ''; }
 
     if (qtd > 0) {
         sub.textContent = fmtBRL(qtd * Number(b.valorCota || 0));
@@ -1794,49 +1356,33 @@ function onQtd(idx) {
 }
 
 function normalizarTexto(txt) {
-    return String(txt || '')
-        .toUpperCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+    return String(txt || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function isModalidadeEspecial(modalidade) {
     const m = normalizarTexto(modalidade);
-    return (
-        m.includes('PASCOA') ||
-        m.includes('VIRADA') ||
-        m.includes('INDEPENDENCIA') ||
-        m.includes('SAO JOAO')
-    );
+    return m.includes('PASCOA') || m.includes('VIRADA') || m.includes('INDEPENDENCIA') || m.includes('SAO JOAO');
 }
 
 function ordenarBoloesFechamento(lista) {
     return [...lista].sort((a, b) => {
-        const modA = String(a.modalidade || '');
-        const modB = String(b.modalidade || '');
-        const cmpMod = modA.localeCompare(modB, 'pt-BR');
+        const cmpMod = String(a.modalidade || '').localeCompare(String(b.modalidade || ''), 'pt-BR');
         if (cmpMod !== 0) return cmpMod;
-
         const valA = Number(a.valorCota || 0);
         const valB = Number(b.valorCota || 0);
         if (valA !== valB) return valA - valB;
-
         return Number(a.concurso || 0) - Number(b.concurso || 0);
     });
 }
 
 function updBolTotais() {
-    let tInt = 0;
-    let tExt = 0;
-    let totalCotas = 0;
+    let tInt = 0, tExt = 0, totalCotas = 0;
 
     allBoloes.forEach(({ tipo, data, idx }) => {
         const qtd = parseInt($(`qtd-${idx}`)?.value) || 0;
         const subtotal = qtd * Number(data.valorCota || 0);
-
         if (tipo === 'INTERNO') tInt += subtotal;
         else tExt += subtotal;
-
         totalCotas += qtd;
     });
 
@@ -1847,27 +1393,21 @@ function updBolTotais() {
     $('tot-bol-geral').textContent = fmtBRL(tot);
     $('tot-cotas').textContent = totalCotas;
 
-    document.querySelectorAll('[id^="mod-tot-"]').forEach(el => {
-        el.textContent = 'R$ 0,00';
-    });
+    document.querySelectorAll('[id^="mod-tot-"]').forEach(el => { el.textContent = 'R$ 0,00'; });
 
     const blocoTrad = $('bloco-tot-tradicionais');
     if (blocoTrad) blocoTrad.textContent = 'R$ 0,00';
-
     const blocoEsp = $('bloco-tot-especiais');
     if (blocoEsp) blocoEsp.textContent = 'R$ 0,00';
 
-    let totTrad = 0;
-    let totEsp = 0;
+    let totTrad = 0, totEsp = 0;
     const modTots = {};
 
     allBoloes.forEach(({ data, idx, grupo, modalidade }) => {
         const qtd = parseInt($(`qtd-${idx}`)?.value) || 0;
         const subtotal = qtd * Number(data.valorCota || 0);
         const modKey = `${grupo}-${modalidade}`.replace(/\s/g, '_');
-
         modTots[modKey] = (modTots[modKey] || 0) + subtotal;
-
         if (grupo === 'Especiais') totEsp += subtotal;
         else totTrad += subtotal;
     });
@@ -1885,47 +1425,40 @@ function atualizarListaVendas() {
     const vendidos = allBoloes.filter(({ idx }) => (parseInt($(`qtd-${idx}`)?.value) || 0) > 0);
     const list = $('vendas-registradas');
     const items = $('vendas-items');
-
     list.classList.toggle('show', vendidos.length > 0);
     items.innerHTML = '';
 
     vendidos.forEach(({ tipo, data, idx }) => {
         const qtd = parseInt($(`qtd-${idx}`)?.value) || 0;
-
         const item = document.createElement('div');
         item.className = 'venda-item';
         item.innerHTML = `
             <span class="vi-nome">${data.modalidade} — Conc. ${data.concurso} <span style="font-size:9px;color:var(--dim)">${tipo}</span></span>
             <span class="vi-qtd">${qtd}x</span>
-            <span class="vi-val">${fmtBRL(qtd * Number(data.valorCota || 0))}</span>
-        `;
+            <span class="vi-val">${fmtBRL(qtd * Number(data.valorCota || 0))}</span>`;
         items.appendChild(item);
     });
 }
 
 function restaurarBoloes() {
     const mapa = {};
-
     [...(ESTADO.tela3.internos || []), ...(ESTADO.tela3.externos || [])].forEach(b => {
-        if (Number(b.qtdVendida || 0) > 0) {
-            mapa[Number(b.bolao_id)] = Number(b.qtdVendida || 0);
-        }
+        if (Number(b.qtdVendida || 0) > 0) mapa[Number(b.bolao_id)] = Number(b.qtdVendida || 0);
     });
-
     allBoloes.forEach(({ data, idx }) => {
         const qtd = Number(mapa[Number(data.bolao_id)] || 0);
         if (!qtd) return;
-
         const inp = $(`qtd-${idx}`);
         if (!inp) return;
-
         const max = getSaldoBolao(data);
         inp.value = Math.min(qtd, max) || '';
         onQtd(idx);
     });
 }
 
-// ─── RESUMO ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// RESUMO — integrado com módulo CF
+// ─────────────────────────────────────────────────────────────────────────────
 
 function montarResumo() {
     coletarTela1();
@@ -1941,9 +1474,8 @@ function montarResumo() {
     $('r-loteria').textContent = loteriaAtiva?.nome || '—';
 
     const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
-    const totalFed = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
-    const totalBol = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + Number(b.subtotal || 0), 0);
-    const totalDiv = (t1.dividas || []).reduce((a, d) => a + Number(d.valor || 0), 0);
+    const totalFed  = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
+    const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + Number(b.subtotal || 0), 0);
 
     const s = (id, v) => {
         const el = $(id);
@@ -1958,62 +1490,73 @@ function montarResumo() {
     s('r-boloes', totalBol);
     s('r-relatorio', t1.relatorio);
 
-    const totDeb = Number(t1.troco_inicial || 0) + totalProd + totalFed + totalBol + Number(t1.relatorio || 0);
-    s('r-tot-deb', totDeb);
+    // ── Totais do módulo CF ────────────────────────────────────────────────
+    const totCFCredito    = CF.getTotalCredito();
+    const totCFAbatimento = CF.getTotalAbatimento();
+    const totCFPix        = CF.getTotalPixQuitacao();
 
-    s('r-troco-sob', t1.troco_sobra);
-    s('r-deposito', t1.deposito);
-    s('r-pix', t1.pix_cnpj);
-    s('r-pix-dif', t1.diferenca_pix);
-    s('r-rasp', t1.premio_raspadinha);
-    s('r-tele', t1.resgate_telesena);
-    s('r-dividas', totalDiv);
+    const s_cf = (id, v) => {
+        const el = $(id);
+        if (!el) return;
+        el.textContent = fmtBRL(v);
+        el.classList.toggle('zero', v === 0);
+    };
 
-    $('div-badge').textContent = (t1.dividas || []).length;
+    s_cf('cf-r-credito-val',    totCFCredito);
+    s_cf('cf-r-abatimento-val', totCFAbatimento);
+    s_cf('cf-r-pix-val',        totCFPix);
 
-    const subWrap = $('div-sub-wrap');
-    subWrap.innerHTML = '';
+    // Badge: conta quantos lançamentos de DEBITO existem
+    const lans = ESTADO.tela1?.clienteFechamento?.lancamentos || [];
+    const badge = $('cf-r-credito-badge');
+    if (badge) badge.textContent = lans.filter(l => l.tipo_movimento === 'DEBITO').length;
 
-    (t1.dividas || []).forEach(d => {
-        const nome = d.nome || d.cliente_nome || 'Cliente';
-        const valor = Number(d.valor || 0);
+    // Linha PIX só aparece quando há pagamentos PIX validados
+    const pixLinha = $('cf-r-pix');
+    if (pixLinha) pixLinha.style.display = totCFPix > 0 ? 'flex' : 'none';
 
-        const l = document.createElement('div');
-        l.className = 'linha sub';
-        l.innerHTML = `
-            <div class="linha-label"><div class="linha-dot"></div>${nome}</div>
-            <div class="linha-val">R$ ${valor.toFixed(2).replace('.', ',')}</div>
-        `;
-        subWrap.appendChild(l);
-    });
+    // ── Fórmula final do fechamento (conforme INTEGRACAO.md) ───────────────
+    // Débitos = troco_inicial + produtos + federais + bolões + relatório + abatimento_divida
+    const totDeb = Number(t1.troco_inicial || 0)
+        + totalProd + totalFed + totalBol
+        + Number(t1.relatorio || 0)
+        + totCFAbatimento;          // ← Abatimento é DÉBITO
 
+    // Créditos = troco_sobra + depósito + pix_cnpj + diferença_pix + prêmio_rasp +
+    //            resgate_tele + crédito_cliente + pix_quitacao
     const totCred = Number(t1.troco_sobra || 0)
         + Number(t1.deposito || 0)
         + Number(t1.pix_cnpj || 0)
         + Number(t1.diferenca_pix || 0)
         + Number(t1.premio_raspadinha || 0)
         + Number(t1.resgate_telesena || 0)
-        + totalDiv;
+        + totCFCredito              // ← Débito do cliente = crédito no fechamento
+        + totCFPix;                 // ← PIX quitado (entra no crédito e se anula)
 
+    s('r-tot-deb', totDeb);
+    s('r-troco-sob', t1.troco_sobra);
+    s('r-deposito', t1.deposito);
+    s('r-pix', t1.pix_cnpj);
+    s('r-pix-dif', t1.diferenca_pix);
+    s('r-rasp', t1.premio_raspadinha);
+    s('r-tele', t1.resgate_telesena);
     s('r-tot-cred', totCred);
 
     const quebra = totCred - totDeb;
 
-    // Primeiro define o modo visual (novo/edição) e só depois
-    // aplica a regra da quebra/justificativa no botão final.
     detectarModo();
     renderQuebra(quebra, totCred, totDeb);
 }
 
 function renderQuebra(quebra, cred, deb) {
-    const card = $('quebra-card');
-    const icon = $('q-icon');
-    const titulo = $('q-titulo');
-    const desc = $('q-desc');
-    const val = $('q-valor');
-    const det = $('q-detalhe');
-    const justWrap = $('just-wrap');
-    const btn = $('btn-final');
+    const card      = $('quebra-card');
+    const icon      = $('q-icon');
+    const titulo    = $('q-titulo');
+    const desc      = $('q-desc');
+    const val       = $('q-valor');
+    const det       = $('q-detalhe');
+    const justWrap  = $('just-wrap');
+    const btn       = $('btn-final');
 
     card.className = 'quebra-card';
     det.textContent = `Créditos (R$ ${Number(cred).toFixed(2).replace('.', ',')}) − Débitos (R$ ${Number(deb).toFixed(2).replace('.', ',')})`;
@@ -2047,7 +1590,7 @@ function renderQuebra(quebra, cred, deb) {
         btn.disabled = true;
     }
 
-    const ta = $('justificativa');
+    const ta  = $('justificativa');
     const cnt = $('just-cnt');
 
     if (ta && cnt) {
@@ -2065,14 +1608,13 @@ function detectarModo() {
     const banner = $('modo-banner');
     banner.className = 'modo-banner';
 
-    const btnFinal = $('btn-final');
+    const btnFinal    = $('btn-final');
     const btnFinalTxt = $('btn-final-txt');
 
     if (!fechamentoOriginalId) {
         modoAtual = 'novo';
         banner.innerHTML = '<span>Novo fechamento — será gravado ao finalizar.</span>';
         banner.classList.add('show', 'novo');
-
         if (btnFinal) btnFinal.className = 'btn-finalizar salvar';
         if (btnFinalTxt) btnFinalTxt.textContent = 'Finalizar Fechamento';
         return;
@@ -2081,20 +1623,13 @@ function detectarModo() {
     modoAtual = 'edicao';
     banner.innerHTML = '<span>Modo <strong>edição</strong> — ao finalizar o registro existente será sobrescrito.</span>';
     banner.classList.add('show', 'edicao');
-
     if (btnFinal) btnFinal.className = 'btn-finalizar salvar';
     if (btnFinalTxt) btnFinalTxt.textContent = 'Salvar Alterações';
 }
 
-function toggleDividas() {
-    const sub = $('div-sub-wrap');
-    const arrow = $('div-arrow');
-    const open = sub.style.display === 'block';
-    sub.style.display = open ? 'none' : 'block';
-    arrow.style.transform = open ? 'rotate(0)' : 'rotate(90deg)';
-}
-
-// ─── HELPERS DE SNAPSHOT / VENDAS ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS DE SNAPSHOT / VENDAS
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getProdutosVendidosTela2(t2 = ESTADO.tela2) {
     return (t2?.produtos || []).filter(p => Number(p.qtd || 0) > 0);
@@ -2102,64 +1637,43 @@ function getProdutosVendidosTela2(t2 = ESTADO.tela2) {
 
 async function estornarProdutosDoFechamento(fechId) {
     if (!fechId) return 0;
-
-    const { data, error } = await sb.rpc('estornar_vendas_produto_fechamento', {
-        p_fechamento_id: fechId
-    });
-
+    const { data, error } = await sb.rpc('estornar_vendas_produto_fechamento', { p_fechamento_id: fechId });
     if (error) throw error;
     return Number(data || 0);
 }
 
 async function apagarSnapshotProdutosDoFechamento(fechId) {
     if (!fechId) return;
-
-    const { error } = await sb
-        .from('fechamento_produtos')
-        .delete()
-        .eq('fechamento_id', fechId);
-
+    const { error } = await sb.from('fechamento_produtos').delete().eq('fechamento_id', fechId);
     if (error) throw error;
 }
 
 async function salvarSnapshotProdutosDoFechamento(fechId, produtosVendidos) {
     if (!produtosVendidos.length) return;
-
     const prodRows = produtosVendidos.map(p => ({
-        fechamento_id: fechId,
-        produto_id: p.produto_id || null,
-        tipo: p.produto,
-        descricao: p.descricao || '',
-        valor_unitario: Number(p.preco || 0),
-        qtd_vendida: Number(p.qtd || 0),
-        total: Number(p.sub || 0),
-        raspadinha_id: p.raspadinha_id || null,
+        fechamento_id: fechId, produto_id: p.produto_id || null,
+        tipo: p.produto, descricao: p.descricao || '',
+        valor_unitario: Number(p.preco || 0), qtd_vendida: Number(p.qtd || 0),
+        total: Number(p.sub || 0), raspadinha_id: p.raspadinha_id || null,
         telesena_item_id: p.telesena_item_id || null
     }));
-
     const { error } = await sb.from('fechamento_produtos').insert(prodRows);
     if (error) throw error;
 }
 
 async function registrarVendasProdutosDoFechamento(fechId, t1, produtosVendidos) {
     if (!produtosVendidos.length) return;
-
     try {
         for (const p of produtosVendidos) {
             const { error } = await sb.rpc('registrar_venda_produto', {
                 p_loteria_vendedora_id: Number(loteriaAtiva.id),
                 p_usuario_id: Number(t1.funcionario_id),
-                p_canal: 'FECHAMENTO',
-                p_produto: String(p.produto || '').toUpperCase(),
+                p_canal: 'FECHAMENTO', p_produto: String(p.produto || '').toUpperCase(),
                 p_raspadinha_id: p.raspadinha_id || null,
                 p_telesena_item_id: p.telesena_item_id || null,
-                p_qtd_vendida: Number(p.qtd || 0),
-                p_data_referencia: t1.data_ref,
-                p_desconto: 0,
-                p_observacao: 'Lançado no fechamento',
-                p_fechamento_id: fechId
+                p_qtd_vendida: Number(p.qtd || 0), p_data_referencia: t1.data_ref,
+                p_desconto: 0, p_observacao: 'Lançado no fechamento', p_fechamento_id: fechId
             });
-
             if (error) throw error;
         }
     } catch (e) {
@@ -2178,62 +1692,41 @@ function getBoloesVendidosTela3(t3 = ESTADO.tela3) {
 
 async function estornarBoloesDoFechamento(fechId) {
     if (!fechId) return 0;
-
-    const { data, error } = await sb.rpc('estornar_vendas_bolao_fechamento', {
-        p_fechamento_id: fechId
-    });
-
+    const { data, error } = await sb.rpc('estornar_vendas_bolao_fechamento', { p_fechamento_id: fechId });
     if (error) throw error;
     return Number(data || 0);
 }
 
 async function apagarSnapshotBoloesDoFechamento(fechId) {
     if (!fechId) return;
-
-    const { error } = await sb
-        .from('fechamento_boloes')
-        .delete()
-        .eq('fechamento_id', fechId);
-
+    const { error } = await sb.from('fechamento_boloes').delete().eq('fechamento_id', fechId);
     if (error) throw error;
 }
 
 async function salvarSnapshotBoloesDoFechamento(fechId, boloesVendidos) {
     if (!boloesVendidos.length) return;
-
     const bolRows = boloesVendidos.map(b => ({
-        fechamento_id: fechId,
-        bolao_id: b.bolao_id,
-        tipo: b.tipo,
-        modalidade: b.modalidade,
-        concurso: b.concurso || null,
-        qtd_vendida: Number(b.qtdVendida || 0),
-        valor_cota: Number(b.valorCota || 0),
+        fechamento_id: fechId, bolao_id: b.bolao_id, tipo: b.tipo,
+        modalidade: b.modalidade, concurso: b.concurso || null,
+        qtd_vendida: Number(b.qtdVendida || 0), valor_cota: Number(b.valorCota || 0),
         subtotal: Number(b.subtotal || 0)
     }));
-
     const { error } = await sb.from('fechamento_boloes').insert(bolRows);
     if (error) throw error;
 }
 
 async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     if (!boloesVendidos.length) return;
-
     try {
         for (const b of boloesVendidos) {
             const { error } = await sb.rpc('registrar_venda_bolao', {
                 p_bolao_id: Number(b.bolao_id),
                 p_loteria_vendedora_id: Number(loteriaAtiva.id),
                 p_usuario_id: Number(t1.funcionario_id),
-                p_canal: 'FECHAMENTO',
-                p_origem_lancamento: 'FECHAMENTO_CAIXA',
-                p_qtd_vendida: Number(b.qtdVendida || 0),
-                p_data_referencia: t1.data_ref,
-                p_observacao: 'Lançado no fechamento',
-                p_fechamento_id: fechId,
-                p_fechamento_keyid: null
+                p_canal: 'FECHAMENTO', p_origem_lancamento: 'FECHAMENTO_CAIXA',
+                p_qtd_vendida: Number(b.qtdVendida || 0), p_data_referencia: t1.data_ref,
+                p_observacao: 'Lançado no fechamento', p_fechamento_id: fechId, p_fechamento_keyid: null
             });
-
             if (error) throw error;
         }
     } catch (e) {
@@ -2243,7 +1736,9 @@ async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     }
 }
 
-// ─── FINALIZAR / GRAVAR ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// FINALIZAR / GRAVAR — integrado com módulo CF
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function finalizar() {
     if (modoAtual === 'visualizacao') {
@@ -2269,13 +1764,11 @@ async function finalizar() {
 
         if (!existeId) {
             const { data: existe, error: errExiste } = await sb
-                .from('fechamentos')
-                .select('id')
+                .from('fechamentos').select('id')
                 .eq('loteria_id', loteriaAtiva.id)
                 .eq('usuario_id', t1.funcionario_id)
                 .eq('data_ref', t1.data_ref)
                 .maybeSingle();
-
             if (errExiste) throw errExiste;
             if (existe?.id) existeId = existe.id;
         }
@@ -2295,10 +1788,7 @@ async function finalizar() {
         let tokenAutorizado = null;
         if (permissao.exigeToken) {
             tokenAutorizado = await FECHAMENTO_RULES.abrirModalToken();
-            if (!tokenAutorizado) {
-                btn.disabled = false;
-                return;
-            }
+            if (!tokenAutorizado) { btn.disabled = false; return; }
         }
 
         const sobrescrever = !!permissao.sobrescrevendo;
@@ -2306,17 +1796,21 @@ async function finalizar() {
         showGravando('Gravando fechamento de ' + t1.funcionario_nome + '...');
         setProgress(10);
 
+        // Totais base
         const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
-        const totalFed = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
-        const totalBol = [...(t3.internos || []), ...(t3.externos || [])]
-            .reduce((a, b) => a + Number(b.subtotal || 0), 0);
-        const totalDiv = (t1.dividas || []).reduce((a, d) => a + Number(d.valor || 0), 0);
+        const totalFed  = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
+        const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + Number(b.subtotal || 0), 0);
 
+        // Totais CF
+        const totCFCredito    = CF.getTotalCredito();
+        const totCFAbatimento = CF.getTotalAbatimento();
+        const totCFPix        = CF.getTotalPixQuitacao();
+
+        // Fórmula conforme INTEGRACAO.md
         const totDeb = Number(t1.troco_inicial || 0)
-            + totalProd
-            + totalFed
-            + totalBol
-            + Number(t1.relatorio || 0);
+            + totalProd + totalFed + totalBol
+            + Number(t1.relatorio || 0)
+            + totCFAbatimento;
 
         const totCred = Number(t1.troco_sobra || 0)
             + Number(t1.deposito || 0)
@@ -2324,37 +1818,37 @@ async function finalizar() {
             + Number(t1.diferenca_pix || 0)
             + Number(t1.premio_raspadinha || 0)
             + Number(t1.resgate_telesena || 0)
-            + totalDiv;
+            + totCFCredito
+            + totCFPix;
 
         const quebra = totCred - totDeb;
         const justif = $('justificativa')?.value || '';
 
         const payload = {
-            loteria_id: Number(loteriaAtiva.id),
-            usuario_id: Number(t1.funcionario_id),
-            funcionario_nome: t1.funcionario_nome || '',
-            data_ref: t1.data_ref,
-            troco_inicial: Number(t1.troco_inicial || 0),
-            troco_sobra: Number(t1.troco_sobra || 0),
-            relatorio: Number(t1.relatorio || 0),
-            deposito: Number(t1.deposito || 0),
-            pix_cnpj: Number(t1.pix_cnpj || 0),
-            diferenca_pix: Number(t1.diferenca_pix || 0),
-            premio_raspadinha: Number(t1.premio_raspadinha || 0),
-            resgate_telesena: Number(t1.resgate_telesena || 0),
-            total_produtos: Number(totalProd || 0),
-            total_federais: Number(totalFed || 0),
-            total_boloes: Number(totalBol || 0),
-            total_fiado: Number(totalDiv || 0),
-            total_debitos: Number(totDeb || 0),
-            total_creditos: Number(totCred || 0),
-            quebra: Number(quebra || 0),
-            justificativa: justif || null,
-            criado_por: Number(usuario?.id || 0),
-            sobrescrito_por: tokenAutorizado?.gerado_por
-                ? Number(tokenAutorizado.gerado_por)
-                : null,
-            updated_at: new Date().toISOString()
+            loteria_id:         Number(loteriaAtiva.id),
+            usuario_id:         Number(t1.funcionario_id),
+            funcionario_nome:   t1.funcionario_nome || '',
+            data_ref:           t1.data_ref,
+            troco_inicial:      Number(t1.troco_inicial || 0),
+            troco_sobra:        Number(t1.troco_sobra || 0),
+            relatorio:          Number(t1.relatorio || 0),
+            deposito:           Number(t1.deposito || 0),
+            pix_cnpj:           Number(t1.pix_cnpj || 0),
+            diferenca_pix:      Number(t1.diferenca_pix || 0),
+            premio_raspadinha:  Number(t1.premio_raspadinha || 0),
+            resgate_telesena:   Number(t1.resgate_telesena || 0),
+            total_produtos:     Number(totalProd || 0),
+            total_federais:     Number(totalFed || 0),
+            total_boloes:       Number(totalBol || 0),
+            // total_fiado mantém compatibilidade com a coluna existente
+            total_fiado:        Number(totCFCredito || 0),
+            total_debitos:      Number(totDeb || 0),
+            total_creditos:     Number(totCred || 0),
+            quebra:             Number(quebra || 0),
+            justificativa:      justif || null,
+            criado_por:         Number(usuario?.id || 0),
+            sobrescrito_por:    tokenAutorizado?.gerado_por ? Number(tokenAutorizado.gerado_por) : null,
+            updated_at:         new Date().toISOString()
         };
 
         let fechId = existeId;
@@ -2362,18 +1856,11 @@ async function finalizar() {
         if (sobrescrever && existeId) {
             setProgress(20);
 
-            const { error: errUpd } = await sb
-                .from('fechamentos')
-                .update(payload)
-                .eq('id', existeId);
-
+            const { error: errUpd } = await sb.from('fechamentos').update(payload).eq('id', existeId);
             if (errUpd) throw errUpd;
 
-            const { error: errDelDiv } = await sb
-                .from('fechamento_dividas')
-                .delete()
-                .eq('fechamento_id', existeId);
-            if (errDelDiv) throw errDelDiv;
+            // Estorna CF anterior do fechamento
+            await CF.estornarDoFechamento(existeId);
 
             await estornarProdutosDoFechamento(existeId);
             await apagarSnapshotProdutosDoFechamento(existeId);
@@ -2382,20 +1869,14 @@ async function finalizar() {
             await apagarSnapshotBoloesDoFechamento(existeId);
 
             const { error: errDelFed } = await sb
-                .from('federal_vendas')
-                .delete()
-                .eq('fechamento_id', existeId)
-                .eq('canal', 'FECHAMENTO');
+                .from('federal_vendas').delete()
+                .eq('fechamento_id', existeId).eq('canal', 'FECHAMENTO');
             if (errDelFed) throw errDelFed;
         } else {
             setProgress(30);
 
             const { data: ins, error: errIns } = await sb
-                .from('fechamentos')
-                .insert(payload)
-                .select('id')
-                .single();
-
+                .from('fechamentos').insert(payload).select('id').single();
             if (errIns) throw errIns;
             fechId = ins.id;
         }
@@ -2411,15 +1892,10 @@ async function finalizar() {
         const federaisVendidas = (t2.federais || []).filter(f => Number(f.qtdVendida || 0) > 0);
         for (const f of federaisVendidas) {
             const { error } = await sb.rpc('registrar_venda_federal', {
-                p_federal_id: f.federal_id,
-                p_loteria_vendedora_id: loteriaAtiva.id,
-                p_usuario_id: Number(t1.funcionario_id),
-                p_canal: 'FECHAMENTO',
-                p_qtd_vendida: Number(f.qtdVendida),
-                p_data_referencia: t1.data_ref,
-                p_desconto: 0,
-                p_observacao: 'Lançado no fechamento',
-                p_fechamento_id: fechId
+                p_federal_id: f.federal_id, p_loteria_vendedora_id: loteriaAtiva.id,
+                p_usuario_id: Number(t1.funcionario_id), p_canal: 'FECHAMENTO',
+                p_qtd_vendida: Number(f.qtdVendida), p_data_referencia: t1.data_ref,
+                p_desconto: 0, p_observacao: 'Lançado no fechamento', p_fechamento_id: fechId
             });
             if (error) throw error;
         }
@@ -2432,18 +1908,8 @@ async function finalizar() {
 
         setProgress(93);
 
-        const divRows = (t1.dividas || [])
-            .filter(d => String(d.nome || d.cliente_nome || '').trim())
-            .map(d => ({
-                fechamento_id: fechId,
-                cliente_nome: d.nome || d.cliente_nome,
-                valor: Number(d.valor || 0)
-            }));
-
-        if (divRows.length) {
-            const { error } = await sb.from('fechamento_dividas').insert(divRows);
-            if (error) throw error;
-        }
+        // ── Grava módulo CF (extrato clientes) ────────────────────────────
+        await CF.gravarNoSupabase(fechId, t1);
 
         setProgress(100);
 
@@ -2451,8 +1917,6 @@ async function finalizar() {
         modoAtual = 'edicao';
         salvouComSucesso = true;
 
-        // A gravação já aconteceu. A recarga da interface não pode derrubar
-        // a sensação de sucesso caso alguma consulta falhe depois.
         await Promise.allSettled([
             carregarProdutos(),
             buscarFederaisSupabase(t1.data_ref),
@@ -2465,35 +1929,19 @@ async function finalizar() {
     } finally {
         hideGravando();
         btn.disabled = false;
-
-        if (salvouComSucesso) {
-            abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
-        }
+        if (salvouComSucesso) abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
     }
 }
 
-// ─── MODAIS / UI ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAIS / UI
+// ─────────────────────────────────────────────────────────────────────────────
 
-function fecharModal(id) {
-    $(id).classList.remove('show');
-}
-
-function confirmarInicio() {
-    $('m-inicio').classList.add('show');
-}
-
-function confirmarSair() {
-    $('m-sair').classList.add('show');
-}
-
-function executarInicio() {
-    fecharModal('m-inicio');
-    window.SISLOT_SECURITY.irParaInicio();
-}
-
-async function executarSair() {
-    await window.SISLOT_SECURITY.sair();
-}
+function fecharModal(id) { $(id).classList.remove('show'); }
+function confirmarInicio() { $('m-inicio').classList.add('show'); }
+function confirmarSair()   { $('m-sair').classList.add('show'); }
+function executarInicio()  { fecharModal('m-inicio'); window.SISLOT_SECURITY.irParaInicio(); }
+async function executarSair() { await window.SISLOT_SECURITY.sair(); }
 
 function showGravando(titulo) {
     $('m-grav-titulo').textContent = titulo;
@@ -2502,24 +1950,13 @@ function showGravando(titulo) {
     $('m-gravando').classList.add('show');
 }
 
-function hideGravando() {
-    $('m-gravando').classList.remove('show');
-}
+function hideGravando() { $('m-gravando').classList.remove('show'); }
+function setProgress(pct) { $('m-prog').style.width = pct + '%'; $('m-grav-sub').textContent = pct + '%'; }
+function toast(msg, ok = true) { console.log((ok ? '[OK] ' : '[ERRO] ') + msg); }
 
-function setProgress(pct) {
-    $('m-prog').style.width = pct + '%';
-    $('m-grav-sub').textContent = pct + '%';
-}
-
-function toast(msg, ok = true) {
-    console.log((ok ? '[OK] ' : '[ERRO] ') + msg);
-}
-
-// ─── RESET DE ESTADO ──────────────────────────────────────────────────────────
 function abrirModalSucessoFechamento(msg = 'O fechamento foi salvo com sucesso.') {
     const msgEl = $('m-sucesso-fechamento-msg');
     if (msgEl) msgEl.textContent = msg;
-
     $('m-sucesso-fechamento')?.classList.add('show');
 }
 
@@ -2528,6 +1965,11 @@ function confirmarSucessoFechamento() {
     resetEstado();
     window.SISLOT_SECURITY.irParaInicio();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESET DE ESTADO — integrado com módulo CF
+// ─────────────────────────────────────────────────────────────────────────────
+
 function resetEstado() {
     ESTADO.tela1 = {};
     ESTADO.tela2 = { produtos: [], federais: [] };
@@ -2547,15 +1989,11 @@ function resetEstado() {
         'pix-cnpj', 'pix-dif', 'premio-rasp', 'resgate-tele'
     ].forEach(id => {
         const el = $(id);
-        if (el) {
-            el.value = '';
-            el.classList.remove('filled', 'has-error');
-        }
+        if (el) { el.value = ''; el.classList.remove('filled', 'has-error'); }
     });
 
     const just = $('justificativa');
     if (just) just.value = '';
-
     const justCnt = $('just-cnt');
     if (justCnt) justCnt.textContent = '0';
 
@@ -2570,41 +2008,30 @@ function resetEstado() {
         dataRef.classList.add('filled');
     }
 
-    $('dividas-list').innerHTML = '';
-    dividaCount = 0;
-    renderDivCount();
-    calcDivTotal();
+    // ── Reset do módulo CF (substitui o bloco antigo de dívidas) ──────────
+    CF.reset();
 
     const filtroTipo = $('prod-filtro-tipo');
     if (filtroTipo) filtroTipo.value = '';
-
     const toggleTodos = $('toggle-produtos-todos');
     if (toggleTodos) toggleTodos.checked = false;
 
     const prodGrid = $('produtos-grid');
     if (prodGrid) prodGrid.innerHTML = '';
-
     const fedBody = $('fed-tbody');
     if (fedBody) fedBody.innerHTML = '';
-
     const boloesWrap = $('boloes-wrap');
     if (boloesWrap) boloesWrap.innerHTML = '';
-
     const vendasItems = $('vendas-items');
     if (vendasItems) vendasItems.innerHTML = '';
-
     const vendasReg = $('vendas-registradas');
     if (vendasReg) vendasReg.classList.remove('show');
 
     const banner = $('modo-banner');
-    if (banner) {
-        banner.className = 'modo-banner';
-        banner.innerHTML = '';
-    }
+    if (banner) { banner.className = 'modo-banner'; banner.innerHTML = ''; }
 
     const btnFinal = $('btn-final');
     if (btnFinal) btnFinal.disabled = false;
-
     const btnFinalTxt = $('btn-final-txt');
     if (btnFinalTxt) btnFinalTxt.textContent = 'Finalizar Fechamento';
 
@@ -2617,6 +2044,7 @@ function resetEstado() {
     setB3('b3-inicial');
 }
 
-// ─── BOOT ─────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', init);
