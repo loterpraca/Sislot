@@ -294,36 +294,55 @@ if (sp) {
     // EXTRATO DA SESSÃO
     // ─────────────────────────────────────────────────────────────────────
     function _renderExtrato() {
-        const wrap = $('cf-extrato-sessao');
-        if (!wrap) return;
-        const lans = _lancamentosDoCliente();
+    const wrap = $('cf-extrato-sessao');
+    if (!wrap) return;
+    const lans = _lancamentosDoCliente();
 
-        if (!lans.length) {
-            wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum lançamento nesta sessão</div>`;
-            return;
-        }
-
-        wrap.innerHTML = lans.map((l, i) => {
-            const itensHtml = (l.itens || []).map(it =>
-                `<div class="cf-extrato-item">
-                    <span>${it.descricao}</span>
-                    <span style="color:var(--bright)">${it.qtd && it.qtd > 1 ? it.qtd + '× ' : ''}${_fmtBRL(it.valor)}</span>
-                </div>`
-            ).join('');
-            return `
-                <div class="cf-extrato-linha cf-extrato-deb" style="animation-delay:${i * 0.04}s">
-                    <div class="cf-extrato-top">
-                        <div class="cf-extrato-tipo">Débito</div>
-                        <div class="v-neg">−${_fmtBRL(l.valor)}</div>
-                    </div>
-                    ${itensHtml ? `<div class="cf-extrato-itens">${itensHtml}</div>` : ''}
-                    <div class="cf-extrato-bottom">
-                        <span class="cf-forma">FIADO</span>
-                        <span class="cf-obs">${l.observacao || 'sem observação'}</span>
-                    </div>
-                </div>`;
-        }).join('');
+    if (!lans.length) {
+        wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum lançamento nesta sessão</div>`;
+        return;
     }
+
+    wrap.innerHTML = lans.map((l, i) => {
+        const itensHtml = (l.itens || []).map((it, idx) => `
+            <div class="cf-extrato-item">
+                <span>${it.descricao}</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="color:var(--bright)">
+                        ${it.qtd && it.qtd > 1 ? it.qtd + '× ' : ''}${_fmtBRL(it.valor)}
+                    </span>
+                    <button type="button"
+                            class="cf-btn-mini-rm"
+                            title="Remover item"
+                            onclick="CF._rmItemLancado('${l.id}', ${idx})">
+                        ✕
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="cf-extrato-linha cf-extrato-deb" style="animation-delay:${i * 0.04}s">
+                <div class="cf-extrato-top">
+                    <div class="cf-extrato-tipo">Débito</div>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <div class="v-neg">−${_fmtBRL(l.valor)}</div>
+                        <button type="button"
+                                class="cf-btn-mini-rm"
+                                title="Remover lançamento"
+                                onclick="CF._rmLancamento('${l.id}')">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+                ${itensHtml ? `<div class="cf-extrato-itens">${itensHtml}</div>` : ''}
+                <div class="cf-extrato-bottom">
+                    <span class="cf-forma">FIADO</span>
+                    <span class="cf-obs">${l.observacao || 'sem observação'}</span>
+                </div>
+            </div>`;
+    }).join('');
+}
 
     // ── Nav extrato (botão sidebar) ────────────────────────────────────
     function _navExtrato() {
