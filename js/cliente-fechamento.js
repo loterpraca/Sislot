@@ -194,10 +194,10 @@ window.CF = (() => {
     // SELECIONAR CLIENTE
     // ─────────────────────────────────────────────────────────────────────
     function _selecionarClienteById(id) {
-        const cli = _clientes.find(c => Number(c.id) === Number(id));
-        if (!cli) return;
-        selecionarCliente(cli);
-    }
+    const cli = _clientes.find(c => String(c.id) === String(id));
+    if (!cli) return;
+    selecionarCliente(cli);
+}
 
     function selecionarCliente(cli) {
         _clienteAtual       = cli;
@@ -266,9 +266,10 @@ if (sp) {
 }
 
     function _lancamentosDoCliente() {
-        if (!_clienteAtual) return [];
-        return _getLancamentos().filter(l => Number(l.cliente_id) === Number(_clienteAtual.id));
-    }
+    if (!_clienteAtual) return [];
+    return _getLancamentos().filter(l => String(l.cliente_id) === String(_clienteAtual.id));
+}
+
 
     function _atualizarSaldoSidebar() {
         const saldo  = _saldoClienteAtual();
@@ -361,22 +362,23 @@ if (sp) {
     }
 
     function _renderLancamentosSessao() {
-        const wrap = $('cf-lista-lancamentos');
-        if (!wrap) return;
-        const lans = _getLancamentos();
-        if (!lans.length) { wrap.innerHTML = ''; return; }
-        wrap.innerHTML = lans.map(l => {
-            const cli = _clientes.find(c => Number(c.id) === Number(l.cliente_id));
-            return `
-                <div class="cf-lanc-row">
-                    <div class="cf-lanc-esq">
-                        <span class="cf-lanc-cli">${cli?.nome || '—'}</span>
-                        <span class="cf-lanc-forma">FIADO</span>
-                    </div>
-                    <span class="cf-val-neg">−${_fmtBRL(l.valor)}</span>
-                </div>`;
-        }).join('');
-    }
+    const wrap = $('cf-lista-lancamentos');
+    if (!wrap) return;
+    const lans = _getLancamentos();
+    if (!lans.length) { wrap.innerHTML = ''; return; }
+
+    wrap.innerHTML = lans.map(l => {
+        const cli = _clientes.find(c => String(c.id) === String(l.cliente_id));
+        return `
+            <div class="cf-lanc-row">
+                <div class="cf-lanc-esq">
+                    <span class="cf-lanc-cli">${cli?.nome || '—'}</span>
+                    <span class="cf-lanc-forma">FIADO</span>
+                </div>
+                <span class="cf-val-neg">−${_fmtBRL(l.valor)}</span>
+            </div>`;
+    }).join('');
+}
 
     function _atualizarBadge() {
         const badge = $('cf-badge-lancamentos');
@@ -534,18 +536,41 @@ if (sp) {
         _syncNav('carrinho');
     }
 
-    function adicionarItemCarrinho(tipo) {
-        if (tipo === 'CONTA') {
-            _carrinho.push({ id: _uid(), tipo: 'CONTA', descricao: '', valor: 0 });
-            _renderCarrinho();
+    async function adicionarItemCarrinho(tipo) {
+    if (tipo === 'CONTA') {
+        _carrinho.push({ id: _uid(), tipo: 'CONTA', descricao: '', valor: 0 });
+        _renderCarrinho();
+        return;
+    }
+
+    if (tipo === 'BOLAO' && !_getBoloes().length) {
+        const dataRef = $('data-ref')?.value || '';
+        if (!dataRef) {
+            alert('Preencha a data do fechamento antes de buscar bolões.');
             return;
         }
-        // BOLAO / FEDERAL / PRODUTO → picker
-        _pickerTipo = tipo;
-        _renderPicker();
-        _switchView('picker');
-        _syncNav('carrinho');
+        if (typeof window.carregarBoloes === 'function') {
+            await window.carregarBoloes();
+        }
     }
+
+    if (tipo === 'FEDERAL' && !_getFederais().length) {
+        if (typeof window.buscarFederais === 'function') {
+            await window.buscarFederais();
+        }
+    }
+
+    if (tipo === 'PRODUTO' && !_getProdutos().length) {
+        if (typeof window.carregarProdutos === 'function') {
+            await window.carregarProdutos();
+        }
+    }
+
+    _pickerTipo = tipo;
+    _renderPicker();
+    _switchView('picker');
+    _syncNav('carrinho');
+}
 
     function _renderCarrinho() {
         const wrap = $('cf-carrinho-itens');
