@@ -416,17 +416,22 @@ if (sp) {
                     const valCota  = Number(b.data.valorCota || 0);
                     const tipoTag  = b.tipo === 'EXTERNO' ? '🔵 Externo' : '🟢 Interno';
                     return {
-                        tipo:        'BOLAO',
-                        descricao:   `${b.data.modalidade} — Concurso ${b.data.concurso}`,
-                        sub:         `${tipoTag} · Saldo: ${saldo} cota${saldo !== 1 ? 's' : ''}`,
-                        valorUnit:   valCota,
-                        saldo,
-                        // campos para o lancamento
-                        bolao_id:         b.data.bolao_id,
-                        federal_id:       null,
-                        raspadinha_id:    null,
-                        telesena_item_id: null,
-                    };
+    tipo:        'BOLAO',
+    descricao:   `${b.data.modalidade} — Concurso ${b.data.concurso}`,
+    sub:         `${tipoTag} · Saldo: ${saldo} cota${saldo !== 1 ? 's' : ''}`,
+    valorUnit:   valCota,
+    saldo,
+
+    bolao_id:         b.data.bolao_id,
+    modalidade:       b.data.modalidade || null,
+    concurso:         b.data.concurso || null,
+    qtdJogos:         Number(b.data.qtdJogos || 0) || null,
+    qtdDezenas:       Number(b.data.qtdDezenas || 0) || null,
+
+    federal_id:       null,
+    raspadinha_id:    null,
+    telesena_item_id: null
+};
                 });
         }
 
@@ -437,16 +442,22 @@ if (sp) {
                 .map(f => {
                     const saldo = Number(f.saldo_editavel ?? f.saldo_atual ?? 0);
                     return {
-                        tipo:        'FEDERAL',
-                        descricao:   `${f.modalidade} — Concurso ${f.concurso}`,
-                        sub:         `Sorteio ${_fmtData(f.dtSorteio)} · Saldo: ${saldo} fração${saldo !== 1 ? 'ões' : ''}`,
-                        valorUnit:   Number(f.valorUnit || 0),
-                        saldo,
-                        bolao_id:         null,
-                        federal_id:       f.federal_id,
-                        raspadinha_id:    null,
-                        telesena_item_id: null,
-                    };
+    tipo:        'FEDERAL',
+    descricao:   `${f.modalidade} — Concurso ${f.concurso}`,
+    sub:         `Sorteio ${_fmtData(f.dtSorteio)} · Saldo: ${saldo} fração${saldo !== 1 ? 'ões' : ''}`,
+    valorUnit:   Number(f.valorUnit || 0),
+    saldo,
+
+    bolao_id:         null,
+    federal_id:       f.federal_id,
+    raspadinha_id:    null,
+    telesena_item_id: null,
+
+    modalidade:       f.modalidade || null,
+    concurso:         f.concurso || null,
+    qtdJogos:         null,
+    qtdDezenas:       null
+};
                 });
         }
 
@@ -734,17 +745,23 @@ if (sp) {
             }
             const valUnit = Number(item.valorUnit || 0);
             const qtd     = Number(item.qtd || 1);
-            return {
-                tipo:             item.tipo,
-                descricao:        item.descricao,
-                qtd,
-                valor:            qtd * valUnit,
-                valorUnit:        valUnit,
-                bolao_id:         item.bolao_id         || null,
-                federal_id:       item.federal_id       || null,
-                raspadinha_id:    item.raspadinha_id    || null,
-                telesena_item_id: item.telesena_item_id || null,
-            };
+           return {
+    tipo:             item.tipo,
+    descricao:        item.descricao,
+    qtd,
+    valor:            qtd * valUnit,
+    valorUnit:        valUnit,
+
+    bolao_id:         item.bolao_id || null,
+    federal_id:       item.federal_id || null,
+    raspadinha_id:    item.raspadinha_id || null,
+    telesena_item_id: item.telesena_item_id || null,
+
+    modalidade:       item.modalidade || null,
+    concurso:         item.concurso || null,
+    qtdJogos:         item.qtdJogos || null,
+    qtdDezenas:       item.qtdDezenas || null
+};
         });
 
         const obs = ($('cf-obs-debito')?.value || '').trim();
@@ -900,23 +917,25 @@ async function gravarNoSupabase(fechId, t1) {
             const valorTotal = Number(item.valor ?? (qtd * valorUnit));
 
             return {
-                extrato_id: extrato.id,
-                tipo_origem: _mapTipoItem(item),
-                bolao_id: item.bolao_id || null,
-                federal_id: item.federal_id || null,
-                raspadinha_id: item.raspadinha_id || null,
-                telesena_item_id: item.telesena_item_id || null,
-                data_venda: t1?.data_ref,
-                descricao: item.descricao || 'Item',
-                modalidade: item.tipo === 'BOLAO' || item.tipo === 'FEDERAL' ? item.descricao : null,
-                concurso: null,
-                produto: item.tipo === 'PRODUTO' || item.tipo === 'CONTA' ? item.descricao : null,
-                qtd_jogos: null,
-                qtd_dezenas: null,
-                valor_unitario: valorUnit,
-                qtd_vendida: qtd,
-                valor_total: valorTotal
-            };
+    extrato_id: extrato.id,
+    tipo_origem: _mapTipoItem(item),
+
+    bolao_id: item.bolao_id || null,
+    federal_id: item.federal_id || null,
+    raspadinha_id: item.raspadinha_id || null,
+    telesena_item_id: item.telesena_item_id || null,
+
+    data_venda: t1?.data_ref,
+    descricao: item.descricao || 'Item',
+    modalidade: item.modalidade || null,
+    concurso: item.concurso || null,
+    produto: item.tipo === 'PRODUTO' || item.tipo === 'CONTA' ? item.descricao : null,
+    qtd_jogos: item.qtdJogos || null,
+    qtd_dezenas: item.qtdDezenas || null,
+    valor_unitario: valorUnit,
+    qtd_vendida: qtd,
+    valor_total: valorTotal
+};
         });
 
         if (itensPayload.length) {
