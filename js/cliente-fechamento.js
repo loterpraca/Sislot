@@ -5,22 +5,21 @@
  * Integrado ao fechamento-caixa.js
  *
  * Fluxo de dados:
- *  • Bolões   → getBoloes()   → allBoloes   (já carregados na tela 3)
- *  • Federais → getFederais() → federais    (já carregados na tela 2)
- *  • Produtos → getProdutos() → produtosLista (já carregados na tela 2)
+ *  • Bolões   → getBoloes()   → allBoloes
+ *  • Federais → getFederais() → federais
+ *  • Produtos → getProdutos() → produtosLista
  *  • Conta    → lançamento 100% manual
  *
- /**
  * Tabelas Supabase:
- *  • clientes_fechamentos_cadastro
- *  • clientes_fechamentos_extrato
- *  • clientes_lancamentos_itens
+ *  • cliente_fechamento_cadastro
+ *  • cliente_fechamento_extrato
+ *  • cliente_fechamento_itens
  */
-const TB_CLIENTES = 'clientes_fechamentos_cadastro';
-const TB_EXTRATO  = 'clientes_fechamentos_extrato';
-const TB_ITENS    = 'clientes_fechamentos_itens';
-const CF = (() => {
+const TB_CLIENTES = 'cliente_fechamento_cadastro';
+const TB_EXTRATO  = 'cliente_fechamento_extrato';
+const TB_ITENS    = 'cliente_fechamento_itens';
 
+const CF = (() => {
     // ─────────────────────────────────────────────────────────────────────
     // DEPENDÊNCIAS INJETADAS
     // ─────────────────────────────────────────────────────────────────────
