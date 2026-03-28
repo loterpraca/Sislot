@@ -849,17 +849,27 @@
 .cf-tipo-badge.produto { background: rgba(245,166,35,.1);  border: 1px solid rgba(245,166,35,.25);  color: var(--amber);  }
 .cf-tipo-badge.conta   { background: rgba(56,189,248,.1);  border: 1px solid rgba(56,189,248,.25);  color: var(--sky);    }
 
-.cf-btn-rm-item {
-    background: transparent; border: 1px solid rgba(255,82,82,.18);
-    color: rgba(255,82,82,.4); border-radius: 6px;
-    width: 26px; height: 26px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 12px; transition: all .2s;
+.cf-btn-rm-item{
+  background: transparent;
+  border: 1px solid rgba(255,82,82,.18);
+  color: rgba(255,82,82,.75);
+  border-radius: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: all .2s;
 }
-.cf-btn-rm-item:hover {
-    background: rgba(255,82,82,.1); border-color: var(--err); color: var(--err);
+.cf-btn-rm-item:hover{
+  background: rgba(255,82,82,.1);
+  border-color: var(--err);
+  color: var(--err);
 }
-
 .cf-item-campos {
     display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
