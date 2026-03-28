@@ -19,7 +19,7 @@ const TB_CLIENTES = 'cliente_fechamento_cadastro';
 const TB_EXTRATO  = 'cliente_fechamento_extrato';
 const TB_ITENS    = 'cliente_fechamento_itens';
 
-const CF = (() => {
+window.CF = (() => {
     // ─────────────────────────────────────────────────────────────────────
     // DEPENDÊNCIAS INJETADAS
     // ─────────────────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ const CF = (() => {
             return `
                 <div class="cf-cliente-card ${devendo ? 'tem-divida' : ''}"
                      style="animation-delay:${i * 0.03}s"
-                     onclick="CF._ClienteById(${c.id})">
+                     onclick="CF._selecionarClienteById(${c.id})"
                     <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
                     <div class="cf-cli-info">
                         <div class="cf-cli-nome">${c.nome}</div>
@@ -873,7 +873,7 @@ async function gravarNoSupabase(fechId, t1) {
         const itensPayload = (l.itens || []).map(item => {
             const qtd = Number(item.qtd || 1);
             const valorUnit = Number(item.valorUnit ?? item.valor ?? 0);
-            const valorTotal = Number(item.valor ?? (qtd * valorUnit) || 0);
+            const valorTotal = Number(item.valor ?? (qtd * valorUnit));
 
             return {
                 extrato_id: extrato.id,
