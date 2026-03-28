@@ -1,760 +1,987 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// MÓDULO: ÁREA DO CLIENTE — cliente_fechamento_*
-// Fluxo simplificado: dentro do fechamento só lança dívida de cliente.
-// Pagamentos serão lançados em outra área do sistema.
-// ═══════════════════════════════════════════════════════════════════════════
+'use strict';
+
+/**
+ * SISLOT — Módulo Área do Cliente (CF)
+ * Integrado ao fechamento-caixa.js
+ *
+ * Fluxo de dados:
+ *  • Bolões   → getBoloes()   → allBoloes   (já carregados na tela 3)
+ *  • Federais → getFederais() → federais    (já carregados na tela 2)
+ *  • Produtos → getProdutos() → produtosLista (já carregados na tela 2)
+ *  • Conta    → lançamento 100% manual
+ *
+ * Tabelas Supabase necessárias:
+ *  • clientes (id, loteria_id, nome, telefone, documento, observacao, saldo_devedor, ativo)
+ *  • clientes_lancamentos_fechamento (id, fechamento_id, loteria_id, cliente_id,
+ *      tipo_movimento, valor, observacao, itens jsonb, created_at)
+ */
 
 const CF = (() => {
-    // Estado interno do módulo
-    let _clientes = [];
-    let _clienteAtivo = null;
-    let _carrinhoItens = [];
-    let _lancamentos = [];
 
-    // Dependências injetadas via CF.init
-    let _sb = null;
-    let _getLoteriaAtiva = null;
-    let _getUsuario = null;
-    let _getEstado = null;
-    let _fmtBRL = null;
-    let _fmtData = null;
+    // ─────────────────────────────────────────────────────────────────────
+    // DEPENDÊNCIAS INJETADAS
+    // ─────────────────────────────────────────────────────────────────────
+    let _sb, _getLoteriaAtiva, _getUsuario, _getEstado;
+    let _getBoloes   = () => window.allBoloes     || [];
+    let _getFederais = () => window.federais      || [];
+    let _getProdutos = () => window.produtosLista || [];
+    let _fmtBRL  = v  => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');
+    let _fmtData = s  => { if (!s) return '—'; const [y, m, d] = String(s).split('-'); return `${d}/${m}/${y}`; };
 
-    // ── INICIALIZAÇÃO ────────────────────────────────────────────────────
-    function init(deps) {
-        _sb = deps.sb;
-        _getLoteriaAtiva = deps.getLoteriaAtiva;
-        _getUsuario = deps.getUsuario;
-        _getEstado = deps.getEstado;
-        _fmtBRL = deps.fmtBRL;
-        _fmtData = deps.fmtData;
+    // ─────────────────────────────────────────────────────────────────────
+    // ESTADO PRIVADO
+    // ─────────────────────────────────────────────────────────────────────
+    let _clientes     = [];        // lista completa carregada do banco
+    let _clienteAtual = null;      // cliente selecionado na sessão
+    let _carrinho     = [];        // itens a confirmar como débito
+    let _pickerTipo   = null;      // tipo sendo escolhido no picker
+    let _pickerMap    = {};        // mapa id→item para onclicks seguros
 
-        const estado = _getEstado();
-        if (!estado.tela1.clienteFechamento) {
-            estado.tela1.clienteFechamento = {
-                clienteSelecionado: null,
-                lancamentos: []
-            };
+    const $ = id => document.getElementById(id);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // HELPER ESTADO (usa ESTADO.tela1.clienteFechamento)
+    // ─────────────────────────────────────────────────────────────────────
+    function _getCF() {
+        const e = _getEstado();
+        if (!e.tela1) e.tela1 = {};
+        if (!e.tela1.clienteFechamento) {
+            e.tela1.clienteFechamento = { clienteSelecionado: null, lancamentos: [] };
         }
+        return e.tela1.clienteFechamento;
+    }
+    function _getLancamentos()  { return _getCF().lancamentos || []; }
+    function _uid()             { return '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // Reidrata do estado caso a tela já venha carregada
-        const cfEstado = estado.tela1.clienteFechamento || {};
-        _lancamentos = Array.isArray(cfEstado.lancamentos)
-            ? [...cfEstado.lancamentos]
-            : [];
+    // ─────────────────────────────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────────────────────────────
+    function init(opts) {
+        _sb              = opts.sb;
+        _getLoteriaAtiva = opts.getLoteriaAtiva;
+        _getUsuario      = opts.getUsuario;
+        _getEstado       = opts.getEstado;
+        if (opts.fmtBRL)      _fmtBRL      = opts.fmtBRL;
+        if (opts.fmtData)     _fmtData     = opts.fmtData;
+        if (opts.getBoloes)   _getBoloes   = opts.getBoloes;
+        if (opts.getFederais) _getFederais = opts.getFederais;
+        if (opts.getProdutos) _getProdutos = opts.getProdutos;
 
-        _bindEvents();
-        renderChipResumo();
+        $('btn-abrir-area-cliente')?.addEventListener('click', openModal);
     }
 
-    function _bindEvents() {
-        document.getElementById('btn-abrir-area-cliente')
-            ?.addEventListener('click', openModal);
-    }
-
-    // ── ESTADO GLOBAL ────────────────────────────────────────────────────
-    function _syncEstado() {
-        const estado = _getEstado();
-        estado.tela1.clienteFechamento = {
-            clienteSelecionado: _clienteAtivo
-                ? { id: _clienteAtivo.id, nome: _clienteAtivo.nome }
-                : null,
-            lancamentos: [..._lancamentos]
-        };
-    }
-
-    // ── MODAL ────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // ABRIR / FECHAR MODAL
+    // ─────────────────────────────────────────────────────────────────────
     async function openModal() {
-        _setModalView('cf-view-lista');
-        _renderResumoSessao();
-        renderListaLancamentos();
+        $('m-area-cliente')?.classList.add('show');
+        _switchView('lista');
+        _syncNav('lista');
         await _carregarClientes();
-        document.getElementById('m-area-cliente')?.classList.add('show');
+        _renderResumoSessao();
+        _renderLancamentosSessao();
     }
 
     function closeModal() {
-        document.getElementById('m-area-cliente')?.classList.remove('show');
-        _syncEstado();
-        renderChipResumo();
+        $('m-area-cliente')?.classList.remove('show');
     }
 
-    function _setModalView(viewId) {
-        ['cf-view-lista', 'cf-view-cliente', 'cf-view-carrinho', 'cf-view-novo-cliente']
-            .forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = id === viewId ? 'block' : 'none';
-            });
+    // ─────────────────────────────────────────────────────────────────────
+    // VIEWS
+    // ─────────────────────────────────────────────────────────────────────
+    const _VIEWS = ['lista', 'cliente', 'carrinho', 'picker', 'novo-cliente'];
+
+    function _switchView(nome) {
+        _VIEWS.forEach(v => {
+            const el = $(`cf-view-${v}`);
+            if (el) el.classList.remove('cf-ativo');
+        });
+        $(`cf-view-${nome}`)?.classList.add('cf-ativo');
     }
 
-    // ── CLIENTES ────────────────────────────────────────────────────────
+    function _syncNav(view) {
+        ['lista', 'extrato', 'debito'].forEach(k => $(`cf-nav-${k}`)?.classList.remove('ativo'));
+        const map = { lista: 'lista', cliente: 'extrato', carrinho: 'debito', picker: 'debito' };
+        const key = map[view];
+        if (key) $(`cf-nav-${key}`)?.classList.add('ativo');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CARREGAR CLIENTES DO BANCO
+    // ─────────────────────────────────────────────────────────────────────
     async function _carregarClientes() {
-        const loteria = _getLoteriaAtiva();
-        if (!loteria) return;
+        const wrap = $('cf-clientes-lista');
+        if (!wrap) return;
+        wrap.innerHTML = `<div class="cf-empty"><div class="spinner" style="margin-bottom:8px"></div><div>Carregando clientes...</div></div>`;
 
         try {
             const { data, error } = await _sb
-                .from('vw_cliente_fechamento_saldos')
-                .select(`
-                    cliente_id,
-                    loteria_id,
-                    nome,
-                    telefone,
-                    documento,
-                    observacao,
-                    total_debitos,
-                    total_pagamentos_quitados,
-                    total_pagamentos_processamento,
-                    saldo_aberto,
-                    ultima_movimentacao
-                `)
-                .eq('loteria_id', loteria.id)
-                .order('nome');
+                .from('clientes')
+                .select('id, nome, telefone, documento, observacao, saldo_devedor, ativo')
+                .eq('loteria_id', _getLoteriaAtiva().id)
+                .eq('ativo', true)
+                .order('nome', { ascending: true });
 
             if (error) throw error;
+            _clientes = data || [];
+            _renderClientes(_clientes);
 
-            _clientes = (data || []).map(c => ({
-                id: Number(c.cliente_id),
-                nome: c.nome,
-                telefone: c.telefone,
-                documento: c.documento,
-                observacao: c.observacao,
-                saldo_aberto: Number(c.saldo_aberto || 0)
-            }));
-
-            _renderListaClientes();
+            const totalEl = $('cf-total-clientes');
+            if (totalEl) totalEl.textContent = _clientes.length;
         } catch (e) {
-            console.error('Erro ao carregar saldos dos clientes:', e);
-
-            try {
-                const { data, error } = await _sb
-                    .from('cliente_fechamento_cadastro')
-                    .select('id, nome, telefone, documento, observacao')
-                    .eq('loteria_id', loteria.id)
-                    .eq('ativo', true)
-                    .order('nome');
-
-                if (error) throw error;
-
-                _clientes = (data || []).map(c => ({
-                    id: Number(c.id),
-                    nome: c.nome,
-                    telefone: c.telefone,
-                    documento: c.documento,
-                    observacao: c.observacao,
-                    saldo_aberto: 0
-                }));
-            } catch (e2) {
-                console.error('Erro ao carregar clientes:', e2);
-                _clientes = [];
-            }
-
-            _renderListaClientes();
+            console.error('CF: erro ao carregar clientes:', e);
+            wrap.innerHTML = `
+                <div class="cf-empty">
+                    <div class="cf-empty-icon">⚠</div>
+                    <div>Erro ao carregar clientes</div>
+                    <small>${e.message || e}</small>
+                </div>`;
         }
     }
 
-    function _getSaldoAbertoCliente(clienteId) {
-        const cli = _clientes.find(c => Number(c.id) === Number(clienteId));
-        const saldoBanco = Number(cli?.saldo_aberto || 0);
-
-        const debitosSessao = _lancamentos
-            .filter(l => Number(l.cliente_id) === Number(clienteId) && l.tipo_movimento === 'DEBITO' && l.status === 'PENDENTE')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
-
-        return Math.max(0, saldoBanco + debitosSessao);
+    function _iniciais(nome) {
+        return (nome || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
     }
 
-    function _renderListaClientes() {
-        const wrap = document.getElementById('cf-clientes-lista');
+    function _renderClientes(lista) {
+        const wrap = $('cf-clientes-lista');
         if (!wrap) return;
 
-        const busca = (document.getElementById('cf-busca-cliente')?.value || '')
-            .toLowerCase()
-            .trim();
-
-        const filtrados = busca
-            ? _clientes.filter(c =>
-                c.nome?.toLowerCase().includes(busca) ||
-                c.telefone?.toLowerCase().includes(busca) ||
-                c.documento?.toLowerCase().includes(busca)
-            )
-            : _clientes;
-
-        if (!filtrados.length) {
+        if (!lista.length) {
             wrap.innerHTML = `
                 <div class="cf-empty">
-                    <div class="cf-empty-icon">👤</div>
+                    <div class="cf-empty-icon">👥</div>
                     <div>Nenhum cliente encontrado</div>
-                    <button class="cf-btn-link" onclick="CF.iniciarNovoCadastro()">
-                        + Cadastrar novo cliente
-                    </button>
+                    <small>Clique em "+ Novo" para cadastrar o primeiro</small>
                 </div>`;
             return;
         }
 
-        wrap.innerHTML = filtrados.map(c => {
-            const totalDevendo = _getSaldoAbertoCliente(c.id);
-
+        wrap.innerHTML = lista.map((c, i) => {
+            const saldo   = Number(c.saldo_devedor || 0);
+            const devendo = saldo > 0;
             return `
-            <div class="cf-cliente-card ${totalDevendo > 0 ? 'tem-divida' : ''}"
-                 onclick="CF.selecionarCliente(${c.id})">
-                <div class="cf-cli-info">
-                    <div class="cf-cli-nome">${c.nome}</div>
-                    ${c.telefone ? `<div class="cf-cli-tel">${c.telefone}</div>` : ''}
-                </div>
-                <div class="cf-cli-saldo">
-                    ${totalDevendo > 0
-                        ? `<span class="cf-badge-devendo">${_fmtBRL(totalDevendo)}</span>`
-                        : `<span class="cf-badge-ok">Sem dívida</span>`
-                    }
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <path d="M9 18l6-6-6-6"/>
+                <div class="cf-cliente-card ${devendo ? 'tem-divida' : ''}"
+                     style="animation-delay:${i * 0.03}s"
+                     onclick="CF._selecionarClienteById(${c.id})">
+                    <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
+                    <div class="cf-cli-info">
+                        <div class="cf-cli-nome">${c.nome}</div>
+                        <div class="cf-cli-tel">${c.telefone || c.documento || '—'}</div>
+                    </div>
+                    <div class="cf-cli-saldo">
+                        ${devendo
+                            ? `<span class="cf-badge-devendo">${_fmtBRL(saldo)}</span>`
+                            : `<span class="cf-badge-ok">em dia</span>`}
+                    </div>
+                    <svg class="cf-card-arrow" width="13" height="13" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
-                </div>
-            </div>`;
+                </div>`;
         }).join('');
     }
 
-    function selecionarCliente(idOuObj) {
-        const c = typeof idOuObj === 'object'
-            ? idOuObj
-            : _clientes.find(x => Number(x.id) === Number(idOuObj));
-
-        if (!c) return;
-
-        _clienteAtivo = c;
-        _carrinhoItens = [];
-        _renderViewCliente();
-        _setModalView('cf-view-cliente');
+    function filtrarClientes() {
+        const q = ($('cf-busca-cliente')?.value || '').toLowerCase().trim();
+        if (!q) { _renderClientes(_clientes); return; }
+        _renderClientes(_clientes.filter(c =>
+            (c.nome     || '').toLowerCase().includes(q) ||
+            (c.telefone || '').includes(q)               ||
+            (c.documento|| '').includes(q)
+        ));
     }
 
-    function _renderViewCliente() {
-        const c = _clienteAtivo;
-        if (!c) return;
-
-        const hdr = document.getElementById('cf-cliente-header');
-        if (hdr) {
-            hdr.innerHTML = `
-                <div class="cf-cli-nome-lg">${c.nome}</div>
-                ${c.telefone ? `<div class="cf-cli-tel">${c.telefone}</div>` : ''}
-            `;
-        }
-
-        _renderExtratoCurrent();
-
-        const totalPendente = _getSaldoAbertoCliente(c.id);
-        const saldoEl = document.getElementById('cf-saldo-pendente');
-        if (saldoEl) {
-            saldoEl.textContent = totalPendente > 0
-                ? `Saldo em aberto: ${_fmtBRL(totalPendente)}`
-                : 'Nenhuma dívida em aberto';
-        }
+    // ─────────────────────────────────────────────────────────────────────
+    // SELECIONAR CLIENTE
+    // ─────────────────────────────────────────────────────────────────────
+    function _selecionarClienteById(id) {
+        const cli = _clientes.find(c => Number(c.id) === Number(id));
+        if (!cli) return;
+        selecionarCliente(cli);
     }
 
-    function _renderExtratoCurrent() {
-        const wrap = document.getElementById('cf-extrato-sessao');
-        if (!wrap || !_clienteAtivo) return;
+    function selecionarCliente(cli) {
+        _clienteAtual       = cli;
+        window._cfClienteAtual = cli;
 
-        const movs = _lancamentos
-            .filter(l => Number(l.cliente_id) === Number(_clienteAtivo.id))
-            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        // ── Atualiza sidebar ───────────────────────────────────────────
+        const ini = _iniciais(cli.nome);
+        const av  = $('cf-avatar-iniciais');
+        if (av) av.textContent = ini;
 
-        if (!movs.length) {
-            wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum movimento nesta sessão</div>`;
-            return;
+        const sbNome = $('cf-sb-nome');
+        if (sbNome) sbNome.textContent = cli.nome;
+
+        const sbTel = $('cf-sb-tel');
+        if (sbTel) sbTel.textContent = cli.telefone || cli.documento || '—';
+
+        const saldo    = _saldoClienteAtual();
+        const sbStatus = $('cf-sb-status');
+        if (sbStatus) {
+            sbStatus.textContent = saldo > 0 ? 'devendo' : 'em dia';
+            sbStatus.className   = 'cf-status-dot ' + (saldo > 0 ? 'devendo' : 'ativo');
         }
+        _atualizarSaldoSidebar();
 
-        wrap.innerHTML = movs.map(m => {
-            const itensHtml = (m.itens || []).map(it => `
-                <div class="cf-extrato-item">
-                    <span>${it.descricao || it.produto || `${it.modalidade || ''} ${it.concurso || ''}`.trim()}</span>
-                    <span>${it.qtd_vendida || 1}x ${_fmtBRL(it.valor_unitario || 0)}</span>
-                </div>`).join('');
-
-            return `
-            <div class="cf-extrato-linha cf-extrato-deb">
-                <div class="cf-extrato-top">
-                    <span class="cf-extrato-tipo">↓ Débito</span>
-                    <span class="cf-extrato-valor v-neg">-${_fmtBRL(m.valor_total || 0)}</span>
-                </div>
-                ${itensHtml ? `<div class="cf-extrato-itens">${itensHtml}</div>` : ''}
-                <div class="cf-extrato-bottom">
-                    <span class="cf-status-pendente">${m.status}</span>
-                    ${m.observacao ? `<span class="cf-obs">${m.observacao}</span>` : ''}
-                </div>
+        // ── Preenche header da view cliente ────────────────────────────
+        const ch = $('cf-cliente-header');
+        if (ch) ch.innerHTML = `
+            <div class="cf-cli-nome-lg">${cli.nome}</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">
+                ${cli.telefone || cli.documento || '—'}
             </div>`;
-        }).join('');
-    }
 
-    // ── NOVO CADASTRO ────────────────────────────────────────────────────
-    function iniciarNovoCadastro() {
-        ['cf-novo-nome', 'cf-novo-tel', 'cf-novo-doc', 'cf-novo-obs'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
-        _setModalView('cf-view-novo-cliente');
-    }
-
-    async function salvarNovoCadastro() {
-        const nome = document.getElementById('cf-novo-nome')?.value?.trim();
-        if (!nome) {
-            _showCFError('cf-novo-err', 'Nome obrigatório.');
-            return;
-        }
-
-        const loteria = _getLoteriaAtiva();
-        const btn = document.getElementById('cf-btn-salvar-novo');
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = 'Salvando...';
-        }
-
-        try {
-            const { data, error } = await _sb
-                .from('cliente_fechamento_cadastro')
-                .insert({
-                    loteria_id: loteria.id,
-                    nome,
-                    telefone: document.getElementById('cf-novo-tel')?.value?.trim() || null,
-                    documento: document.getElementById('cf-novo-doc')?.value?.trim() || null,
-                    observacao: document.getElementById('cf-novo-obs')?.value?.trim() || null,
-                    ativo: true
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            _clientes.unshift({
-                id: Number(data.id),
-                nome: data.nome,
-                telefone: data.telefone,
-                documento: data.documento,
-                observacao: data.observacao,
-                saldo_aberto: 0
-            });
-
-            selecionarCliente({
-                id: Number(data.id),
-                nome: data.nome,
-                telefone: data.telefone,
-                documento: data.documento,
-                observacao: data.observacao,
-                saldo_aberto: 0
-            });
-        } catch (e) {
-            _showCFError('cf-novo-err', e.message || 'Erro ao cadastrar.');
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = 'Cadastrar';
+        const sp = $('cf-saldo-pendente');
+        if (sp) {
+            if (saldo > 0) {
+                const qtdLan = _lancamentosDoCliente().length;
+                sp.innerHTML = `
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <polyline points="19 12 12 19 5 12"/>
+                    </svg>
+                    Devendo ${_fmtBRL(saldo)}
+                    ${qtdLan > 0 ? `· ${qtdLan} lançamento${qtdLan > 1 ? 's' : ''} nesta sessão` : ''}`;
+            } else {
+                sp.innerHTML = `<span style="color:var(--accent)">✓ Sem pendências</span>`;
             }
         }
+
+        _renderExtrato();
+        _switchView('cliente');
+        _syncNav('cliente');
     }
 
-    // ── CARRINHO DE DÍVIDA ───────────────────────────────────────────────
-    function abrirCarrinho() {
-        _carrinhoItens = [];
-        const obs = document.getElementById('cf-obs-debito');
-        if (obs) obs.value = '';
+    function _saldoClienteAtual() {
+        if (!_clienteAtual) return 0;
+        const sessao = _lancamentosDoCliente().reduce((a, l) => a + Number(l.valor || 0), 0);
+        return Number(_clienteAtual.saldo_devedor || 0) + sessao;
+    }
+
+    function _lancamentosDoCliente() {
+        if (!_clienteAtual) return [];
+        return _getLancamentos().filter(l => Number(l.cliente_id) === Number(_clienteAtual.id));
+    }
+
+    function _atualizarSaldoSidebar() {
+        const saldo  = _saldoClienteAtual();
+        const val    = $('cf-saldo-sb-val');
+        const sub    = $('cf-saldo-sb-sub');
+        const box    = $('cf-saldo-sb');
+        if (val) {
+            val.textContent = _fmtBRL(saldo);
+            val.className   = 'cf-saldo-sb-val' + (saldo === 0 ? ' zerado' : '');
+        }
+        if (sub) sub.textContent = saldo > 0
+            ? `${_lancamentosDoCliente().length} lançamento(s) nesta sessão`
+            : 'Sem pendências';
+        if (box) {
+            box.style.borderColor = saldo > 0
+                ? 'rgba(245,166,35,0.2)'
+                : 'rgba(0,200,150,0.15)';
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // EXTRATO DA SESSÃO
+    // ─────────────────────────────────────────────────────────────────────
+    function _renderExtrato() {
+        const wrap = $('cf-extrato-sessao');
+        if (!wrap) return;
+        const lans = _lancamentosDoCliente();
+
+        if (!lans.length) {
+            wrap.innerHTML = `<div class="cf-extrato-vazio">Nenhum lançamento nesta sessão</div>`;
+            return;
+        }
+
+        wrap.innerHTML = lans.map((l, i) => {
+            const itensHtml = (l.itens || []).map(it =>
+                `<div class="cf-extrato-item">
+                    <span>${it.descricao}</span>
+                    <span style="color:var(--bright)">${it.qtd && it.qtd > 1 ? it.qtd + '× ' : ''}${_fmtBRL(it.valor)}</span>
+                </div>`
+            ).join('');
+            return `
+                <div class="cf-extrato-linha cf-extrato-deb" style="animation-delay:${i * 0.04}s">
+                    <div class="cf-extrato-top">
+                        <div class="cf-extrato-tipo">Débito</div>
+                        <div class="v-neg">−${_fmtBRL(l.valor)}</div>
+                    </div>
+                    ${itensHtml ? `<div class="cf-extrato-itens">${itensHtml}</div>` : ''}
+                    <div class="cf-extrato-bottom">
+                        <span class="cf-forma">FIADO</span>
+                        <span class="cf-obs">${l.observacao || 'sem observação'}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // ── Nav extrato (botão sidebar) ────────────────────────────────────
+    function _navExtrato() {
+        if (_clienteAtual) {
+            _renderExtrato();
+            _switchView('cliente');
+            _syncNav('cliente');
+        } else {
+            _switchView('lista');
+            _syncNav('lista');
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // RESUMO SESSÃO (view lista)
+    // ─────────────────────────────────────────────────────────────────────
+    function _renderResumoSessao() {
+        const box   = $('cf-resumo-sessao');
+        const inner = $('cf-resumo-sessao-inner');
+        if (!box || !inner) return;
+
+        const total = getTotalCredito();
+        const count = _getLancamentos().length;
+        if (!count) { box.classList.remove('show'); return; }
+
+        box.classList.add('show');
+        inner.innerHTML = `
+            <div class="cf-resumo-linha">
+                <span>Total desta sessão</span>
+                <strong style="color:var(--accent)">${_fmtBRL(total)}</strong>
+            </div>
+            <div class="cf-resumo-linha">
+                <span>Lançamentos</span>
+                <span style="color:var(--muted)">${count}</span>
+            </div>`;
+    }
+
+    function _renderLancamentosSessao() {
+        const wrap = $('cf-lista-lancamentos');
+        if (!wrap) return;
+        const lans = _getLancamentos();
+        if (!lans.length) { wrap.innerHTML = ''; return; }
+        wrap.innerHTML = lans.map(l => {
+            const cli = _clientes.find(c => Number(c.id) === Number(l.cliente_id));
+            return `
+                <div class="cf-lanc-row">
+                    <div class="cf-lanc-esq">
+                        <span class="cf-lanc-cli">${cli?.nome || '—'}</span>
+                        <span class="cf-lanc-forma">FIADO</span>
+                    </div>
+                    <span class="cf-val-neg">−${_fmtBRL(l.valor)}</span>
+                </div>`;
+        }).join('');
+    }
+
+    function _atualizarBadge() {
+        const badge = $('cf-badge-lancamentos');
+        const count = _getLancamentos().length;
+        if (badge) badge.textContent = count === 0
+            ? '0 lançamentos'
+            : `${count} lançamento${count > 1 ? 's' : ''}`;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // PICKER — escolha de bolão / federal / produto
+    // ─────────────────────────────────────────────────────────────────────
+    function _renderPicker() {
+        const titulo = $('cf-picker-titulo');
+        const wrap   = $('cf-picker-lista');
+        const busca  = $('cf-picker-busca');
+        if (!wrap) return;
+        if (busca) busca.value = '';
+        _pickerMap = {};
+
+        const labels = { BOLAO: 'Bolões disponíveis', FEDERAL: 'Federais disponíveis', PRODUTO: 'Produtos disponíveis' };
+        if (titulo) titulo.textContent = labels[_pickerTipo] || _pickerTipo;
+
+        let lista = [];
+
+        // ── BOLÕES ────────────────────────────────────────────────────
+        if (_pickerTipo === 'BOLAO') {
+            lista = _getBoloes()
+                .filter(b => {
+                    const saldo = Number(b.data?.saldo_editavel ?? b.data?.saldo_atual ?? 0);
+                    return saldo > 0;
+                })
+                .map(b => {
+                    const saldo    = Number(b.data.saldo_editavel ?? b.data.saldo_atual ?? 0);
+                    const valCota  = Number(b.data.valorCota || 0);
+                    const tipoTag  = b.tipo === 'EXTERNO' ? '🔵 Externo' : '🟢 Interno';
+                    return {
+                        tipo:        'BOLAO',
+                        descricao:   `${b.data.modalidade} — Concurso ${b.data.concurso}`,
+                        sub:         `${tipoTag} · Saldo: ${saldo} cota${saldo !== 1 ? 's' : ''}`,
+                        valorUnit:   valCota,
+                        saldo,
+                        // campos para o lancamento
+                        bolao_id:         b.data.bolao_id,
+                        federal_id:       null,
+                        raspadinha_id:    null,
+                        telesena_item_id: null,
+                    };
+                });
+        }
+
+        // ── FEDERAIS ──────────────────────────────────────────────────
+        if (_pickerTipo === 'FEDERAL') {
+            lista = _getFederais()
+                .filter(f => Number(f.saldo_editavel ?? f.saldo_atual ?? 0) > 0)
+                .map(f => {
+                    const saldo = Number(f.saldo_editavel ?? f.saldo_atual ?? 0);
+                    return {
+                        tipo:        'FEDERAL',
+                        descricao:   `${f.modalidade} — Concurso ${f.concurso}`,
+                        sub:         `Sorteio ${_fmtData(f.dtSorteio)} · Saldo: ${saldo} fração${saldo !== 1 ? 'ões' : ''}`,
+                        valorUnit:   Number(f.valorUnit || 0),
+                        saldo,
+                        bolao_id:         null,
+                        federal_id:       f.federal_id,
+                        raspadinha_id:    null,
+                        telesena_item_id: null,
+                    };
+                });
+        }
+
+        // ── PRODUTOS ──────────────────────────────────────────────────
+        if (_pickerTipo === 'PRODUTO') {
+            lista = _getProdutos()
+                .filter(p => Number(p.saldo_editavel ?? p.saldo_atual ?? 0) > 0)
+                .map(p => {
+                    const saldo = Number(p.saldo_editavel ?? p.saldo_atual ?? 0);
+                    const tipoProd = p.produto === 'RASPADINHA' ? 'Raspadinha' : 'Tele Sena';
+                    return {
+                        tipo:        'PRODUTO',
+                        descricao:   p.item_nome || 'Produto',
+                        sub:         `${tipoProd} · Saldo: ${saldo} unidade${saldo !== 1 ? 's' : ''}`,
+                        valorUnit:   Number(p.valor_venda || 0),
+                        saldo,
+                        bolao_id:         null,
+                        federal_id:       null,
+                        raspadinha_id:    p.raspadinha_id    || null,
+                        telesena_item_id: p.telesena_item_id || null,
+                    };
+                });
+        }
+
+        if (!lista.length) {
+            wrap.innerHTML = `
+                <div class="cf-empty">
+                    <div class="cf-empty-icon">📭</div>
+                    <div>Nenhum item com saldo disponível</div>
+                    <small>Verifique o estoque ou a data selecionada</small>
+                </div>`;
+            return;
+        }
+
+        // Guarda no mapa (evita JSON nos onclicks)
+        lista.forEach((item, i) => {
+            const key = 'p' + i;
+            _pickerMap[key] = item;
+        });
+
+        wrap.innerHTML = lista.map((item, i) => `
+            <div class="cf-picker-item" onclick="CF._escolherItem('p${i}')">
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:600;color:var(--bright);margin-bottom:3px;
+                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        ${item.descricao}
+                    </div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">
+                        ${item.sub}
+                    </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;
+                                color:var(--accent)">${_fmtBRL(item.valorUnit)}</div>
+                    <div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:'IBM Plex Mono',monospace">
+                        por unidade
+                    </div>
+                </div>
+            </div>`).join('');
+    }
+
+    function _filtrarPicker() {
+        const q     = ($('cf-picker-busca')?.value || '').toLowerCase();
+        const items = document.querySelectorAll('.cf-picker-item');
+        items.forEach(el => {
+            el.style.display = (q && !el.textContent.toLowerCase().includes(q)) ? 'none' : '';
+        });
+    }
+
+    function _escolherItem(key) {
+        const item = _pickerMap[key];
+        if (!item) return;
+        _carrinho.push({ id: _uid(), qtd: 1, ...item });
         _renderCarrinho();
-        _setModalView('cf-view-carrinho');
+        _switchView('carrinho');
+        _syncNav('carrinho');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CARRINHO
+    // ─────────────────────────────────────────────────────────────────────
+    function abrirCarrinho() {
+        _carrinho = [];
+        if ($('cf-obs-debito')) $('cf-obs-debito').value = '';
+        _renderCarrinho();
+        _switchView('carrinho');
+        _syncNav('carrinho');
     }
 
     function adicionarItemCarrinho(tipo) {
-        const templates = {
-            BOLAO: {
-                tipo_origem: 'BOLAO',
-                modalidade: '',
-                concurso: '',
-                qtd_jogos: 0,
-                qtd_dezenas: 0,
-                valor_unitario: 0,
-                qtd_vendida: 1,
-                valor_total: 0,
-                data_venda: _hoje(),
-                descricao: ''
-            },
-            FEDERAL: {
-                tipo_origem: 'FEDERAL',
-                modalidade: '',
-                concurso: '',
-                valor_unitario: 0,
-                qtd_vendida: 1,
-                valor_total: 0,
-                data_venda: _hoje(),
-                descricao: ''
-            },
-            PRODUTO: {
-                tipo_origem: 'PRODUTO',
-                produto: '',
-                valor_unitario: 0,
-                qtd_vendida: 1,
-                valor_total: 0,
-                data_venda: _hoje(),
-                descricao: ''
-            },
-            CONTA: {
-                tipo_origem: 'CONTA',
-                descricao: '',
-                valor_unitario: 0,
-                qtd_vendida: 1,
-                valor_total: 0,
-                data_venda: _hoje()
-            }
-        };
-
-        _carrinhoItens.push({
-            ...templates[tipo],
-            _id: Date.now() + Math.random()
-        });
-        _renderCarrinho();
-    }
-
-    function removerItemCarrinho(idx) {
-        _carrinhoItens.splice(idx, 1);
-        _renderCarrinho();
+        if (tipo === 'CONTA') {
+            _carrinho.push({ id: _uid(), tipo: 'CONTA', descricao: '', valor: 0 });
+            _renderCarrinho();
+            return;
+        }
+        // BOLAO / FEDERAL / PRODUTO → picker
+        _pickerTipo = tipo;
+        _renderPicker();
+        _switchView('picker');
+        _syncNav('carrinho');
     }
 
     function _renderCarrinho() {
-        const wrap = document.getElementById('cf-carrinho-itens');
+        const wrap = $('cf-carrinho-itens');
+        const btn  = $('cf-btn-confirmar-debito');
         if (!wrap) return;
 
-        if (!_carrinhoItens.length) {
+        if (!_carrinho.length) {
             wrap.innerHTML = `
-                <div class="cf-empty" style="padding:20px">
-                    <div style="font-size:12px;color:var(--muted)">
-                        Nenhum item adicionado. Use os botões acima.
+                <div class="cf-empty" style="padding:24px">
+                    <div class="cf-empty-icon">🛒</div>
+                    <div style="font-size:12px;color:var(--muted)">Carrinho vazio</div>
+                    <small>Use os botões acima para adicionar itens</small>
+                </div>`;
+            _updTotalCarrinho();
+            if (btn) btn.disabled = true;
+            return;
+        }
+
+        wrap.innerHTML = _carrinho.map((item, i) => _buildItemHTML(item, i)).join('');
+        _updTotalCarrinho();
+        if (btn) btn.disabled = _calcTotal() <= 0;
+    }
+
+    function _buildItemHTML(item, idx) {
+        const corMap = {
+            BOLAO:   { label: 'Bolão',   cls: 'bolao'   },
+            FEDERAL: { label: 'Federal', cls: 'federal'  },
+            PRODUTO: { label: 'Produto', cls: 'produto'  },
+            CONTA:   { label: 'Conta',   cls: 'conta'    },
+        };
+        const t = corMap[item.tipo] || { label: item.tipo, cls: 'conta' };
+
+        if (item.tipo === 'CONTA') {
+            return `
+                <div class="cf-carrinho-item" style="animation-delay:${idx * 0.05}s">
+                    <div class="cf-item-head">
+                        <span class="cf-tipo-badge ${t.cls}">${t.label}</span>
+                        <button class="cf-btn-rm-item" onclick="CF._rmItem('${item.id}')">✕</button>
+                    </div>
+                    <div class="cf-item-campos">
+                        <div class="cf-campo" style="grid-column:1/-1">
+                            <div class="cf-campo-label">Descrição do lançamento</div>
+                            <input class="cf-inp" type="text"
+                                   placeholder="Ex: Bolsa, Recarga, Empréstimo..."
+                                   value="${item.descricao || ''}"
+                                   oninput="CF._updConta('${item.id}', 'descricao', this.value)">
+                        </div>
+                        <div class="cf-campo">
+                            <div class="cf-campo-label">Valor (R$)</div>
+                            <input class="cf-inp" type="number" step="0.01" min="0" placeholder="0,00"
+                                   value="${item.valor > 0 ? item.valor : ''}"
+                                   oninput="CF._updConta('${item.id}', 'valor', parseFloat(this.value) || 0)">
+                        </div>
+                    </div>
+                    <div class="cf-item-subtotal" id="cf-sub-${item.id}">
+                        Subtotal: <strong>${_fmtBRL(item.valor || 0)}</strong>
                     </div>
                 </div>`;
-            _atualizarTotalCarrinho();
-            return;
         }
 
-        wrap.innerHTML = _carrinhoItens.map((item, idx) => {
-            const campos = _buildCamposItem(item, idx);
-            return `
-            <div class="cf-carrinho-item" data-idx="${idx}">
+        // BOLAO / FEDERAL / PRODUTO
+        const valUnit = Number(item.valorUnit || 0);
+        const qtd     = Number(item.qtd || 1);
+        const sub     = qtd * valUnit;
+
+        return `
+            <div class="cf-carrinho-item" style="animation-delay:${idx * 0.05}s">
                 <div class="cf-item-head">
-                    <span class="cf-tipo-badge ${item.tipo_origem.toLowerCase()}">${item.tipo_origem}</span>
-                    <button type="button" class="cf-btn-rm-item" onclick="CF.removerItemCarrinho(${idx})">✕</button>
+                    <span class="cf-tipo-badge ${t.cls}">${t.label}</span>
+                    <button class="cf-btn-rm-item" onclick="CF._rmItem('${item.id}')">✕</button>
                 </div>
-                <div class="cf-item-campos">${campos}</div>
-                <div class="cf-item-subtotal">
-                    Subtotal: <strong id="cf-sub-${idx}">${_fmtBRL(item.valor_total || 0)}</strong>
+                <div style="font-size:12px;font-weight:600;color:var(--bright);margin-bottom:10px;
+                            line-height:1.3">${item.descricao}</div>
+                <div class="cf-item-campos">
+                    <div class="cf-campo">
+                        <div class="cf-campo-label">Valor unitário</div>
+                        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;
+                                    font-weight:600;color:var(--accent);padding:8px 0">
+                            ${_fmtBRL(valUnit)}
+                        </div>
+                    </div>
+                    <div class="cf-campo">
+                        <div class="cf-campo-label">Quantidade</div>
+                        <input class="cf-inp" type="number" min="1" step="1" placeholder="1"
+                               value="${qtd}"
+                               oninput="CF._updQtd('${item.id}', parseInt(this.value) || 1)">
+                    </div>
+                </div>
+                <div class="cf-item-subtotal" id="cf-sub-${item.id}">
+                    Subtotal: <strong>${_fmtBRL(sub)}</strong>
                 </div>
             </div>`;
-        }).join('');
-
-        _atualizarTotalCarrinho();
     }
 
-    function _buildCamposItem(item, idx) {
-        const tipo = item.tipo_origem;
-        let html = '';
+    // ── Atualização de itens do carrinho ──────────────────────────────
 
-        if (tipo === 'BOLAO') {
-            html += _field('Modalidade', `<input class="cf-inp" type="text" placeholder="Ex: Mega Sena"
-                value="${item.modalidade || ''}"
-                oninput="CF.updateItem(${idx}, 'modalidade', this.value)">`);
-            html += _field('Concurso', `<input class="cf-inp" type="text" placeholder="Ex: 2800"
-                value="${item.concurso || ''}"
-                oninput="CF.updateItem(${idx}, 'concurso', this.value)">`);
-            html += _field('Qtd. Jogos', `<input class="cf-inp" type="number" min="0" placeholder="0"
-                value="${item.qtd_jogos || ''}"
-                oninput="CF.updateItem(${idx}, 'qtd_jogos', +this.value)">`);
-            html += _field('Dezenas', `<input class="cf-inp" type="number" min="0" placeholder="0"
-                value="${item.qtd_dezenas || ''}"
-                oninput="CF.updateItem(${idx}, 'qtd_dezenas', +this.value)">`);
-        } else if (tipo === 'FEDERAL') {
-            html += _field('Modalidade', `<input class="cf-inp" type="text" placeholder="Ex: Quina"
-                value="${item.modalidade || ''}"
-                oninput="CF.updateItem(${idx}, 'modalidade', this.value)">`);
-            html += _field('Concurso', `<input class="cf-inp" type="text" placeholder="Ex: 5000"
-                value="${item.concurso || ''}"
-                oninput="CF.updateItem(${idx}, 'concurso', this.value)">`);
-        } else if (tipo === 'PRODUTO') {
-            html += _field('Produto', `<input class="cf-inp" type="text" placeholder="Ex: Raspadinha Sorte Grande"
-                value="${item.produto || ''}"
-                oninput="CF.updateItem(${idx}, 'produto', this.value)">`);
-        } else if (tipo === 'CONTA') {
-            html += _field('Descrição', `<input class="cf-inp" type="text" placeholder="Ex: Ajuste / compra diversa"
-                value="${item.descricao || ''}"
-                oninput="CF.updateItem(${idx}, 'descricao', this.value)">`);
-        }
-
-        html += _field('Valor Unitário', `<div class="pfx-wrap">
-            <span class="pfx">R$</span>
-            <input class="cf-inp" type="number" step="0.01" min="0" placeholder="0,00"
-                style="padding-left:32px"
-                value="${item.valor_unitario || ''}"
-                oninput="CF.updateItem(${idx}, 'valor_unitario', +this.value)">
-        </div>`);
-
-        html += _field('Qtd.', `<input class="cf-inp" type="number" min="1" placeholder="1"
-            value="${item.qtd_vendida || 1}"
-            oninput="CF.updateItem(${idx}, 'qtd_vendida', +this.value)">`);
-
-        return html;
+    function _rmItem(id) {
+        _carrinho = _carrinho.filter(i => i.id !== id);
+        _renderCarrinho();
     }
 
-    function _field(label, input) {
-        return `<div class="cf-campo">
-            <label class="cf-campo-label">${label}</label>
-            ${input}
-        </div>`;
-    }
-
-    function updateItem(idx, campo, valor) {
-        const item = _carrinhoItens[idx];
+    function _updConta(id, campo, valor) {
+        const item = _carrinho.find(i => i.id === id);
         if (!item) return;
-
         item[campo] = valor;
-        item.valor_total = Number(item.valor_unitario || 0) * Number(item.qtd_vendida || 0);
-
-        const subEl = document.getElementById(`cf-sub-${idx}`);
-        if (subEl) subEl.textContent = _fmtBRL(item.valor_total || 0);
-
-        _atualizarTotalCarrinho();
+        if (campo === 'valor') {
+            const sub = $(`cf-sub-${id}`);
+            if (sub) sub.innerHTML = `Subtotal: <strong>${_fmtBRL(Number(valor) || 0)}</strong>`;
+        }
+        _updTotalCarrinho();
+        const btn = $('cf-btn-confirmar-debito');
+        if (btn) btn.disabled = _calcTotal() <= 0;
     }
 
-    function _atualizarTotalCarrinho() {
-        const total = _carrinhoItens.reduce((a, i) => a + Number(i.valor_total || 0), 0);
-        const el = document.getElementById('cf-total-carrinho');
+    function _updQtd(id, qtd) {
+        const item = _carrinho.find(i => i.id === id);
+        if (!item) return;
+        item.qtd        = qtd;
+        const valUnit   = Number(item.valorUnit || 0);
+        const sub       = $(`cf-sub-${id}`);
+        if (sub) sub.innerHTML = `Subtotal: <strong>${_fmtBRL(qtd * valUnit)}</strong>`;
+        _updTotalCarrinho();
+        const btn = $('cf-btn-confirmar-debito');
+        if (btn) btn.disabled = _calcTotal() <= 0;
+    }
+
+    function _calcTotal() {
+        return _carrinho.reduce((acc, item) => {
+            if (item.tipo === 'CONTA') return acc + Number(item.valor || 0);
+            return acc + (Number(item.qtd || 1) * Number(item.valorUnit || 0));
+        }, 0);
+    }
+
+    function _updTotalCarrinho() {
+        const total = _calcTotal();
+        const el    = $('cf-total-carrinho');
         if (el) el.textContent = _fmtBRL(total);
-
-        const btn = document.getElementById('cf-btn-confirmar-debito');
-        if (btn) btn.disabled = total <= 0;
+        const qty = $('cf-carrinho-qtd-itens');
+        if (qty) qty.textContent = `${_carrinho.length} ${_carrinho.length === 1 ? 'item' : 'itens'}`;
     }
 
-    function confirmarDebito() {
-        if (!_clienteAtivo || !_carrinhoItens.length) return;
+    // ─────────────────────────────────────────────────────────────────────
+    // CONFIRMAR DÉBITO (salva apenas em ESTADO, grava no banco ao finalizar)
+    // ─────────────────────────────────────────────────────────────────────
+    async function confirmarDebito() {
+        if (!_clienteAtual || !_carrinho.length) return;
+        const total = _calcTotal();
+        if (total <= 0) return;
 
-        const totalCarrinho = _carrinhoItens.reduce((a, i) => a + Number(i.valor_total || 0), 0);
-        if (totalCarrinho <= 0) return;
+        const btn = $('cf-btn-confirmar-debito');
+        if (btn) btn.disabled = true;
 
-        const obs = document.getElementById('cf-obs-debito')?.value?.trim() || '';
+        const itens = _carrinho.map(item => {
+            if (item.tipo === 'CONTA') {
+                return {
+                    tipo:      'CONTA',
+                    descricao: item.descricao || 'Conta',
+                    qtd:       1,
+                    valor:     Number(item.valor || 0),
+                };
+            }
+            const valUnit = Number(item.valorUnit || 0);
+            const qtd     = Number(item.qtd || 1);
+            return {
+                tipo:             item.tipo,
+                descricao:        item.descricao,
+                qtd,
+                valor:            qtd * valUnit,
+                valorUnit:        valUnit,
+                bolao_id:         item.bolao_id         || null,
+                federal_id:       item.federal_id       || null,
+                raspadinha_id:    item.raspadinha_id    || null,
+                telesena_item_id: item.telesena_item_id || null,
+            };
+        });
+
+        const obs = ($('cf-obs-debito')?.value || '').trim();
 
         const lancamento = {
-            _sessao_id: Date.now(),
-            cliente_id: _clienteAtivo.id,
-            cliente_nome: _clienteAtivo.nome,
+            id:             _uid(),
+            cliente_id:     _clienteAtual.id,
             tipo_movimento: 'DEBITO',
-            status: 'PENDENTE',
-            valor_total: totalCarrinho,
-            gera_credito_fechamento: true,
-            gera_abatimento_divida: false,
-            gera_pix_quitacao: false,
-            data_movimento: _hoje(),
-            observacao: obs,
-            itens: _carrinhoItens.map(i => ({ ...i })),
-            created_at: new Date().toISOString()
+            valor:          total,
+            observacao:     obs || null,
+            itens,
         };
 
-        _lancamentos.push(lancamento);
-        _carrinhoItens = [];
-        _syncEstado();
+        _getCF().lancamentos.push(lancamento);
 
-        _renderViewCliente();
-        _setModalView('cf-view-cliente');
+        // Limpa carrinho e obs
+        _carrinho = [];
+        if ($('cf-obs-debito')) $('cf-obs-debito').value = '';
+
+        // Atualiza UI
+        _atualizarBadge();
         _renderResumoSessao();
+        _renderLancamentosSessao();
+
+        // Volta para o extrato do cliente
+        selecionarCliente(_clienteAtual);
+
+        if (btn) btn.disabled = false;
     }
 
-    // ── RESUMO DA SESSÃO ─────────────────────────────────────────────────
-    function _renderResumoSessao() {
-        const wrap = document.getElementById('cf-resumo-sessao');
-        if (!wrap) return;
-
-        const totDebito = _lancamentos
-            .filter(l => l.tipo_movimento === 'DEBITO')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
-
-        wrap.innerHTML = `
-            <div class="cf-resumo-linha">
-                <span>Crédito p/ fechamento (dívidas)</span>
-                <span class="cf-val-pos">${_fmtBRL(totDebito)}</span>
-            </div>
-        `;
-
-        renderListaLancamentos();
+    // ─────────────────────────────────────────────────────────────────────
+    // NOVO CADASTRO
+    // ─────────────────────────────────────────────────────────────────────
+    function iniciarNovoCadastro() {
+        ['cf-novo-nome', 'cf-novo-tel', 'cf-novo-doc', 'cf-novo-obs'].forEach(id => {
+            const el = $(id); if (el) el.value = '';
+        });
+        const err = $('cf-novo-err');
+        if (err) { err.textContent = ''; err.style.display = 'none'; }
+        _switchView('novo-cliente');
+        _syncNav('lista');
     }
 
-    function renderListaLancamentos() {
-        const wrap = document.getElementById('cf-lista-lancamentos');
-        if (!wrap) return;
+    async function salvarNovoCadastro() {
+        const nome = ($('cf-novo-nome')?.value || '').trim();
+        const err  = $('cf-novo-err');
 
-        const todos = [..._lancamentos]
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-        if (!todos.length) {
-            wrap.innerHTML = `<div class="cf-empty-small">Nenhum lançamento nesta sessão</div>`;
+        if (!nome) {
+            if (err) { err.textContent = 'Nome é obrigatório.'; err.style.display = 'block'; }
             return;
         }
+        if (err) err.style.display = 'none';
 
-        wrap.innerHTML = todos.map(m => `
-            <div class="cf-lanc-row">
-                <div class="cf-lanc-esq">
-                    <span class="cf-lanc-cli">${m.cliente_nome}</span>
-                    <span class="cf-s-pend">${m.status}</span>
-                </div>
-                <div class="cf-lanc-dir">
-                    <span class="v-neg">-${_fmtBRL(m.valor_total || 0)}</span>
-                </div>
-            </div>
-        `).join('');
-    }
+        const btn = $('cf-btn-salvar-novo');
+        if (btn) btn.disabled = true;
 
-    // ── CHIP EXTERNO ─────────────────────────────────────────────────────
-    function renderChipResumo() {
-        const btn = document.getElementById('btn-abrir-area-cliente');
-        if (!btn) return;
+        try {
+            const payload = {
+                loteria_id:    Number(_getLoteriaAtiva().id),
+                nome,
+                telefone:      ($('cf-novo-tel')?.value || '').trim() || null,
+                documento:     ($('cf-novo-doc')?.value || '').trim() || null,
+                observacao:    ($('cf-novo-obs')?.value || '').trim() || null,
+                ativo:         true,
+                saldo_devedor: 0,
+            };
 
-        const totDebito = _lancamentos
-            .filter(l => l.tipo_movimento === 'DEBITO')
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
-
-        const countClientes = new Set(_lancamentos.map(l => l.cliente_id)).size;
-
-        if (countClientes > 0) {
-            btn.innerHTML = `
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round">
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
-                </svg>
-                Área do Cliente
-                <span class="cf-btn-badge">${countClientes}</span>
-                <span style="font-size:10px;color:var(--amber);margin-left:4px">${_fmtBRL(totDebito)}</span>`;
-        } else {
-            btn.innerHTML = `
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round">
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
-                </svg>
-                Área do Cliente`;
-        }
-    }
-
-    // ── ACUMULADOR PARA O RESUMO DO FECHAMENTO ───────────────────────────
-    function getTotalCredito() {
-        return _lancamentos
-            .filter(l => l.tipo_movimento === 'DEBITO' && l.gera_credito_fechamento)
-            .reduce((a, l) => a + Number(l.valor_total || 0), 0);
-    }
-
-    // ── GRAVAÇÃO NO SUPABASE ─────────────────────────────────────────────
-    async function gravarNoSupabase(fechamentoId, t1) {
-        for (const lanc of _lancamentos) {
-            const { data: extrato, error: errExt } = await _sb
-                .from('cliente_fechamento_extrato')
-                .insert({
-                    cliente_id: lanc.cliente_id,
-                    loteria_id: _getLoteriaAtiva().id,
-                    tipo_movimento: 'DEBITO',
-                    status: 'PENDENTE',
-                    valor_total: lanc.valor_total,
-                    gera_credito_fechamento: true,
-                    gera_abatimento_divida: false,
-                    gera_pix_quitacao: false,
-                    data_movimento: lanc.data_movimento,
-                    fechamento_id: fechamentoId,
-                    usuario_id: Number(t1.funcionario_id),
-                    observacao: lanc.observacao || null
-                })
-                .select('id')
+            const { data, error } = await _sb
+                .from('clientes')
+                .insert(payload)
+                .select('*')
                 .single();
 
-            if (errExt) throw errExt;
+            if (error) throw error;
 
-            if (lanc.itens?.length) {
-                const itenRows = lanc.itens.map(it => ({
-                    extrato_id: extrato.id,
-                    tipo_origem: it.tipo_origem,
-                    origem_id: it.origem_id || null,
-                    data_venda: it.data_venda || lanc.data_movimento,
-                    descricao: it.descricao || null,
-                    modalidade: it.modalidade || null,
-                    concurso: it.concurso ? String(it.concurso) : null,
-                    produto: it.produto || null,
-                    qtd_jogos: it.qtd_jogos || null,
-                    qtd_dezenas: it.qtd_dezenas || null,
-                    valor_unitario: Number(it.valor_unitario || 0),
-                    qtd_vendida: Number(it.qtd_vendida || 1)
-                }));
-
-                const { error: errIt } = await _sb
-                    .from('cliente_fechamento_itens')
-                    .insert(itenRows);
-
-                if (errIt) throw errIt;
-            }
+            _clientes.unshift(data);
+            await openModal();
+        } catch (e) {
+            console.error('CF: erro ao salvar cliente:', e);
+            if (err) { err.textContent = 'Erro: ' + (e.message || e); err.style.display = 'block'; }
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 
-    async function estornarDoFechamento(fechamentoId) {
-        if (!fechamentoId) return;
+    // ─────────────────────────────────────────────────────────────────────
+    // TOTAL CRÉDITO (chamado por fechamento-caixa.js)
+    // ─────────────────────────────────────────────────────────────────────
+    function getTotalCredito() {
+        return _getLancamentos()
+            .filter(l => l.tipo_movimento === 'DEBITO')
+            .reduce((a, l) => a + Number(l.valor || 0), 0);
+    }
 
-        const { error } = await _sb
-            .from('cliente_fechamento_extrato')
-            .delete()
-            .eq('fechamento_id', fechamentoId);
+    // ─────────────────────────────────────────────────────────────────────
+    // GRAVAR NO SUPABASE (chamado dentro de finalizar())
+    // ─────────────────────────────────────────────────────────────────────
+    async function gravarNoSupabase(fechId, t1) {
+        const lans = _getLancamentos();
+        if (!lans.length) return;
 
+        const rows = lans.map(l => ({
+            fechamento_id:  fechId,
+            loteria_id:     Number(_getLoteriaAtiva().id),
+            cliente_id:     l.cliente_id,
+            tipo_movimento: l.tipo_movimento,
+            valor:          Number(l.valor || 0),
+            observacao:     l.observacao || null,
+            itens:          l.itens || [],
+        }));
+
+        const { error } = await _sb.from('clientes_lancamentos_fechamento').insert(rows);
         if (error) throw error;
+
+        // Atualiza saldo_devedor de cada cliente envolvido
+        const porCliente = {};
+        lans.forEach(l => {
+            porCliente[l.cliente_id] = (porCliente[l.cliente_id] || 0) + Number(l.valor || 0);
+        });
+
+        for (const [cliId, delta] of Object.entries(porCliente)) {
+            const cli = _clientes.find(c => Number(c.id) === Number(cliId));
+            const novoSaldo = Number(cli?.saldo_devedor || 0) + delta;
+            const { error: err2 } = await _sb
+                .from('clientes')
+                .update({ saldo_devedor: novoSaldo })
+                .eq('id', Number(cliId));
+            if (err2) console.warn('CF: aviso ao atualizar saldo_devedor:', err2);
+        }
     }
 
-    // ── RESET ────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // ESTORNAR DO FECHAMENTO (chamado antes de sobrescrever)
+    // ─────────────────────────────────────────────────────────────────────
+    async function estornarDoFechamento(fechId) {
+        const { data, error } = await _sb
+            .from('clientes_lancamentos_fechamento')
+            .select('cliente_id, valor, tipo_movimento')
+            .eq('fechamento_id', fechId);
+
+        if (error) { console.warn('CF estorno — erro ao buscar:', error); return; }
+
+        for (const l of (data || [])) {
+            const { data: cli } = await _sb
+                .from('clientes')
+                .select('saldo_devedor')
+                .eq('id', l.cliente_id)
+                .single();
+
+            const novoSaldo = Math.max(0, Number(cli?.saldo_devedor || 0) - Number(l.valor || 0));
+            await _sb.from('clientes').update({ saldo_devedor: novoSaldo }).eq('id', l.cliente_id);
+        }
+
+        const { error: errDel } = await _sb
+            .from('clientes_lancamentos_fechamento')
+            .delete()
+            .eq('fechamento_id', fechId);
+
+        if (errDel) throw errDel;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CARREGAR FECHAMENTO EXISTENTE (modo edição)
+    // ─────────────────────────────────────────────────────────────────────
+    async function carregarFechamentoExistente({ fechamentoId }) {
+        try {
+            const { data, error } = await _sb
+                .from('clientes_lancamentos_fechamento')
+                .select('*, clientes(id, nome, telefone, documento, saldo_devedor)')
+                .eq('fechamento_id', fechamentoId);
+
+            if (error) throw error;
+
+            _getCF().lancamentos = (data || []).map(l => ({
+                id:             _uid(),
+                cliente_id:     l.cliente_id,
+                tipo_movimento: l.tipo_movimento,
+                valor:          Number(l.valor || 0),
+                observacao:     l.observacao || '',
+                itens:          l.itens || [],
+            }));
+
+            _atualizarBadge();
+        } catch (e) {
+            console.warn('CF: erro ao carregar fechamento existente:', e);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // RESET (chamado quando volta ao início ou troca de loteria)
+    // ─────────────────────────────────────────────────────────────────────
     function reset() {
-        _clientes = [];
-        _clienteAtivo = null;
-        _carrinhoItens = [];
-        _lancamentos = [];
-        renderChipResumo();
+        const cf = _getCF();
+        cf.clienteSelecionado = null;
+        cf.lancamentos        = [];
 
-        const estado = _getEstado();
-        if (estado.tela1) {
-            estado.tela1.clienteFechamento = {
-                clienteSelecionado: null,
-                lancamentos: []
-            };
-        }
+        _clienteAtual          = null;
+        window._cfClienteAtual = null;
+        _carrinho              = [];
+        _clientes              = [];
+        _pickerMap             = {};
+
+        // Sidebar de volta ao padrão
+        const av = $('cf-avatar-iniciais');
+        if (av) av.textContent = '—';
+        const sbNome = $('cf-sb-nome');
+        if (sbNome) sbNome.textContent = 'Nenhum cliente';
+        const sbTel = $('cf-sb-tel');
+        if (sbTel) sbTel.textContent = '—';
+        const sbStatus = $('cf-sb-status');
+        if (sbStatus) { sbStatus.textContent = 'inativo'; sbStatus.className = 'cf-status-dot'; }
+        const saldoVal = $('cf-saldo-sb-val');
+        if (saldoVal) { saldoVal.textContent = 'R$ 0,00'; saldoVal.className = 'cf-saldo-sb-val zerado'; }
+        const saldoSub = $('cf-saldo-sb-sub');
+        if (saldoSub) saldoSub.textContent = 'Sem pendências';
+
+        const box = $('cf-saldo-sb');
+        if (box) box.style.borderColor = '';
+
+        const resumo = $('cf-resumo-sessao');
+        if (resumo) resumo.classList.remove('show');
+
+        const lans = $('cf-lista-lancamentos');
+        if (lans) lans.innerHTML = '';
+
+        _atualizarBadge();
     }
 
-    // ── HELPERS ──────────────────────────────────────────────────────────
-    function _hoje() {
-        return new Date().toISOString().slice(0, 10);
-    }
-
-    function _showCFError(id, msg) {
-        const el = document.getElementById(id);
-        if (el) {
-            el.textContent = msg;
-            el.style.display = 'block';
-        }
-    }
-
-    // ── API PÚBLICA ──────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // API PÚBLICA
+    // ─────────────────────────────────────────────────────────────────────
     return {
+        // lifecycle
         init,
+        reset,
+
+        // modal
         openModal,
         closeModal,
+
+        // lista
+        filtrarClientes,
         selecionarCliente,
+        _selecionarClienteById,
+
+        // novo cadastro
         iniciarNovoCadastro,
         salvarNovoCadastro,
+
+        // carrinho / picker
         abrirCarrinho,
         adicionarItemCarrinho,
-        removerItemCarrinho,
-        updateItem,
         confirmarDebito,
-        renderChipResumo,
-        renderListaLancamentos,
+
+        // handlers inline (chamados via onclick no HTML)
+        _rmItem,
+        _updConta,
+        _updQtd,
+        _escolherItem,
+        _filtrarPicker,
+        _navExtrato,
+
+        // integração com fechamento-caixa.js
         getTotalCredito,
         gravarNoSupabase,
         estornarDoFechamento,
-        reset,
-        filtrarClientes: () => {
-            _renderListaClientes();
-        }
+        carregarFechamentoExistente,
     };
-})();
 
-window.CF = CF;
+})();
