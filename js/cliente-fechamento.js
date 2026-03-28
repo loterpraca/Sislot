@@ -18,7 +18,7 @@
  */
 const TB_CLIENTES = 'clientes_fechamentos_cadastro';
 const TB_EXTRATO  = 'clientes_fechamentos_extrato';
-const TB_ITENS    = 'clientes_lancamentos_itens';
+const TB_ITENS    = 'clientes_fechamentos_itens';
 const CF = (() => {
 
     // ─────────────────────────────────────────────────────────────────────
