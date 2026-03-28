@@ -628,7 +628,54 @@
 
       <!-- PAINEL DIREITO -->
       <div class="cf-content">
+      <div id="cf-view-picker" class="cf-view">
+  <div class="modal-cf-body">
 
+    <button class="cf-btn-back" onclick="CF.abrirCarrinho()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Voltar ao carrinho
+    </button>
+
+    <!-- Título dinâmico + busca -->
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="cf-sec-titulo" style="margin-bottom:0;flex:1" id="cf-picker-titulo">
+        Selecionar item
+      </div>
+    </div>
+
+    <div style="position:relative;margin-bottom:14px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round"
+           style="position:absolute;left:11px;top:50%;transform:translateY(-50%);
+                  color:var(--dim);pointer-events:none">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input class="cf-inp" id="cf-picker-busca" type="text"
+             placeholder="Filtrar itens..."
+             oninput="CF._filtrarPicker()"
+             style="padding-left:34px;width:100%">
+    </div>
+
+    <!-- Lista de itens disponíveis -->
+    <div id="cf-picker-lista"
+         style="display:flex;flex-direction:column;gap:6px;
+                max-height:340px;overflow-y:auto;padding-right:2px;
+                scrollbar-width:thin;scrollbar-color:rgba(167,139,250,0.15) transparent">
+    </div>
+
+  </div>
+
+  <div class="modal-cf-footer">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)">
+      Clique no item para adicioná-lo ao carrinho
+    </div>
+    <button class="cf-btn-secondary" onclick="CF.abrirCarrinho()">Cancelar</button>
+  </div>
+</div>
         <!-- ── VIEW: LISTA DE CLIENTES ──────────────────────────── -->
         <div id="cf-view-lista" class="cf-view cf-ativo">
           <div class="modal-cf-body">
