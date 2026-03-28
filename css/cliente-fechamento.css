@@ -34,8 +34,6 @@
     transform: translateX(2px);
 }
 .cf-picker-item:hover::before { opacity: 1; }
-</style>
-
 
 .modal-cf {
     display: none;
