@@ -111,7 +111,7 @@ window.CF = (() => {
     // ─────────────────────────────────────────────────────────────────────
     // CARREGAR CLIENTES DO BANCO
     // ─────────────────────────────────────────────────────────────────────
-    async function _carregarClientes() {
+   async function _carregarClientes() {
     const wrap = $('cf-clientes-lista');
     if (!wrap) return;
 
@@ -120,7 +120,7 @@ window.CF = (() => {
     try {
         const { data, error } = await _sb
             .from(TB_CLIENTES)
-            .select('id, nome, telefone, documento, observacao, saldo_devedor, ativo')
+            .select('id, nome, telefone, documento, observacao, ativo')
             .eq('loteria_id', Number(_getLoteriaAtiva().id))
             .eq('ativo', true)
             .order('nome', { ascending: true });
@@ -142,49 +142,43 @@ window.CF = (() => {
             </div>`;
     }
 }
-
     function _iniciais(nome) {
         return (nome || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
     }
 
     function _renderClientes(lista) {
-        const wrap = $('cf-clientes-lista');
-        if (!wrap) return;
+    const wrap = $('cf-clientes-lista');
+    if (!wrap) return;
 
-        if (!lista.length) {
-            wrap.innerHTML = `
-                <div class="cf-empty">
-                    <div class="cf-empty-icon">👥</div>
-                    <div>Nenhum cliente encontrado</div>
-                    <small>Clique em "+ Novo" para cadastrar o primeiro</small>
-                </div>`;
-            return;
-        }
-
-        wrap.innerHTML = lista.map((c, i) => {
-            const saldo   = Number(c.saldo_devedor || 0);
-            const devendo = saldo > 0;
-            return `
-                <div class="cf-cliente-card ${devendo ? 'tem-divida' : ''}"
-                     style="animation-delay:${i * 0.03}s"
-                     onclick="CF._selecionarClienteById(${c.id})"
-                    <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
-                    <div class="cf-cli-info">
-                        <div class="cf-cli-nome">${c.nome}</div>
-                        <div class="cf-cli-tel">${c.telefone || c.documento || '—'}</div>
-                    </div>
-                    <div class="cf-cli-saldo">
-                        ${devendo
-                            ? `<span class="cf-badge-devendo">${_fmtBRL(saldo)}</span>`
-                            : `<span class="cf-badge-ok">em dia</span>`}
-                    </div>
-                    <svg class="cf-card-arrow" width="13" height="13" viewBox="0 0 24 24"
-                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
-                </div>`;
-        }).join('');
+    if (!lista.length) {
+        wrap.innerHTML = `
+            <div class="cf-empty">
+                <div class="cf-empty-icon">👥</div>
+                <div>Nenhum cliente encontrado</div>
+                <small>Clique em "+ Novo" para cadastrar o primeiro</small>
+            </div>`;
+        return;
     }
+
+    wrap.innerHTML = lista.map((c, i) => `
+        <div class="cf-cliente-card"
+             style="animation-delay:${i * 0.03}s"
+             onclick="CF._selecionarClienteById('${c.id}')">
+            <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
+            <div class="cf-cli-info">
+                <div class="cf-cli-nome">${c.nome}</div>
+                <div class="cf-cli-tel">${c.telefone || c.documento || '—'}</div>
+            </div>
+            <div class="cf-cli-saldo">
+                <span class="cf-badge-ok">cliente</span>
+            </div>
+            <svg class="cf-card-arrow" width="13" height="13" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </div>
+    `).join('');
+}
 
     function filtrarClientes() {
         const q = ($('cf-busca-cliente')?.value || '').toLowerCase().trim();
@@ -267,10 +261,9 @@ if (sp) {
     }
 
     function _saldoClienteAtual() {
-        if (!_clienteAtual) return 0;
-        const sessao = _lancamentosDoCliente().reduce((a, l) => a + Number(l.valor || 0), 0);
-        return Number(_clienteAtual.saldo_devedor || 0) + sessao;
-    }
+    if (!_clienteAtual) return 0;
+    return _lancamentosDoCliente().reduce((a, l) => a + Number(l.valor || 0), 0);
+}
 
     function _lancamentosDoCliente() {
         if (!_clienteAtual) return [];
@@ -770,7 +763,7 @@ if (sp) {
         _syncNav('lista');
     }
 
-    async function salvarNovoCadastro() {
+   async function salvarNovoCadastro() {
     const nome = ($('cf-novo-nome')?.value || '').trim();
     const err  = $('cf-novo-err');
 
@@ -794,7 +787,6 @@ if (sp) {
             telefone:   ($('cf-novo-tel')?.value || '').trim() || null,
             documento:  ($('cf-novo-doc')?.value || '').trim() || null,
             observacao: ($('cf-novo-obs')?.value || '').trim() || null,
-            saldo_devedor: 0,
             ativo: true
         };
 
@@ -818,7 +810,6 @@ if (sp) {
         if (btn) btn.disabled = false;
     }
 }
-
     // ─────────────────────────────────────────────────────────────────────
     // TOTAL CRÉDITO (chamado por fechamento-caixa.js)
     // ─────────────────────────────────────────────────────────────────────
@@ -835,8 +826,12 @@ if (sp) {
     const tipo = String(item.tipo || '').toUpperCase();
     if (tipo === 'BOLAO') return 'BOLAO';
     if (tipo === 'FEDERAL') return 'FEDERAL';
-    if (tipo === 'PRODUTO') return 'PRODUTO';
-    return 'MANUAL';
+    if (tipo === 'PRODUTO') {
+        if (item.raspadinha_id) return 'RASPADINHA';
+        if (item.telesena_item_id) return 'TELESENA';
+        return 'CONTA';
+    }
+    return 'CONTA';
 }
 
 function _mapReferenciaId(item) {
@@ -851,21 +846,25 @@ async function gravarNoSupabase(fechId, t1) {
     const lans = _getLancamentos();
     if (!lans.length) return;
 
-    const porCliente = {};
-
     for (const l of lans) {
         const { data: extrato, error: errExtrato } = await _sb
             .from(TB_EXTRATO)
             .insert({
                 loteria_id: Number(_getLoteriaAtiva().id),
-                cliente_id: Number(l.cliente_id),
+                cliente_id: l.cliente_id,
                 fechamento_id: fechId,
+                usuario_id: Number(_getUsuario()?.id || null),
                 tipo_movimento: l.tipo_movimento || 'DEBITO',
-                origem_movimento: 'FECHAMENTO',
-                valor: Number(l.valor || 0),
+                forma_pagamento: 'NAO_APLICA',
+                status: 'CONFIRMADO',
+                valor_total: Number(l.valor || 0),
+                gera_credito_fechamento: true,
+                gera_abatimento_divida: false,
+                gera_pix_quitacao: false,
+                data_movimento: t1?.data_ref,
                 observacao: l.observacao || null
             })
-            .select('id, cliente_id')
+            .select('id')
             .single();
 
         if (errExtrato) throw errExtrato;
@@ -877,18 +876,21 @@ async function gravarNoSupabase(fechId, t1) {
 
             return {
                 extrato_id: extrato.id,
-                tipo_item: _mapTipoItem(item),
-                referencia_id: _mapReferenciaId(item),
+                tipo_origem: _mapTipoItem(item),
+                bolao_id: item.bolao_id || null,
+                federal_id: item.federal_id || null,
+                raspadinha_id: item.raspadinha_id || null,
+                telesena_item_id: item.telesena_item_id || null,
+                data_venda: t1?.data_ref,
                 descricao: item.descricao || 'Item',
-                quantidade: qtd,
+                modalidade: item.tipo === 'BOLAO' || item.tipo === 'FEDERAL' ? item.descricao : null,
+                concurso: null,
+                produto: item.tipo === 'PRODUTO' || item.tipo === 'CONTA' ? item.descricao : null,
+                qtd_jogos: null,
+                qtd_dezenas: null,
                 valor_unitario: valorUnit,
-                valor_total: valorTotal,
-                metadata: {
-                    bolao_id: item.bolao_id || null,
-                    federal_id: item.federal_id || null,
-                    raspadinha_id: item.raspadinha_id || null,
-                    telesena_item_id: item.telesena_item_id || null
-                }
+                qtd_vendida: qtd,
+                valor_total: valorTotal
             };
         });
 
@@ -896,83 +898,35 @@ async function gravarNoSupabase(fechId, t1) {
             const { error: errItens } = await _sb.from(TB_ITENS).insert(itensPayload);
             if (errItens) throw errItens;
         }
-
-        const cliId = Number(l.cliente_id);
-        porCliente[cliId] = (porCliente[cliId] || 0) + Number(l.valor || 0);
-    }
-
-    for (const [cliId, delta] of Object.entries(porCliente)) {
-        const cli = _clientes.find(c => Number(c.id) === Number(cliId));
-        const novoSaldo = Number(cli?.saldo_devedor || 0) + Number(delta || 0);
-
-        const { error: errSaldo } = await _sb
-            .from(TB_CLIENTES)
-            .update({ saldo_devedor: novoSaldo })
-            .eq('id', Number(cliId));
-
-        if (errSaldo) throw errSaldo;
-
-        if (cli) cli.saldo_devedor = novoSaldo;
     }
 }
     // ─────────────────────────────────────────────────────────────────────
     // ESTORNAR DO FECHAMENTO (chamado antes de sobrescrever)
     // ─────────────────────────────────────────────────────────────────────
     async function estornarDoFechamento(fechId) {
-    const { data, error } = await _sb
+    const { data: extratos, error } = await _sb
         .from(TB_EXTRATO)
-        .select('id, cliente_id, valor, tipo_movimento')
+        .select('id')
         .eq('fechamento_id', fechId);
 
     if (error) throw error;
 
-    const extratos = data || [];
-    if (!extratos.length) return;
-
-    const porCliente = {};
-    extratos.forEach(l => {
-        const cliId = Number(l.cliente_id);
-        const delta = Number(l.valor || 0);
-        porCliente[cliId] = (porCliente[cliId] || 0) + delta;
-    });
-
-    for (const [cliId, delta] of Object.entries(porCliente)) {
-        const { data: cli, error: errCli } = await _sb
-            .from(TB_CLIENTES)
-            .select('saldo_devedor')
-            .eq('id', Number(cliId))
-            .single();
-
-        if (errCli) throw errCli;
-
-        const novoSaldo = Math.max(0, Number(cli?.saldo_devedor || 0) - Number(delta || 0));
-
-        const { error: errUpd } = await _sb
-            .from(TB_CLIENTES)
-            .update({ saldo_devedor: novoSaldo })
-            .eq('id', Number(cliId));
-
-        if (errUpd) throw errUpd;
-
-        const localCli = _clientes.find(c => Number(c.id) === Number(cliId));
-        if (localCli) localCli.saldo_devedor = novoSaldo;
-    }
-
-    const extratoIds = extratos.map(e => e.id);
+    const ids = (extratos || []).map(e => e.id);
+    if (!ids.length) return;
 
     const { error: errItens } = await _sb
         .from(TB_ITENS)
         .delete()
-        .in('extrato_id', extratoIds);
+        .in('extrato_id', ids);
 
     if (errItens) throw errItens;
 
-    const { error: errDelExtrato } = await _sb
+    const { error: errExtrato } = await _sb
         .from(TB_EXTRATO)
         .delete()
         .eq('fechamento_id', fechId);
 
-    if (errDelExtrato) throw errDelExtrato;
+    if (errExtrato) throw errExtrato;
 }
     // ─────────────────────────────────────────────────────────────────────
     // CARREGAR FECHAMENTO EXISTENTE (modo edição)
@@ -981,15 +935,9 @@ async function gravarNoSupabase(fechId, t1) {
     try {
         const { data: extratos, error: errExtratos } = await _sb
             .from(TB_EXTRATO)
-            .select(`
-                id,
-                cliente_id,
-                tipo_movimento,
-                valor,
-                observacao
-            `)
+            .select('id, cliente_id, tipo_movimento, valor_total, observacao')
             .eq('fechamento_id', fechamentoId)
-            .order('id', { ascending: true });
+            .order('created_at', { ascending: true });
 
         if (errExtratos) throw errExtratos;
 
@@ -1002,16 +950,18 @@ async function gravarNoSupabase(fechId, t1) {
                 .select(`
                     id,
                     extrato_id,
-                    tipo_item,
-                    referencia_id,
+                    tipo_origem,
+                    bolao_id,
+                    federal_id,
+                    raspadinha_id,
+                    telesena_item_id,
                     descricao,
-                    quantidade,
                     valor_unitario,
-                    valor_total,
-                    metadata
+                    qtd_vendida,
+                    valor_total
                 `)
                 .in('extrato_id', extratoIds)
-                .order('id', { ascending: true });
+                .order('created_at', { ascending: true });
 
             if (errItens) throw errItens;
             itens = itensData || [];
@@ -1021,24 +971,24 @@ async function gravarNoSupabase(fechId, t1) {
         itens.forEach(item => {
             if (!itensPorExtrato[item.extrato_id]) itensPorExtrato[item.extrato_id] = [];
             itensPorExtrato[item.extrato_id].push({
-                tipo: item.tipo_item,
+                tipo: item.tipo_origem,
                 descricao: item.descricao,
-                qtd: Number(item.quantidade || 1),
+                qtd: Number(item.qtd_vendida || 1),
                 valorUnit: Number(item.valor_unitario || 0),
                 valor: Number(item.valor_total || 0),
-                bolao_id: item.metadata?.bolao_id || null,
-                federal_id: item.metadata?.federal_id || null,
-                raspadinha_id: item.metadata?.raspadinha_id || null,
-                telesena_item_id: item.metadata?.telesena_item_id || null
+                bolao_id: item.bolao_id || null,
+                federal_id: item.federal_id || null,
+                raspadinha_id: item.raspadinha_id || null,
+                telesena_item_id: item.telesena_item_id || null
             });
         });
 
         _getCF().lancamentos = (extratos || []).map(l => ({
             id: _uid(),
             extrato_id: l.id,
-            cliente_id: Number(l.cliente_id),
+            cliente_id: l.cliente_id,
             tipo_movimento: l.tipo_movimento,
-            valor: Number(l.valor || 0),
+            valor: Number(l.valor_total || 0),
             observacao: l.observacao || '',
             itens: itensPorExtrato[l.id] || []
         }));
