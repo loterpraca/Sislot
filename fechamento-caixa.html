@@ -551,12 +551,12 @@
                      padding:2px 8px;border-radius:10px;color:var(--purple);
                      letter-spacing:.14em">SISLOT</span>
       </div>
-      <button class="modal-cf-close" onclick="CF.closeModal()" title="Fechar">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <path d="M18 6 6 18M6 6l12 12"/>
-        </svg>
-      </button>
+      <button type="button" class="modal-cf-close" onclick="CF.closeModal()" title="Fechar">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <path d="M18 6 6 18M6 6l12 12"/>
+  </svg>
+</button>
     </div>
 
     <!-- ── LAYOUT BI-COLUNA ────────────────────────────────────────── -->
@@ -917,35 +917,8 @@
 </div><!-- /modal-cf -->
 
 
-<!-- ══════════════════════════════════════
-     TRECHO ADICIONAL — botão Área do Cliente na Tela 1
-     Substitua o bloco <div class="section" id="section-area-cliente">
-     pelo conteúdo abaixo:
-     ══════════════════════════════════════ -->
 
-<div class="section" id="section-area-cliente">
-  <div class="section-label">Área do Cliente</div>
-  <button
-      type="button"
-      class="btn-area-cliente"
-      id="btn-abrir-area-cliente">
-    <div style="width:32px;height:32px;border-radius:8px;
-                background:rgba(167,139,250,0.12);
-                border:1px solid rgba(167,139,250,0.25);
-                display:flex;align-items:center;justify-content:center;
-                flex-shrink:0">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="12" cy="8" r="4"/>
-        <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
-      </svg>
-    </div>
-    <span style="flex:1;text-align:left">
-      Gerenciar clientes e lançamentos desta sessão
-    </span>
-    <span class="cf-btn-badge" id="cf-badge-lancamentos">0 lançamentos</span>
-  </button>
-</div>
+
 
 
 <!-- ══════════════════════════════════════════════════════ SCRIPTS ══ -->
