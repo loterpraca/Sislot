@@ -4,6 +4,39 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── OVERLAY & MODAL CONTAINER ───────────────────────────────────────── */
+.cf-picker-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(19, 41, 82, 0.5);
+    border: 1px solid rgba(30, 58, 110, 0.6);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all .18s ease;
+    animation: cf-card-in .2s ease both;
+    position: relative;
+    overflow: hidden;
+}
+.cf-picker-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--purple);
+    opacity: 0;
+    transition: opacity .18s;
+}
+.cf-picker-item:hover {
+    border-color: rgba(167, 139, 250, 0.35);
+    background: rgba(167, 139, 250, 0.06);
+    transform: translateX(2px);
+}
+.cf-picker-item:hover::before { opacity: 1; }
+</style>
+
+
 .modal-cf {
     display: none;
     position: fixed;
