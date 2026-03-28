@@ -1081,7 +1081,47 @@ async function gravarNoSupabase(fechId, t1) {
 
         _atualizarBadge();
     }
+    function _recalcLancamento(l) {
+    const itens = Array.isArray(l.itens) ? l.itens : [];
+    l.valor = itens.reduce((acc, it) => acc + Number(it.valor || 0), 0);
+    return l.valor;
+}
 
+function _refreshSessaoUI() {
+    _atualizarBadge();
+    _renderResumoSessao();
+    _renderLancamentosSessao();
+
+    if (_clienteAtual) {
+        _renderExtrato();
+        _atualizarSaldoSidebar();
+    }
+}
+
+function _rmLancamento(lancId) {
+    const cf = _getCF();
+    cf.lancamentos = (cf.lancamentos || []).filter(l => l.id !== lancId);
+    _refreshSessaoUI();
+}
+
+function _rmItemLancado(lancId, itemIdx) {
+    const cf = _getCF();
+    const lanc = (cf.lancamentos || []).find(l => l.id === lancId);
+    if (!lanc) return;
+
+    if (!Array.isArray(lanc.itens)) lanc.itens = [];
+    lanc.itens.splice(itemIdx, 1);
+
+    if (!lanc.itens.length) {
+        cf.lancamentos = (cf.lancamentos || []).filter(l => l.id !== lancId);
+    } else {
+        _recalcLancamento(lanc);
+    }
+
+    _refreshSessaoUI();
+}
+
+    
     // ─────────────────────────────────────────────────────────────────────
     // API PÚBLICA
     // ─────────────────────────────────────────────────────────────────────
@@ -1115,7 +1155,8 @@ async function gravarNoSupabase(fechId, t1) {
         _escolherItem,
         _filtrarPicker,
         _navExtrato,
-
+        _rmLancamento,
+        _rmItemLancado,
         // integração com fechamento-caixa.js
         getTotalCredito,
         gravarNoSupabase,
