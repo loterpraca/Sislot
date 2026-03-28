@@ -245,22 +245,22 @@ const CF = (() => {
             </div>`;
 
         const sp = $('cf-saldo-pendente');
-        if (sp) {
-            if (saldo > 0) {
-                const qtdLan = _lancamentosDoCliente().length;
-                sp.innerHTML = `
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <polyline points="19 12 12 19 5 12"/>
-    </svg>
-    Devendo ${_fmtBRL(saldo)}
-    ${qtdLan > 0 ? `· ${qtdLan} lançamento${qtdLan > 1 ? 's' : ''} nesta sessão` : ''}
-`.trim();
-            } else {
-                sp.innerHTML = `<span style="color:var(--accent)">✓ Sem pendências</span>`;
-            }
-        }
+if (sp) {
+    if (saldo > 0) {
+        const qtdLan = _lancamentosDoCliente().length;
+        sp.innerHTML = `
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <polyline points="19 12 12 19 5 12"/>
+            </svg>
+            Devendo ${_fmtBRL(saldo)}
+            ${qtdLan > 0 ? `· ${qtdLan} lançamento${qtdLan > 1 ? 's' : ''} nesta sessão` : ''}
+        `;
+    } else {
+        sp.innerHTML = `<span style="color:var(--accent)">✓ Sem pendências</span>`;
+    }
+}
 
         _renderExtrato();
         _switchView('cliente');
