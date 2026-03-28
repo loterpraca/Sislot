@@ -2,7 +2,28 @@
    ÁREA DO CLIENTE — Premium Redesign
    SISLOT · Design System · Dark Luxury Fintech
    ═══════════════════════════════════════════════════════════════════════ */
+.cf-btn-mini-rm{
+  background: transparent;
+  border: 1px solid rgba(255,82,82,.18);
+  color: rgba(255,82,82,.72);
+  border-radius: 5px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  transition: all .18s;
+  flex-shrink: 0;
+}
 
+.cf-btn-mini-rm:hover{
+  background: rgba(255,82,82,.10);
+  border-color: var(--err);
+  color: var(--err);
+}
 /* ── OVERLAY & MODAL CONTAINER ───────────────────────────────────────── */
 .cf-picker-item {
     display: flex;
