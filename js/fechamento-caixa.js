@@ -183,14 +183,17 @@ async function init() {
         bindStepClicks();
 
         // ── Inicializa o módulo Área do Cliente ────────────────────────────
-        CF.init({
-            sb,
-            getLoteriaAtiva: () => loteriaAtiva,
-            getUsuario:      () => usuario,
-            getEstado:       () => ESTADO,
-            fmtBRL,
-            fmtData
-        });
+       CF.init({
+    sb,
+    getLoteriaAtiva: () => loteriaAtiva,
+    getUsuario:      () => usuario,
+    getEstado:       () => ESTADO,
+    getBoloes:       () => allBoloes,
+    getFederais:     () => federais,
+    getProdutos:     () => produtosLista,
+    fmtBRL,
+    fmtData
+});
 
         setFS('fs-inicial');
         setB3('b3-inicial');
