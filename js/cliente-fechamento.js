@@ -168,7 +168,7 @@ const CF = (() => {
             return `
                 <div class="cf-cliente-card ${devendo ? 'tem-divida' : ''}"
                      style="animation-delay:${i * 0.03}s"
-                     onclick="CF._selecionarClienteById(${c.id})">
+                     onclick="CF._ClienteById(${c.id})">
                     <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
                     <div class="cf-cli-info">
                         <div class="cf-cli-nome">${c.nome}</div>
@@ -209,6 +209,13 @@ const CF = (() => {
     function selecionarCliente(cli) {
         _clienteAtual       = cli;
         window._cfClienteAtual = cli;
+     _getCF().clienteSelecionado = {
+    id: cli.id,
+    nome: cli.nome || '',
+    telefone: cli.telefone || '',
+    documento: cli.documento || '',
+    observacao: cli.observacao || ''
+};
 
         // ── Atualiza sidebar ───────────────────────────────────────────
         const ini = _iniciais(cli.nome);
@@ -844,33 +851,31 @@ async function gravarNoSupabase(fechId, t1) {
     const lans = _getLancamentos();
     if (!lans.length) return;
 
-    const extratosPayload = lans.map(l => ({
-        loteria_id: Number(_getLoteriaAtiva().id),
-        cliente_id: Number(l.cliente_id),
-        fechamento_id: fechId,
-        tipo_movimento: l.tipo_movimento || 'DEBITO',
-        origem_movimento: 'FECHAMENTO',
-        valor: Number(l.valor || 0),
-        observacao: l.observacao || null
-    }));
+    const porCliente = {};
 
-    const { data: extratos, error: errExtrato } = await _sb
-        .from(TB_EXTRATO)
-        .insert(extratosPayload)
-        .select('id, cliente_id');
+    for (const l of lans) {
+        const { data: extrato, error: errExtrato } = await _sb
+            .from(TB_EXTRATO)
+            .insert({
+                loteria_id: Number(_getLoteriaAtiva().id),
+                cliente_id: Number(l.cliente_id),
+                fechamento_id: fechId,
+                tipo_movimento: l.tipo_movimento || 'DEBITO',
+                origem_movimento: 'FECHAMENTO',
+                valor: Number(l.valor || 0),
+                observacao: l.observacao || null
+            })
+            .select('id, cliente_id')
+            .single();
 
-    if (errExtrato) throw errExtrato;
+        if (errExtrato) throw errExtrato;
 
-    const itensPayload = [];
-
-    extratos.forEach((extrato, idx) => {
-        const lanc = lans[idx];
-        (lanc.itens || []).forEach(item => {
+        const itensPayload = (l.itens || []).map(item => {
             const qtd = Number(item.qtd || 1);
             const valorUnit = Number(item.valorUnit ?? item.valor ?? 0);
             const valorTotal = Number(item.valor ?? (qtd * valorUnit) || 0);
 
-            itensPayload.push({
+            return {
                 extrato_id: extrato.id,
                 tipo_item: _mapTipoItem(item),
                 referencia_id: _mapReferenciaId(item),
@@ -884,23 +889,17 @@ async function gravarNoSupabase(fechId, t1) {
                     raspadinha_id: item.raspadinha_id || null,
                     telesena_item_id: item.telesena_item_id || null
                 }
-            });
+            };
         });
-    });
 
-    if (itensPayload.length) {
-        const { error: errItens } = await _sb
-            .from(TB_ITENS)
-            .insert(itensPayload);
+        if (itensPayload.length) {
+            const { error: errItens } = await _sb.from(TB_ITENS).insert(itensPayload);
+            if (errItens) throw errItens;
+        }
 
-        if (errItens) throw errItens;
-    }
-
-    const porCliente = {};
-    lans.forEach(l => {
         const cliId = Number(l.cliente_id);
         porCliente[cliId] = (porCliente[cliId] || 0) + Number(l.valor || 0);
-    });
+    }
 
     for (const [cliId, delta] of Object.entries(porCliente)) {
         const cli = _clientes.find(c => Number(c.id) === Number(cliId));
@@ -916,7 +915,6 @@ async function gravarNoSupabase(fechId, t1) {
         if (cli) cli.saldo_devedor = novoSaldo;
     }
 }
-
     // ─────────────────────────────────────────────────────────────────────
     // ESTORNAR DO FECHAMENTO (chamado antes de sobrescrever)
     // ─────────────────────────────────────────────────────────────────────
