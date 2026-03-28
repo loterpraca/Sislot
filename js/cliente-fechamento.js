@@ -10,12 +10,15 @@
  *  • Produtos → getProdutos() → produtosLista (já carregados na tela 2)
  *  • Conta    → lançamento 100% manual
  *
- * Tabelas Supabase necessárias:
- *  • clientes (id, loteria_id, nome, telefone, documento, observacao, saldo_devedor, ativo)
- *  • clientes_lancamentos_fechamento (id, fechamento_id, loteria_id, cliente_id,
- *      tipo_movimento, valor, observacao, itens jsonb, created_at)
+ /**
+ * Tabelas Supabase:
+ *  • clientes_fechamentos_cadastro
+ *  • clientes_fechamentos_extrato
+ *  • clientes_lancamentos_itens
  */
-
+const TB_CLIENTES = 'clientes_fechamentos_cadastro';
+const TB_EXTRATO  = 'clientes_fechamentos_extrato';
+const TB_ITENS    = 'clientes_lancamentos_itens';
 const CF = (() => {
 
     // ─────────────────────────────────────────────────────────────────────
@@ -110,34 +113,36 @@ const CF = (() => {
     // CARREGAR CLIENTES DO BANCO
     // ─────────────────────────────────────────────────────────────────────
     async function _carregarClientes() {
-        const wrap = $('cf-clientes-lista');
-        if (!wrap) return;
-        wrap.innerHTML = `<div class="cf-empty"><div class="spinner" style="margin-bottom:8px"></div><div>Carregando clientes...</div></div>`;
+    const wrap = $('cf-clientes-lista');
+    if (!wrap) return;
 
-        try {
-            const { data, error } = await _sb
-                .from('clientes')
-                .select('id, nome, telefone, documento, observacao, saldo_devedor, ativo')
-                .eq('loteria_id', _getLoteriaAtiva().id)
-                .eq('ativo', true)
-                .order('nome', { ascending: true });
+    wrap.innerHTML = `<div class="cf-empty"><div class="spinner" style="margin-bottom:8px"></div><div>Carregando clientes...</div></div>`;
 
-            if (error) throw error;
-            _clientes = data || [];
-            _renderClientes(_clientes);
+    try {
+        const { data, error } = await _sb
+            .from(TB_CLIENTES)
+            .select('id, nome, telefone, documento, observacao, saldo_devedor, ativo')
+            .eq('loteria_id', Number(_getLoteriaAtiva().id))
+            .eq('ativo', true)
+            .order('nome', { ascending: true });
 
-            const totalEl = $('cf-total-clientes');
-            if (totalEl) totalEl.textContent = _clientes.length;
-        } catch (e) {
-            console.error('CF: erro ao carregar clientes:', e);
-            wrap.innerHTML = `
-                <div class="cf-empty">
-                    <div class="cf-empty-icon">⚠</div>
-                    <div>Erro ao carregar clientes</div>
-                    <small>${e.message || e}</small>
-                </div>`;
-        }
+        if (error) throw error;
+
+        _clientes = data || [];
+        _renderClientes(_clientes);
+
+        const totalEl = $('cf-total-clientes');
+        if (totalEl) totalEl.textContent = _clientes.length;
+    } catch (e) {
+        console.error('CF: erro ao carregar clientes:', e);
+        wrap.innerHTML = `
+            <div class="cf-empty">
+                <div class="cf-empty-icon">⚠</div>
+                <div>Erro ao carregar clientes</div>
+                <small>${e.message || e}</small>
+            </div>`;
     }
+}
 
     function _iniciais(nome) {
         return (nome || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
@@ -759,46 +764,53 @@ const CF = (() => {
     }
 
     async function salvarNovoCadastro() {
-        const nome = ($('cf-novo-nome')?.value || '').trim();
-        const err  = $('cf-novo-err');
+    const nome = ($('cf-novo-nome')?.value || '').trim();
+    const err  = $('cf-novo-err');
 
-        if (!nome) {
-            if (err) { err.textContent = 'Nome é obrigatório.'; err.style.display = 'block'; }
-            return;
+    if (!nome) {
+        if (err) {
+            err.textContent = 'Nome é obrigatório.';
+            err.style.display = 'block';
         }
-        if (err) err.style.display = 'none';
-
-        const btn = $('cf-btn-salvar-novo');
-        if (btn) btn.disabled = true;
-
-        try {
-            const payload = {
-                loteria_id:    Number(_getLoteriaAtiva().id),
-                nome,
-                telefone:      ($('cf-novo-tel')?.value || '').trim() || null,
-                documento:     ($('cf-novo-doc')?.value || '').trim() || null,
-                observacao:    ($('cf-novo-obs')?.value || '').trim() || null,
-                ativo:         true,
-                saldo_devedor: 0,
-            };
-
-            const { data, error } = await _sb
-                .from('clientes')
-                .insert(payload)
-                .select('*')
-                .single();
-
-            if (error) throw error;
-
-            _clientes.unshift(data);
-            await openModal();
-        } catch (e) {
-            console.error('CF: erro ao salvar cliente:', e);
-            if (err) { err.textContent = 'Erro: ' + (e.message || e); err.style.display = 'block'; }
-        } finally {
-            if (btn) btn.disabled = false;
-        }
+        return;
     }
+
+    if (err) err.style.display = 'none';
+
+    const btn = $('cf-btn-salvar-novo');
+    if (btn) btn.disabled = true;
+
+    try {
+        const payload = {
+            loteria_id: Number(_getLoteriaAtiva().id),
+            nome,
+            telefone:   ($('cf-novo-tel')?.value || '').trim() || null,
+            documento:  ($('cf-novo-doc')?.value || '').trim() || null,
+            observacao: ($('cf-novo-obs')?.value || '').trim() || null,
+            saldo_devedor: 0,
+            ativo: true
+        };
+
+        const { data, error } = await _sb
+            .from(TB_CLIENTES)
+            .insert(payload)
+            .select('*')
+            .single();
+
+        if (error) throw error;
+
+        _clientes.unshift(data);
+        await openModal();
+    } catch (e) {
+        console.error('CF: erro ao salvar cliente:', e);
+        if (err) {
+            err.textContent = 'Erro: ' + (e.message || e);
+            err.style.display = 'block';
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
 
     // ─────────────────────────────────────────────────────────────────────
     // TOTAL CRÉDITO (chamado por fechamento-caixa.js)
@@ -812,97 +824,232 @@ const CF = (() => {
     // ─────────────────────────────────────────────────────────────────────
     // GRAVAR NO SUPABASE (chamado dentro de finalizar())
     // ─────────────────────────────────────────────────────────────────────
-    async function gravarNoSupabase(fechId, t1) {
-        const lans = _getLancamentos();
-        if (!lans.length) return;
+    function _mapTipoItem(item) {
+    const tipo = String(item.tipo || '').toUpperCase();
+    if (tipo === 'BOLAO') return 'BOLAO';
+    if (tipo === 'FEDERAL') return 'FEDERAL';
+    if (tipo === 'PRODUTO') return 'PRODUTO';
+    return 'MANUAL';
+}
 
-        const rows = lans.map(l => ({
-            fechamento_id:  fechId,
-            loteria_id:     Number(_getLoteriaAtiva().id),
-            cliente_id:     l.cliente_id,
-            tipo_movimento: l.tipo_movimento,
-            valor:          Number(l.valor || 0),
-            observacao:     l.observacao || null,
-            itens:          l.itens || [],
-        }));
+function _mapReferenciaId(item) {
+    if (item.bolao_id) return String(item.bolao_id);
+    if (item.federal_id) return String(item.federal_id);
+    if (item.raspadinha_id) return String(item.raspadinha_id);
+    if (item.telesena_item_id) return String(item.telesena_item_id);
+    return null;
+}
 
-        const { error } = await _sb.from('clientes_lancamentos_fechamento').insert(rows);
-        if (error) throw error;
+async function gravarNoSupabase(fechId, t1) {
+    const lans = _getLancamentos();
+    if (!lans.length) return;
 
-        // Atualiza saldo_devedor de cada cliente envolvido
-        const porCliente = {};
-        lans.forEach(l => {
-            porCliente[l.cliente_id] = (porCliente[l.cliente_id] || 0) + Number(l.valor || 0);
+    const extratosPayload = lans.map(l => ({
+        loteria_id: Number(_getLoteriaAtiva().id),
+        cliente_id: Number(l.cliente_id),
+        fechamento_id: fechId,
+        tipo_movimento: l.tipo_movimento || 'DEBITO',
+        origem_movimento: 'FECHAMENTO',
+        valor: Number(l.valor || 0),
+        observacao: l.observacao || null
+    }));
+
+    const { data: extratos, error: errExtrato } = await _sb
+        .from(TB_EXTRATO)
+        .insert(extratosPayload)
+        .select('id, cliente_id');
+
+    if (errExtrato) throw errExtrato;
+
+    const itensPayload = [];
+
+    extratos.forEach((extrato, idx) => {
+        const lanc = lans[idx];
+        (lanc.itens || []).forEach(item => {
+            const qtd = Number(item.qtd || 1);
+            const valorUnit = Number(item.valorUnit ?? item.valor ?? 0);
+            const valorTotal = Number(item.valor ?? (qtd * valorUnit) || 0);
+
+            itensPayload.push({
+                extrato_id: extrato.id,
+                tipo_item: _mapTipoItem(item),
+                referencia_id: _mapReferenciaId(item),
+                descricao: item.descricao || 'Item',
+                quantidade: qtd,
+                valor_unitario: valorUnit,
+                valor_total: valorTotal,
+                metadata: {
+                    bolao_id: item.bolao_id || null,
+                    federal_id: item.federal_id || null,
+                    raspadinha_id: item.raspadinha_id || null,
+                    telesena_item_id: item.telesena_item_id || null
+                }
+            });
         });
+    });
 
-        for (const [cliId, delta] of Object.entries(porCliente)) {
-            const cli = _clientes.find(c => Number(c.id) === Number(cliId));
-            const novoSaldo = Number(cli?.saldo_devedor || 0) + delta;
-            const { error: err2 } = await _sb
-                .from('clientes')
-                .update({ saldo_devedor: novoSaldo })
-                .eq('id', Number(cliId));
-            if (err2) console.warn('CF: aviso ao atualizar saldo_devedor:', err2);
-        }
+    if (itensPayload.length) {
+        const { error: errItens } = await _sb
+            .from(TB_ITENS)
+            .insert(itensPayload);
+
+        if (errItens) throw errItens;
     }
+
+    const porCliente = {};
+    lans.forEach(l => {
+        const cliId = Number(l.cliente_id);
+        porCliente[cliId] = (porCliente[cliId] || 0) + Number(l.valor || 0);
+    });
+
+    for (const [cliId, delta] of Object.entries(porCliente)) {
+        const cli = _clientes.find(c => Number(c.id) === Number(cliId));
+        const novoSaldo = Number(cli?.saldo_devedor || 0) + Number(delta || 0);
+
+        const { error: errSaldo } = await _sb
+            .from(TB_CLIENTES)
+            .update({ saldo_devedor: novoSaldo })
+            .eq('id', Number(cliId));
+
+        if (errSaldo) throw errSaldo;
+
+        if (cli) cli.saldo_devedor = novoSaldo;
+    }
+}
 
     // ─────────────────────────────────────────────────────────────────────
     // ESTORNAR DO FECHAMENTO (chamado antes de sobrescrever)
     // ─────────────────────────────────────────────────────────────────────
     async function estornarDoFechamento(fechId) {
-        const { data, error } = await _sb
-            .from('clientes_lancamentos_fechamento')
-            .select('cliente_id, valor, tipo_movimento')
-            .eq('fechamento_id', fechId);
+    const { data, error } = await _sb
+        .from(TB_EXTRATO)
+        .select('id, cliente_id, valor, tipo_movimento')
+        .eq('fechamento_id', fechId);
 
-        if (error) { console.warn('CF estorno — erro ao buscar:', error); return; }
+    if (error) throw error;
 
-        for (const l of (data || [])) {
-            const { data: cli } = await _sb
-                .from('clientes')
-                .select('saldo_devedor')
-                .eq('id', l.cliente_id)
-                .single();
+    const extratos = data || [];
+    if (!extratos.length) return;
 
-            const novoSaldo = Math.max(0, Number(cli?.saldo_devedor || 0) - Number(l.valor || 0));
-            await _sb.from('clientes').update({ saldo_devedor: novoSaldo }).eq('id', l.cliente_id);
-        }
+    const porCliente = {};
+    extratos.forEach(l => {
+        const cliId = Number(l.cliente_id);
+        const delta = Number(l.valor || 0);
+        porCliente[cliId] = (porCliente[cliId] || 0) + delta;
+    });
 
-        const { error: errDel } = await _sb
-            .from('clientes_lancamentos_fechamento')
-            .delete()
-            .eq('fechamento_id', fechId);
+    for (const [cliId, delta] of Object.entries(porCliente)) {
+        const { data: cli, error: errCli } = await _sb
+            .from(TB_CLIENTES)
+            .select('saldo_devedor')
+            .eq('id', Number(cliId))
+            .single();
 
-        if (errDel) throw errDel;
+        if (errCli) throw errCli;
+
+        const novoSaldo = Math.max(0, Number(cli?.saldo_devedor || 0) - Number(delta || 0));
+
+        const { error: errUpd } = await _sb
+            .from(TB_CLIENTES)
+            .update({ saldo_devedor: novoSaldo })
+            .eq('id', Number(cliId));
+
+        if (errUpd) throw errUpd;
+
+        const localCli = _clientes.find(c => Number(c.id) === Number(cliId));
+        if (localCli) localCli.saldo_devedor = novoSaldo;
     }
 
+    const extratoIds = extratos.map(e => e.id);
+
+    const { error: errItens } = await _sb
+        .from(TB_ITENS)
+        .delete()
+        .in('extrato_id', extratoIds);
+
+    if (errItens) throw errItens;
+
+    const { error: errDelExtrato } = await _sb
+        .from(TB_EXTRATO)
+        .delete()
+        .eq('fechamento_id', fechId);
+
+    if (errDelExtrato) throw errDelExtrato;
+}
     // ─────────────────────────────────────────────────────────────────────
     // CARREGAR FECHAMENTO EXISTENTE (modo edição)
     // ─────────────────────────────────────────────────────────────────────
-    async function carregarFechamentoExistente({ fechamentoId }) {
-        try {
-            const { data, error } = await _sb
-                .from('clientes_lancamentos_fechamento')
-                .select('*, clientes(id, nome, telefone, documento, saldo_devedor)')
-                .eq('fechamento_id', fechamentoId);
+   async function carregarFechamentoExistente({ fechamentoId }) {
+    try {
+        const { data: extratos, error: errExtratos } = await _sb
+            .from(TB_EXTRATO)
+            .select(`
+                id,
+                cliente_id,
+                tipo_movimento,
+                valor,
+                observacao
+            `)
+            .eq('fechamento_id', fechamentoId)
+            .order('id', { ascending: true });
 
-            if (error) throw error;
+        if (errExtratos) throw errExtratos;
 
-            _getCF().lancamentos = (data || []).map(l => ({
-                id:             _uid(),
-                cliente_id:     l.cliente_id,
-                tipo_movimento: l.tipo_movimento,
-                valor:          Number(l.valor || 0),
-                observacao:     l.observacao || '',
-                itens:          l.itens || [],
-            }));
+        const extratoIds = (extratos || []).map(e => e.id);
 
-            _atualizarBadge();
-        } catch (e) {
-            console.warn('CF: erro ao carregar fechamento existente:', e);
+        let itens = [];
+        if (extratoIds.length) {
+            const { data: itensData, error: errItens } = await _sb
+                .from(TB_ITENS)
+                .select(`
+                    id,
+                    extrato_id,
+                    tipo_item,
+                    referencia_id,
+                    descricao,
+                    quantidade,
+                    valor_unitario,
+                    valor_total,
+                    metadata
+                `)
+                .in('extrato_id', extratoIds)
+                .order('id', { ascending: true });
+
+            if (errItens) throw errItens;
+            itens = itensData || [];
         }
-    }
 
+        const itensPorExtrato = {};
+        itens.forEach(item => {
+            if (!itensPorExtrato[item.extrato_id]) itensPorExtrato[item.extrato_id] = [];
+            itensPorExtrato[item.extrato_id].push({
+                tipo: item.tipo_item,
+                descricao: item.descricao,
+                qtd: Number(item.quantidade || 1),
+                valorUnit: Number(item.valor_unitario || 0),
+                valor: Number(item.valor_total || 0),
+                bolao_id: item.metadata?.bolao_id || null,
+                federal_id: item.metadata?.federal_id || null,
+                raspadinha_id: item.metadata?.raspadinha_id || null,
+                telesena_item_id: item.metadata?.telesena_item_id || null
+            });
+        });
+
+        _getCF().lancamentos = (extratos || []).map(l => ({
+            id: _uid(),
+            extrato_id: l.id,
+            cliente_id: Number(l.cliente_id),
+            tipo_movimento: l.tipo_movimento,
+            valor: Number(l.valor || 0),
+            observacao: l.observacao || '',
+            itens: itensPorExtrato[l.id] || []
+        }));
+
+        _atualizarBadge();
+    } catch (e) {
+        console.warn('CF: erro ao carregar fechamento existente:', e);
+    }
+}
     // ─────────────────────────────────────────────────────────────────────
     // RESET (chamado quando volta ao início ou troca de loteria)
     // ─────────────────────────────────────────────────────────────────────
