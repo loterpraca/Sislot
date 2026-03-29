@@ -1391,7 +1391,7 @@ function _rmItemLancado(lancId, itemIdx) {
     // ─────────────────────────────────────────────────────────────────────
     // API PÚBLICA
     // ─────────────────────────────────────────────────────────────────────
-    return {
+       return {
         // lifecycle
         init,
         reset,
@@ -1414,7 +1414,7 @@ function _rmItemLancado(lancId, itemIdx) {
         adicionarItemCarrinho,
         confirmarDebito,
 
-        // handlers inline (chamados via onclick no HTML)
+        // handlers inline
         _rmItem,
         _updConta,
         _updQtd,
@@ -1423,6 +1423,7 @@ function _rmItemLancado(lancId, itemIdx) {
         _navExtrato,
         _rmLancamento,
         _rmItemLancado,
+
         // integração com fechamento-caixa.js
         getTotalCredito,
         gravarNoSupabase,
