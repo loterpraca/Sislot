@@ -276,14 +276,23 @@ async function carregarFuncionariosDaLoteria(loteriaId) {
         .select(`
             usuario_id,
             ativo,
-            usuarios(id, nome, perfil, ativo, pode_logar)
+            usuarios (
+                id,
+                nome,
+                perfil,
+                ativo,
+                pode_logar
+            )
         `)
         .eq('loteria_id', Number(loteriaId))
         .eq('ativo', true);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+        console.error('Erro ao buscar funcionarios da loteria:', error);
+        throw new Error(error.message || 'Erro ao buscar funcionários.');
+    }
 
-    return (data || [])
+    const lista = (data || [])
         .flatMap((row) => {
             if (!row.usuarios) return [];
             return Array.isArray(row.usuarios) ? row.usuarios : [row.usuarios];
@@ -291,8 +300,9 @@ async function carregarFuncionariosDaLoteria(loteriaId) {
         .filter((u) => u && u.ativo && u.pode_logar)
         .filter((u, i, arr) => arr.findIndex((x) => Number(x.id) === Number(u.id)) === i)
         .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
-}
 
+    return lista;
+}
 function limparResultadoToken() {
     const box = $('gtResultado');
     const erro = $('gtErro');
@@ -314,15 +324,37 @@ async function abrirModalTokenLoja(loja) {
     const nomeLoja = $('gtLojaNome');
     const data = $('gtData');
     const func = $('gtFuncionario');
+    const erro = $('gtErro');
 
     if (nomeLoja) nomeLoja.value = loja.nome;
     if (data) data.value = hojeIso();
-    if (func) func.innerHTML = '<option value="">Carregando...</option>';
+
+    if (erro) {
+        erro.style.display = 'none';
+        erro.textContent = '';
+    }
+
+    if (func) {
+        func.innerHTML = '<option value="">Carregando...</option>';
+    }
+
+    $('mGerarTokenLoja')?.classList.add('show');
 
     try {
         const funcionarios = await carregarFuncionariosDaLoteria(loja.id);
+
         if (func) {
             func.innerHTML = '<option value="">Selecione...</option>';
+
+            if (!funcionarios.length) {
+                func.innerHTML = '<option value="">Nenhum funcionário encontrado</option>';
+                if (erro) {
+                    erro.textContent = 'Nenhum funcionário ativo encontrado para esta loja.';
+                    erro.style.display = 'block';
+                }
+                return;
+            }
+
             funcionarios.forEach((u) => {
                 const opt = document.createElement('option');
                 opt.value = u.id;
@@ -331,17 +363,18 @@ async function abrirModalTokenLoja(loja) {
             });
         }
     } catch (e) {
-        if (func) func.innerHTML = '<option value="">Erro ao carregar</option>';
-        throw e;
+        console.error('Erro ao abrir modal de token:', e);
+
+        if (func) {
+            func.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+
+        if (erro) {
+            erro.textContent = e.message || 'Erro ao carregar funcionários da loja.';
+            erro.style.display = 'block';
+        }
     }
-
-    $('mGerarTokenLoja')?.classList.add('show');
 }
-
-function fecharModalTokenLoja() {
-    $('mGerarTokenLoja')?.classList.remove('show');
-}
-
 async function gerarTokenDaLojaSelecionada() {
     const erro = $('gtErro');
     const funcionarioId = $('gtFuncionario')?.value;
@@ -382,8 +415,8 @@ async function gerarTokenDaLojaSelecionada() {
     }
 }
 async function bindLojasDoGrupo(usuario) {
-    const wrap = document.querySelector('.lojas-wrap');
-    if (!wrap) return;
+    const chips = Array.from(document.querySelectorAll('.lojas-wrap .loja-chip[data-loteria-id]'));
+    if (!chips.length) return;
 
     if (!podeGerarToken(usuario)) return;
 
@@ -397,39 +430,22 @@ async function bindLojasDoGrupo(usuario) {
         permitidas = lojas.map((l) => Number(l.id));
     }
 
-    wrap.addEventListener('click', (e) => {
-        const chip = e.target.closest('.loja-chip[data-loteria-id]');
-        if (!chip) return;
-
+    chips.forEach((chip) => {
         const loteriaId = Number(chip.dataset.loteriaId);
         const loteriaNome = chip.dataset.loteriaNome || chip.textContent.trim();
 
         if (!permitidas.includes(loteriaId)) return;
 
-        abrirModalTokenLoja({
-            id: loteriaId,
-            nome: loteriaNome
+        chip.style.cursor = 'pointer';
+
+        chip.addEventListener('click', async () => {
+            await abrirModalTokenLoja({
+                id: loteriaId,
+                nome: loteriaNome
+            });
         });
     });
-
-    const chips = wrap.querySelectorAll('.loja-chip[data-loteria-id]');
-    chips.forEach((chip) => {
-        const loteriaId = Number(chip.dataset.loteriaId);
-        if (permitidas.includes(loteriaId)) {
-            chip.style.cursor = 'pointer';
-        }
-    });
 }
-function bindModalTokenLoja() {
-    $('btnFecharTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
-    $('btnCancelarTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
-    $('btnConfirmarGerarTokenLoja')?.addEventListener('click', gerarTokenDaLojaSelecionada);
-
-    $('mGerarTokenLoja')?.addEventListener('click', (e) => {
-        if (e.target?.id === 'mGerarTokenLoja') fecharModalTokenLoja();
-    });
-}
-
 async function init() {
     try {
         startClock();
