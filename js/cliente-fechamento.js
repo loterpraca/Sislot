@@ -1129,14 +1129,14 @@ function cfMontarItensRows({ extratoId, dataRef, lancamentos }) {
     };
 
     if (tipoOrigem === 'BOLAO') {
-      row.bolao_id = Number(item.bolao_id || 0) || null;
+      row.bolao_id = item.bolao_id ?? null;
     } else if (tipoOrigem === 'FEDERAL') {
-      row.federal_id = Number(item.federal_id || 0) || null;
+      row.federal_id = item.federal_id ?? null;
     } else if (tipoOrigem === 'RASPADINHA') {
-      row.raspadinha_id = Number(item.raspadinha_id || 0) || null;
+      row.raspadinha_id = item.raspadinha_id ?? null;
       row.produto = 'RASPADINHA';
     } else if (tipoOrigem === 'TELESENA') {
-      row.telesena_item_id = Number(item.telesena_item_id || 0) || null;
+      row.telesena_item_id = item.telesena_item_id ?? null;
       row.produto = 'TELESENA';
     } else if (tipoOrigem === 'CONTA') {
       row.modalidade = null;
@@ -1145,6 +1145,9 @@ function cfMontarItensRows({ extratoId, dataRef, lancamentos }) {
       row.qtd_jogos = null;
       row.qtd_dezenas = null;
     }
+
+    console.log('CF ITEM BRUTO', item);
+    console.log('CF ITEM ROW', row);
 
     return row;
   });
