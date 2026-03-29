@@ -797,9 +797,9 @@ function _renderCardBolaoCF(item, key) {
     function _buildItemHTML(item, idx) {
         const corMap = {
             BOLAO:   { label: 'Bolão',   cls: 'bolao'   },
-            FEDERAL: { label: 'Federal', cls: 'federal'  },
-            PRODUTO: { label: 'Produto', cls: 'produto'  },
-            CONTA:   { label: 'Conta',   cls: 'conta'    },
+            FEDERAL: { label: 'Federal', cls: 'federal' },
+            PRODUTO: { label: 'Produto', cls: 'produto' },
+            CONTA:   { label: 'Conta',   cls: 'conta'   },
         };
         const t = corMap[item.tipo] || { label: item.tipo, cls: 'conta' };
 
@@ -831,10 +831,146 @@ function _renderCardBolaoCF(item, key) {
                 </div>`;
         }
 
-        // BOLAO / FEDERAL / PRODUTO
         const valUnit = Number(item.valorUnit || 0);
-        const qtd     = Number(item.qtd || 1);
-        const sub     = qtd * valUnit;
+        const qtd = Number(item.qtd || 1);
+        const sub = qtd * valUnit;
+
+        if (item.tipo === 'BOLAO') {
+            const codigoExibicao = item.codigoLoterico || item.origemCodigo || '';
+
+            return `
+                <div class="cf-carrinho-item cf-carrinho-item-bolao" style="animation-delay:${idx * 0.05}s">
+                    <div class="cf-item-head">
+                        <span class="cf-tipo-badge ${t.cls}">${t.label}</span>
+                        <button class="cf-btn-rm-item" onclick="CF._rmItem('${item.id}')">✕</button>
+                    </div>
+
+                    <div class="cf-bolao-cart-head">
+                        <div class="cf-bolao-cart-main">
+                            <div class="cf-bolao-cart-title-row">
+                                <span class="cf-bolao-cart-title">${item.modalidade || item.descricao || 'Bolão'}</span>
+                                <span class="cf-bolao-tag cf-bolao-tag-conc">#${item.concurso || '—'}</span>
+                                <span class="cf-bolao-tag cf-bolao-tag-loja">
+                                    ${(item.origemNome || item.loteriaNome || '—')}${codigoExibicao ? ' · ' + codigoExibicao : ''}
+                                </span>
+                                <span class="cf-bolao-tag cf-bolao-tag-tipo">${item.tipoPerspectiva || 'BOLÃO'}</span>
+                            </div>
+
+                            <div class="cf-bolao-card-tags" style="margin-top:8px">
+                                <span class="cf-bolao-chip">${item.qtdJogos || 0} jogos</span>
+                                <span class="cf-bolao-chip">${item.qtdDezenas || 0} dez.</span>
+                                <span class="cf-bolao-chip">posição ${item.qtdCotasPosicao ?? '—'}</span>
+                                <span class="cf-bolao-chip">vendidas ${item.qtdVendidaLoja ?? '—'}</span>
+                                <span class="cf-bolao-chip cf-bolao-chip-saldo">saldo ${item.saldo ?? '—'}</span>
+                            </div>
+                        </div>
+
+                        <div class="cf-bolao-cart-price">
+                            <div class="cf-bolao-price">${_fmtBRL(valUnit)}</div>
+                            <div class="cf-bolao-price-sub">por cota</div>
+                        </div>
+                    </div>
+
+                    <div class="cf-item-campos" style="margin-top:12px">
+                        <div class="cf-campo">
+                            <div class="cf-campo-label">Valor unitário</div>
+                            <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);padding:8px 0">
+                                ${_fmtBRL(valUnit)}
+                            </div>
+                        </div>
+
+                        <div class="cf-campo">
+                            <div class="cf-campo-label">Quantidade</div>
+                            <input class="cf-inp" type="number" min="1" step="1" placeholder="1"
+                                   value="${qtd}"
+                                   oninput="CF._updQtd('${item.id}', parseInt(this.value) || 1)">
+                        </div>
+                    </div>
+
+                    <div class="cf-item-subtotal" id="cf-sub-${item.id}">
+                        Subtotal: <strong>${_fmtBRL(sub)}</strong>
+                    </div>
+                </div>`;
+        }
+
+        if (item.tipo === 'FEDERAL') {
+            return `
+                <div class="cf-carrinho-item" style="animation-delay:${idx * 0.05}s">
+                    <div class="cf-item-head">
+                        <span class="cf-tipo-badge ${t.cls}">${t.label}</span>
+                        <button class="cf-btn-rm-item" onclick="CF._rmItem('${item.id}')">✕</button>
+                    </div>
+
+                    <div class="cf-bolao-card-tags" style="margin-bottom:10px">
+                        <span class="cf-bolao-chip">${item.modalidade || 'Federal'}</span>
+                        <span class="cf-bolao-chip">concurso ${item.concurso || '—'}</span>
+                        <span class="cf-bolao-chip cf-bolao-chip-saldo">saldo ${item.saldo ?? '—'}</span>
+                    </div>
+
+                    <div style="font-size:12px;font-weight:600;color:var(--bright);margin-bottom:10px;line-height:1.3">
+                        ${item.descricao}
+                    </div>
+
+                    <div class="cf-item-campos">
+                        <div class="cf-campo">
+                            <div class="cf-campo-label">Valor unitário</div>
+                            <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);padding:8px 0">
+                                ${_fmtBRL(valUnit)}
+                            </div>
+                        </div>
+
+                        <div class="cf-campo">
+                            <div class="cf-campo-label">Quantidade</div>
+                            <input class="cf-inp" type="number" min="1" step="1" placeholder="1"
+                                   value="${qtd}"
+                                   oninput="CF._updQtd('${item.id}', parseInt(this.value) || 1)">
+                        </div>
+                    </div>
+
+                    <div class="cf-item-subtotal" id="cf-sub-${item.id}">
+                        Subtotal: <strong>${_fmtBRL(sub)}</strong>
+                    </div>
+                </div>`;
+        }
+
+        if (item.tipo === 'PRODUTO') {
+            return `
+                <div class="cf-carrinho-item" style="animation-delay:${idx * 0.05}s">
+                    <div class="cf-item-head">
+                        <span class="cf-tipo-badge ${t.cls}">${t.label}</span>
+                        <button class="cf-btn-rm-item" onclick="CF._rmItem('${item.id}')">✕</button>
+                    </div>
+
+                    <div class="cf-bolao-card-tags" style="margin-bottom:10px">
+                        <span class="cf-bolao-chip">${item.raspadinha_id ? 'Raspadinha' : item.telesena_item_id ? 'Tele Sena' : 'Produto'}</span>
+                        <span class="cf-bolao-chip cf-bolao-chip-saldo">saldo ${item.saldo ?? '—'}</span>
+                    </div>
+
+                    <div style="font-size:12px;font-weight:600;color:var(--bright);margin-bottom:10px;line-height:1.3">
+                        ${item.descricao}
+                    </div>
+
+                    <div class="cf-item-campos">
+                        <div class="cf-campo">
+                            <div class="cf-campo-label">Valor unitário</div>
+                            <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);padding:8px 0">
+                                ${_fmtBRL(valUnit)}
+                            </div>
+                        </div>
+
+                        <div class="cf-campo">
+                            <div class="cf-campo-label">Quantidade</div>
+                            <input class="cf-inp" type="number" min="1" step="1" placeholder="1"
+                                   value="${qtd}"
+                                   oninput="CF._updQtd('${item.id}', parseInt(this.value) || 1)">
+                        </div>
+                    </div>
+
+                    <div class="cf-item-subtotal" id="cf-sub-${item.id}">
+                        Subtotal: <strong>${_fmtBRL(sub)}</strong>
+                    </div>
+                </div>`;
+        }
 
         return `
             <div class="cf-carrinho-item" style="animation-delay:${idx * 0.05}s">
@@ -842,13 +978,13 @@ function _renderCardBolaoCF(item, key) {
                     <span class="cf-tipo-badge ${t.cls}">${t.label}</span>
                     <button class="cf-btn-rm-item" onclick="CF._rmItem('${item.id}')">✕</button>
                 </div>
-                <div style="font-size:12px;font-weight:600;color:var(--bright);margin-bottom:10px;
-                            line-height:1.3">${item.descricao}</div>
+                <div style="font-size:12px;font-weight:600;color:var(--bright);margin-bottom:10px;line-height:1.3">
+                    ${item.descricao || 'Item'}
+                </div>
                 <div class="cf-item-campos">
                     <div class="cf-campo">
                         <div class="cf-campo-label">Valor unitário</div>
-                        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;
-                                    font-weight:600;color:var(--accent);padding:8px 0">
+                        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);padding:8px 0">
                             ${_fmtBRL(valUnit)}
                         </div>
                     </div>
