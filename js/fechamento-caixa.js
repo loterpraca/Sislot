@@ -61,6 +61,13 @@ let mostrarProdutosSemEstoque = false;
 
 const n = id => parseFloat($(id)?.value) || 0;
 
+function getCFOrThrow() {
+    const cf = window.CF;
+    if (!cf) {
+        throw new Error('Módulo Área do Cliente não carregado. Verifique se cliente-fechamento.js está sendo carregado antes de fechamento-caixa.js.');
+    }
+    return cf;
+}
 function autoFill(el) {
     if (!el) return;
     el.classList.toggle('filled', String(el.value || '').trim() !== '');
@@ -183,7 +190,7 @@ async function init() {
         bindStepClicks();
 
         // ── Inicializa o módulo Área do Cliente ────────────────────────────
-       CF.init({
+  getCFOrThrow().init({
     sb,
     getLoteriaAtiva: () => loteriaAtiva,
     getUsuario:      () => usuario,
@@ -773,7 +780,7 @@ async function buscarFechamentoExistente() {
         ESTADO.tela3 = montarTela3DoFechamento(fech);
 
         preencherTela1(fech);
-        await CF.carregarFechamentoExistente({ fechamentoId: fech.id });
+        await getCFOrThrow().carregarFechamentoExistente({ fechamentoId: fech.id });
         await carregarProdutos();
         await buscarFederaisSupabase(fech.data_ref);
         await carregarBoloes();
@@ -1498,7 +1505,7 @@ function montarResumo() {
     s('r-boloes', totalBol);
     s('r-relatorio', t1.relatorio);
 
-    const totCFCredito = CF.getTotalCredito();
+    const totCFCredito = getCFOrThrow().getTotalCredito();
 
     const s_cf = (id, v) => {
         const el = $(id);
@@ -1797,7 +1804,7 @@ async function finalizar() {
         const totalFed  = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
         const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + Number(b.subtotal || 0), 0);
 
-        const totCFCredito = CF.getTotalCredito();
+        const totCFCredito = getCFOrThrow().getTotalCredito();
 
         const totDeb = Number(t1.troco_inicial || 0)
             + totalProd
@@ -1853,7 +1860,7 @@ async function finalizar() {
             if (errUpd) throw errUpd;
 
             // Estorna CF anterior do fechamento
-            await CF.estornarDoFechamento(existeId);
+            await getCFOrThrow().estornarDoFechamento(existeId);
 
             await estornarProdutosDoFechamento(existeId);
             await apagarSnapshotProdutosDoFechamento(existeId);
@@ -1910,7 +1917,7 @@ console.log('PAYLOAD FECHAMENTO', payload);
         setProgress(93);
 
         // ── Grava módulo CF (extrato clientes) ────────────────────────────
-        await CF.gravarNoSupabase(fechId, t1);
+        await getCFOrThrow().gravarNoSupabase(fechId, t1);
         if (sobrescrever && tokenAutorizado?.id) {
         await FECHAMENTO_RULES.consumirTokenSobrescrita({
         tokenId: tokenAutorizado.id,
@@ -2017,7 +2024,9 @@ function resetEstado() {
     }
 
     // ── Reset do módulo CF (substitui o bloco antigo de dívidas) ──────────
-    CF.reset();
+    if (window.CF) {
+    window.CF.reset();
+}
 
     const filtroTipo = $('prod-filtro-tipo');
     if (filtroTipo) filtroTipo.value = '';
