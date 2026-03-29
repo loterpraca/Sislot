@@ -280,10 +280,72 @@
     </div>
 
     <div class="lojas-wrap">
-      <div class="section-sep section-sep--stores">
-        <div class="section-sep-label">Lojas do Grupo</div>
-        <div class="section-sep-line"></div>
+  <div class="section-sep section-sep--stores">
+    <div class="section-sep-label">Lojas do Grupo</div>
+    <div class="section-sep-line"></div>
+  </div>
+
+  <div class="lojas-helper" id="lojasHelper" style="display:none">
+    Toque em uma loja para gerar token de sobrescrita.
+  </div>
+
+  <div class="lojas-row" id="lojasRow"></div>
+</div>
+
+<div class="overlay-menu" id="mGerarTokenLoja">
+  <div class="modal-token-menu">
+    <div class="modal-token-head">
+      <div>
+        <div class="modal-token-title">Gerar token</div>
+        <div class="modal-token-sub">Autorização para sobrescrever fechamento</div>
       </div>
+      <button type="button" class="modal-token-close" id="btnFecharTokenLoja">×</button>
+    </div>
+
+    <div class="modal-token-body">
+      <div class="token-field token-field-full">
+        <label>Loja</label>
+        <input type="text" id="gtLojaNome" readonly>
+      </div>
+
+      <div class="token-grid">
+        <div class="token-field">
+          <label>Funcionário</label>
+          <select id="gtFuncionario">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+
+        <div class="token-field">
+          <label>Data</label>
+          <input type="date" id="gtData">
+        </div>
+
+        <div class="token-field">
+          <label>Validade</label>
+          <select id="gtMinutos">
+            <option value="5">5 min</option>
+            <option value="10" selected>10 min</option>
+            <option value="15">15 min</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="token-result" id="gtResultado" style="display:none">
+        <div class="token-result-label">Token gerado</div>
+        <div class="token-result-code" id="gtCodigoToken">000000</div>
+        <div class="token-result-expira" id="gtExpiraToken"></div>
+      </div>
+
+      <div class="token-erro" id="gtErro" style="display:none"></div>
+    </div>
+
+    <div class="modal-token-actions">
+      <button type="button" class="btn-token-sec" id="btnCancelarTokenLoja">Fechar</button>
+      <button type="button" class="btn-token-pri" id="btnConfirmarGerarTokenLoja">Gerar</button>
+    </div>
+  </div>
+</div>
 
       <div class="lojas-row">
         <div class="loja-chip">
