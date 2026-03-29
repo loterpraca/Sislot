@@ -904,64 +904,48 @@ function _mapReferenciaId(item) {
 }
 
 async function gravarNoSupabase(fechId, t1) {
-    const lans = _getLancamentos();
-    if (!lans.length) return;
+  const lans = _getLancamentos();
+  if (!lans.length) return;
 
-    for (const l of lans) {
-        const { data: extrato, error: errExtrato } = await _sb
-            .from(TB_EXTRATO)
-            .insert({
-                loteria_id: Number(_getLoteriaAtiva().id),
-                cliente_id: l.cliente_id,
-                fechamento_id: fechId,
-                usuario_id: Number(_getUsuario()?.id || null),
-                tipo_movimento: l.tipo_movimento || 'DEBITO',
-                forma_pagamento: 'NAO_APLICA',
-                status: 'CONFIRMADO',
-                valor_total: Number(l.valor || 0),
-                gera_credito_fechamento: true,
-                gera_abatimento_divida: false,
-                gera_pix_quitacao: false,
-                data_movimento: t1?.data_ref,
-                observacao: l.observacao || null
-            })
-            .select('id')
-            .single();
+  for (const l of lans) {
+    const { data: extrato, error: errExtrato } = await _sb
+      .from(TB_EXTRATO)
+      .insert({
+        loteria_id: Number(_getLoteriaAtiva().id),
+        cliente_id: l.cliente_id,
+        fechamento_id: fechId,
+        usuario_id: Number(_getUsuario()?.id || null),
+        tipo_movimento: l.tipo_movimento || 'DEBITO',
+        forma_pagamento: 'NAO_APLICA',
+        status: 'CONFIRMADO',
+        valor_total: Number(l.valor || 0),
+        gera_credito_fechamento: true,
+        gera_abatimento_divida: false,
+        gera_pix_quitacao: false,
+        data_movimento: t1?.data_ref,
+        observacao: l.observacao || null
+      })
+      .select('id')
+      .single();
 
-        if (errExtrato) throw errExtrato;
+    if (errExtrato) throw errExtrato;
 
-        const itensPayload = (l.itens || []).map(item => {
-            const qtd = Number(item.qtd || 1);
-            const valorUnit = Number(item.valorUnit ?? item.valor ?? 0);
-            const valorTotal = Number(item.valor ?? (qtd * valorUnit));
+    const itensRows = cfMontarItensRows({
+      extratoId: extrato.id,
+      dataRef: t1?.data_ref,
+      lancamentos: l.itens || []
+    });
 
-            return {
-    extrato_id: extrato.id,
-    tipo_origem: _mapTipoItem(item),
+    console.log('CF ITENS INSERT', itensRows);
 
-    bolao_id: item.bolao_id || null,
-    federal_id: item.federal_id || null,
-    raspadinha_id: item.raspadinha_id || null,
-    telesena_item_id: item.telesena_item_id || null,
+    if (itensRows.length) {
+      const { error: errItens } = await _sb
+        .from(TB_ITENS)
+        .insert(itensRows);
 
-    data_venda: t1?.data_ref,
-    descricao: item.descricao || 'Item',
-    modalidade: item.modalidade || null,
-    concurso: item.concurso || null,
-    produto: item.tipo === 'PRODUTO' || item.tipo === 'CONTA' ? item.descricao : null,
-    qtd_jogos: item.qtdJogos || null,
-    qtd_dezenas: item.qtdDezenas || null,
-    valor_unitario: valorUnit,
-    qtd_vendida: qtd,
-    valor_total: valorTotal
-};
-        });
-
-        if (itensPayload.length) {
-            const { error: errItens } = await _sb.from(TB_ITENS).insert(itensPayload);
-            if (errItens) throw errItens;
-        }
+      if (errItens) throw errItens;
     }
+  }
 }
     // ─────────────────────────────────────────────────────────────────────
     // ESTORNAR DO FECHAMENTO (chamado antes de sobrescrever)
@@ -1105,7 +1089,93 @@ async function gravarNoSupabase(fechId, t1) {
     l.valor = itens.reduce((acc, it) => acc + Number(it.valor || 0), 0);
     return l.valor;
 }
+function cfResolverTipoOrigem(item) {
+  const tipoBruto = String(item?.tipo_origem || item?.tipo || '')
+    .trim()
+    .toUpperCase();
 
+  if (tipoBruto === 'BOLAO') return 'BOLAO';
+  if (tipoBruto === 'FEDERAL') return 'FEDERAL';
+  if (tipoBruto === 'CONTA') return 'CONTA';
+
+  if (Number(item?.raspadinha_id || 0) > 0) return 'RASPADINHA';
+  if (Number(item?.telesena_item_id || 0) > 0) return 'TELESENA';
+
+  return tipoBruto;
+}
+
+function cfMontarItensRows({ extratoId, dataRef, lancamentos }) {
+  const itensRows = (lancamentos || []).map((item) => {
+    const tipoOrigem = cfResolverTipoOrigem(item);
+
+    const row = {
+      extrato_id: extratoId,
+      tipo_origem: tipoOrigem,
+
+      bolao_id: null,
+      federal_id: null,
+      raspadinha_id: null,
+      telesena_item_id: null,
+
+      data_venda: dataRef,
+      descricao: item.descricao || '',
+      modalidade: item.modalidade || null,
+      concurso: item.concurso || null,
+      produto: null,
+      qtd_jogos: item.qtdJogos ? Number(item.qtdJogos) : null,
+      qtd_dezenas: item.qtdDezenas ? Number(item.qtdDezenas) : null,
+      valor_unitario: Number(item.valorUnit ?? item.valor ?? 0),
+      qtd_vendida: Number(item.qtd || 1)
+    };
+
+    if (tipoOrigem === 'BOLAO') {
+      row.bolao_id = Number(item.bolao_id || 0) || null;
+    } else if (tipoOrigem === 'FEDERAL') {
+      row.federal_id = Number(item.federal_id || 0) || null;
+    } else if (tipoOrigem === 'RASPADINHA') {
+      row.raspadinha_id = Number(item.raspadinha_id || 0) || null;
+      row.produto = 'RASPADINHA';
+    } else if (tipoOrigem === 'TELESENA') {
+      row.telesena_item_id = Number(item.telesena_item_id || 0) || null;
+      row.produto = 'TELESENA';
+    } else if (tipoOrigem === 'CONTA') {
+      row.modalidade = null;
+      row.concurso = null;
+      row.produto = null;
+      row.qtd_jogos = null;
+      row.qtd_dezenas = null;
+    }
+
+    return row;
+  });
+
+  for (const row of itensRows) {
+    if (row.tipo_origem === 'BOLAO' && !row.bolao_id) {
+      throw new Error(`Item BOLAO sem bolao_id: ${row.descricao || row.modalidade || 'sem descrição'}`);
+    }
+
+    if (row.tipo_origem === 'FEDERAL' && !row.federal_id) {
+      throw new Error(`Item FEDERAL sem federal_id: ${row.descricao || row.modalidade || 'sem descrição'}`);
+    }
+
+    if (row.tipo_origem === 'RASPADINHA' && !row.raspadinha_id) {
+      throw new Error(`Item RASPADINHA sem raspadinha_id: ${row.descricao || 'sem descrição'}`);
+    }
+
+    if (row.tipo_origem === 'TELESENA' && !row.telesena_item_id) {
+      throw new Error(`Item TELESENA sem telesena_item_id: ${row.descricao || 'sem descrição'}`);
+    }
+
+    if (
+      row.tipo_origem === 'CONTA' &&
+      (row.bolao_id || row.federal_id || row.raspadinha_id || row.telesena_item_id)
+    ) {
+      throw new Error(`Item CONTA veio com ids preenchidos: ${row.descricao || 'sem descrição'}`);
+    }
+  }
+
+  return itensRows;
+}
 function _refreshSessaoUI() {
     _atualizarBadge();
     _renderResumoSessao();
