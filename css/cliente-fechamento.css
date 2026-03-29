@@ -9,7 +9,7 @@
  *  • Federais → getFederais() → federais
  *  • Produtos → getProdutos() → produtosLista
  *  • Conta    → lançamento 100% manual
- *a
+ *
  * Tabelas Supabase:
  *  • cliente_fechamento_cadastro
  *  • cliente_fechamento_extrato
