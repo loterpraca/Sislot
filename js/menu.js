@@ -381,7 +381,45 @@ async function gerarTokenDaLojaSelecionada() {
         }
     }
 }
+async function bindLojasDoGrupo(usuario) {
+    const wrap = document.querySelector('.lojas-wrap');
+    if (!wrap) return;
 
+    if (!podeGerarToken(usuario)) return;
+
+    let permitidas = [];
+
+    if (isAdmin(usuario)) {
+        const lojas = await carregarTodasLoterias();
+        permitidas = lojas.map((l) => Number(l.id));
+    } else if (isSocio(usuario)) {
+        const lojas = await carregarLoteriasDoSocio(usuario.id);
+        permitidas = lojas.map((l) => Number(l.id));
+    }
+
+    wrap.addEventListener('click', (e) => {
+        const chip = e.target.closest('.loja-chip[data-loteria-id]');
+        if (!chip) return;
+
+        const loteriaId = Number(chip.dataset.loteriaId);
+        const loteriaNome = chip.dataset.loteriaNome || chip.textContent.trim();
+
+        if (!permitidas.includes(loteriaId)) return;
+
+        abrirModalTokenLoja({
+            id: loteriaId,
+            nome: loteriaNome
+        });
+    });
+
+    const chips = wrap.querySelectorAll('.loja-chip[data-loteria-id]');
+    chips.forEach((chip) => {
+        const loteriaId = Number(chip.dataset.loteriaId);
+        if (permitidas.includes(loteriaId)) {
+            chip.style.cursor = 'pointer';
+        }
+    });
+}
 function bindModalTokenLoja() {
     $('btnFecharTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
     $('btnCancelarTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
@@ -407,7 +445,7 @@ async function init() {
         bindModalTokenLoja();
 
         await carregarIndicadores();
-        await montarLojasDoGrupo(usuario);
+        await bindLojasDoGrupo(usuario);
     } catch (err) {
         console.error('Erro ao iniciar menu:', err);
         alert(err.message || 'Erro ao iniciar menu');
