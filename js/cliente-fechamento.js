@@ -319,17 +319,16 @@ if (sp) {
 
         if (tipo === 'BOLAO') {
             const codigoExibicao = it.codigoLoterico || it.origemCodigo || '';
+            const origemLabel = (it.origemNome || it.loteriaNome)
+                ? `${esc(it.origemNome || it.loteriaNome)}${codigoExibicao ? ' · ' + esc(codigoExibicao) : ''}`
+                : '';
 
             return `
                 <div class="cf-extrato-item-card cf-extrato-item-bolao">
                     <div class="cf-extrato-item-top">
                         <div class="cf-extrato-item-tags">
                             <span class="cf-tipo-badge bolao">Bolão</span>
-                            <span class="cf-bolao-tag cf-bolao-tag-conc">#${esc(it.concurso || '—')}</span>
-                            <span class="cf-bolao-tag cf-bolao-tag-loja">
-                                ${esc(it.origemNome || it.loteriaNome || '—')}${codigoExibicao ? ' · ' + esc(codigoExibicao) : ''}
-                            </span>
-                            <span class="cf-bolao-tag cf-bolao-tag-tipo">${esc(it.tipoPerspectiva || 'BOLÃO')}</span>
+                            ${origemLabel ? `<span class="cf-bolao-tag cf-bolao-tag-loja">${origemLabel}</span>` : ''}
                         </div>
                         <button type="button"
                                 class="cf-btn-mini-rm"
@@ -339,8 +338,9 @@ if (sp) {
                         </button>
                     </div>
 
-                    <div class="cf-extrato-item-title">
-                        ${esc(it.modalidade || it.descricao || 'Bolão')}
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <div class="cf-extrato-item-title">${esc(it.modalidade || 'Bolão')}</div>
+                        <span class="cf-bolao-tag cf-bolao-tag-conc">#${esc(it.concurso || '—')}</span>
                     </div>
 
                     <div class="cf-bolao-card-tags" style="margin-top:8px">
@@ -1116,7 +1116,16 @@ if (sp) {
     modalidade:       item.modalidade || null,
     concurso:         item.concurso || null,
     qtdJogos:         item.qtdJogos || null,
-    qtdDezenas:       item.qtdDezenas || null
+    qtdDezenas:       item.qtdDezenas || null,
+
+    origemNome:       item.origemNome || null,
+    origemCodigo:     item.origemCodigo || null,
+    codigoLoterico:   item.codigoLoterico || null,
+    tipoPerspectiva:  item.tipoPerspectiva || null,
+    loteriaNome:      item.loteriaNome || null,
+    qtdCotasPosicao:  item.qtdCotasPosicao ?? null,
+    qtdVendidaLoja:   item.qtdVendidaLoja ?? null,
+    saldo:            item.saldo ?? null
 };
         });
 
