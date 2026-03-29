@@ -2,6 +2,92 @@
    ÁREA DO CLIENTE — Premium Redesign
    SISLOT · Design System · Dark Luxury Fintech
    ═══════════════════════════════════════════════════════════════════════ */
+.cf-bolao-card{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:12px;
+    align-items:center;
+    padding:12px 14px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:var(--panel2, rgba(19,34,64,.65));
+    cursor:pointer;
+    transition:.18s ease;
+    margin-bottom:8px;
+}
+.cf-bolao-card:hover{
+    border-color:rgba(37,211,102,.28);
+    background:rgba(37,211,102,.035);
+    transform:translateY(-1px);
+}
+.cf-bolao-card-head{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    flex-wrap:wrap;
+    margin-bottom:6px;
+}
+.cf-bolao-mod{
+    font-size:13px;
+    font-weight:600;
+    color:var(--bright);
+}
+.cf-bolao-tag,
+.cf-bolao-chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px;
+    line-height:1;
+    padding:4px 6px;
+    border-radius:4px;
+    border:1px solid var(--border);
+    color:var(--muted);
+    background:rgba(255,255,255,.04);
+}
+.cf-bolao-tag-conc{
+    color:var(--accent);
+    background:rgba(37,211,102,.08);
+    border-color:rgba(37,211,102,.2);
+}
+.cf-bolao-tag-loja{
+    color:#38bdf8;
+    background:rgba(56,189,248,.08);
+    border-color:rgba(56,189,248,.2);
+}
+.cf-bolao-tag-tipo{
+    color:#c4b5fd;
+    background:rgba(167,139,250,.08);
+    border-color:rgba(167,139,250,.2);
+}
+.cf-bolao-tag-val{
+    color:#f5a623;
+    background:rgba(245,166,35,.08);
+    border-color:rgba(245,166,35,.2);
+}
+.cf-bolao-card-tags{
+    display:flex;
+    gap:5px;
+    flex-wrap:wrap;
+}
+.cf-bolao-chip-saldo{
+    color:var(--bright);
+}
+.cf-bolao-card-side{
+    text-align:right;
+    min-width:88px;
+}
+.cf-bolao-price{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    font-weight:700;
+    color:var(--accent);
+}
+.cf-bolao-price-sub{
+    margin-top:2px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px;
+    color:var(--dim);
+}
+
 .cf-btn-mini-rm{
   background: transparent;
   border: 1px solid rgba(255,82,82,.18);
