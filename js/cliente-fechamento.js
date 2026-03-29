@@ -296,6 +296,7 @@ if (sp) {
     function _renderExtrato() {
     const wrap = $('cf-extrato-sessao');
     if (!wrap) return;
+
     const lans = _lancamentosDoCliente();
 
     if (!lans.length) {
@@ -303,23 +304,145 @@ if (sp) {
         return;
     }
 
-    wrap.innerHTML = lans.map((l, i) => {
-        const itensHtml = (l.itens || []).map((it, idx) => `
-            <div class="cf-extrato-item">
-                <span>${it.descricao}</span>
-                <div style="display:flex;align-items:center;gap:8px">
-                    <span style="color:var(--bright)">
-                        ${it.qtd && it.qtd > 1 ? it.qtd + '× ' : ''}${_fmtBRL(it.valor)}
-                    </span>
+    const esc = v => String(v ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+
+    function renderItemExtrato(it, idx, lancId) {
+        const tipo = String(it.tipo || '').toUpperCase();
+        const qtd = Number(it.qtd || 1);
+        const valor = Number(it.valor || 0);
+        const valorUnit = Number(it.valorUnit || (qtd ? valor / qtd : 0) || 0);
+
+        if (tipo === 'BOLAO') {
+            const codigoExibicao = it.codigoLoterico || it.origemCodigo || '';
+
+            return `
+                <div class="cf-extrato-item-card cf-extrato-item-bolao">
+                    <div class="cf-extrato-item-top">
+                        <div class="cf-extrato-item-tags">
+                            <span class="cf-tipo-badge bolao">Bolão</span>
+                            <span class="cf-bolao-tag cf-bolao-tag-conc">#${esc(it.concurso || '—')}</span>
+                            <span class="cf-bolao-tag cf-bolao-tag-loja">
+                                ${esc(it.origemNome || it.loteriaNome || '—')}${codigoExibicao ? ' · ' + esc(codigoExibicao) : ''}
+                            </span>
+                            <span class="cf-bolao-tag cf-bolao-tag-tipo">${esc(it.tipoPerspectiva || 'BOLÃO')}</span>
+                        </div>
+                        <button type="button"
+                                class="cf-btn-mini-rm"
+                                title="Remover item"
+                                onclick="CF._rmItemLancado('${lancId}', ${idx})">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="cf-extrato-item-title">
+                        ${esc(it.modalidade || it.descricao || 'Bolão')}
+                    </div>
+
+                    <div class="cf-bolao-card-tags" style="margin-top:8px">
+                        <span class="cf-bolao-chip">${it.qtdJogos || 0} jogos</span>
+                        <span class="cf-bolao-chip">${it.qtdDezenas || 0} dez.</span>
+                        <span class="cf-bolao-chip">qtd ${qtd}</span>
+                        <span class="cf-bolao-chip">${_fmtBRL(valorUnit)}/cota</span>
+                    </div>
+
+                    <div class="cf-extrato-item-total-row">
+                        <span class="cf-extrato-item-total-label">Total</span>
+                        <span class="cf-extrato-item-total-val">${_fmtBRL(valor)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (tipo === 'FEDERAL') {
+            return `
+                <div class="cf-extrato-item-card">
+                    <div class="cf-extrato-item-top">
+                        <div class="cf-extrato-item-tags">
+                            <span class="cf-tipo-badge federal">Federal</span>
+                            <span class="cf-bolao-chip">${esc(it.modalidade || 'Federal')}</span>
+                            <span class="cf-bolao-chip">conc. ${esc(it.concurso || '—')}</span>
+                            <span class="cf-bolao-chip">qtd ${qtd}</span>
+                        </div>
+                        <button type="button"
+                                class="cf-btn-mini-rm"
+                                title="Remover item"
+                                onclick="CF._rmItemLancado('${lancId}', ${idx})">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="cf-extrato-item-title">${esc(it.descricao || 'Federal')}</div>
+
+                    <div class="cf-extrato-item-total-row">
+                        <span class="cf-extrato-item-total-label">${_fmtBRL(valorUnit)} / unidade</span>
+                        <span class="cf-extrato-item-total-val">${_fmtBRL(valor)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (tipo === 'PRODUTO' || tipo === 'RASPADINHA' || tipo === 'TELESENA') {
+            const nomeTipo =
+                tipo === 'RASPADINHA' ? 'Raspadinha' :
+                tipo === 'TELESENA'   ? 'Tele Sena'  :
+                'Produto';
+
+            return `
+                <div class="cf-extrato-item-card">
+                    <div class="cf-extrato-item-top">
+                        <div class="cf-extrato-item-tags">
+                            <span class="cf-tipo-badge produto">${nomeTipo}</span>
+                            <span class="cf-bolao-chip">qtd ${qtd}</span>
+                        </div>
+                        <button type="button"
+                                class="cf-btn-mini-rm"
+                                title="Remover item"
+                                onclick="CF._rmItemLancado('${lancId}', ${idx})">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="cf-extrato-item-title">${esc(it.descricao || 'Produto')}</div>
+
+                    <div class="cf-extrato-item-total-row">
+                        <span class="cf-extrato-item-total-label">${_fmtBRL(valorUnit)} / unidade</span>
+                        <span class="cf-extrato-item-total-val">${_fmtBRL(valor)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="cf-extrato-item-card">
+                <div class="cf-extrato-item-top">
+                    <div class="cf-extrato-item-tags">
+                        <span class="cf-tipo-badge conta">Conta</span>
+                    </div>
                     <button type="button"
                             class="cf-btn-mini-rm"
                             title="Remover item"
-                            onclick="CF._rmItemLancado('${l.id}', ${idx})">
+                            onclick="CF._rmItemLancado('${lancId}', ${idx})">
                         ✕
                     </button>
                 </div>
+
+                <div class="cf-extrato-item-title">${esc(it.descricao || 'Lançamento')}</div>
+
+                <div class="cf-extrato-item-total-row">
+                    <span class="cf-extrato-item-total-label">Total</span>
+                    <span class="cf-extrato-item-total-val">${_fmtBRL(valor)}</span>
+                </div>
             </div>
-        `).join('');
+        `;
+    }
+
+    wrap.innerHTML = lans.map((l, i) => {
+        const itensHtml = (l.itens || []).map((it, idx) => renderItemExtrato(it, idx, l.id)).join('');
 
         return `
             <div class="cf-extrato-linha cf-extrato-deb" style="animation-delay:${i * 0.04}s">
@@ -335,7 +458,9 @@ if (sp) {
                         </button>
                     </div>
                 </div>
-                ${itensHtml ? `<div class="cf-extrato-itens">${itensHtml}</div>` : ''}
+
+                ${itensHtml ? `<div class="cf-extrato-itens-cards">${itensHtml}</div>` : ''}
+
                 <div class="cf-extrato-bottom">
                     <span class="cf-forma">FIADO</span>
                     <span class="cf-obs">${l.observacao || 'sem observação'}</span>
@@ -406,6 +531,96 @@ if (sp) {
             ? '0 lançamentos'
             : `${count} lançamento${count > 1 ? 's' : ''}`;
     }
+
+    function _escHtml(v) {
+    return String(v ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+async function _buscarBoloesDisponiveisCF() {
+    const dataRef = $('data-ref')?.value || '';
+    if (!dataRef) {
+        throw new Error('Preencha a data do fechamento antes de buscar bolões.');
+    }
+
+    const { data, error } = await _sb.rpc('fn_boloes_disponiveis_loja', {
+        p_loteria_id: Number(_getLoteriaAtiva().id),
+        p_data_ref: dataRef
+    });
+
+    if (error) throw error;
+
+    _boloesDisponiveisCF = (data || []).map(row => ({
+        tipo: 'BOLAO',
+
+        descricao: `${row.modalidade} — Concurso ${row.concurso}`,
+        sub: `${row.tipo_perspectiva || (row.eh_origem ? 'INTERNO' : 'EXTERNO')} · Saldo: ${Number(row.saldo_real || 0)} cota${Number(row.saldo_real || 0) !== 1 ? 's' : ''}`,
+
+        valorUnit: Number(row.valor_cota || 0),
+        saldo: Number(row.saldo_real || 0),
+
+        bolao_id: row.bolao_id,
+        modalidade: row.modalidade || null,
+        concurso: row.concurso || null,
+        qtdJogos: Number(row.qtd_jogos || 0) || null,
+        qtdDezenas: Number(row.qtd_dezenas || 0) || null,
+
+        qtdCotasPosicao: Number(row.qtd_cotas_posicao || 0),
+        qtdVendidaLoja: Number(row.qtd_vendida_loja || 0),
+
+        tipoPerspectiva: row.tipo_perspectiva || (row.eh_origem ? 'INTERNO' : 'EXTERNO'),
+
+        loteria_id: row.loteria_id || null,
+        loteriaNome: row.loteria_nome || '—',
+        loteriaSlug: row.loteria_slug || '',
+
+        origemNome: row.loteria_origem_nome || row.loteria_nome || '—',
+        origemSlug: row.loteria_origem_slug || '',
+        origemCodigo: row.loteria_origem_codigo || '',
+        codigoLoterico: row.codigo_loterico || '',
+
+        federal_id: null,
+        raspadinha_id: null,
+        telesena_item_id: null
+    }));
+}
+
+function _renderCardBolaoCF(item, key) {
+    const codigoExibicao = item.codigoLoterico || item.origemCodigo || '';
+
+    return `
+        <div class="cf-bolao-card" onclick="CF._escolherItem('${key}')">
+            <div class="cf-bolao-card-main">
+                <div class="cf-bolao-card-head">
+                    <span class="cf-bolao-mod">${_escHtml(item.modalidade)}</span>
+                    <span class="cf-bolao-tag cf-bolao-tag-conc">#${_escHtml(item.concurso)}</span>
+                    <span class="cf-bolao-tag cf-bolao-tag-loja">
+                        ${_escHtml(item.origemNome)}${codigoExibicao ? ' · ' + _escHtml(codigoExibicao) : ''}
+                    </span>
+                    <span class="cf-bolao-tag cf-bolao-tag-tipo">${_escHtml(item.tipoPerspectiva)}</span>
+                    <span class="cf-bolao-tag cf-bolao-tag-val">${_fmtBRL(item.valorUnit)}/cota</span>
+                </div>
+
+                <div class="cf-bolao-card-tags">
+                    <span class="cf-bolao-chip">${item.qtdJogos || 0} jogos</span>
+                    <span class="cf-bolao-chip">${item.qtdDezenas || 0} dez.</span>
+                    <span class="cf-bolao-chip">posição ${item.qtdCotasPosicao}</span>
+                    <span class="cf-bolao-chip">vendidas ${item.qtdVendidaLoja}</span>
+                    <span class="cf-bolao-chip cf-bolao-chip-saldo">saldo ${item.saldo}</span>
+                </div>
+            </div>
+
+            <div class="cf-bolao-card-side">
+                <div class="cf-bolao-price">${_fmtBRL(item.valorUnit)}</div>
+                <div class="cf-bolao-price-sub">por cota</div>
+            </div>
+        </div>
+    `;
+}
 
     // ─────────────────────────────────────────────────────────────────────
     // PICKER — escolha de bolão / federal / produto
@@ -1274,6 +1489,7 @@ async function gravarNoSupabase(fechId, t1) {
         _carrinho              = [];
         _clientes              = [];
         _pickerMap             = {};
+        _boloesDisponiveisCF   = [];
         _boloesDisponiveisCF   = [];
 
         // Sidebar de volta ao padrão
