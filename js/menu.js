@@ -346,7 +346,7 @@ async function gerarTokenDaLojaSelecionada() {
     const erro = $('gtErro');
     const funcionarioId = $('gtFuncionario')?.value;
     const dataRef = $('gtData')?.value;
-    const minutos = $('gtMinutos')?.value || '10';
+    const minutos = 3;
 
     limparResultadoToken();
 
