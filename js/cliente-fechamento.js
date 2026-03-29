@@ -407,96 +407,6 @@ if (sp) {
             : `${count} lançamento${count > 1 ? 's' : ''}`;
     }
 
-    function _escHtml(v) {
-    return String(v ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-}
-
-async function _buscarBoloesDisponiveisCF() {
-    const dataRef = $('data-ref')?.value || '';
-    if (!dataRef) {
-        throw new Error('Preencha a data do fechamento antes de buscar bolões.');
-    }
-
-    const { data, error } = await _sb.rpc('fn_boloes_disponiveis_loja', {
-        p_loteria_id: Number(_getLoteriaAtiva().id),
-        p_data_ref: dataRef
-    });
-
-    if (error) throw error;
-
-    _boloesDisponiveisCF = (data || []).map(row => ({
-        tipo: 'BOLAO',
-
-        descricao: `${row.modalidade} — Concurso ${row.concurso}`,
-        sub: `${row.tipo_perspectiva || (row.eh_origem ? 'INTERNO' : 'EXTERNO')} · Saldo: ${Number(row.saldo_real || 0)} cota${Number(row.saldo_real || 0) !== 1 ? 's' : ''}`,
-
-        valorUnit: Number(row.valor_cota || 0),
-        saldo: Number(row.saldo_real || 0),
-
-        bolao_id: row.bolao_id,
-        modalidade: row.modalidade || null,
-        concurso: row.concurso || null,
-        qtdJogos: Number(row.qtd_jogos || 0) || null,
-        qtdDezenas: Number(row.qtd_dezenas || 0) || null,
-
-        qtdCotasPosicao: Number(row.qtd_cotas_posicao || 0),
-        qtdVendidaLoja: Number(row.qtd_vendida_loja || 0),
-
-        tipoPerspectiva: row.tipo_perspectiva || (row.eh_origem ? 'INTERNO' : 'EXTERNO'),
-
-        loteria_id: row.loteria_id || null,
-        loteriaNome: row.loteria_nome || '—',
-        loteriaSlug: row.loteria_slug || '',
-
-        origemNome: row.loteria_origem_nome || row.loteria_nome || '—',
-        origemSlug: row.loteria_origem_slug || '',
-        origemCodigo: row.loteria_origem_codigo || '',
-        codigoLoterico: row.codigo_loterico || '',
-
-        federal_id: null,
-        raspadinha_id: null,
-        telesena_item_id: null
-    }));
-}
-
-function _renderCardBolaoCF(item, key) {
-    const codigoExibicao = item.codigoLoterico || item.origemCodigo || '';
-
-    return `
-        <div class="cf-bolao-card" onclick="CF._escolherItem('${key}')">
-            <div class="cf-bolao-card-main">
-                <div class="cf-bolao-card-head">
-                    <span class="cf-bolao-mod">${_escHtml(item.modalidade)}</span>
-                    <span class="cf-bolao-tag cf-bolao-tag-conc">#${_escHtml(item.concurso)}</span>
-                    <span class="cf-bolao-tag cf-bolao-tag-loja">
-                        ${_escHtml(item.origemNome)}${codigoExibicao ? ' · ' + _escHtml(codigoExibicao) : ''}
-                    </span>
-                    <span class="cf-bolao-tag cf-bolao-tag-tipo">${_escHtml(item.tipoPerspectiva)}</span>
-                    <span class="cf-bolao-tag cf-bolao-tag-val">${_fmtBRL(item.valorUnit)}/cota</span>
-                </div>
-
-                <div class="cf-bolao-card-tags">
-                    <span class="cf-bolao-chip">${item.qtdJogos || 0} jogos</span>
-                    <span class="cf-bolao-chip">${item.qtdDezenas || 0} dez.</span>
-                    <span class="cf-bolao-chip">posição ${item.qtdCotasPosicao}</span>
-                    <span class="cf-bolao-chip">vendidas ${item.qtdVendidaLoja}</span>
-                    <span class="cf-bolao-chip cf-bolao-chip-saldo">saldo ${item.saldo}</span>
-                </div>
-            </div>
-
-            <div class="cf-bolao-card-side">
-                <div class="cf-bolao-price">${_fmtBRL(item.valorUnit)}</div>
-                <div class="cf-bolao-price-sub">por cota</div>
-            </div>
-        </div>
-    `;
-}
-
     // ─────────────────────────────────────────────────────────────────────
     // PICKER — escolha de bolão / federal / produto
     // ─────────────────────────────────────────────────────────────────────
@@ -1364,7 +1274,6 @@ async function gravarNoSupabase(fechId, t1) {
         _carrinho              = [];
         _clientes              = [];
         _pickerMap             = {};
-        _boloesDisponiveisCF   = [];
         _boloesDisponiveisCF   = [];
 
         // Sidebar de volta ao padrão
