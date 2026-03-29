@@ -1911,7 +1911,14 @@ console.log('PAYLOAD FECHAMENTO', payload);
 
         // ── Grava módulo CF (extrato clientes) ────────────────────────────
         await CF.gravarNoSupabase(fechId, t1);
+        if (sobrescrever && tokenAutorizado?.id) {
+        await FECHAMENTO_RULES.consumirTokenSobrescrita({
+        tokenId: tokenAutorizado.id,
+        fechamentoId: fechId
+          });
+        }
 
+        
         setProgress(100);
 
         fechamentoOriginalId = fechId;
