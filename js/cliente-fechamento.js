@@ -33,12 +33,12 @@ window.CF = (() => {
     // ─────────────────────────────────────────────────────────────────────
     // ESTADO PRIVADO
     // ─────────────────────────────────────────────────────────────────────
-    let _clientes     = [];        // lista completa carregada do banco
-    let _clienteAtual = null;      // cliente selecionado na sessão
-    let _carrinho     = [];        // itens a confirmar como débito
-    let _pickerTipo   = null;      // tipo sendo escolhido no picker
-    let _pickerMap    = {};        // mapa id→item para onclicks seguros
-
+    let _clientes            = [];      // lista completa carregada do banco
+    let _clienteAtual        = null;    // cliente selecionado na sessão
+    let _carrinho            = [];      // itens a confirmar como débito
+    let _pickerTipo          = null;    // tipo sendo escolhido no picker
+    let _pickerMap           = {};      // mapa id→item para onclicks seguros
+    let _boloesDisponiveisCF = [];      // mapa dos boloes disponiveis
     const $ = id => document.getElementById(id);
 
     // ─────────────────────────────────────────────────────────────────────
@@ -407,79 +407,207 @@ if (sp) {
             : `${count} lançamento${count > 1 ? 's' : ''}`;
     }
 
+    function _escHtml(v) {
+    return String(v ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+async function _buscarBoloesDisponiveisCF() {
+    const dataRef = $('data-ref')?.value || '';
+    if (!dataRef) {
+        throw new Error('Preencha a data do fechamento antes de buscar bolões.');
+    }
+
+    const { data, error } = await _sb.rpc('fn_boloes_disponiveis_loja', {
+        p_loteria_id: Number(_getLoteriaAtiva().id),
+        p_data_ref: dataRef
+    });
+
+    if (error) throw error;
+
+    _boloesDisponiveisCF = (data || []).map(row => ({
+        tipo: 'BOLAO',
+
+        descricao: `${row.modalidade} — Concurso ${row.concurso}`,
+        sub: `${row.tipo_perspectiva || (row.eh_origem ? 'INTERNO' : 'EXTERNO')} · Saldo: ${Number(row.saldo_real || 0)} cota${Number(row.saldo_real || 0) !== 1 ? 's' : ''}`,
+
+        valorUnit: Number(row.valor_cota || 0),
+        saldo: Number(row.saldo_real || 0),
+
+        bolao_id: row.bolao_id,
+        modalidade: row.modalidade || null,
+        concurso: row.concurso || null,
+        qtdJogos: Number(row.qtd_jogos || 0) || null,
+        qtdDezenas: Number(row.qtd_dezenas || 0) || null,
+
+        qtdCotasPosicao: Number(row.qtd_cotas_posicao || 0),
+        qtdVendidaLoja: Number(row.qtd_vendida_loja || 0),
+
+        tipoPerspectiva: row.tipo_perspectiva || (row.eh_origem ? 'INTERNO' : 'EXTERNO'),
+
+        loteria_id: row.loteria_id || null,
+        loteriaNome: row.loteria_nome || '—',
+        loteriaSlug: row.loteria_slug || '',
+
+        origemNome: row.loteria_origem_nome || row.loteria_nome || '—',
+        origemSlug: row.loteria_origem_slug || '',
+        origemCodigo: row.loteria_origem_codigo || '',
+        codigoLoterico: row.codigo_loterico || '',
+
+        federal_id: null,
+        raspadinha_id: null,
+        telesena_item_id: null
+    }));
+}
+
+function _renderCardBolaoCF(item, key) {
+    const codigoExibicao = item.codigoLoterico || item.origemCodigo || '';
+
+    return `
+        <div class="cf-bolao-card" onclick="CF._escolherItem('${key}')">
+            <div class="cf-bolao-card-main">
+                <div class="cf-bolao-card-head">
+                    <span class="cf-bolao-mod">${_escHtml(item.modalidade)}</span>
+                    <span class="cf-bolao-tag cf-bolao-tag-conc">#${_escHtml(item.concurso)}</span>
+                    <span class="cf-bolao-tag cf-bolao-tag-loja">
+                        ${_escHtml(item.origemNome)}${codigoExibicao ? ' · ' + _escHtml(codigoExibicao) : ''}
+                    </span>
+                    <span class="cf-bolao-tag cf-bolao-tag-tipo">${_escHtml(item.tipoPerspectiva)}</span>
+                    <span class="cf-bolao-tag cf-bolao-tag-val">${_fmtBRL(item.valorUnit)}/cota</span>
+                </div>
+
+                <div class="cf-bolao-card-tags">
+                    <span class="cf-bolao-chip">${item.qtdJogos || 0} jogos</span>
+                    <span class="cf-bolao-chip">${item.qtdDezenas || 0} dez.</span>
+                    <span class="cf-bolao-chip">posição ${item.qtdCotasPosicao}</span>
+                    <span class="cf-bolao-chip">vendidas ${item.qtdVendidaLoja}</span>
+                    <span class="cf-bolao-chip cf-bolao-chip-saldo">saldo ${item.saldo}</span>
+                </div>
+            </div>
+
+            <div class="cf-bolao-card-side">
+                <div class="cf-bolao-price">${_fmtBRL(item.valorUnit)}</div>
+                <div class="cf-bolao-price-sub">por cota</div>
+            </div>
+        </div>
+    `;
+}
     // ─────────────────────────────────────────────────────────────────────
     // PICKER — escolha de bolão / federal / produto
     // ─────────────────────────────────────────────────────────────────────
-    function _renderPicker() {
-        const titulo = $('cf-picker-titulo');
-        const wrap   = $('cf-picker-lista');
-        const busca  = $('cf-picker-busca');
-        if (!wrap) return;
-        if (busca) busca.value = '';
-        _pickerMap = {};
+function _renderPicker() {
+    const titulo = $('cf-picker-titulo');
+    const wrap   = $('cf-picker-lista');
+    const busca  = $('cf-picker-busca');
+    if (!wrap) return;
+    if (busca) busca.value = '';
+    _pickerMap = {};
 
-        const labels = { BOLAO: 'Bolões disponíveis', FEDERAL: 'Federais disponíveis', PRODUTO: 'Produtos disponíveis' };
-        if (titulo) titulo.textContent = labels[_pickerTipo] || _pickerTipo;
+    const labels = {
+        BOLAO: 'Bolões disponíveis',
+        FEDERAL: 'Federais disponíveis',
+        PRODUTO: 'Produtos disponíveis'
+    };
+    if (titulo) titulo.textContent = labels[_pickerTipo] || _pickerTipo;
 
-        let lista = [];
+    let lista = [];
 
-        // ── BOLÕES ────────────────────────────────────────────────────
-        if (_pickerTipo === 'BOLAO') {
-            lista = _getBoloes()
-                .filter(b => {
-                    const saldo = Number(b.data?.saldo_editavel ?? b.data?.saldo_atual ?? 0);
-                    return saldo > 0;
-                })
-                .map(b => {
-                    const saldo    = Number(b.data.saldo_editavel ?? b.data.saldo_atual ?? 0);
-                    const valCota  = Number(b.data.valorCota || 0);
-                    const tipoTag  = b.tipo === 'EXTERNO' ? '🔵 Externo' : '🟢 Interno';
-                    return {
-    tipo:        'BOLAO',
-    descricao:   `${b.data.modalidade} — Concurso ${b.data.concurso}`,
-    sub:         `${tipoTag} · Saldo: ${saldo} cota${saldo !== 1 ? 's' : ''}`,
-    valorUnit:   valCota,
-    saldo,
+    if (_pickerTipo === 'BOLAO') {
+        lista = (_boloesDisponiveisCF || []).filter(b => Number(b.saldo || 0) > 0);
+    }
 
-    bolao_id:         b.data.bolao_id,
-    modalidade:       b.data.modalidade || null,
-    concurso:         b.data.concurso || null,
-    qtdJogos:         Number(b.data.qtdJogos || 0) || null,
-    qtdDezenas:       Number(b.data.qtdDezenas || 0) || null,
+    if (_pickerTipo === 'FEDERAL') {
+        lista = _getFederais()
+            .filter(f => Number(f.saldo_editavel ?? f.saldo_atual ?? 0) > 0)
+            .map(f => {
+                const saldo = Number(f.saldo_editavel ?? f.saldo_atual ?? 0);
+                return {
+                    tipo: 'FEDERAL',
+                    descricao: `${f.modalidade} — Concurso ${f.concurso}`,
+                    sub: `Sorteio ${_fmtData(f.dtSorteio)} · Saldo: ${saldo} fração${saldo !== 1 ? 'ões' : ''}`,
+                    valorUnit: Number(f.valorUnit || 0),
+                    saldo,
 
-    federal_id:       null,
-    raspadinha_id:    null,
-    telesena_item_id: null
-};
-                });
+                    bolao_id: null,
+                    federal_id: f.federal_id,
+                    raspadinha_id: null,
+                    telesena_item_id: null,
+
+                    modalidade: f.modalidade || null,
+                    concurso: f.concurso || null,
+                    qtdJogos: null,
+                    qtdDezenas: null
+                };
+            });
+    }
+
+    if (_pickerTipo === 'PRODUTO') {
+        lista = _getProdutos()
+            .filter(p => Number(p.saldo_editavel ?? p.saldo_atual ?? 0) > 0)
+            .map(p => {
+                const saldo = Number(p.saldo_editavel ?? p.saldo_atual ?? 0);
+                const tipoProd = p.produto === 'RASPADINHA' ? 'Raspadinha' : 'Tele Sena';
+                return {
+                    tipo: 'PRODUTO',
+                    descricao: p.item_nome || 'Produto',
+                    sub: `${tipoProd} · Saldo: ${saldo} unidade${saldo !== 1 ? 's' : ''}`,
+                    valorUnit: Number(p.valor_venda || 0),
+                    saldo,
+                    bolao_id: null,
+                    federal_id: null,
+                    raspadinha_id: p.raspadinha_id || null,
+                    telesena_item_id: p.telesena_item_id || null
+                };
+            });
+    }
+
+    if (!lista.length) {
+        wrap.innerHTML = `
+            <div class="cf-empty">
+                <div class="cf-empty-icon">📭</div>
+                <div>Nenhum item com saldo disponível</div>
+                <small>Verifique o estoque ou a data selecionada</small>
+            </div>`;
+        return;
+    }
+
+    lista.forEach((item, i) => {
+        const key = 'p' + i;
+        _pickerMap[key] = item;
+    });
+
+    wrap.innerHTML = lista.map((item, i) => {
+        const key = 'p' + i;
+
+        if (item.tipo === 'BOLAO') {
+            return _renderCardBolaoCF(item, key);
         }
 
-        // ── FEDERAIS ──────────────────────────────────────────────────
-        if (_pickerTipo === 'FEDERAL') {
-            lista = _getFederais()
-                .filter(f => Number(f.saldo_editavel ?? f.saldo_atual ?? 0) > 0)
-                .map(f => {
-                    const saldo = Number(f.saldo_editavel ?? f.saldo_atual ?? 0);
-                    return {
-    tipo:        'FEDERAL',
-    descricao:   `${f.modalidade} — Concurso ${f.concurso}`,
-    sub:         `Sorteio ${_fmtData(f.dtSorteio)} · Saldo: ${saldo} fração${saldo !== 1 ? 'ões' : ''}`,
-    valorUnit:   Number(f.valorUnit || 0),
-    saldo,
-
-    bolao_id:         null,
-    federal_id:       f.federal_id,
-    raspadinha_id:    null,
-    telesena_item_id: null,
-
-    modalidade:       f.modalidade || null,
-    concurso:         f.concurso || null,
-    qtdJogos:         null,
-    qtdDezenas:       null
-};
-                });
-        }
-
+        return `
+            <div class="cf-picker-item" onclick="CF._escolherItem('${key}')">
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:600;color:var(--bright);margin-bottom:3px;
+                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        ${item.descricao}
+                    </div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">
+                        ${item.sub}
+                    </div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;
+                                color:var(--accent)">${_fmtBRL(item.valorUnit)}</div>
+                    <div style="font-size:9px;color:var(--dim);margin-top:2px;font-family:'IBM Plex Mono',monospace">
+                        por unidade
+                    </div>
+                </div>
+            </div>`;
+    }).join('');
+}
         // ── PRODUTOS ──────────────────────────────────────────────────
         if (_pickerTipo === 'PRODUTO') {
             lista = _getProdutos()
@@ -539,12 +667,12 @@ if (sp) {
     }
 
     function _filtrarPicker() {
-        const q     = ($('cf-picker-busca')?.value || '').toLowerCase();
-        const items = document.querySelectorAll('.cf-picker-item');
-        items.forEach(el => {
-            el.style.display = (q && !el.textContent.toLowerCase().includes(q)) ? 'none' : '';
-        });
-    }
+    const q = ($('cf-picker-busca')?.value || '').toLowerCase();
+    const items = document.querySelectorAll('.cf-picker-item, .cf-bolao-card');
+    items.forEach(el => {
+        el.style.display = (q && !el.textContent.toLowerCase().includes(q)) ? 'none' : '';
+    });
+}
 
     function _escolherItem(key) {
         const item = _pickerMap[key];
@@ -566,22 +694,26 @@ if (sp) {
         _syncNav('carrinho');
     }
 
-    async function adicionarItemCarrinho(tipo) {
+   async function adicionarItemCarrinho(tipo) {
     if (tipo === 'CONTA') {
         _carrinho.push({ id: _uid(), tipo: 'CONTA', descricao: '', valor: 0 });
         _renderCarrinho();
         return;
     }
 
-    if (tipo === 'BOLAO' && !_getBoloes().length) {
-        const dataRef = $('data-ref')?.value || '';
-        if (!dataRef) {
-            alert('Preencha a data do fechamento antes de buscar bolões.');
+    if (tipo === 'BOLAO') {
+        try {
+            await _buscarBoloesDisponiveisCF();
+        } catch (e) {
+            alert(e.message || e);
             return;
         }
-        if (typeof window.carregarBoloes === 'function') {
-            await window.carregarBoloes();
-        }
+
+        _pickerTipo = tipo;
+        _renderPicker();
+        _switchView('picker');
+        _syncNav('carrinho');
+        return;
     }
 
     if (tipo === 'FEDERAL' && !_getFederais().length) {
@@ -1058,6 +1190,7 @@ async function gravarNoSupabase(fechId, t1) {
         _carrinho              = [];
         _clientes              = [];
         _pickerMap             = {};
+        _boloesDisponiveisCF   = [];
 
         // Sidebar de volta ao padrão
         const av = $('cf-avatar-iniciais');
