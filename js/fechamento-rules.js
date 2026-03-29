@@ -87,25 +87,24 @@
     return out;
   }
 
- async function gerarTokenSobrescrita({
+async function gerarTokenSobrescrita({
   loteriaId,
   funcionarioId,
   dataRef,
-  minutos = 10,
+  minutos = 3,
   observacao = ''
 }) {
   const { data, error } = await sb.rpc('rpc_gerar_token_sobrescrita', {
     p_loteria_id: Number(loteriaId),
     p_alvo_usuario_id: Number(funcionarioId),
     p_alvo_data_ref: dataRef,
-    p_minutos: Number(minutos || 3),
+    p_minutos: 3,
     p_observacao: observacao || null
   });
 
   if (error) throw new Error(error.message);
   return data;
 }
-
 async function validarTokenSobrescrita({
   token,
   loteriaId,
