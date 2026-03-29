@@ -682,3 +682,231 @@ footer {
     font-size: 20px;
   }
 }
+.lojas-helper {
+  margin: -4px 0 12px;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.loja-chip {
+  position: relative;
+}
+
+.loja-chip.token-enabled {
+  cursor: pointer;
+  border-color: rgba(245, 166, 35, 0.22);
+}
+
+.loja-chip.token-enabled:hover {
+  border-color: rgba(245, 166, 35, 0.55);
+  color: var(--text-bright);
+  box-shadow: 0 0 0 1px rgba(245, 166, 35, 0.12) inset;
+}
+
+.loja-chip.token-enabled::after {
+  content: '🔑';
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.overlay-menu {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 10, 20, 0.72);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.overlay-menu.show {
+  display: flex;
+}
+
+.modal-token-menu {
+  width: 100%;
+  max-width: 520px;
+  border: 1px solid var(--blue-border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(19, 41, 82, 0.98), rgba(10, 22, 40, 0.98));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.modal-token-head {
+  padding: 16px 18px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(30, 58, 110, 0.7);
+}
+
+.modal-token-title {
+  color: var(--text-bright);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modal-token-sub {
+  margin-top: 3px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.modal-token-close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--blue-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-mid);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.modal-token-close:hover {
+  color: var(--text-bright);
+  border-color: rgba(245, 166, 35, 0.4);
+}
+
+.modal-token-body {
+  padding: 16px 18px;
+}
+
+.token-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.token-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.token-field-full {
+  margin-bottom: 12px;
+}
+
+.token-field label {
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.token-field input,
+.token-field select {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--blue-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-bright);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+}
+
+.token-field input:focus,
+.token-field select:focus {
+  border-color: rgba(245, 166, 35, 0.5);
+}
+
+.token-field input[readonly] {
+  opacity: 0.92;
+  cursor: default;
+}
+
+.token-result {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 166, 35, 0.22);
+  border-radius: 10px;
+  background: rgba(245, 166, 35, 0.06);
+}
+
+.token-result-label {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.token-result-code {
+  color: var(--amber);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+
+.token-result-expira {
+  margin-top: 6px;
+  color: var(--text-mid);
+  font-size: 11px;
+}
+
+.token-erro {
+  margin-top: 12px;
+  color: #ff8c8c;
+  font-size: 12px;
+}
+
+.modal-token-actions {
+  padding: 14px 18px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid rgba(30, 58, 110, 0.7);
+}
+
+.btn-token-sec,
+.btn-token-pri {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn-token-sec {
+  border: 1px solid var(--blue-border);
+  background: transparent;
+  color: var(--text-mid);
+}
+
+.btn-token-sec:hover {
+  color: var(--text-bright);
+}
+
+.btn-token-pri {
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  background: rgba(245, 166, 35, 0.12);
+  color: var(--amber);
+}
+
+.btn-token-pri:hover {
+  background: rgba(245, 166, 35, 0.18);
+}
+
+@media (max-width: 600px) {
+  .token-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .token-result-code {
+    font-size: 28px;
+  }
+}
