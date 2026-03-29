@@ -221,24 +221,25 @@
             <div class="card-desc">Vendas em plataformas</div>
           </div>
         </a>
+
         <a class="menu-card card-financeiro" href="./controle.html" style="--card-color:#f59e0b">
-        <div class="card-arrow">→</div>
-        <div class="card-icon ci-amber">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 3v18h18"/>
-          <path d="M7 14l3-3 3 2 4-5"/>
-        <circle cx="7" cy="14" r="1"/>
-          <circle cx="10" cy="11" r="1"/>
-          <circle cx="13" cy="13" r="1"/>
-        <circle cx="17" cy="8" r="1"/>
-        </svg>
-      </div>
-  <div>
-    <div class="card-title">Controle Financeiro</div>
-    <div class="card-desc">Acertos entre lojas</div>
-  </div>
-</a>
+          <div class="card-arrow">→</div>
+          <div class="card-icon ci-amber">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="M7 14l3-3 3 2 4-5"/>
+              <circle cx="7" cy="14" r="1"/>
+              <circle cx="10" cy="11" r="1"/>
+              <circle cx="13" cy="13" r="1"/>
+              <circle cx="17" cy="8" r="1"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Controle Financeiro</div>
+            <div class="card-desc">Acertos entre lojas</div>
+          </div>
+        </a>
+
         <a class="menu-card card-caixa" href="./caixa-vendas.html" style="--card-color:#a78bfa">
           <div class="card-arrow">→</div>
           <div class="card-icon ci-purple">
@@ -280,91 +281,33 @@
     </div>
 
     <div class="lojas-wrap">
-  <div class="section-sep section-sep--stores">
-    <div class="section-sep-label">Lojas do Grupo</div>
-    <div class="section-sep-line"></div>
-  </div>
-
-  <div class="lojas-helper" id="lojasHelper" style="display:none">
-    Toque em uma loja para gerar token de sobrescrita.
-  </div>
-
-  <div class="lojas-row" id="lojasRow"></div>
-</div>
-
-<div class="overlay-menu" id="mGerarTokenLoja">
-  <div class="modal-token-menu">
-    <div class="modal-token-head">
-      <div>
-        <div class="modal-token-title">Gerar token</div>
-        <div class="modal-token-sub">Autorização para sobrescrever fechamento</div>
+      <div class="section-sep section-sep--stores">
+        <div class="section-sep-label">Lojas do Grupo</div>
+        <div class="section-sep-line"></div>
       </div>
-      <button type="button" class="modal-token-close" id="btnFecharTokenLoja">×</button>
-    </div>
-
-    <div class="modal-token-body">
-      <div class="token-field token-field-full">
-        <label>Loja</label>
-        <input type="text" id="gtLojaNome" readonly>
-      </div>
-
-      <div class="token-grid">
-        <div class="token-field">
-          <label>Funcionário</label>
-          <select id="gtFuncionario">
-            <option value="">Selecione...</option>
-          </select>
-        </div>
-
-        <div class="token-field">
-          <label>Data</label>
-          <input type="date" id="gtData">
-        </div>
-
-       <div class="token-field">
-        <label>Validade</label>
-        <input type="text" id="gtMinutos" value="3 minutos" readonly>
-        </div>
-      </div>
-
-      <div class="token-result" id="gtResultado" style="display:none">
-        <div class="token-result-label">Token gerado</div>
-        <div class="token-result-code" id="gtCodigoToken">000000</div>
-        <div class="token-result-expira" id="gtExpiraToken"></div>
-      </div>
-
-      <div class="token-erro" id="gtErro" style="display:none"></div>
-    </div>
-
-    <div class="modal-token-actions">
-      <button type="button" class="btn-token-sec" id="btnCancelarTokenLoja">Fechar</button>
-      <button type="button" class="btn-token-pri" id="btnConfirmarGerarTokenLoja">Gerar</button>
-    </div>
-  </div>
-</div>
 
       <div class="lojas-row">
-        <div class="loja-chip">
+        <div class="loja-chip" data-loteria-id="2" data-loteria-nome="Boulevard">
           <div class="loja-logo"><img src="./icons/boulevard.png" alt="Boulevard" /></div>
           Boulevard
         </div>
 
-        <div class="loja-chip">
+        <div class="loja-chip" data-loteria-id="1" data-loteria-nome="Centro">
           <div class="loja-logo"><img src="./icons/loterpraca.png" alt="Centro" /></div>
           Centro
         </div>
 
-        <div class="loja-chip">
+        <div class="loja-chip" data-loteria-id="3" data-loteria-nome="Lotobel">
           <div class="loja-logo"><img src="./icons/lotobel.png" alt="Lotobel" /></div>
           Lotobel
         </div>
 
-        <div class="loja-chip">
+        <div class="loja-chip" data-loteria-id="4" data-loteria-nome="Santa Tereza">
           <div class="loja-logo"><img src="./icons/santa-tereza.png" alt="Santa Tereza" /></div>
           Santa Tereza
         </div>
 
-        <div class="loja-chip">
+        <div class="loja-chip" data-loteria-id="5" data-loteria-nome="Via Brasil">
           <div class="loja-logo"><img src="./icons/via-brasil.png" alt="Via Brasil" /></div>
           Via Brasil
         </div>
@@ -372,12 +315,58 @@
     </div>
   </div>
 
+  <div class="overlay-menu" id="mGerarTokenLoja">
+    <div class="modal-token-menu">
+      <div class="modal-token-head">
+        <div>
+          <div class="modal-token-title">Gerar token</div>
+          <div class="modal-token-sub">Autorização para sobrescrever fechamento</div>
+        </div>
+        <button type="button" class="modal-token-close" id="btnFecharTokenLoja">×</button>
+      </div>
+
+      <div class="modal-token-body">
+        <div class="token-field token-field-full">
+          <label>Loja</label>
+          <input type="text" id="gtLojaNome" readonly>
+        </div>
+
+        <div class="token-grid">
+          <div class="token-field">
+            <label>Funcionário</label>
+            <select id="gtFuncionario">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+
+          <div class="token-field">
+            <label>Data</label>
+            <input type="date" id="gtData">
+          </div>
+        </div>
+
+        <div class="token-result" id="gtResultado" style="display:none">
+          <div class="token-result-label">Token gerado</div>
+          <div class="token-result-code" id="gtCodigoToken">000000</div>
+          <div class="token-result-expira" id="gtExpiraToken"></div>
+        </div>
+
+        <div class="token-erro" id="gtErro" style="display:none"></div>
+      </div>
+
+      <div class="modal-token-actions">
+        <button type="button" class="btn-token-sec" id="btnCancelarTokenLoja">Fechar</button>
+        <button type="button" class="btn-token-pri" id="btnConfirmarGerarTokenLoja">Gerar</button>
+      </div>
+    </div>
+  </div>
+
   <footer>SISLOT v2.0 · Sistema de Gestão de Bolões · Supabase Auth</footer>
 
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="./sislot-config.js"></script>
-<script src="./sislot-security.js"></script>
-<script src="./js/fechamento-rules.js"></script>
-<script src="./js/menu.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./sislot-security.js"></script>
+  <script src="./js/fechamento-rules.js"></script>
+  <script src="./js/menu.js"></script>
 </body>
 </html>
