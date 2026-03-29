@@ -167,7 +167,7 @@ async function consumirTokenSobrescrita({
   if (!input || !erro) return;
 
   const codigo = input.value.replace(/\D/g, '').slice(0, 6);
-
+  console.log('CONFIRMANDO TOKEN VIA ARQUIVO NOVO');
   if (!codigo) {
     erro.textContent = 'Informe o token.';
     erro.style.display = 'block';
@@ -183,7 +183,7 @@ async function consumirTokenSobrescrita({
     });
 
     fecharModalToken();
-
+    console.log('VALIDANDO TOKEN VIA RPC');
     if (window.__fechamentoTokenResolver) {
       window.__fechamentoTokenResolver(tokenValido);
       window.__fechamentoTokenResolver = null;
