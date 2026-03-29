@@ -1,6 +1,6 @@
 /**
  * SISLOT - Menu Principal
- * Versão refatorada com utils
+ * Token por loja na seção "Lojas do Grupo"
  */
 
 const sb = supabase.createClient(
@@ -8,7 +8,6 @@ const sb = supabase.createClient(
     window.SISLOT_CONFIG.anonKey
 );
 
-// Importa funções do utils
 const utils = window.SISLOT_UTILS || {};
 const $ = utils.$ || (id => document.getElementById(id));
 const updateClock = utils.updateClock || (() => {
@@ -28,6 +27,17 @@ const PERFIL_LABEL = {
     GERENTE: 'Gerente',
     OPERADOR: 'Operador',
 };
+
+const LOJAS_FIXAS = [
+    { id: 2, nome: 'Boulevard', icon: './icons/boulevard.png' },
+    { id: 1, nome: 'Centro', icon: './icons/loterpraca.png' },
+    { id: 3, nome: 'Lotobel', icon: './icons/lotobel.png' },
+    { id: 4, nome: 'Santa Tereza', icon: './icons/santa-tereza.png' },
+    { id: 5, nome: 'Via Brasil', icon: './icons/via-brasil.png' },
+];
+
+let usuarioAtual = null;
+let lojaTokenAtual = null;
 
 init();
 
@@ -92,6 +102,18 @@ function hojeIso() {
     return new Date().toISOString().slice(0, 10);
 }
 
+function isAdmin(usuario) {
+    return String(usuario?.perfil || '').trim().toUpperCase() === 'ADMIN';
+}
+
+function isSocio(usuario) {
+    return String(usuario?.perfil || '').trim().toUpperCase() === 'SOCIO';
+}
+
+function podeGerarToken(usuario) {
+    return isAdmin(usuario) || isSocio(usuario);
+}
+
 async function carregarIndicadores() {
     const hoje = hojeIso();
 
@@ -151,6 +173,225 @@ async function carregarUsuarioLogado() {
     return await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
 }
 
+async function carregarTodasLoterias() {
+    const { data, error } = await sb
+        .from('loterias')
+        .select('id, nome')
+        .order('nome', { ascending: true });
+
+    if (error) throw new Error(error.message);
+
+    return (data || []).map((l) => ({
+        id: Number(l.id),
+        nome: l.nome
+    }));
+}
+
+async function carregarLoteriasDoSocio(usuarioId) {
+    const { data, error } = await sb
+        .from('usuarios_loterias')
+        .select(`
+            loteria_id,
+            principal,
+            ativo,
+            loterias(id, nome)
+        `)
+        .eq('usuario_id', Number(usuarioId))
+        .eq('ativo', true);
+
+    if (error) throw new Error(error.message);
+
+    return (data || [])
+        .map((row) => {
+            const lot = Array.isArray(row.loterias) ? row.loterias[0] : row.loterias;
+            return {
+                id: Number(row.loteria_id),
+                nome: lot?.nome || `Loteria ${row.loteria_id}`,
+                principal: !!row.principal
+            };
+        })
+        .sort((a, b) => {
+            if (a.principal !== b.principal) return a.principal ? -1 : 1;
+            return String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+        });
+}
+
+function iconeLoja(nome) {
+    const n = String(nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+    if (n.includes('boulevard')) return './icons/boulevard.png';
+    if (n.includes('centro')) return './icons/loterpraca.png';
+    if (n.includes('lotobel')) return './icons/lotobel.png';
+    if (n.includes('santa tereza')) return './icons/santa-tereza.png';
+    if (n.includes('via brasil')) return './icons/via-brasil.png';
+
+    return './icons/loterpraca.png';
+}
+
+function renderLojasRow(lojas, comToken) {
+    const row = $('lojasRow');
+    if (!row) return;
+
+    row.innerHTML = '';
+
+    lojas.forEach((loja) => {
+        const el = document.createElement(comToken ? 'button' : 'div');
+        el.className = `loja-chip ${comToken ? 'token-enabled' : ''}`;
+        if (comToken) {
+            el.type = 'button';
+            el.addEventListener('click', () => abrirModalTokenLoja(loja));
+        }
+
+        el.innerHTML = `
+            <div class="loja-logo">
+              <img src="${iconeLoja(loja.nome)}" alt="${loja.nome}">
+            </div>
+            <span>${loja.nome}</span>
+        `;
+
+        row.appendChild(el);
+    });
+}
+
+async function montarLojasDoGrupo(usuario) {
+    const helper = $('lojasHelper');
+
+    if (podeGerarToken(usuario)) {
+        const lojas = isAdmin(usuario)
+            ? await carregarTodasLoterias()
+            : await carregarLoteriasDoSocio(usuario.id);
+
+        if (helper) helper.style.display = 'block';
+        renderLojasRow(lojas, true);
+        return;
+    }
+
+    if (helper) helper.style.display = 'none';
+    renderLojasRow(LOJAS_FIXAS, false);
+}
+
+async function carregarFuncionariosDaLoteria(loteriaId) {
+    const { data, error } = await sb
+        .from('usuarios_loterias')
+        .select(`
+            usuario_id,
+            ativo,
+            usuarios(id, nome, perfil, ativo, pode_logar)
+        `)
+        .eq('loteria_id', Number(loteriaId))
+        .eq('ativo', true);
+
+    if (error) throw new Error(error.message);
+
+    return (data || [])
+        .flatMap((row) => {
+            if (!row.usuarios) return [];
+            return Array.isArray(row.usuarios) ? row.usuarios : [row.usuarios];
+        })
+        .filter((u) => u && u.ativo && u.pode_logar)
+        .filter((u, i, arr) => arr.findIndex((x) => Number(x.id) === Number(u.id)) === i)
+        .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+}
+
+function limparResultadoToken() {
+    const box = $('gtResultado');
+    const erro = $('gtErro');
+
+    if (box) box.style.display = 'none';
+    if (erro) {
+        erro.style.display = 'none';
+        erro.textContent = '';
+    }
+
+    if ($('gtCodigoToken')) $('gtCodigoToken').textContent = '000000';
+    if ($('gtExpiraToken')) $('gtExpiraToken').textContent = '';
+}
+
+async function abrirModalTokenLoja(loja) {
+    lojaTokenAtual = loja;
+    limparResultadoToken();
+
+    const nomeLoja = $('gtLojaNome');
+    const data = $('gtData');
+    const func = $('gtFuncionario');
+
+    if (nomeLoja) nomeLoja.value = loja.nome;
+    if (data) data.value = hojeIso();
+    if (func) func.innerHTML = '<option value="">Carregando...</option>';
+
+    try {
+        const funcionarios = await carregarFuncionariosDaLoteria(loja.id);
+        if (func) {
+            func.innerHTML = '<option value="">Selecione...</option>';
+            funcionarios.forEach((u) => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.nome;
+                func.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        if (func) func.innerHTML = '<option value="">Erro ao carregar</option>';
+        throw e;
+    }
+
+    $('mGerarTokenLoja')?.classList.add('show');
+}
+
+function fecharModalTokenLoja() {
+    $('mGerarTokenLoja')?.classList.remove('show');
+}
+
+async function gerarTokenDaLojaSelecionada() {
+    const erro = $('gtErro');
+    const funcionarioId = $('gtFuncionario')?.value;
+    const dataRef = $('gtData')?.value;
+    const minutos = $('gtMinutos')?.value || '10';
+
+    limparResultadoToken();
+
+    if (!lojaTokenAtual?.id || !funcionarioId || !dataRef) {
+        if (erro) {
+            erro.textContent = 'Preencha funcionário e data.';
+            erro.style.display = 'block';
+        }
+        return;
+    }
+
+    try {
+        const tk = await FECHAMENTO_RULES.gerarTokenSobrescrita({
+            loteriaId: Number(lojaTokenAtual.id),
+            funcionarioId: Number(funcionarioId),
+            dataRef,
+            minutos: Number(minutos),
+            observacao: `Token gerado pelo menu - ${lojaTokenAtual.nome}`
+        });
+
+        const box = $('gtResultado');
+        const codigo = $('gtCodigoToken');
+        const expira = $('gtExpiraToken');
+
+        if (box) box.style.display = 'block';
+        if (codigo) codigo.textContent = String(tk.token || '').replace(/\D/g, '').slice(0, 6);
+        if (expira) expira.textContent = `Expira em ${new Date(tk.expira_em).toLocaleString('pt-BR')}`;
+    } catch (e) {
+        if (erro) {
+            erro.textContent = e.message || 'Erro ao gerar token.';
+            erro.style.display = 'block';
+        }
+    }
+}
+
+function bindModalTokenLoja() {
+    $('btnFecharTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
+    $('btnCancelarTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
+    $('btnConfirmarGerarTokenLoja')?.addEventListener('click', gerarTokenDaLojaSelecionada);
+
+    $('mGerarTokenLoja')?.addEventListener('click', (e) => {
+        if (e.target?.id === 'mGerarTokenLoja') fecharModalTokenLoja();
+    });
+}
+
 async function init() {
     try {
         startClock();
@@ -158,10 +399,15 @@ async function init() {
         const usuario = await carregarUsuarioLogado();
         if (!usuario) return;
 
+        usuarioAtual = usuario;
+
         preencherUsuario(usuario);
         aplicarPermissoesMenu(usuario.perfil);
         configurarLogout();
+        bindModalTokenLoja();
+
         await carregarIndicadores();
+        await montarLojasDoGrupo(usuario);
     } catch (err) {
         console.error('Erro ao iniciar menu:', err);
         alert(err.message || 'Erro ao iniciar menu');
