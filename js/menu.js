@@ -316,15 +316,7 @@ function limparResultadoToken() {
     if ($('gtCodigoToken')) $('gtCodigoToken').textContent = '000000';
     if ($('gtExpiraToken')) $('gtExpiraToken').textContent = '';
 }
-function bindModalTokenLoja() {
-    $('btnFecharTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
-    $('btnCancelarTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
-    $('btnConfirmarGerarTokenLoja')?.addEventListener('click', gerarTokenDaLojaSelecionada);
 
-    $('mGerarTokenLoja')?.addEventListener('click', (e) => {
-        if (e.target?.id === 'mGerarTokenLoja') fecharModalTokenLoja();
-    });
-}
 async function abrirModalTokenLoja(loja) {
     lojaTokenAtual = loja;
     limparResultadoToken();
@@ -454,14 +446,26 @@ async function bindLojasDoGrupo(usuario) {
         });
     });
 }
+function fecharModalTokenLoja() {
+    $('mGerarTokenLoja')?.classList.remove('show');
+}
+
+function bindModalTokenLoja() {
+    $('btnFecharTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
+    $('btnCancelarTokenLoja')?.addEventListener('click', fecharModalTokenLoja);
+    $('btnConfirmarGerarTokenLoja')?.addEventListener('click', gerarTokenDaLojaSelecionada);
+
+    $('mGerarTokenLoja')?.addEventListener('click', (e) => {
+        if (e.target?.id === 'mGerarTokenLoja') fecharModalTokenLoja();
+    });
+}
+
 async function init() {
     try {
         startClock();
 
         const usuario = await carregarUsuarioLogado();
         if (!usuario) return;
-
-        usuarioAtual = usuario;
 
         preencherUsuario(usuario);
         aplicarPermissoesMenu(usuario.perfil);
