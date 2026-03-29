@@ -363,7 +363,7 @@ async function gerarTokenDaLojaSelecionada() {
             loteriaId: Number(lojaTokenAtual.id),
             funcionarioId: Number(funcionarioId),
             dataRef,
-            minutos: Number(minutos),
+            minutos: 3,
             observacao: `Token gerado pelo menu - ${lojaTokenAtual.nome}`
         });
 
