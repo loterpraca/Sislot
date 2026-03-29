@@ -98,7 +98,7 @@
     p_loteria_id: Number(loteriaId),
     p_alvo_usuario_id: Number(funcionarioId),
     p_alvo_data_ref: dataRef,
-    p_minutos: Number(minutos || 10),
+    p_minutos: Number(minutos || 3),
     p_observacao: observacao || null
   });
 
