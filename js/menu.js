@@ -80,6 +80,8 @@ function aplicarPermissoesMenu(perfil) {
         esconder('.card-marketplace');
         esconder('.card-caixa');
         esconder('.card-config');
+        esconder('.card-controle-fechamento');
+        esconder('.card-pendencias');
         const adminWrap = $('adminWrap');
         if (adminWrap) adminWrap.style.display = 'none';
         return;
