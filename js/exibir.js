@@ -20,6 +20,54 @@ const slugLabel = {
 };
 
 let filtroTimer = null;
+let boloesCache = [];
+let bolaoSelecionadoModal = null;
+
+function abrirModalBolao(bolao){
+  bolaoSelecionadoModal = bolao;
+
+  $('bmTitulo').textContent = `${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}`;
+  $('bmModalidade').textContent = bolao.modalidade || '—';
+  $('bmConcurso').textContent = bolao.concurso || '—';
+  $('bmOrigem').textContent = bolao.origem_nome || '—';
+  $('bmValorCota').textContent = fmtBRL(bolao.valor_cota);
+  $('bmQtdCotas').textContent = fmtN(bolao.qtd_cotas_total);
+  $('bmStatus').textContent = bolao.status || '—';
+  $('bmDtInicial').textContent = fmtDate(bolao.dt_inicial);
+  $('bmDtConcurso').textContent = fmtDate(bolao.dt_concurso);
+  $('bmQtdJogos').textContent = fmtN(bolao.qtd_jogos);
+  $('bmQtdDezenas').textContent = fmtN(bolao.qtd_dezenas);
+  $('bmCodigoLoterico').textContent = bolao.codigo_loterico || '—';
+  $('bmObservacao').textContent = bolao.observacao || '—';
+
+  $('bolaoModalOverlay').classList.add('show');
+}
+
+function fecharModalBolao(){
+  $('bolaoModalOverlay').classList.remove('show');
+  bolaoSelecionadoModal = null;
+  document.querySelectorAll('.bolao-check').forEach(chk => chk.checked = false);
+}
+
+function bindSelecaoBoloes(){
+  document.querySelectorAll('.bolao-check').forEach(chk => {
+    chk.addEventListener('change', (e) => {
+      const id = Number(e.target.dataset.id);
+
+      document.querySelectorAll('.bolao-check').forEach(outro => {
+        if (outro !== e.target) outro.checked = false;
+      });
+
+      if (!e.target.checked) {
+        fecharModalBolao();
+        return;
+      }
+
+      const bolao = boloesCache.find(b => Number(b.bolao_id) === id);
+      if (bolao) abrirModalBolao(bolao);
+    });
+  });
+}
 
 function agendarExibicao(){
   clearTimeout(filtroTimer);
