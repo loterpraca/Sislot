@@ -41,10 +41,12 @@ function abrirModalBolao(bolao){
   $('bmObservacao').textContent = bolao.observacao || '—';
 
   $('bolaoModalOverlay').classList.add('show');
+  document.body.classList.add('modal-open');
 }
 
 function fecharModalBolao(){
   $('bolaoModalOverlay').classList.remove('show');
+  document.body.classList.remove('modal-open');
   bolaoSelecionadoModal = null;
   document.querySelectorAll('.bolao-check').forEach(chk => chk.checked = false);
 }
@@ -165,6 +167,19 @@ async function init(){
 
   $('fConc').addEventListener('input', agendarExibicao);
 
+  $('bmFechar')?.addEventListener('click', fecharModalBolao);
+  $('bmCancelar')?.addEventListener('click', fecharModalBolao);
+
+  $('bolaoModalOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'bolaoModalOverlay') fecharModalBolao();
+  });
+
+  $('bmConfirmar')?.addEventListener('click', () => {
+    if (!bolaoSelecionadoModal) return;
+    console.log('Bolão confirmado:', bolaoSelecionadoModal);
+    fecharModalBolao();
+  });
+
   await exibir();
 }
 
@@ -174,6 +189,7 @@ function limpar(){
   ['fModal','fLoja','fStatus'].forEach(id => $(id).selectedIndex = 0);
   exibir();
 }
+
 function hojeISO(){
   const d = new Date();
   const y = d.getFullYear();
@@ -186,28 +202,31 @@ async function exibir(){
   const dataRef = $('fDataRef').value || hojeISO();
   $('statsRow').style.display = 'none';
   $('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Carregando…</div></div>';
-  
-  let q = sb.from(VIEW_BOLAO)
-  .select('*')
-  .lte('dt_inicial', dataRef)
-  .gte('dt_concurso', dataRef)
-  .order('modalidade')
-  .order('dt_concurso')
-  .order('valor_cota');
 
-if ($('fDtConcDe').value) q = q.gte('dt_concurso', $('fDtConcDe').value);
-if ($('fDtConcAte').value) q = q.lte('dt_concurso', $('fDtConcAte').value);
-if ($('fModal').value) q = q.eq('modalidade', $('fModal').value);
-if ($('fConc').value) q = q.ilike('concurso', '%' + $('fConc').value + '%');
-if ($('fLoja').value) q = q.eq('origem_loteria_id', parseInt($('fLoja').value));
-if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
+  let q = sb.from(VIEW_BOLAO)
+    .select('*')
+    .lte('dt_inicial', dataRef)
+    .gte('dt_concurso', dataRef)
+    .order('modalidade')
+    .order('dt_concurso')
+    .order('valor_cota');
+
+  if ($('fDtConcDe').value) q = q.gte('dt_concurso', $('fDtConcDe').value);
+  if ($('fDtConcAte').value) q = q.lte('dt_concurso', $('fDtConcAte').value);
+  if ($('fModal').value) q = q.eq('modalidade', $('fModal').value);
+  if ($('fConc').value) q = q.ilike('concurso', '%' + $('fConc').value + '%');
+  if ($('fLoja').value) q = q.eq('origem_loteria_id', parseInt($('fLoja').value));
+  if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
 
   const { data: boloes, error } = await q;
 
   if (error || !boloes?.length) {
+    boloesCache = [];
     $('tableArea').innerHTML = '<div class="state-box"><div class="state-title">Nenhum resultado</div><div class="state-sub">Tente ajustar os filtros.</div></div>';
     return;
   }
+
+  boloesCache = boloes || [];
 
   const ids = boloes.map(b => b.bolao_id);
 
@@ -270,7 +289,7 @@ if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
   const nSlug = slugsLojas.length;
 
   const grpRow = `<tr class="grp-row">
-    <th colspan="9" class="grp-bolao sep-col">Bolão</th>
+    <th colspan="10" class="grp-bolao sep-col">Bolão</th>
     <th colspan="3" class="grp-canal sep-col">Canal de Venda</th>
     ${nFunc > 0 ? `<th colspan="${nFunc}" class="grp-func sep-col">Venda por Funcionário</th>` : ''}
     <th colspan="${nSlug}" class="grp-loja sep-col">Qtd Mov. / Vend. por Loja</th>
@@ -282,6 +301,7 @@ if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
   const lojaCols = slugsLojas.map(s => `<th>${slugLabel[s]}</th>`).join('');
 
   const colRow = `<tr class="col-row">
+    <th>Sel.</th>
     <th class="left">Origem</th>
     <th>Dt Ini</th>
     <th>Dt Conc</th>
@@ -303,7 +323,7 @@ if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
     <th>Enc.Físico</th>
     <th class="sep-col">Enc.Virtual</th>
 
-     <th>Total Cotas / Venda Real</th>
+    <th>Total Cotas / Venda Real</th>
     <th>Encalhe Total</th>
     <th>Est. Líquido</th>
     <th>V.Contábil</th>
@@ -321,6 +341,11 @@ if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
     }).join('');
 
     return `<tr>
+      <td>
+        <label class="bolao-check-wrap">
+          <input type="checkbox" class="bolao-check" data-id="${b.bolao_id}">
+        </label>
+      </td>
       <td class="left">${b.origem_nome || '—'}</td>
       <td class="mono dim">${fmtDate(b.dt_inicial)}</td>
       <td class="mono dim">${fmtDate(b.dt_concurso)}</td>
@@ -377,7 +402,7 @@ if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
 
   const totalRow = `<tr style="background:rgba(0,200,150,0.04);border-top:1px solid var(--border2)">
     <td class="left bold" style="color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">TOTAL</td>
-    <td colspan="8" class="sep-col"></td>
+    <td colspan="9" class="sep-col"></td>
 
     <td class="blue bold">${fmtN(totCanal.BALCAO)}</td>
     <td class="blue bold">${fmtN(totCanal.WHATSAPP)}</td>
@@ -403,6 +428,8 @@ if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
 
   $('tableArea').innerHTML = '';
   $('tableArea').appendChild(wrap);
+
+  bindSelecaoBoloes();
 }
 
 document.addEventListener('DOMContentLoaded', init);
