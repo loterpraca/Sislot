@@ -95,15 +95,13 @@ async function initThemeNoExibir() {
   };
 
   const lojasPermitidas = window.SISLOT_THEME.getAllowedStores?.() || [];
-  lojas = lojasPermitidas.map(l => ({
-    id: l.id,
-    nome: l.nome,
-    slug: l.slug,
-    principal: l.principal
-  }));
-
-  preencherFiltroLoja(lojas);
-
+lojas = lojasPermitidas.map(l => ({
+  id: l.id,
+  nome: l.nome,
+  slug: l.slug,
+  principal: l.principal
+}));
+  
   if (!themeListenerRegistrado) {
     window.addEventListener('sislot:loja-change', () => {
       sincronizarFiltroLojaComTema(true);
