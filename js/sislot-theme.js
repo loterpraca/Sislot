@@ -71,14 +71,46 @@
     clockTimer: null,
     options: {
       fallback: 'todas',
-      selectId: 'sl-loja-select',
+      filterSelectId: 'fLoja',
       clockId: 'relogio',
       includeTodas: false,
       logoSelector: '.sl-loja-logo img',
       nomeSelector: '.sl-header-nome'
     }
   };
+  function aplicarTemaPorLoteriaId(loteriaId, opts = {}) {
+  const loja = state.lojasPermitidas.find(l => String(l.id) === String(loteriaId));
 
+  if (!loja) {
+    return aplicarTema('todas', opts);
+  }
+
+  return aplicarTema(loja.slug, opts);
+}
+function preencherFiltroExistenteComLojasPermitidas() {
+  const sel = document.getElementById(state.options.filterSelectId);
+  if (!sel) return;
+
+  const valorAtual = sel.value;
+
+  sel.innerHTML = '<option value="">Todas</option>';
+
+  state.lojasPermitidas.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = String(l.id);
+    opt.textContent = l.nome;
+    sel.appendChild(opt);
+  });
+
+  if (valorAtual && state.lojasPermitidas.some(l => String(l.id) === String(valorAtual))) {
+    sel.value = valorAtual;
+    return;
+  }
+
+  if (state.contexto?.loteria_principal_id) {
+    sel.value = String(state.contexto.loteria_principal_id);
+  }
+}
   function getClient() {
     if (state.client) return state.client;
 
@@ -345,16 +377,31 @@
     await _carregarContexto();
     await _carregarLojasPermitidas();
 
-    const sel = document.getElementById(state.options.selectId);
-    if (sel) {
-      _preencherSeletorLoja(sel);
-      sel.addEventListener('change', e => {
-        aplicarTema(e.target.value, { source: 'selector' });
-      });
+   preencherFiltroExistenteComLojasPermitidas();
+
+const filtro = document.getElementById(state.options.filterSelectId);
+
+if (filtro) {
+  filtro.addEventListener('change', e => {
+    const loteriaId = e.target.value;
+
+    if (!loteriaId) {
+      aplicarTema('todas', { source: 'filter' });
+      return;
     }
 
-    const slug = _slugInicial();
-    aplicarTema(slug, { source: 'init' });
+    aplicarTemaPorLoteriaId(loteriaId, { source: 'filter' });
+  });
+
+  if (filtro.value) {
+    aplicarTemaPorLoteriaId(filtro.value, { source: 'init' });
+  } else {
+    aplicarTema('todas', { source: 'init' });
+  }
+} else {
+  const slug = _slugInicial();
+  aplicarTema(slug, { source: 'init' });
+}
 
     const relogio = document.getElementById(state.options.clockId);
     if (relogio) _startClock(state.options.clockId);
