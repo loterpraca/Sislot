@@ -26,6 +26,7 @@ let filtroTimer = null;
 let boloesCache = [];
 let bolaoSelecionadoModal = null;
 let cancelandoBolao = false;
+let editandoBolao = false;
 
 function fmtBRL(v) {
   return v == null || v === '' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {
@@ -42,6 +43,10 @@ function fmtDate(s) {
   if (!s) return '—';
   const [y, m, d] = String(s).slice(0, 10).split('-');
   return `${d}/${m}/${y}`;
+}
+
+function fmtDateInput(s) {
+  return s ? String(s).slice(0, 10) : '';
 }
 
 function fmtPair(a, b) {
@@ -89,6 +94,7 @@ function setCancelamentoBusyState(busy) {
   const btnConfirmar = $('bmConfirmar');
   const btnFechar = $('bmFechar');
   const btnCancelar = $('bmCancelar');
+  const btnEditar = $('bmEditar');
 
   if (btnConfirmar) {
     btnConfirmar.disabled = busy;
@@ -98,6 +104,38 @@ function setCancelamentoBusyState(busy) {
 
   if (btnFechar) btnFechar.disabled = busy;
   if (btnCancelar) btnCancelar.disabled = busy;
+  if (btnEditar) btnEditar.disabled = busy;
+}
+
+function setEdicaoBusyState(busy) {
+  editandoBolao = busy;
+
+  const btnSalvar = $('beSalvar');
+  const btnFechar = $('beFechar');
+  const btnCancelar = $('beCancelar');
+
+  if (btnSalvar) {
+    btnSalvar.disabled = busy || btnSalvar.dataset.locked === '1';
+    btnSalvar.dataset.originalText = btnSalvar.dataset.originalText || btnSalvar.textContent || 'Salvar alterações';
+    btnSalvar.textContent = busy ? 'Salvando...' : btnSalvar.dataset.originalText;
+  }
+
+  if (btnFechar) btnFechar.disabled = busy;
+  if (btnCancelar) btnCancelar.disabled = busy;
+}
+
+function mostrarAvisoEdicao(msg) {
+  const el = $('beAviso');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.hidden = !msg;
+}
+
+function mostrarSucessoEdicao(msg) {
+  const el = $('beSucesso');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.hidden = !msg;
 }
 
 function normalizarErroCancelamento(err) {
@@ -132,6 +170,38 @@ function normalizarErroCancelamento(err) {
   return msg;
 }
 
+function normalizarErroEdicao(err) {
+  const raw =
+    err?.message ||
+    err?.details ||
+    err?.hint ||
+    'Não foi possível salvar as alterações do bolão.';
+
+  const msg = String(raw);
+
+  if (/venda registrada/i.test(msg) || /vendas lançadas/i.test(msg)) {
+    return 'Este bolão já possui venda registrada e não pode mais ser alterado.';
+  }
+
+  if (/movimentação paga/i.test(msg) || /acerto financeiro pago/i.test(msg) || /quitad/i.test(msg)) {
+    return 'Há movimentação paga. Valor da cota e quantidade de cotas não podem ser alterados.';
+  }
+
+  if (/quantidade total de cotas não pode ser menor/i.test(msg)) {
+    return msg;
+  }
+
+  if (/data inicial/i.test(msg) || /data do concurso/i.test(msg)) {
+    return msg;
+  }
+
+  if (/não encontrado/i.test(msg)) {
+    return 'Bolão não encontrado.';
+  }
+
+  return msg;
+}
+
 function getMotivoCancelamento(bolao) {
   const campoMotivo = $('bmMotivo');
   const motivoDigitado = campoMotivo?.value?.trim();
@@ -144,6 +214,7 @@ function getMotivoCancelamento(bolao) {
 
 function atualizarEstadoAcaoModal(bolao) {
   const btnConfirmar = $('bmConfirmar');
+  const btnEditar = $('bmEditar');
   if (!btnConfirmar) return;
 
   const status = String(bolao?.status || '').toUpperCase();
@@ -153,11 +224,13 @@ function atualizarEstadoAcaoModal(bolao) {
   if (status === 'CANCELADO') {
     btnConfirmar.disabled = true;
     btnConfirmar.textContent = 'Bolão já cancelado';
+    if (btnEditar) btnEditar.disabled = true;
     return;
   }
 
   btnConfirmar.disabled = false;
   btnConfirmar.textContent = 'Cancelar bolão';
+  if (btnEditar) btnEditar.disabled = false;
 }
 
 function abrirModalBolao(bolao) {
@@ -186,12 +259,86 @@ function abrirModalBolao(bolao) {
 }
 
 function fecharModalBolao() {
-  if (cancelandoBolao) return;
+  if (cancelandoBolao || editandoBolao) return;
 
   $('bolaoModalOverlay').classList.remove('show');
   document.body.classList.remove('modal-open');
   bolaoSelecionadoModal = null;
   limparSelecaoBoloes();
+}
+
+function abrirModalEdicao() {
+  $('bolaoEditModalOverlay')?.classList.add('show');
+  document.body.classList.add('modal-open');
+}
+
+function fecharModalEdicaoBolao() {
+  if (editandoBolao) return;
+  $('bolaoEditModalOverlay')?.classList.remove('show');
+  mostrarAvisoEdicao('');
+  mostrarSucessoEdicao('');
+}
+
+function preencherModalEdicaoBolao(bolao) {
+  $('beTitulo').textContent = `${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}`;
+  $('beOrigem').textContent = bolao.origem_nome || '—';
+  $('beStatus').textContent = bolao.status || '—';
+  $('beCodigoLoterico').textContent = bolao.codigo_loterico || '—';
+  $('beQtdJogos').textContent = fmtN(bolao.qtd_jogos);
+  $('beQtdDezenas').textContent = fmtN(bolao.qtd_dezenas);
+
+  $('beModalidade').value = bolao.modalidade || '';
+  $('beConcurso').value = bolao.concurso || '';
+  $('beDtInicial').value = fmtDateInput(bolao.dt_inicial);
+  $('beDtConcurso').value = fmtDateInput(bolao.dt_concurso);
+  $('beValorCota').value = bolao.valor_cota == null ? '' : Number(bolao.valor_cota).toFixed(2);
+  $('beQtdCotas').value = bolao.qtd_cotas_total ?? '';
+
+  mostrarAvisoEdicao('');
+  mostrarSucessoEdicao('');
+}
+
+function aplicarPermissoesEdicao(permissao) {
+  const podeBasico = !!permissao?.pode_editar_basico;
+  const podeValor = !!permissao?.pode_editar_valor;
+
+  $('beModalidade').disabled = !podeBasico;
+  $('beConcurso').disabled = !podeBasico;
+  $('beDtInicial').disabled = !podeBasico;
+  $('beDtConcurso').disabled = !podeBasico;
+  $('beValorCota').disabled = !podeValor;
+  $('beQtdCotas').disabled = !podeValor;
+
+  const btnSalvar = $('beSalvar');
+  if (btnSalvar) {
+    btnSalvar.dataset.locked = podeBasico ? '0' : '1';
+    btnSalvar.disabled = !podeBasico;
+  }
+
+  if (!podeBasico) {
+    mostrarAvisoEdicao(permissao?.motivo || 'Este bolão não pode ser alterado.');
+  }
+}
+
+async function abrirModalEdicaoBolao() {
+  if (!bolaoSelecionadoModal || editandoBolao) return;
+
+  const bolao = bolaoSelecionadoModal;
+  preencherModalEdicaoBolao(bolao);
+  abrirModalEdicao();
+
+  try {
+    const { data, error } = await sb.rpc('rpc_validar_edicao_bolao', {
+      p_bolao_id: Number(bolao.bolao_id)
+    });
+
+    if (error) throw error;
+
+    aplicarPermissoesEdicao(data || {});
+  } catch (err) {
+    console.error('Erro ao validar edição do bolão:', err);
+    aplicarPermissoesEdicao({ pode_editar_basico: false, pode_editar_valor: false, motivo: normalizarErroEdicao(err) });
+  }
 }
 
 function bindSelecaoBoloes() {
@@ -204,6 +351,7 @@ function bindSelecaoBoloes() {
       });
 
       if (!e.target.checked) {
+        fecharModalEdicaoBolao();
         fecharModalBolao();
         return;
       }
@@ -264,6 +412,7 @@ async function cancelarBolaoSelecionado() {
       ].join('\n')
     );
 
+    fecharModalEdicaoBolao();
     fecharModalBolao();
     await exibir();
   } catch (err) {
@@ -271,6 +420,62 @@ async function cancelarBolaoSelecionado() {
     alert(normalizarErroCancelamento(err));
   } finally {
     setCancelamentoBusyState(false);
+  }
+}
+
+async function salvarEdicaoBolao() {
+  if (!bolaoSelecionadoModal || editandoBolao) return;
+
+  const payload = {
+    p_bolao_id: Number(bolaoSelecionadoModal.bolao_id),
+    p_modalidade: $('beModalidade').value.trim(),
+    p_concurso: $('beConcurso').value.trim(),
+    p_dt_inicial: $('beDtInicial').value,
+    p_dt_concurso: $('beDtConcurso').value,
+    p_valor_cota: Number($('beValorCota').value),
+    p_qtd_cotas_total: Number($('beQtdCotas').value)
+  };
+
+  try {
+    setEdicaoBusyState(true);
+    mostrarAvisoEdicao('');
+    mostrarSucessoEdicao('');
+
+    const { data, error } = await sb.rpc('rpc_editar_bolao', payload);
+
+    if (error) throw error;
+
+    if (!data?.ok) {
+      throw new Error(data?.motivo || 'Não foi possível salvar as alterações.');
+    }
+
+    mostrarSucessoEdicao('Bolão atualizado com sucesso.');
+
+    const id = Number(bolaoSelecionadoModal.bolao_id);
+    const idx = boloesCache.findIndex(b => Number(b.bolao_id) === id);
+    if (idx >= 0) {
+      boloesCache[idx] = {
+        ...boloesCache[idx],
+        modalidade: payload.p_modalidade,
+        concurso: payload.p_concurso,
+        dt_inicial: payload.p_dt_inicial,
+        dt_concurso: payload.p_dt_concurso,
+        valor_cota: payload.p_valor_cota,
+        qtd_cotas_total: payload.p_qtd_cotas_total
+      };
+      bolaoSelecionadoModal = boloesCache[idx];
+    }
+
+    setTimeout(async () => {
+      fecharModalEdicaoBolao();
+      fecharModalBolao();
+      await exibir();
+    }, 500);
+  } catch (err) {
+    console.error('Erro ao salvar edição do bolão:', err);
+    mostrarAvisoEdicao(normalizarErroEdicao(err));
+  } finally {
+    setEdicaoBusyState(false);
   }
 }
 
@@ -374,9 +579,18 @@ async function init() {
   $('bmFechar')?.addEventListener('click', fecharModalBolao);
   $('bmCancelar')?.addEventListener('click', fecharModalBolao);
   $('bmConfirmar')?.addEventListener('click', cancelarBolaoSelecionado);
+  $('bmEditar')?.addEventListener('click', abrirModalEdicaoBolao);
+
+  $('beFechar')?.addEventListener('click', fecharModalEdicaoBolao);
+  $('beCancelar')?.addEventListener('click', fecharModalEdicaoBolao);
+  $('beSalvar')?.addEventListener('click', salvarEdicaoBolao);
 
   $('bolaoModalOverlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'bolaoModalOverlay') fecharModalBolao();
+  });
+
+  $('bolaoEditModalOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'bolaoEditModalOverlay') fecharModalEdicaoBolao();
   });
 
   await exibir();
