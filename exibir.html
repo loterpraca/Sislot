@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>SISLOT — Exibir Operacional</title>
   <link rel="icon" href="data:,">
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="./css/exibir.css"/>
 </head>
 <body>
 
+<!-- ── Topbar ─────────────────────────────────────────────── -->
 <header class="topbar">
   <div class="topbar-brand">
     <div class="brand-icon">SL</div>
@@ -22,7 +23,7 @@
   <div class="topbar-right">
     <div class="clock" id="relogio">--:--:--</div>
 
-    <button class="btn-top" onclick="location.href='./menu.html'">
+    <button class="btn-top" onclick="location.href='./menu.html'" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
         <polyline points="9 22 9 12 15 12 15 22"/>
@@ -30,7 +31,7 @@
       Menu
     </button>
 
-    <button class="btn-top btn-top-sair" id="btnLogout">
+    <button class="btn-top btn-top-sair" id="btnLogout" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
         <polyline points="16 17 21 12 16 7"/>
@@ -41,7 +42,10 @@
   </div>
 </header>
 
+<!-- ── Conteúdo principal ──────────────────────────────────── -->
 <div class="main">
+
+  <!-- Filtros -->
   <div class="filters-bar">
     <div class="filter-group">
       <div class="filter-label">Data Referência</div>
@@ -101,12 +105,14 @@
     </div>
 
     <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
-      <button class="btn-limpar" onclick="limpar()">Limpar</button>
+      <button class="btn-limpar" onclick="limpar()" type="button">Limpar</button>
     </div>
   </div>
 
+  <!-- Estatísticas -->
   <div class="stats-row" id="statsRow" style="display:none"></div>
 
+  <!-- Área da tabela -->
   <div id="tableArea">
     <div class="state-box">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -116,13 +122,16 @@
         <line x1="9" y1="3" x2="9" y2="21"/>
       </svg>
       <div class="state-title">Selecione um bolão pela caixa à esquerda para editar.</div>
-      <div class="state-sub">O modal único permite revisar os dados agregados, salvar alterações ou deletar logicamente.</div>
+      <div class="state-sub">O modal permite revisar os dados agregados, salvar alterações ou deletar logicamente.</div>
     </div>
   </div>
 </div>
 
-<div id="bolaoModalOverlay" class="bolao-modal-overlay">
-  <div class="bolao-modal bolao-modal--editavel">
+<!-- ── Modal do bolão ─────────────────────────────────────── -->
+<div id="bolaoModalOverlay" class="bolao-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bmTitulo">
+  <div class="bolao-modal">
+
+    <!-- Cabeçalho -->
     <div class="bolao-modal-head">
       <div>
         <div class="bolao-modal-kicker">Editar ou deletar bolão</div>
@@ -131,10 +140,14 @@
       <button id="bmFechar" class="bolao-modal-close" type="button" aria-label="Fechar modal">×</button>
     </div>
 
+    <!-- Corpo -->
     <div class="bolao-modal-body">
-      <div class="bm-alert bm-alert--danger" id="bmAviso" hidden></div>
+
+      <!-- Alertas -->
+      <div class="bm-alert bm-alert--danger"  id="bmAviso"   hidden></div>
       <div class="bm-alert bm-alert--success" id="bmSucesso" hidden></div>
 
+      <!-- Sumário rápido -->
       <div class="bm-summary-grid">
         <div class="bm-summary-card">
           <label>Origem</label>
@@ -153,38 +166,42 @@
         </div>
       </div>
 
+      <!-- Formulário de edição + leitura -->
       <form id="bmForm">
-        <div class="bm-grid bm-grid-edit">
+        <div class="bm-grid">
+
+          <!-- Campos editáveis -->
           <div class="bm-item bm-item-edit">
             <label for="bmModalidadeInput">Modalidade</label>
-            <input id="bmModalidadeInput" type="text" />
+            <input id="bmModalidadeInput" type="text"/>
           </div>
 
           <div class="bm-item bm-item-edit">
             <label for="bmConcursoInput">Concurso</label>
-            <input id="bmConcursoInput" type="text" />
+            <input id="bmConcursoInput" type="text"/>
           </div>
 
           <div class="bm-item bm-item-edit">
             <label for="bmDtInicialInput">Data inicial</label>
-            <input id="bmDtInicialInput" type="date" />
+            <input id="bmDtInicialInput" type="date"/>
           </div>
 
           <div class="bm-item bm-item-edit">
             <label for="bmDtConcursoInput">Data do concurso</label>
-            <input id="bmDtConcursoInput" type="date" />
+            <input id="bmDtConcursoInput" type="date"/>
           </div>
 
           <div class="bm-item bm-item-edit">
             <label for="bmValorCotaInput">Valor da cota</label>
-            <input id="bmValorCotaInput" type="number" step="0.01" min="0.01" />
+            <input id="bmValorCotaInput" type="number" step="0.01" min="0.01"/>
           </div>
 
           <div class="bm-item bm-item-edit">
             <label for="bmQtdCotasInput">Qtd. de cotas</label>
-            <input id="bmQtdCotasInput" type="number" step="1" min="1" />
+            <input id="bmQtdCotasInput" type="number" step="1" min="1"/>
           </div>
 
+          <!-- Campos somente leitura -->
           <div class="bm-item">
             <label>Qtd. de jogos</label>
             <div id="bmQtdJogos">—</div>
@@ -214,15 +231,18 @@
             <label>Venda contábil</label>
             <div id="bmVendaContabil">—</div>
           </div>
+
         </div>
       </form>
     </div>
 
+    <!-- Ações -->
     <div class="bolao-modal-actions">
-      <button id="bmCancelar" class="bm-btn bm-btn-sec" type="button">Fechar</button>
-      <button id="bmConfirmar" class="bm-btn bm-btn-main" type="button">Salvar alterações</button>
-      <button id="bmDeletar" class="bm-btn bm-btn-danger" type="button">Deletar bolão</button>
+      <button id="bmCancelar" class="bm-btn bm-btn-sec"    type="button">Fechar</button>
+      <button id="bmConfirmar" class="bm-btn bm-btn-main"  type="button">Salvar alterações</button>
+      <button id="bmDeletar"  class="bm-btn bm-btn-danger" type="button">Deletar bolão</button>
     </div>
+
   </div>
 </div>
 
