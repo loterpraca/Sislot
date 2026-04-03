@@ -7,6 +7,7 @@
   <link rel="icon" href="data:,">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="./css/exibir.css"/>
+  <link rel="stylesheet" href="./css/exibir-modal-checkbox.css"/>
 </head>
 <body>
 
@@ -43,67 +44,67 @@
 
 <div class="main">
   <div class="filters-bar">
-  <div class="filter-group">
-    <div class="filter-label">Data Referência</div>
-    <input type="date" id="fDataRef" class="filter-input" style="width:140px"/>
-  </div>
+    <div class="filter-group">
+      <div class="filter-label">Data Referência</div>
+      <input type="date" id="fDataRef" class="filter-input" style="width:140px"/>
+    </div>
 
-  <div class="filter-group">
-    <div class="filter-label">Dt Concurso de</div>
-    <input type="date" id="fDtConcDe" class="filter-input" style="width:140px"/>
-  </div>
+    <div class="filter-group">
+      <div class="filter-label">Dt Concurso de</div>
+      <input type="date" id="fDtConcDe" class="filter-input" style="width:140px"/>
+    </div>
 
-  <div class="filter-group">
-    <div class="filter-label">até</div>
-    <input type="date" id="fDtConcAte" class="filter-input" style="width:140px"/>
-  </div>
+    <div class="filter-group">
+      <div class="filter-label">até</div>
+      <input type="date" id="fDtConcAte" class="filter-input" style="width:140px"/>
+    </div>
 
-  <div class="filter-group">
-    <div class="filter-label">Modalidade</div>
-    <select id="fModal" class="filter-select" style="width:140px">
-      <option value="">Todas</option>
-      <option>Mega Sena</option>
-      <option>Lotofácil</option>
-      <option>Quina</option>
-      <option>Dupla Sena</option>
-      <option>Dia de Sorte</option>
-      <option>Supersete</option>
-      <option>Milionária</option>
-      <option>Timemania</option>
-      <option>Loteca</option>
-      <option>Páscoa</option>
-      <option>São João</option>
-      <option>Independência</option>
-      <option>Virada</option>
-    </select>
-  </div>
+    <div class="filter-group">
+      <div class="filter-label">Modalidade</div>
+      <select id="fModal" class="filter-select" style="width:140px">
+        <option value="">Todas</option>
+        <option>Mega Sena</option>
+        <option>Lotofácil</option>
+        <option>Quina</option>
+        <option>Dupla Sena</option>
+        <option>Dia de Sorte</option>
+        <option>Supersete</option>
+        <option>Milionária</option>
+        <option>Timemania</option>
+        <option>Loteca</option>
+        <option>Páscoa</option>
+        <option>São João</option>
+        <option>Independência</option>
+        <option>Virada</option>
+      </select>
+    </div>
 
-  <div class="filter-group">
-    <div class="filter-label">Concurso</div>
-    <input type="text" id="fConc" class="filter-input" placeholder="Ex: 2940" style="width:90px"/>
-  </div>
+    <div class="filter-group">
+      <div class="filter-label">Concurso</div>
+      <input type="text" id="fConc" class="filter-input" placeholder="Ex: 2940" style="width:90px"/>
+    </div>
 
-  <div class="filter-group">
-    <div class="filter-label">Loja Origem</div>
-    <select id="fLoja" class="filter-select" style="width:130px">
-      <option value="">Todas</option>
-    </select>
-  </div>
+    <div class="filter-group">
+      <div class="filter-label">Loja Origem</div>
+      <select id="fLoja" class="filter-select" style="width:130px">
+        <option value="">Todas</option>
+      </select>
+    </div>
 
-  <div class="filter-group">
-    <div class="filter-label">Status</div>
-    <select id="fStatus" class="filter-select" style="width:110px">
-      <option value="">Todos</option>
-      <option value="ATIVO">Ativo</option>
-      <option value="ENCERRADO">Encerrado</option>
-      <option value="CANCELADO">Cancelado</option>
-    </select>
-  </div>
+    <div class="filter-group">
+      <div class="filter-label">Status</div>
+      <select id="fStatus" class="filter-select" style="width:110px">
+        <option value="">Todos</option>
+        <option value="ATIVO">Ativo</option>
+        <option value="ENCERRADO">Encerrado</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+    </div>
 
-  <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
-    <button class="btn-limpar" onclick="limpar()">Limpar</button>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
+      <button class="btn-limpar" onclick="limpar()">Limpar</button>
+    </div>
   </div>
-</div>
 
   <div class="stats-row" id="statsRow" style="display:none"></div>
 
@@ -119,8 +120,8 @@
       <div class="state-sub">A tela mostrará dados operacionais de venda, estoque e encalhe por bolão.</div>
     </div>
   </div>
-
 </div>
+
 <div id="bolaoModalOverlay" class="bolao-modal-overlay">
   <div class="bolao-modal">
     <div class="bolao-modal-head">
@@ -128,7 +129,7 @@
         <div class="bolao-modal-kicker">Conferência do bolão</div>
         <h3 id="bmTitulo">Dados do bolão</h3>
       </div>
-      <button id="bmFechar" class="bolao-modal-close" type="button">×</button>
+      <button id="bmFechar" class="bolao-modal-close" type="button" aria-label="Fechar modal">×</button>
     </div>
 
     <div class="bolao-modal-body">
@@ -201,6 +202,7 @@
     </div>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sislot-config.js"></script>
 <script src="./js/exibir.js"></script>
