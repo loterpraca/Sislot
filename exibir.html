@@ -7,7 +7,6 @@
   <link rel="icon" href="data:,">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="./css/exibir.css"/>
-  <link rel="stylesheet" href="./css/exibir-modal-checkbox.css"/>
 </head>
 <body>
 
@@ -116,164 +115,117 @@
         <line x1="3" y1="15" x2="21" y2="15"/>
         <line x1="9" y1="3" x2="9" y2="21"/>
       </svg>
-      <div class="state-title">Selecione os filtros e clique em Exibir</div>
-      <div class="state-sub">A tela mostrará dados operacionais de venda, estoque e encalhe por bolão.</div>
+      <div class="state-title">Selecione um bolão pela caixa à esquerda para editar.</div>
+      <div class="state-sub">O modal único permite revisar os dados agregados, salvar alterações ou deletar logicamente.</div>
     </div>
   </div>
 </div>
 
 <div id="bolaoModalOverlay" class="bolao-modal-overlay">
-  <div class="bolao-modal">
+  <div class="bolao-modal bolao-modal--editavel">
     <div class="bolao-modal-head">
       <div>
-        <div class="bolao-modal-kicker">Conferência do bolão</div>
+        <div class="bolao-modal-kicker">Editar ou deletar bolão</div>
         <h3 id="bmTitulo">Dados do bolão</h3>
       </div>
       <button id="bmFechar" class="bolao-modal-close" type="button" aria-label="Fechar modal">×</button>
     </div>
 
     <div class="bolao-modal-body">
-      <div class="bm-grid">
-        <div class="bm-item">
-          <label>Modalidade</label>
-          <div id="bmModalidade">—</div>
-        </div>
+      <div class="bm-alert bm-alert--danger" id="bmAviso" hidden></div>
+      <div class="bm-alert bm-alert--success" id="bmSucesso" hidden></div>
 
-        <div class="bm-item">
-          <label>Concurso</label>
-          <div id="bmConcurso">—</div>
-        </div>
-
-        <div class="bm-item">
+      <div class="bm-summary-grid">
+        <div class="bm-summary-card">
           <label>Origem</label>
-          <div id="bmOrigem">—</div>
+          <strong id="bmOrigem">—</strong>
+          <span id="bmCodigoLoterico">—</span>
         </div>
-
-        <div class="bm-item">
-          <label>Valor da cota</label>
-          <div id="bmValorCota">—</div>
-        </div>
-
-        <div class="bm-item">
-          <label>Qtd. de cotas</label>
-          <div id="bmQtdCotas">—</div>
-        </div>
-
-        <div class="bm-item">
+        <div class="bm-summary-card">
           <label>Status</label>
-          <div id="bmStatus">—</div>
+          <strong id="bmStatus">—</strong>
+          <span id="bmObservacao">—</span>
         </div>
-
-        <div class="bm-item">
-          <label>Data inicial</label>
-          <div id="bmDtInicial">—</div>
-        </div>
-
-        <div class="bm-item">
-          <label>Data do concurso</label>
-          <div id="bmDtConcurso">—</div>
-        </div>
-
-        <div class="bm-item">
-          <label>Qtd. de jogos</label>
-          <div id="bmQtdJogos">—</div>
-        </div>
-
-        <div class="bm-item">
-          <label>Qtd. de dezenas</label>
-          <div id="bmQtdDezenas">—</div>
-        </div>
-
-        <div class="bm-item bm-item-full">
-          <label>Código lotérico</label>
-          <div id="bmCodigoLoterico">—</div>
-        </div>
-
-        <div class="bm-item bm-item-full">
-          <label>Observação</label>
-          <div id="bmObservacao">—</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="bolao-modal-actions">
-      <button id="bmCancelar" class="bm-btn bm-btn-sec" type="button">Fechar</button>
-      <button id="bmConfirmar" class="bm-btn bm-btn-main" type="button">Confirmar seleção</button>
-    </div>
-  </div>
-</div>
-<div class="sl-modal-overlay" id="modalEditarBolao" hidden>
-  <div class="sl-modal sl-modal--edit" role="dialog" aria-modal="true" aria-labelledby="tituloModalEditarBolao">
-    <button class="sl-modal-close" id="btnFecharModalEditarBolao" type="button" aria-label="Fechar">×</button>
-
-    <div class="sl-modal-header">
-      <div class="sl-modal-icon">
-        <i class="fa-solid fa-pen-to-square"></i>
-      </div>
-      <div class="sl-modal-headings">
-        <h3 id="tituloModalEditarBolao">Editar bolão</h3>
-        <p id="subtituloModalEditarBolao">Revise os parâmetros e salve.</p>
-      </div>
-    </div>
-
-    <div class="sl-modal-body">
-      <div class="sl-alert sl-alert--danger" id="alertaBloqueioEdicao" hidden></div>
-      <div class="sl-alert sl-alert--success" id="alertaSucessoEdicao" hidden></div>
-
-      <div class="sl-resumo-bolao">
-        <div class="sl-resumo-card">
-          <span class="sl-label">Bolão</span>
-          <strong id="resumoBolaoTitulo">-</strong>
-        </div>
-        <div class="sl-resumo-card">
-          <span class="sl-label">Origem</span>
-          <strong id="resumoBolaoOrigem">-</strong>
-        </div>
-        <div class="sl-resumo-card">
-          <span class="sl-label">Status</span>
-          <strong id="resumoBolaoStatus">-</strong>
+        <div class="bm-summary-card">
+          <label>Agregado</label>
+          <strong id="bmResumoAgregado">—</strong>
+          <span id="bmResumoFinanceiro">—</span>
         </div>
       </div>
 
-      <form id="formEditarBolao" class="sl-form-grid">
-        <div class="sl-field">
-          <label for="editModalidade">Modalidade</label>
-          <input type="text" id="editModalidade" name="modalidade" required />
-        </div>
+      <form id="bmForm">
+        <div class="bm-grid bm-grid-edit">
+          <div class="bm-item bm-item-edit">
+            <label for="bmModalidadeInput">Modalidade</label>
+            <input id="bmModalidadeInput" type="text" />
+          </div>
 
-        <div class="sl-field">
-          <label for="editConcurso">Concurso</label>
-          <input type="text" id="editConcurso" name="concurso" required />
-        </div>
+          <div class="bm-item bm-item-edit">
+            <label for="bmConcursoInput">Concurso</label>
+            <input id="bmConcursoInput" type="text" />
+          </div>
 
-        <div class="sl-field">
-          <label for="editDtInicial">Data inicial</label>
-          <input type="date" id="editDtInicial" name="dt_inicial" required />
-        </div>
+          <div class="bm-item bm-item-edit">
+            <label for="bmDtInicialInput">Data inicial</label>
+            <input id="bmDtInicialInput" type="date" />
+          </div>
 
-        <div class="sl-field">
-          <label for="editDtConcurso">Data do concurso</label>
-          <input type="date" id="editDtConcurso" name="dt_concurso" required />
-        </div>
+          <div class="bm-item bm-item-edit">
+            <label for="bmDtConcursoInput">Data do concurso</label>
+            <input id="bmDtConcursoInput" type="date" />
+          </div>
 
-        <div class="sl-field">
-          <label for="editValorCota">Valor da cota</label>
-          <input type="number" id="editValorCota" name="valor_cota" step="0.01" min="0.01" required />
-        </div>
+          <div class="bm-item bm-item-edit">
+            <label for="bmValorCotaInput">Valor da cota</label>
+            <input id="bmValorCotaInput" type="number" step="0.01" min="0.01" />
+          </div>
 
-        <div class="sl-field">
-          <label for="editQtdCotas">Qtd. cotas</label>
-          <input type="number" id="editQtdCotas" name="qtd_cotas_total" step="1" min="1" required />
+          <div class="bm-item bm-item-edit">
+            <label for="bmQtdCotasInput">Qtd. de cotas</label>
+            <input id="bmQtdCotasInput" type="number" step="1" min="1" />
+          </div>
+
+          <div class="bm-item">
+            <label>Qtd. de jogos</label>
+            <div id="bmQtdJogos">—</div>
+          </div>
+
+          <div class="bm-item">
+            <label>Qtd. de dezenas</label>
+            <div id="bmQtdDezenas">—</div>
+          </div>
+
+          <div class="bm-item">
+            <label>Venda real</label>
+            <div id="bmVendaReal">—</div>
+          </div>
+
+          <div class="bm-item">
+            <label>Encalhe total</label>
+            <div id="bmEncalheTotal">—</div>
+          </div>
+
+          <div class="bm-item">
+            <label>Estoque líquido</label>
+            <div id="bmEstoqueLiquido">—</div>
+          </div>
+
+          <div class="bm-item">
+            <label>Venda contábil</label>
+            <div id="bmVendaContabil">—</div>
+          </div>
         </div>
       </form>
     </div>
 
-    <div class="sl-modal-footer">
-      <button type="button" class="sl-btn sl-btn-secondary" id="btnCancelarModalEditarBolao">Fechar</button>
-      <button type="button" class="sl-btn sl-btn-primary" id="btnSalvarEdicaoBolao">Salvar alterações</button>
+    <div class="bolao-modal-actions">
+      <button id="bmCancelar" class="bm-btn bm-btn-sec" type="button">Fechar</button>
+      <button id="bmConfirmar" class="bm-btn bm-btn-main" type="button">Salvar alterações</button>
+      <button id="bmDeletar" class="bm-btn bm-btn-danger" type="button">Deletar bolão</button>
     </div>
   </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sislot-config.js"></script>
 <script src="./js/exibir.js"></script>
