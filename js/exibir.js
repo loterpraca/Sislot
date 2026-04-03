@@ -22,8 +22,142 @@ const slugLabel = {
 let filtroTimer = null;
 let boloesCache = [];
 let bolaoSelecionadoModal = null;
+let cancelandoBolao = false;
 
-function abrirModalBolao(bolao){
+function fmtBRL(v) {
+  return v == null || v === '' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function fmtN(v) {
+  return v == null ? '—' : Number(v).toLocaleString('pt-BR');
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  const [y, m, d] = String(s).slice(0, 10).split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function fmtPair(a, b) {
+  const aa = a == null ? '—' : Number(a).toLocaleString('pt-BR');
+  const bb = b == null ? '—' : Number(b).toLocaleString('pt-BR');
+  return `${aa}/${bb}`;
+}
+
+function hojeISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function updateClock() {
+  const n = new Date();
+  $('relogio').textContent =
+    n.toLocaleTimeString('pt-BR') + ' — ' +
+    n.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+}
+
+function agendarExibicao() {
+  clearTimeout(filtroTimer);
+  filtroTimer = setTimeout(() => {
+    exibir();
+  }, 250);
+}
+
+function limparSelecaoBoloes() {
+  document.querySelectorAll('.bolao-check').forEach(chk => {
+    chk.checked = false;
+  });
+}
+
+function setCancelamentoBusyState(busy) {
+  cancelandoBolao = busy;
+
+  const btnConfirmar = $('bmConfirmar');
+  const btnFechar = $('bmFechar');
+  const btnCancelar = $('bmCancelar');
+
+  if (btnConfirmar) {
+    btnConfirmar.disabled = busy;
+    btnConfirmar.dataset.originalText = btnConfirmar.dataset.originalText || btnConfirmar.textContent || 'Cancelar bolão';
+    btnConfirmar.textContent = busy ? 'Cancelando...' : btnConfirmar.dataset.originalText;
+  }
+
+  if (btnFechar) btnFechar.disabled = busy;
+  if (btnCancelar) btnCancelar.disabled = busy;
+}
+
+function normalizarErroCancelamento(err) {
+  const raw =
+    err?.message ||
+    err?.details ||
+    err?.hint ||
+    'Não foi possível cancelar o bolão.';
+
+  const msg = String(raw);
+
+  if (/vendas lançadas/i.test(msg) || /já possui venda/i.test(msg)) {
+    return 'Este bolão já possui venda registrada e não pode ser cancelado.';
+  }
+
+  if (/fechamento lançado/i.test(msg) || /possui fechamento/i.test(msg)) {
+    return 'Este bolão já possui lançamento em fechamento e não pode ser cancelado.';
+  }
+
+  if (/PAGO/i.test(msg) || /já acertada/i.test(msg) || /já quitada/i.test(msg)) {
+    return 'Este bolão possui movimentação financeira já quitada e não pode ser cancelado.';
+  }
+
+  if (/não encontrado/i.test(msg)) {
+    return 'Bolão não encontrado.';
+  }
+
+  if (/permission/i.test(msg) || /not allowed/i.test(msg) || /rls/i.test(msg)) {
+    return 'Seu usuário não possui permissão para cancelar este bolão.';
+  }
+
+  return msg;
+}
+
+function getMotivoCancelamento(bolao) {
+  const campoMotivo = $('bmMotivo');
+  const motivoDigitado = campoMotivo?.value?.trim();
+
+  if (motivoDigitado) return motivoDigitado;
+
+  const nomeUsuario = usuario?.nome || 'usuário';
+  return `Cancelamento solicitado na tela operacional por ${nomeUsuario} — ${bolao.modalidade || 'Bolão'} concurso ${bolao.concurso || '—'}`;
+}
+
+function atualizarEstadoAcaoModal(bolao) {
+  const btnConfirmar = $('bmConfirmar');
+  if (!btnConfirmar) return;
+
+  const status = String(bolao?.status || '').toUpperCase();
+
+  btnConfirmar.dataset.originalText = 'Cancelar bolão';
+
+  if (status === 'CANCELADO') {
+    btnConfirmar.disabled = true;
+    btnConfirmar.textContent = 'Bolão já cancelado';
+    return;
+  }
+
+  btnConfirmar.disabled = false;
+  btnConfirmar.textContent = 'Cancelar bolão';
+}
+
+function abrirModalBolao(bolao) {
   bolaoSelecionadoModal = bolao;
 
   $('bmTitulo').textContent = `${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}`;
@@ -40,18 +174,24 @@ function abrirModalBolao(bolao){
   $('bmCodigoLoterico').textContent = bolao.codigo_loterico || '—';
   $('bmObservacao').textContent = bolao.observacao || '—';
 
+  const campoMotivo = $('bmMotivo');
+  if (campoMotivo) campoMotivo.value = '';
+
+  atualizarEstadoAcaoModal(bolao);
   $('bolaoModalOverlay').classList.add('show');
   document.body.classList.add('modal-open');
 }
 
-function fecharModalBolao(){
+function fecharModalBolao() {
+  if (cancelandoBolao) return;
+
   $('bolaoModalOverlay').classList.remove('show');
   document.body.classList.remove('modal-open');
   bolaoSelecionadoModal = null;
-  document.querySelectorAll('.bolao-check').forEach(chk => chk.checked = false);
+  limparSelecaoBoloes();
 }
 
-function bindSelecaoBoloes(){
+function bindSelecaoBoloes() {
   document.querySelectorAll('.bolao-check').forEach(chk => {
     chk.addEventListener('change', (e) => {
       const id = Number(e.target.dataset.id);
@@ -71,54 +211,70 @@ function bindSelecaoBoloes(){
   });
 }
 
-function agendarExibicao(){
-  clearTimeout(filtroTimer);
-  filtroTimer = setTimeout(() => {
-    exibir();
-  }, 250);
-}
+async function cancelarBolaoSelecionado() {
+  if (!bolaoSelecionadoModal || cancelandoBolao) return;
 
-function fmtBRL(v){
-  return v == null || v === '' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
+  const bolao = bolaoSelecionadoModal;
+  const status = String(bolao.status || '').toUpperCase();
 
-function fmtN(v){
-  return v == null ? '—' : Number(v).toLocaleString('pt-BR');
-}
+  if (status === 'CANCELADO') {
+    alert('Este bolão já está cancelado.');
+    return;
+  }
 
-function fmtDate(s){
-  if(!s) return '—';
-  const [y,m,d] = String(s).slice(0,10).split('-');
-  return `${d}/${m}/${y}`;
-}
+  const ok = window.confirm(
+    [
+      `Confirma o cancelamento do bolão ${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}?`,
+      '',
+      'Essa ação tentará:',
+      '• cancelar o bolão',
+      '• cancelar movimentações ativas vinculadas',
+      '• cancelar pendências financeiras pendentes vinculadas',
+      '',
+      'O banco irá bloquear se já houver venda, fechamento ou acerto financeiro pago.'
+    ].join('\n')
+  );
 
-function fmtPair(a,b){
-  const aa = a == null ? '—' : Number(a).toLocaleString('pt-BR');
-  const bb = b == null ? '—' : Number(b).toLocaleString('pt-BR');
-  return `${aa}/${bb}`;
-}
+  if (!ok) return;
 
-function updateClock(){
-  const n = new Date();
-  $('relogio').textContent =
-    n.toLocaleTimeString('pt-BR') + ' — ' +
-    n.toLocaleDateString('pt-BR', {
-      weekday: 'short',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+  try {
+    setCancelamentoBusyState(true);
+
+    const { data, error } = await sb.rpc('rpc_cancelar_bolao_seguro', {
+      p_bolao_id: Number(bolao.bolao_id),
+      p_usuario_id: usuario?.id ?? null,
+      p_motivo: getMotivoCancelamento(bolao)
     });
-}
-updateClock();
-setInterval(updateClock, 1000);
 
-async function init(){
+    if (error) throw error;
+
+    if (!data?.ok) {
+      throw new Error(data?.message || 'Não foi possível cancelar o bolão.');
+    }
+
+    alert(
+      [
+        'Bolão cancelado com sucesso.',
+        '',
+        `Movimentações canceladas: ${fmtN(data.movimentacoes_canceladas || 0)}`,
+        `Financeiros cancelados: ${fmtN(data.financeiros_cancelados || 0)}`
+      ].join('\n')
+    );
+
+    fecharModalBolao();
+    await exibir();
+  } catch (err) {
+    console.error('Erro ao cancelar bolão:', err);
+    alert(normalizarErroCancelamento(err));
+  } finally {
+    setCancelamentoBusyState(false);
+  }
+}
+
+async function init() {
   const { data: { session } } = await sb.auth.getSession();
 
-  if(!session){
+  if (!session) {
     location.href = './login.html';
     return;
   }
@@ -130,7 +286,7 @@ async function init(){
     .eq('pode_logar', true)
     .maybeSingle();
 
-  if(!usr){
+  if (!usr) {
     location.href = './login.html';
     return;
   }
@@ -169,36 +325,23 @@ async function init(){
 
   $('bmFechar')?.addEventListener('click', fecharModalBolao);
   $('bmCancelar')?.addEventListener('click', fecharModalBolao);
+  $('bmConfirmar')?.addEventListener('click', cancelarBolaoSelecionado);
 
   $('bolaoModalOverlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'bolaoModalOverlay') fecharModalBolao();
   });
 
-  $('bmConfirmar')?.addEventListener('click', () => {
-    if (!bolaoSelecionadoModal) return;
-    console.log('Bolão confirmado:', bolaoSelecionadoModal);
-    fecharModalBolao();
-  });
-
   await exibir();
 }
 
-function limpar(){
+function limpar() {
   $('fDataRef').value = hojeISO();
-  ['fDtConcDe','fDtConcAte','fConc'].forEach(id => $(id).value = '');
-  ['fModal','fLoja','fStatus'].forEach(id => $(id).selectedIndex = 0);
+  ['fDtConcDe', 'fDtConcAte', 'fConc'].forEach(id => $(id).value = '');
+  ['fModal', 'fLoja', 'fStatus'].forEach(id => $(id).selectedIndex = 0);
   exibir();
 }
 
-function hojeISO(){
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-async function exibir(){
+async function exibir() {
   const dataRef = $('fDataRef').value || hojeISO();
   $('statsRow').style.display = 'none';
   $('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Carregando…</div></div>';
@@ -215,7 +358,7 @@ async function exibir(){
   if ($('fDtConcAte').value) q = q.lte('dt_concurso', $('fDtConcAte').value);
   if ($('fModal').value) q = q.eq('modalidade', $('fModal').value);
   if ($('fConc').value) q = q.ilike('concurso', '%' + $('fConc').value + '%');
-  if ($('fLoja').value) q = q.eq('origem_loteria_id', parseInt($('fLoja').value));
+  if ($('fLoja').value) q = q.eq('origem_loteria_id', parseInt($('fLoja').value, 10));
   if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
 
   const { data: boloes, error } = await q;
@@ -237,13 +380,17 @@ async function exibir(){
 
   const canalMap = {};
   const funcMap = {};
+
   (boloes || []).forEach(b => {
     canalMap[b.bolao_id] = { BALCAO: 0, WHATSAPP: 0, MARKETPLACE: 0 };
     funcMap[b.bolao_id] = {};
   });
 
   (vendas || []).forEach(v => {
-    if (!canalMap[v.bolao_id]) canalMap[v.bolao_id] = { BALCAO: 0, WHATSAPP: 0, MARKETPLACE: 0 };
+    if (!canalMap[v.bolao_id]) {
+      canalMap[v.bolao_id] = { BALCAO: 0, WHATSAPP: 0, MARKETPLACE: 0 };
+    }
+
     canalMap[v.bolao_id][v.canal] = (canalMap[v.bolao_id][v.canal] || 0) + (v.qtd_vendida || 0);
 
     if (v.usuario_id) {
@@ -268,10 +415,10 @@ async function exibir(){
     if (funcIds.includes(u.id)) funcNomes[u.id] = u.nome.split(' ')[0];
   });
 
-  const totVendaReal = boloes.reduce((s,b) => s + Number(b.venda_real_total || 0), 0);
-  const totEncalhe = boloes.reduce((s,b) => s + Number(b.encalhe_total || 0), 0);
-  const totLiquido = boloes.reduce((s,b) => s + Number(b.estoque_liquido_total || 0), 0);
-  const totVCont = boloes.reduce((s,b) => s + Number(b.venda_contabil_total || 0), 0);
+  const totVendaReal = boloes.reduce((s, b) => s + Number(b.venda_real_total || 0), 0);
+  const totEncalhe = boloes.reduce((s, b) => s + Number(b.encalhe_total || 0), 0);
+  const totLiquido = boloes.reduce((s, b) => s + Number(b.estoque_liquido_total || 0), 0);
+  const totVCont = boloes.reduce((s, b) => s + Number(b.venda_contabil_total || 0), 0);
 
   $('statsRow').style.display = 'grid';
   $('statsRow').innerHTML = `
@@ -376,7 +523,7 @@ async function exibir(){
 
   const totCanal = { BALCAO: 0, WHATSAPP: 0, MARKETPLACE: 0 };
   Object.values(canalMap).forEach(cm => {
-    ['BALCAO','WHATSAPP','MARKETPLACE'].forEach(c => {
+    ['BALCAO', 'WHATSAPP', 'MARKETPLACE'].forEach(c => {
       totCanal[c] += (cm[c] || 0);
     });
   });
@@ -390,15 +537,17 @@ async function exibir(){
     const bruto = (lojasBolao || [])
       .filter(r => r.loja_slug === s)
       .reduce((sum, r) => sum + Number(r.estoque_bruto_loja || 0), 0);
+
     const venda = (lojasBolao || [])
       .filter(r => r.loja_slug === s)
       .reduce((sum, r) => sum + Number(r.qtd_vendida_loja || 0), 0);
+
     return `<td class="cyan bold">${fmtPair(bruto, venda)}</td>`;
   }).join('');
 
-  const totEncFis = boloes.reduce((s,b) => s + Number(b.enc_fisico || 0), 0);
-  const totEncVirt = boloes.reduce((s,b) => s + Number(b.enc_virtual || 0), 0);
-  const totCotas = boloes.reduce((s,b) => s + Number(b.qtd_cotas_total || 0), 0);
+  const totEncFis = boloes.reduce((s, b) => s + Number(b.enc_fisico || 0), 0);
+  const totEncVirt = boloes.reduce((s, b) => s + Number(b.enc_virtual || 0), 0);
+  const totCotas = boloes.reduce((s, b) => s + Number(b.qtd_cotas_total || 0), 0);
 
   const totalRow = `<tr style="background:rgba(0,200,150,0.04);border-top:1px solid var(--border2)">
     <td class="left bold" style="color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">TOTAL</td>
@@ -431,5 +580,8 @@ async function exibir(){
 
   bindSelecaoBoloes();
 }
+
+updateClock();
+setInterval(updateClock, 1000);
 
 document.addEventListener('DOMContentLoaded', init);
