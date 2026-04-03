@@ -316,6 +316,7 @@ async function init() {
   });
 
   $('fDataRef').value = hojeISO();
+  $('fStatus').value = 'ATIVO';
 
   ['fDataRef', 'fDtConcDe', 'fDtConcAte', 'fModal', 'fLoja', 'fStatus'].forEach(id => {
     $(id).addEventListener('change', agendarExibicao);
@@ -337,10 +338,10 @@ async function init() {
 function limpar() {
   $('fDataRef').value = hojeISO();
   ['fDtConcDe', 'fDtConcAte', 'fConc'].forEach(id => $(id).value = '');
-  ['fModal', 'fLoja', 'fStatus'].forEach(id => $(id).selectedIndex = 0);
+  ['fModal', 'fLoja'].forEach(id => $(id).selectedIndex = 0);
+  $('fStatus').value = 'ATIVO';
   exibir();
 }
-
 async function exibir() {
   const dataRef = $('fDataRef').value || hojeISO();
   $('statsRow').style.display = 'none';
