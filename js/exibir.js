@@ -25,8 +25,7 @@ const slugLabel = {
 let filtroTimer = null;
 let boloesCache = [];
 let bolaoSelecionadoModal = null;
-let cancelandoBolao = false;
-let editandoBolao = false;
+let modalBusy = false;
 
 function fmtBRL(v) {
   return v == null || v === '' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {
@@ -88,113 +87,83 @@ function limparSelecaoBoloes() {
   });
 }
 
-function setCancelamentoBusyState(busy) {
-  cancelandoBolao = busy;
+function setModalBusyState(busy, mode = '') {
+  modalBusy = busy;
 
-  const btnConfirmar = $('bmConfirmar');
+  const btnSalvar = $('bmConfirmar');
   const btnFechar = $('bmFechar');
   const btnCancelar = $('bmCancelar');
-  const btnEditar = $('bmEditar');
-
-  if (btnConfirmar) {
-    btnConfirmar.disabled = busy;
-    btnConfirmar.dataset.originalText = btnConfirmar.dataset.originalText || btnConfirmar.textContent || 'Cancelar bolão';
-    btnConfirmar.textContent = busy ? 'Cancelando...' : btnConfirmar.dataset.originalText;
-  }
-
-  if (btnFechar) btnFechar.disabled = busy;
-  if (btnCancelar) btnCancelar.disabled = busy;
-  if (btnEditar) btnEditar.disabled = busy;
-}
-
-function setEdicaoBusyState(busy) {
-  editandoBolao = busy;
-
-  const btnSalvar = $('beSalvar');
-  const btnFechar = $('beFechar');
-  const btnCancelar = $('beCancelar');
+  const btnDeletar = $('bmDeletar');
 
   if (btnSalvar) {
     btnSalvar.disabled = busy || btnSalvar.dataset.locked === '1';
-    btnSalvar.dataset.originalText = btnSalvar.dataset.originalText || btnSalvar.textContent || 'Salvar alterações';
-    btnSalvar.textContent = busy ? 'Salvando...' : btnSalvar.dataset.originalText;
+    btnSalvar.dataset.originalText = btnSalvar.dataset.originalText || 'Salvar alterações';
+    btnSalvar.textContent = busy && mode === 'save' ? 'Salvando...' : btnSalvar.dataset.originalText;
+  }
+
+  if (btnDeletar) {
+    btnDeletar.disabled = busy || btnDeletar.dataset.locked === '1';
+    btnDeletar.dataset.originalText = btnDeletar.dataset.originalText || 'Deletar bolão';
+    btnDeletar.textContent = busy && mode === 'delete' ? 'Deletando...' : btnDeletar.dataset.originalText;
   }
 
   if (btnFechar) btnFechar.disabled = busy;
   if (btnCancelar) btnCancelar.disabled = busy;
 }
 
-function mostrarAvisoEdicao(msg) {
-  const el = $('beAviso');
+function mostrarAvisoModal(msg) {
+  const el = $('bmAviso');
   if (!el) return;
   el.textContent = msg || '';
   el.hidden = !msg;
 }
 
-function mostrarSucessoEdicao(msg) {
-  const el = $('beSucesso');
+function mostrarSucessoModal(msg) {
+  const el = $('bmSucesso');
   if (!el) return;
   el.textContent = msg || '';
   el.hidden = !msg;
 }
 
 function normalizarErroCancelamento(err) {
-  const raw =
-    err?.message ||
-    err?.details ||
-    err?.hint ||
-    'Não foi possível cancelar o bolão.';
-
+  const raw = err?.message || err?.details || err?.hint || 'Não foi possível deletar o bolão.';
   const msg = String(raw);
 
   if (/vendas lançadas/i.test(msg) || /já possui venda/i.test(msg)) {
-    return 'Este bolão já possui venda registrada e não pode ser cancelado.';
+    return 'Este bolão já possui venda registrada e não pode ser deletado.';
   }
-
   if (/fechamento lançado/i.test(msg) || /possui fechamento/i.test(msg)) {
-    return 'Este bolão já possui lançamento em fechamento e não pode ser cancelado.';
+    return 'Este bolão já possui lançamento em fechamento e não pode ser deletado.';
   }
-
   if (/PAGO/i.test(msg) || /já acertada/i.test(msg) || /já quitada/i.test(msg)) {
-    return 'Este bolão possui movimentação financeira já quitada e não pode ser cancelado.';
+    return 'Este bolão possui movimentação financeira já quitada e não pode ser deletado.';
   }
-
   if (/não encontrado/i.test(msg)) {
     return 'Bolão não encontrado.';
   }
-
   if (/permission/i.test(msg) || /not allowed/i.test(msg) || /rls/i.test(msg)) {
-    return 'Seu usuário não possui permissão para cancelar este bolão.';
+    return 'Seu usuário não possui permissão para deletar este bolão.';
   }
 
   return msg;
 }
 
 function normalizarErroEdicao(err) {
-  const raw =
-    err?.message ||
-    err?.details ||
-    err?.hint ||
-    'Não foi possível salvar as alterações do bolão.';
-
+  const raw = err?.message || err?.details || err?.hint || 'Não foi possível salvar as alterações do bolão.';
   const msg = String(raw);
 
   if (/venda registrada/i.test(msg) || /vendas lançadas/i.test(msg)) {
     return 'Este bolão já possui venda registrada e não pode mais ser alterado.';
   }
-
   if (/movimentação paga/i.test(msg) || /acerto financeiro pago/i.test(msg) || /quitad/i.test(msg)) {
     return 'Há movimentação paga. Valor da cota e quantidade de cotas não podem ser alterados.';
   }
-
   if (/quantidade total de cotas não pode ser menor/i.test(msg)) {
     return msg;
   }
-
-  if (/data inicial/i.test(msg) || /data do concurso/i.test(msg)) {
+  if (/data inicial/i.test(msg) || /data do concurso/i.test(msg) || /obrigatória/i.test(msg)) {
     return msg;
   }
-
   if (/não encontrado/i.test(msg)) {
     return 'Bolão não encontrado.';
   }
@@ -203,147 +172,106 @@ function normalizarErroEdicao(err) {
 }
 
 function getMotivoCancelamento(bolao) {
-  const campoMotivo = $('bmMotivo');
-  const motivoDigitado = campoMotivo?.value?.trim();
-
-  if (motivoDigitado) return motivoDigitado;
-
   const nomeUsuario = usuario?.nome || 'usuário';
-  return `Cancelamento solicitado na tela operacional por ${nomeUsuario} — ${bolao.modalidade || 'Bolão'} concurso ${bolao.concurso || '—'}`;
+  return `Deleção lógica solicitada na tela operacional por ${nomeUsuario} — ${bolao.modalidade || 'Bolão'} concurso ${bolao.concurso || '—'}`;
 }
 
-function atualizarEstadoAcaoModal(bolao) {
-  const btnConfirmar = $('bmConfirmar');
-  const btnEditar = $('bmEditar');
-  if (!btnConfirmar) return;
-
-  const status = String(bolao?.status || '').toUpperCase();
-
-  btnConfirmar.dataset.originalText = 'Cancelar bolão';
-
-  if (status === 'CANCELADO') {
-    btnConfirmar.disabled = true;
-    btnConfirmar.textContent = 'Bolão já cancelado';
-    if (btnEditar) btnEditar.disabled = true;
-    return;
-  }
-
-  btnConfirmar.disabled = false;
-  btnConfirmar.textContent = 'Cancelar bolão';
-  if (btnEditar) btnEditar.disabled = false;
-}
-
-function abrirModalBolao(bolao) {
-  bolaoSelecionadoModal = bolao;
-
-  $('bmTitulo').textContent = `${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}`;
-  $('bmModalidade').textContent = bolao.modalidade || '—';
-  $('bmConcurso').textContent = bolao.concurso || '—';
-  $('bmOrigem').textContent = bolao.origem_nome || '—';
-  $('bmValorCota').textContent = fmtBRL(bolao.valor_cota);
-  $('bmQtdCotas').textContent = fmtN(bolao.qtd_cotas_total);
-  $('bmStatus').textContent = bolao.status || '—';
-  $('bmDtInicial').textContent = fmtDate(bolao.dt_inicial);
-  $('bmDtConcurso').textContent = fmtDate(bolao.dt_concurso);
-  $('bmQtdJogos').textContent = fmtN(bolao.qtd_jogos);
-  $('bmQtdDezenas').textContent = fmtN(bolao.qtd_dezenas);
-  $('bmCodigoLoterico').textContent = bolao.codigo_loterico || '—';
-  $('bmObservacao').textContent = bolao.observacao || '—';
-
-  const campoMotivo = $('bmMotivo');
-  if (campoMotivo) campoMotivo.value = '';
-
-  atualizarEstadoAcaoModal(bolao);
+function abrirModalBolao() {
   $('bolaoModalOverlay').classList.add('show');
   document.body.classList.add('modal-open');
 }
 
 function fecharModalBolao() {
-  if (cancelandoBolao || editandoBolao) return;
-
+  if (modalBusy) return;
   $('bolaoModalOverlay').classList.remove('show');
   document.body.classList.remove('modal-open');
   bolaoSelecionadoModal = null;
   limparSelecaoBoloes();
+  mostrarAvisoModal('');
+  mostrarSucessoModal('');
 }
 
-function abrirModalEdicao() {
-  $('bolaoEditModalOverlay')?.classList.add('show');
-  document.body.classList.add('modal-open');
+function preencherModalBolao(bolao) {
+  bolaoSelecionadoModal = bolao;
+
+  $('bmTitulo').textContent = `${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}`;
+  $('bmOrigem').textContent = bolao.origem_nome || '—';
+  $('bmCodigoLoterico').textContent = bolao.codigo_loterico || '—';
+  $('bmStatus').textContent = bolao.status || '—';
+  $('bmObservacao').textContent = bolao.observacao || 'Sem observação';
+
+  $('bmResumoAgregado').textContent = `Venda real ${fmtN(bolao.venda_real_total)} · Encalhe ${fmtN(bolao.encalhe_total)}`;
+  $('bmResumoFinanceiro').textContent = `Estoque líquido ${fmtN(bolao.estoque_liquido_total)} · V. contábil ${fmtN(bolao.venda_contabil_total)}`;
+
+  $('bmModalidadeInput').value = bolao.modalidade || '';
+  $('bmConcursoInput').value = bolao.concurso || '';
+  $('bmDtInicialInput').value = fmtDateInput(bolao.dt_inicial);
+  $('bmDtConcursoInput').value = fmtDateInput(bolao.dt_concurso);
+  $('bmValorCotaInput').value = bolao.valor_cota == null ? '' : Number(bolao.valor_cota).toFixed(2);
+  $('bmQtdCotasInput').value = bolao.qtd_cotas_total ?? '';
+
+  $('bmQtdJogos').textContent = fmtN(bolao.qtd_jogos);
+  $('bmQtdDezenas').textContent = fmtN(bolao.qtd_dezenas);
+  $('bmVendaReal').textContent = fmtN(bolao.venda_real_total);
+  $('bmEncalheTotal').textContent = fmtN(bolao.encalhe_total);
+  $('bmEstoqueLiquido').textContent = fmtN(bolao.estoque_liquido_total);
+  $('bmVendaContabil').textContent = fmtN(bolao.venda_contabil_total);
+
+  mostrarAvisoModal('');
+  mostrarSucessoModal('');
+  aplicarEstadoModal({ pode_editar_basico: true, pode_editar_valor: true, cancelado: String(bolao.status || '').toUpperCase() === 'CANCELADO' });
 }
 
-function fecharModalEdicaoBolao() {
-  if (editandoBolao) return;
-  $('bolaoEditModalOverlay')?.classList.remove('show');
-  mostrarAvisoEdicao('');
-  mostrarSucessoEdicao('');
-}
-
-function preencherModalEdicaoBolao(bolao) {
-  $('beTitulo').textContent = `${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}`;
-  $('beOrigem').textContent = bolao.origem_nome || '—';
-  $('beStatus').textContent = bolao.status || '—';
-  $('beCodigoLoterico').textContent = bolao.codigo_loterico || '—';
-  $('beQtdJogos').textContent = fmtN(bolao.qtd_jogos);
-  $('beQtdDezenas').textContent = fmtN(bolao.qtd_dezenas);
-
-  $('beModalidade').value = bolao.modalidade || '';
-  $('beConcurso').value = bolao.concurso || '';
-  $('beDtInicial').value = fmtDateInput(bolao.dt_inicial);
-  $('beDtConcurso').value = fmtDateInput(bolao.dt_concurso);
-  $('beValorCota').value = bolao.valor_cota == null ? '' : Number(bolao.valor_cota).toFixed(2);
-  $('beQtdCotas').value = bolao.qtd_cotas_total ?? '';
-
-  mostrarAvisoEdicao('');
-  mostrarSucessoEdicao('');
-}
-
-function aplicarPermissoesEdicao(permissao) {
+function aplicarEstadoModal(permissao) {
   const podeBasico = !!permissao?.pode_editar_basico;
   const podeValor = !!permissao?.pode_editar_valor;
+  const cancelado = !!permissao?.cancelado;
 
-  $('beModalidade').disabled = !podeBasico;
-  $('beConcurso').disabled = !podeBasico;
-  $('beDtInicial').disabled = !podeBasico;
-  $('beDtConcurso').disabled = !podeBasico;
-  $('beValorCota').disabled = !podeValor;
-  $('beQtdCotas').disabled = !podeValor;
+  $('bmModalidadeInput').disabled = !podeBasico;
+  $('bmConcursoInput').disabled = !podeBasico;
+  $('bmDtInicialInput').disabled = !podeBasico;
+  $('bmDtConcursoInput').disabled = !podeBasico;
+  $('bmValorCotaInput').disabled = !podeValor;
+  $('bmQtdCotasInput').disabled = !podeValor;
 
-  const btnSalvar = $('beSalvar');
+  const btnSalvar = $('bmConfirmar');
+  const btnDeletar = $('bmDeletar');
+
   if (btnSalvar) {
     btnSalvar.dataset.locked = podeBasico ? '0' : '1';
     btnSalvar.disabled = !podeBasico;
   }
 
+  if (btnDeletar) {
+    btnDeletar.dataset.locked = cancelado ? '1' : '0';
+    btnDeletar.disabled = cancelado;
+    btnDeletar.textContent = cancelado ? 'Bolão já cancelado' : 'Deletar bolão';
+  }
+
   if (!podeBasico) {
-    mostrarAvisoEdicao(permissao?.motivo || 'Este bolão não pode ser alterado.');
+    mostrarAvisoModal(permissao?.motivo || 'Este bolão não pode ser alterado.');
   }
 }
 
-async function abrirModalEdicaoBolao() {
-  if (!bolaoSelecionadoModal || editandoBolao) return;
-
-  const bolao = bolaoSelecionadoModal;
-  preencherModalEdicaoBolao(bolao);
-  abrirModalEdicao();
+async function validarBolaoSelecionado() {
+  if (!bolaoSelecionadoModal) return;
 
   try {
     const { data, error } = await sb.rpc('rpc_validar_edicao_bolao', {
-      p_bolao_id: Number(bolao.bolao_id)
+      p_bolao_id: Number(bolaoSelecionadoModal.bolao_id)
     });
 
     if (error) throw error;
-
-    aplicarPermissoesEdicao(data || {});
+    aplicarEstadoModal(data || {});
   } catch (err) {
     console.error('Erro ao validar edição do bolão:', err);
-    aplicarPermissoesEdicao({ pode_editar_basico: false, pode_editar_valor: false, motivo: normalizarErroEdicao(err) });
+    aplicarEstadoModal({ pode_editar_basico: false, pode_editar_valor: false, motivo: normalizarErroEdicao(err) });
   }
 }
 
 function bindSelecaoBoloes() {
   document.querySelectorAll('.bolao-check').forEach(chk => {
-    chk.addEventListener('change', (e) => {
+    chk.addEventListener('change', async (e) => {
       const id = Number(e.target.dataset.id);
 
       document.querySelectorAll('.bolao-check').forEach(outro => {
@@ -351,31 +279,74 @@ function bindSelecaoBoloes() {
       });
 
       if (!e.target.checked) {
-        fecharModalEdicaoBolao();
         fecharModalBolao();
         return;
       }
 
       const bolao = boloesCache.find(b => Number(b.bolao_id) === id);
-      if (bolao) abrirModalBolao(bolao);
+      if (!bolao) return;
+
+      preencherModalBolao(bolao);
+      abrirModalBolao();
+      await validarBolaoSelecionado();
     });
   });
 }
 
-async function cancelarBolaoSelecionado() {
-  if (!bolaoSelecionadoModal || cancelandoBolao) return;
+async function salvarBolaoSelecionado() {
+  if (!bolaoSelecionadoModal || modalBusy) return;
+
+  try {
+    setModalBusyState(true, 'save');
+    mostrarAvisoModal('');
+    mostrarSucessoModal('');
+
+    const payload = {
+      p_bolao_id: Number(bolaoSelecionadoModal.bolao_id),
+      p_modalidade: $('bmModalidadeInput').value.trim(),
+      p_concurso: $('bmConcursoInput').value.trim(),
+      p_dt_inicial: $('bmDtInicialInput').value,
+      p_dt_concurso: $('bmDtConcursoInput').value,
+      p_valor_cota: Number($('bmValorCotaInput').value),
+      p_qtd_cotas_total: Number($('bmQtdCotasInput').value)
+    };
+
+    const { data, error } = await sb.rpc('rpc_editar_bolao', payload);
+    if (error) throw error;
+    if (!data?.ok) throw new Error(data?.motivo || 'Não foi possível salvar as alterações.');
+
+    mostrarSucessoModal('Bolão atualizado com sucesso.');
+    await exibir();
+
+    const bolaoAtualizado = boloesCache.find(b => Number(b.bolao_id) === Number(payload.p_bolao_id));
+    if (bolaoAtualizado) {
+      preencherModalBolao(bolaoAtualizado);
+      await validarBolaoSelecionado();
+      const chk = document.querySelector(`.bolao-check[data-id="${payload.p_bolao_id}"]`);
+      if (chk) chk.checked = true;
+    }
+  } catch (err) {
+    console.error('Erro ao salvar bolão:', err);
+    mostrarAvisoModal(normalizarErroEdicao(err));
+  } finally {
+    setModalBusyState(false);
+  }
+}
+
+async function deletarBolaoSelecionado() {
+  if (!bolaoSelecionadoModal || modalBusy) return;
 
   const bolao = bolaoSelecionadoModal;
   const status = String(bolao.status || '').toUpperCase();
 
   if (status === 'CANCELADO') {
-    alert('Este bolão já está cancelado.');
+    mostrarAvisoModal('Este bolão já está cancelado.');
     return;
   }
 
   const ok = window.confirm(
     [
-      `Confirma o cancelamento do bolão ${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}?`,
+      `Confirma a deleção lógica do bolão ${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}?`,
       '',
       'Essa ação tentará:',
       '• cancelar o bolão',
@@ -389,7 +360,9 @@ async function cancelarBolaoSelecionado() {
   if (!ok) return;
 
   try {
-    setCancelamentoBusyState(true);
+    setModalBusyState(true, 'delete');
+    mostrarAvisoModal('');
+    mostrarSucessoModal('');
 
     const { data, error } = await sb.rpc('rpc_cancelar_bolao_seguro', {
       p_bolao_id: Number(bolao.bolao_id),
@@ -398,84 +371,25 @@ async function cancelarBolaoSelecionado() {
     });
 
     if (error) throw error;
+    if (!data?.ok) throw new Error(data?.message || 'Não foi possível deletar o bolão.');
 
-    if (!data?.ok) {
-      throw new Error(data?.message || 'Não foi possível cancelar o bolão.');
-    }
-
-    alert(
-      [
-        'Bolão cancelado com sucesso.',
-        '',
-        `Movimentações canceladas: ${fmtN(data.movimentacoes_canceladas || 0)}`,
-        `Financeiros cancelados: ${fmtN(data.financeiros_cancelados || 0)}`
-      ].join('\n')
-    );
-
-    fecharModalEdicaoBolao();
-    fecharModalBolao();
+    mostrarSucessoModal(`Bolão deletado com sucesso. Movimentações canceladas: ${fmtN(data.movimentacoes_canceladas || 0)} · Financeiros cancelados: ${fmtN(data.financeiros_cancelados || 0)}`);
     await exibir();
-  } catch (err) {
-    console.error('Erro ao cancelar bolão:', err);
-    alert(normalizarErroCancelamento(err));
-  } finally {
-    setCancelamentoBusyState(false);
-  }
-}
 
-async function salvarEdicaoBolao() {
-  if (!bolaoSelecionadoModal || editandoBolao) return;
-
-  const payload = {
-    p_bolao_id: Number(bolaoSelecionadoModal.bolao_id),
-    p_modalidade: $('beModalidade').value.trim(),
-    p_concurso: $('beConcurso').value.trim(),
-    p_dt_inicial: $('beDtInicial').value,
-    p_dt_concurso: $('beDtConcurso').value,
-    p_valor_cota: Number($('beValorCota').value),
-    p_qtd_cotas_total: Number($('beQtdCotas').value)
-  };
-
-  try {
-    setEdicaoBusyState(true);
-    mostrarAvisoEdicao('');
-    mostrarSucessoEdicao('');
-
-    const { data, error } = await sb.rpc('rpc_editar_bolao', payload);
-
-    if (error) throw error;
-
-    if (!data?.ok) {
-      throw new Error(data?.motivo || 'Não foi possível salvar as alterações.');
+    const bolaoAtualizado = boloesCache.find(b => Number(b.bolao_id) === Number(bolao.bolao_id));
+    if (bolaoAtualizado) {
+      preencherModalBolao(bolaoAtualizado);
+      aplicarEstadoModal({ pode_editar_basico: false, pode_editar_valor: false, cancelado: true, motivo: 'Bolão cancelado.' });
+      const chk = document.querySelector(`.bolao-check[data-id="${bolao.bolao_id}"]`);
+      if (chk) chk.checked = true;
+    } else {
+      setTimeout(fecharModalBolao, 700);
     }
-
-    mostrarSucessoEdicao('Bolão atualizado com sucesso.');
-
-    const id = Number(bolaoSelecionadoModal.bolao_id);
-    const idx = boloesCache.findIndex(b => Number(b.bolao_id) === id);
-    if (idx >= 0) {
-      boloesCache[idx] = {
-        ...boloesCache[idx],
-        modalidade: payload.p_modalidade,
-        concurso: payload.p_concurso,
-        dt_inicial: payload.p_dt_inicial,
-        dt_concurso: payload.p_dt_concurso,
-        valor_cota: payload.p_valor_cota,
-        qtd_cotas_total: payload.p_qtd_cotas_total
-      };
-      bolaoSelecionadoModal = boloesCache[idx];
-    }
-
-    setTimeout(async () => {
-      fecharModalEdicaoBolao();
-      fecharModalBolao();
-      await exibir();
-    }, 500);
   } catch (err) {
-    console.error('Erro ao salvar edição do bolão:', err);
-    mostrarAvisoEdicao(normalizarErroEdicao(err));
+    console.error('Erro ao deletar bolão:', err);
+    mostrarAvisoModal(normalizarErroCancelamento(err));
   } finally {
-    setEdicaoBusyState(false);
+    setModalBusyState(false);
   }
 }
 
@@ -578,19 +492,11 @@ async function init() {
 
   $('bmFechar')?.addEventListener('click', fecharModalBolao);
   $('bmCancelar')?.addEventListener('click', fecharModalBolao);
-  $('bmConfirmar')?.addEventListener('click', cancelarBolaoSelecionado);
-  $('bmEditar')?.addEventListener('click', abrirModalEdicaoBolao);
-
-  $('beFechar')?.addEventListener('click', fecharModalEdicaoBolao);
-  $('beCancelar')?.addEventListener('click', fecharModalEdicaoBolao);
-  $('beSalvar')?.addEventListener('click', salvarEdicaoBolao);
+  $('bmConfirmar')?.addEventListener('click', salvarBolaoSelecionado);
+  $('bmDeletar')?.addEventListener('click', deletarBolaoSelecionado);
 
   $('bolaoModalOverlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'bolaoModalOverlay') fecharModalBolao();
-  });
-
-  $('bolaoEditModalOverlay')?.addEventListener('click', (e) => {
-    if (e.target.id === 'bolaoEditModalOverlay') fecharModalEdicaoBolao();
   });
 
   await exibir();
@@ -847,5 +753,4 @@ async function exibir() {
 
 updateClock();
 setInterval(updateClock, 1000);
-
 document.addEventListener('DOMContentLoaded', init);
