@@ -71,10 +71,10 @@ async function initThemeNoExibir() {
   if (!hasThemeManager()) return false;
 
   const boot = await window.SISLOT_THEME.init({
-    selectId: 'sl-loja-select',
-    clockId: 'relogio',
-    includeTodas: false
-  });
+  filterSelectId: 'fLoja',
+  clockId: 'relogio',
+  includeTodas: false
+});
 
   const ctx = boot?.contexto || window.SISLOT_THEME.getContexto?.();
   if (!ctx || !ctx.ativo || !ctx.pode_logar) {
