@@ -202,7 +202,78 @@
     </div>
   </div>
 </div>
+<div class="sl-modal-overlay" id="modalEditarBolao" hidden>
+  <div class="sl-modal sl-modal--edit" role="dialog" aria-modal="true" aria-labelledby="tituloModalEditarBolao">
+    <button class="sl-modal-close" id="btnFecharModalEditarBolao" type="button" aria-label="Fechar">×</button>
 
+    <div class="sl-modal-header">
+      <div class="sl-modal-icon">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </div>
+      <div class="sl-modal-headings">
+        <h3 id="tituloModalEditarBolao">Editar bolão</h3>
+        <p id="subtituloModalEditarBolao">Revise os parâmetros e salve.</p>
+      </div>
+    </div>
+
+    <div class="sl-modal-body">
+      <div class="sl-alert sl-alert--danger" id="alertaBloqueioEdicao" hidden></div>
+      <div class="sl-alert sl-alert--success" id="alertaSucessoEdicao" hidden></div>
+
+      <div class="sl-resumo-bolao">
+        <div class="sl-resumo-card">
+          <span class="sl-label">Bolão</span>
+          <strong id="resumoBolaoTitulo">-</strong>
+        </div>
+        <div class="sl-resumo-card">
+          <span class="sl-label">Origem</span>
+          <strong id="resumoBolaoOrigem">-</strong>
+        </div>
+        <div class="sl-resumo-card">
+          <span class="sl-label">Status</span>
+          <strong id="resumoBolaoStatus">-</strong>
+        </div>
+      </div>
+
+      <form id="formEditarBolao" class="sl-form-grid">
+        <div class="sl-field">
+          <label for="editModalidade">Modalidade</label>
+          <input type="text" id="editModalidade" name="modalidade" required />
+        </div>
+
+        <div class="sl-field">
+          <label for="editConcurso">Concurso</label>
+          <input type="text" id="editConcurso" name="concurso" required />
+        </div>
+
+        <div class="sl-field">
+          <label for="editDtInicial">Data inicial</label>
+          <input type="date" id="editDtInicial" name="dt_inicial" required />
+        </div>
+
+        <div class="sl-field">
+          <label for="editDtConcurso">Data do concurso</label>
+          <input type="date" id="editDtConcurso" name="dt_concurso" required />
+        </div>
+
+        <div class="sl-field">
+          <label for="editValorCota">Valor da cota</label>
+          <input type="number" id="editValorCota" name="valor_cota" step="0.01" min="0.01" required />
+        </div>
+
+        <div class="sl-field">
+          <label for="editQtdCotas">Qtd. cotas</label>
+          <input type="number" id="editQtdCotas" name="qtd_cotas_total" step="1" min="1" required />
+        </div>
+      </form>
+    </div>
+
+    <div class="sl-modal-footer">
+      <button type="button" class="sl-btn sl-btn-secondary" id="btnCancelarModalEditarBolao">Fechar</button>
+      <button type="button" class="sl-btn sl-btn-primary" id="btnSalvarEdicaoBolao">Salvar alterações</button>
+    </div>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sislot-config.js"></script>
 <script src="./js/exibir.js"></script>
