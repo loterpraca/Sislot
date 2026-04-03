@@ -6,15 +6,18 @@ const VIEW_BOLAO = 'view_boloes_exibicao_operacional';
 const VIEW_VENDAS = 'view_boloes_exibicao_operacional_vendas';
 const VIEW_LOJAS = 'view_boloes_exibicao_operacional_lojas';
 
+const VIEW_USUARIO_CONTEXTO = 'vw_usuario_contexto';
+const VIEW_USUARIOS_LOTERIAS_ATIVAS = 'vw_usuarios_loterias_ativas';
+
 let usuario = null;
 let usuarios = [];
 let lojas = [];
 
 const slugsLojas = ['boulevard', 'centro', 'lotobel', 'santa-tereza', 'via-brasil'];
 const slugLabel = {
-  'boulevard': 'BLD',
-  'centro': 'CTR',
-  'lotobel': 'LTB',
+  boulevard: 'BLD',
+  centro: 'CTR',
+  lotobel: 'LTB',
   'santa-tereza': 'STZ',
   'via-brasil': 'VIA'
 };
@@ -271,6 +274,33 @@ async function cancelarBolaoSelecionado() {
   }
 }
 
+async function carregarContextoUsuario(authUserId) {
+  if (!authUserId) return null;
+
+  const { data, error } = await sb
+    .from(VIEW_USUARIO_CONTEXTO)
+    .select('*')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+async function carregarLoteriasPermitidas(authUserId) {
+  if (!authUserId) return [];
+
+  const { data, error } = await sb
+    .from(VIEW_USUARIOS_LOTERIAS_ATIVAS)
+    .select('loteria_id,loteria_nome,loteria_slug,principal,perfil')
+    .eq('auth_user_id', authUserId)
+    .order('principal', { ascending: false })
+    .order('loteria_nome', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
 
@@ -279,35 +309,48 @@ async function init() {
     return;
   }
 
-  const { data: usr } = await sb.from('usuarios')
-    .select('id,nome,perfil,ativo,pode_logar')
-    .eq('auth_user_id', session.user.id)
-    .eq('ativo', true)
-    .eq('pode_logar', true)
-    .maybeSingle();
+  const usr = await carregarContextoUsuario(session.user.id);
 
-  if (!usr) {
+  if (!usr || !usr.ativo || !usr.pode_logar) {
     location.href = './login.html';
     return;
   }
 
-  usuario = usr;
+  usuario = {
+    id: usr.usuario_id,
+    nome: usr.nome,
+    email: usr.email,
+    perfil: usr.perfil,
+    ativo: usr.ativo,
+    pode_logar: usr.pode_logar,
+    loteria_principal_id: usr.loteria_principal_id,
+    loteria_principal_nome: usr.loteria_principal_nome,
+    loteria_principal_slug: usr.loteria_principal_slug
+  };
 
   $('btnLogout').onclick = async () => {
     await sb.auth.signOut();
     location.href = './login.html';
   };
 
-  const [{ data: ls }, { data: us }] = await Promise.all([
-    sb.from('loterias').select('id,nome,slug').eq('ativo', true).order('nome'),
+  const [loteriasPermitidasResp, usuariosResp] = await Promise.all([
+    carregarLoteriasPermitidas(session.user.id),
     sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome')
   ]);
 
-  lojas = ls || [];
-  usuarios = us || [];
+  const loteriasPermitidas = loteriasPermitidasResp || [];
+  usuarios = usuariosResp.data || [];
+
+  lojas = loteriasPermitidas.map(l => ({
+    id: l.loteria_id,
+    nome: l.loteria_nome,
+    slug: l.loteria_slug,
+    principal: l.principal
+  }));
 
   const sel = $('fLoja');
   sel.innerHTML = '<option value="">Todas</option>';
+
   lojas.forEach(l => {
     const o = document.createElement('option');
     o.value = l.id;
@@ -317,6 +360,10 @@ async function init() {
 
   $('fDataRef').value = hojeISO();
   $('fStatus').value = 'ATIVO';
+
+  if (usuario?.loteria_principal_id) {
+    $('fLoja').value = String(usuario.loteria_principal_id);
+  }
 
   ['fDataRef', 'fDtConcDe', 'fDtConcAte', 'fModal', 'fLoja', 'fStatus'].forEach(id => {
     $(id).addEventListener('change', agendarExibicao);
@@ -338,10 +385,12 @@ async function init() {
 function limpar() {
   $('fDataRef').value = hojeISO();
   ['fDtConcDe', 'fDtConcAte', 'fConc'].forEach(id => $(id).value = '');
-  ['fModal', 'fLoja'].forEach(id => $(id).selectedIndex = 0);
+  $('fModal').selectedIndex = 0;
   $('fStatus').value = 'ATIVO';
+  $('fLoja').value = usuario?.loteria_principal_id ? String(usuario.loteria_principal_id) : '';
   exibir();
 }
+
 async function exibir() {
   const dataRef = $('fDataRef').value || hojeISO();
   $('statsRow').style.display = 'none';
