@@ -13,6 +13,8 @@ let usuario = null;
 let usuarios = [];
 let lojas = [];
 
+
+
 const slugsLojas = ['boulevard', 'centro', 'lotobel', 'santa-tereza', 'via-brasil'];
 const slugLabel = {
   boulevard: 'BLD',
@@ -26,6 +28,92 @@ let filtroTimer = null;
 let boloesCache = [];
 let bolaoSelecionadoModal = null;
 let cancelandoBolao = false;
+let themeListenerRegistrado = false;
+
+function hasThemeManager() {
+  return !!window.SISLOT_THEME?.init;
+}
+
+function preencherFiltroLoja(lista) {
+  const sel = $('fLoja');
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="">Todas</option>';
+
+  (lista || []).forEach(l => {
+    const o = document.createElement('option');
+    o.value = l.id;
+    o.textContent = l.nome;
+    sel.appendChild(o);
+  });
+}
+
+function lojaAtivaThemeId() {
+  const loja = window.SISLOT_THEME?.lojaAtiva?.();
+  return loja?.loteria_id ? String(loja.loteria_id) : '';
+}
+
+function sincronizarFiltroLojaComTema(recarregar = false) {
+  const fLoja = $('fLoja');
+  if (!fLoja || !hasThemeManager()) return;
+
+  const lojaId = lojaAtivaThemeId();
+  if (lojaId) {
+    fLoja.value = lojaId;
+  }
+
+  if (recarregar) {
+    agendarExibicao();
+  }
+}
+
+async function initThemeNoExibir() {
+  if (!hasThemeManager()) return false;
+
+  const boot = await window.SISLOT_THEME.init({
+    selectId: 'sl-loja-select',
+    clockId: 'relogio',
+    includeTodas: false
+  });
+
+  const ctx = boot?.contexto || window.SISLOT_THEME.getContexto?.();
+  if (!ctx || !ctx.ativo || !ctx.pode_logar) {
+    location.href = './login.html';
+    return false;
+  }
+
+  usuario = {
+    id: ctx.usuario_id,
+    nome: ctx.nome,
+    email: ctx.email,
+    perfil: ctx.perfil,
+    ativo: ctx.ativo,
+    pode_logar: ctx.pode_logar,
+    loteria_principal_id: ctx.loteria_principal_id,
+    loteria_principal_nome: ctx.loteria_principal_nome,
+    loteria_principal_slug: ctx.loteria_principal_slug
+  };
+
+  const lojasPermitidas = window.SISLOT_THEME.getAllowedStores?.() || [];
+  lojas = lojasPermitidas.map(l => ({
+    id: l.id,
+    nome: l.nome,
+    slug: l.slug,
+    principal: l.principal
+  }));
+
+  preencherFiltroLoja(lojas);
+
+  if (!themeListenerRegistrado) {
+    window.addEventListener('sislot:loja-change', () => {
+      sincronizarFiltroLojaComTema(true);
+    });
+    themeListenerRegistrado = true;
+  }
+
+  return true;
+}
+
 
 function fmtBRL(v) {
   return v == null || v === '' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {
@@ -309,60 +397,50 @@ async function init() {
     return;
   }
 
-  const usr = await carregarContextoUsuario(session.user.id);
+  const temaOk = await initThemeNoExibir();
 
-  if (!usr || !usr.ativo || !usr.pode_logar) {
-    location.href = './login.html';
-    return;
+  if (!temaOk) {
+    const { data: usr } = await sb.from('usuarios')
+      .select('id,nome,perfil,ativo,pode_logar')
+      .eq('auth_user_id', session.user.id)
+      .eq('ativo', true)
+      .eq('pode_logar', true)
+      .maybeSingle();
+
+    if (!usr) {
+      location.href = './login.html';
+      return;
+    }
+
+    usuario = usr;
+
+    const [{ data: ls }, { data: us }] = await Promise.all([
+      sb.from('loterias').select('id,nome,slug').eq('ativo', true).order('nome'),
+      sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome')
+    ]);
+
+    lojas = ls || [];
+    usuarios = us || [];
+    preencherFiltroLoja(lojas);
+  } else {
+    const { data: us } = await sb.from('usuarios')
+      .select('id,nome')
+      .eq('ativo', true)
+      .order('nome');
+
+    usuarios = us || [];
   }
-
-  usuario = {
-    id: usr.usuario_id,
-    nome: usr.nome,
-    email: usr.email,
-    perfil: usr.perfil,
-    ativo: usr.ativo,
-    pode_logar: usr.pode_logar,
-    loteria_principal_id: usr.loteria_principal_id,
-    loteria_principal_nome: usr.loteria_principal_nome,
-    loteria_principal_slug: usr.loteria_principal_slug
-  };
 
   $('btnLogout').onclick = async () => {
     await sb.auth.signOut();
     location.href = './login.html';
   };
 
-  const [loteriasPermitidasResp, usuariosResp] = await Promise.all([
-    carregarLoteriasPermitidas(session.user.id),
-    sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome')
-  ]);
-
-  const loteriasPermitidas = loteriasPermitidasResp || [];
-  usuarios = usuariosResp.data || [];
-
-  lojas = loteriasPermitidas.map(l => ({
-    id: l.loteria_id,
-    nome: l.loteria_nome,
-    slug: l.loteria_slug,
-    principal: l.principal
-  }));
-
-  const sel = $('fLoja');
-  sel.innerHTML = '<option value="">Todas</option>';
-
-  lojas.forEach(l => {
-    const o = document.createElement('option');
-    o.value = l.id;
-    o.textContent = l.nome;
-    sel.appendChild(o);
-  });
-
   $('fDataRef').value = hojeISO();
   $('fStatus').value = 'ATIVO';
 
-  if (usuario?.loteria_principal_id) {
-    $('fLoja').value = String(usuario.loteria_principal_id);
+  if (hasThemeManager()) {
+    sincronizarFiltroLojaComTema(false);
   }
 
   ['fDataRef', 'fDtConcDe', 'fDtConcAte', 'fModal', 'fLoja', 'fStatus'].forEach(id => {
@@ -387,10 +465,15 @@ function limpar() {
   ['fDtConcDe', 'fDtConcAte', 'fConc'].forEach(id => $(id).value = '');
   $('fModal').selectedIndex = 0;
   $('fStatus').value = 'ATIVO';
-  $('fLoja').value = usuario?.loteria_principal_id ? String(usuario.loteria_principal_id) : '';
+
+  if (hasThemeManager()) {
+    sincronizarFiltroLojaComTema(false);
+  } else {
+    $('fLoja').selectedIndex = 0;
+  }
+
   exibir();
 }
-
 async function exibir() {
   const dataRef = $('fDataRef').value || hojeISO();
   $('statsRow').style.display = 'none';
@@ -631,7 +714,9 @@ async function exibir() {
   bindSelecaoBoloes();
 }
 
-updateClock();
-setInterval(updateClock, 1000);
+if (!hasThemeManager()) {
+  updateClock();
+  setInterval(updateClock, 1000);
+}
 
 document.addEventListener('DOMContentLoaded', init);
