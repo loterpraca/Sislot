@@ -415,17 +415,18 @@ if (filtro) {
   }
 
   window.SISLOT_THEME = {
-    init,
-    aplicarTema,
-    lojaAtiva,
-    lojaSlug,
-    listLojas,
-    getContexto,
-    getAllowedStoreIds,
-    getAllowedStores,
-    LOJAS,
-    state
-  };
-
+  init,
+  aplicarTema,
+  aplicarTemaPorLoteriaId,
+  lojaAtiva,
+  lojaSlug,
+  listLojas,
+  getContexto,
+  getAllowedStoreIds,
+  getAllowedStores,
+  preencherFiltroExistenteComLojasPermitidas,
+  LOJAS,
+  state
+};
   console.log('✓ SISLOT_THEME carregado');
 })();
