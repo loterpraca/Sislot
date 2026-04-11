@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal Exibição — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/federal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./js/federal-base.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">LC</div>
+      <div>
+        <div class="brand-name">SisLot</div>
+        <div class="brand-sub">Federal • Exibição</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div id="relogio"></div>
+      <button class="btn-topbar" onclick="location.href='./federal.html'">Voltar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="page-header">
+      <div>
+        <div class="page-title">Resumo Analítico da Federal</div>
+        <div class="page-sub">Visão central por concurso e loja origem.</div>
+      </div>
+    </section>
+
+    <div class="status-bar" id="st-visao"></div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="field" style="min-width:190px"><label class="field-label">Concurso</label><input id="filtro-concurso" placeholder="3060"></div>
+        <div class="field" style="min-width:180px"><label class="field-label">Loja origem</label><select id="filtro-loja"></select></div>
+        <div class="field" style="min-width:170px"><label class="field-label">Data sorteio inicial</label><input type="date" id="filtro-dt-ini"></div>
+        <div class="field" style="min-width:170px"><label class="field-label">Data sorteio final</label><input type="date" id="filtro-dt-fim"></div>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn-secondary" id="btn-filtrar-visao">Filtrar</button>
+        <button class="btn-secondary" id="btn-limpar-visao">Limpar</button>
+        <button class="btn-primary" id="btn-recarregar-visao">Atualizar</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis-visao"></div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Modalidade</th>
+            <th>Loja Origem</th>
+            <th>Concurso</th>
+            <th>Dt Sorteio</th>
+            <th>Qtd Inicial</th>
+            <th>Vend. Funcionários</th>
+            <th>Vend. Externa</th>
+            <th>Dev. Origem</th>
+            <th>Dev. Terceiros</th>
+            <th>Encalhe</th>
+            <th>Prêmio</th>
+            <th>Estoque</th>
+            <th>Resultado</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-visao"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div class="overlay" id="overlay"></div>
+  <div class="overlay" id="overlay-lanc"></div>
+
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title" id="drawer-title">Detalhe</div>
+        <div class="drawer-sub" id="drawer-sub">Visualização</div>
+      </div>
+      <button class="btn-secondary" id="btn-close-drawer">Fechar</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+    <div class="drawer-foot" id="drawer-foot"></div>
+  </div>
+
+  <div class="drawer" id="drawer-lanc">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-title">Lançamento</div>
+        <div class="drawer-sub">Devolução, encalhe e premiação</div>
+      </div>
+      <button class="btn-secondary" id="btn-close-lanc">Fechar</button>
+    </div>
+    <div class="drawer-body">
+      <div class="grid-3">
+        <div class="field"><label class="field-label">Modalidade</label><input id="lanc-modalidade" value="Federal" readonly></div>
+        <div class="field"><label class="field-label">Concurso</label><input id="lanc-concurso" readonly></div>
+        <div class="field"><label class="field-label">Data do concurso</label><input id="lanc-data" readonly></div>
+      </div>
+
+      <div class="grid-3" style="margin-top:14px">
+        <div class="field"><label class="field-label">Loja origem</label><input id="lanc-loja" readonly></div>
+        <div class="field"><label class="field-label req">Qtd devolução na origem</label><input type="number" id="lanc-qtd-dev"></div>
+        <div class="field"><label class="field-label req">Qtd encalhe</label><input type="number" id="lanc-qtd-enc"></div>
+      </div>
+
+      <div class="grid-2" style="margin-top:14px">
+        <div class="field"><label class="field-label req">Valor total da premiação</label><input type="number" step="0.01" id="lanc-vlr-premio"></div>
+        <div class="field"><label class="field-label">Observação</label><input id="lanc-obs" placeholder="Opcional"></div>
+      </div>
+    </div>
+    <div class="drawer-foot">
+      <button class="btn-secondary" id="btn-cancel-lanc">Cancelar</button>
+      <button class="btn-primary" id="btn-save-lanc">Salvar lançamento</button>
+    </div>
+  </div>
+
+  <script src="./js/federal-exibicao.js"></script>
+</body>
+</html>
