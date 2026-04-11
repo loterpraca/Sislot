@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal Movimentação — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/federal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./js/federal-base.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">LC</div>
+      <div>
+        <div class="brand-name">SisLot</div>
+        <div class="brand-sub">Federal • Movimentação</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div id="relogio"></div>
+      <button class="btn-topbar" onclick="location.href='./federal.html'">Voltar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="page-header">
+      <div>
+        <div class="page-title">Movimentação Operacional</div>
+        <div class="page-sub">Transferência, devolução Caixa e venda cambista.</div>
+      </div>
+    </section>
+
+    <div class="status-bar" id="st-mov"></div>
+
+    <div class="grid-2">
+      <section class="card">
+        <div class="sep" style="margin-top:0"><span class="sep-label">Nova movimentação</span><div class="sep-line"></div></div>
+
+        <div class="grid-3">
+          <div class="field"><label class="field-label">Modalidade</label><input id="mov-modalidade" value="Federal" readonly></div>
+          <div class="field"><label class="field-label req">Concurso</label><select id="mov-federal"></select></div>
+          <div class="field"><label class="field-label">Data do concurso</label><input type="date" id="mov-dt-concurso" readonly></div>
+        </div>
+
+        <div class="grid-3" style="margin-top:14px">
+          <div class="field"><label class="field-label req">Loteria origem</label><select id="mov-loteria-origem"></select></div>
+          <div class="field"><label class="field-label">Loteria destino</label><select id="mov-loteria-destino"></select></div>
+          <div class="field">
+            <label class="field-label req">Tipo de evento</label>
+            <select id="mov-tipo-evento">
+              <option value="TRANSFERENCIA">Transferência</option>
+              <option value="DEVOLUCAO_CAIXA">Devolução Caixa</option>
+              <option value="VENDA_CAMBISTA">Venda Cambista</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top:14px">
+          <div class="field"><label class="field-label req">Qtd de frações</label><input type="number" id="mov-qtd"></div>
+          <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="mov-valor"></div>
+          <div class="field"><label class="field-label">Valor total</label><input type="number" step="0.01" id="mov-total" readonly></div>
+        </div>
+
+        <div class="grid-1" style="margin-top:14px">
+          <div class="field"><label class="field-label">Status</label><input id="mov-status-acerto" value="PENDENTE" readonly></div>
+        </div>
+
+        <div class="field" style="margin-top:14px">
+          <label class="field-label">Observação</label>
+          <textarea id="mov-observacao" placeholder="Detalhes da operação"></textarea>
+        </div>
+
+        <div class="flex" style="margin-top:18px">
+          <button class="btn-primary" id="btn-salvar-mov">Salvar movimentação</button>
+          <button class="btn-secondary" id="btn-limpar-mov">Limpar</button>
+          <button class="btn-danger" id="btn-excluir-mov" style="display:none">Apagar linha</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="sep" style="margin-top:0"><span class="sep-label">Resumo do concurso selecionado</span><div class="sep-line"></div></div>
+        <div id="mov-resumo-selec" class="empty">
+          <div class="empty-title">Selecione um concurso</div>
+          <div class="empty-sub">Resumo rápido da origem escolhida.</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="sep">
+      <span class="sep-label">Histórico operacional</span>
+      <div class="sep-line"></div>
+    </section>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Carimbo</th>
+            <th>Modalidade</th>
+            <th>Concurso</th>
+            <th>Evento</th>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Qtd</th>
+            <th>Valor</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-mov"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="./js/federal-movimentacao.js"></script>
+</body>
+</html>
