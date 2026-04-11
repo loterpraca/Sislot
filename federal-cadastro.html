@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal Cadastro — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/federal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./js/federal-base.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">LC</div>
+      <div>
+        <div class="brand-name">SisLot</div>
+        <div class="brand-sub">Federal • Cadastro</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div id="relogio"></div>
+      <button class="btn-topbar" onclick="location.href='./federal.html'">Voltar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="page-header">
+      <div>
+        <div class="page-title">Cadastro de Concurso</div>
+        <div class="page-sub">Cadastro limpo, sem fechamento, auditoria e ajustes.</div>
+      </div>
+    </section>
+
+    <div class="status-bar" id="st-cadastro"></div>
+
+    <section class="card" id="card-form-cadastro">
+      <div class="sep"><span class="sep-label">Dados do concurso</span><div class="sep-line"></div></div>
+
+      <div class="grid-4">
+        <div class="field"><label class="field-label">Modalidade</label><input value="Federal" readonly></div>
+        <div class="field"><label class="field-label req">Concurso</label><input id="cad-concurso" placeholder="3060"></div>
+        <div class="field">
+          <label class="field-label req">Data sorteio</label>
+          <div style="display:grid;grid-template-columns:36px 1fr 36px;gap:0;align-items:stretch">
+            <button type="button" class="btn-secondary" id="cad-data-prev" style="border-radius:8px 0 0 8px;padding:0;height:34px;justify-content:center">−</button>
+            <input type="date" id="cad-dt-sorteio" style="border-radius:0;height:34px">
+            <button type="button" class="btn-secondary" id="cad-data-next" style="border-radius:0 8px 8px 0;padding:0;height:34px;justify-content:center">+</button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label req">Tipo</label>
+          <select id="cad-tipo">
+            <option value="COMUM">Comum</option>
+            <option value="ESPECIAL">Especial</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-4" style="margin-top:14px">
+        <div class="field"><label class="field-label req">Valor fração</label><input type="number" id="cad-valor-fracao" step="0.01"></div>
+        <div class="field"><label class="field-label req">Valor custo</label><input type="number" id="cad-valor-custo" step="0.01"></div>
+        <div class="field"><label class="field-label req">Frações/bilhete</label><input type="number" id="cad-fracoes-bilhete" value="10"></div>
+        <div class="field"><label class="field-label">Padrão automático</label><input value="Quarta / Sábado" readonly></div>
+      </div>
+
+      <div class="sep"><span class="sep-label">Qtd inicial por loteria</span><div class="sep-line"></div></div>
+
+      <div class="grid-5" style="margin-top:14px">
+        <div class="field"><label class="field-label">Centro</label><input type="number" id="cad-qtd-centro"></div>
+        <div class="field"><label class="field-label">Boulevard</label><input type="number" id="cad-qtd-boulevard"></div>
+        <div class="field"><label class="field-label">Lotobel</label><input type="number" id="cad-qtd-lotobel"></div>
+        <div class="field"><label class="field-label">Santa Tereza</label><input type="number" id="cad-qtd-santa"></div>
+        <div class="field"><label class="field-label">Via Brasil</label><input type="number" id="cad-qtd-via"></div>
+      </div>
+
+      <div class="flex" style="margin-top:14px">
+        <button class="btn-primary" id="btn-salvar-cadastro">Salvar concurso</button>
+        <button class="btn-secondary" id="btn-limpar-cadastro">Limpar</button>
+      </div>
+    </section>
+
+    <section class="sep">
+      <span class="sep-label">Concursos cadastrados</span>
+      <div class="sep-line"></div>
+      <span class="sep-count" id="cnt-cadastros">0</span>
+    </section>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Loja</th>
+            <th>Concurso</th>
+            <th>Dt Sorteio</th>
+            <th>Tipo</th>
+            <th>Valor Fração</th>
+            <th>Valor Custo</th>
+            <th>Qtd Inicial</th>
+            <th>Devolvida</th>
+            <th>Encalhe</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-cadastro"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="./js/federal-cadastro.js"></script>
+</body>
+</html>
