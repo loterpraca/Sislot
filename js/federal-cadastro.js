@@ -206,41 +206,47 @@
     $('cad-qtd-via').value = itens.find(x => x.loteria_id === 5)?.qtd_recebidas || 0;
   }
 
-  async function deleteCadastro(concurso) {
-    if (!confirm(`Apagar o concurso ${concurso} em todas as loterias?`)) return;
+ async function deleteCadastro(concurso) {
+  const concursoTrim = String(concurso || '').trim();
+  if (!concursoTrim) return;
 
-    try {
-      const idsFederais = state.federais
-        .filter(x => String(x.concurso) === String(concurso))
-        .map(x => x.id);
+  if (!confirm(`Excluir o concurso ${concursoTrim} em todas as loterias?`)) return;
 
-      if (idsFederais.length) {
-        let r;
+  try {
+    const { data, error } = await sb
+      .rpc('rpc_federal_validar_exclusao_concurso', { p_concurso: concursoTrim });
 
-        r = await sb.from('federal_encalhe_premio').delete().in('federal_id', idsFederais);
-        if (r.error) throw r.error;
+    if (error) throw error;
 
-        r = await sb.from('federal_movimentacoes').delete().in('federal_id', idsFederais);
-        if (r.error) throw r.error;
-
-        r = await sb.from('fechamento_federais').delete().in('federal_id', idsFederais);
-        if (r.error) throw r.error;
-      }
-
-      const { error } = await sb.from('federais').delete().eq('concurso', concurso);
-      if (error) throw error;
-
-      if (String(state.editingCadastroConcurso || '') === String(concurso)) {
-        state.editingCadastroConcurso = null;
-        setCadastroDefaults();
-      }
-
-      showStatus('st-cadastro', `Concurso ${concurso} excluído.`, 'ok');
-      await refreshCadastro();
-    } catch (e) {
-      showStatus('st-cadastro', e.message, 'err');
+    const info = Array.isArray(data) ? data[0] : data;
+    if (!info) {
+      showStatus('st-cadastro', 'Não foi possível validar a exclusão.', 'err');
+      return;
     }
+
+    if (!info.pode_excluir) {
+      showStatus('st-cadastro', `Exclusão bloqueada: ${info.motivo}`, 'err');
+      return;
+    }
+
+    const { error: delError } = await sb
+      .from('federais')
+      .delete()
+      .eq('concurso', concursoTrim);
+
+    if (delError) throw delError;
+
+    if (String(state.editingCadastroConcurso || '').trim() === concursoTrim) {
+      state.editingCadastroConcurso = null;
+      setCadastroDefaults();
+    }
+
+    showStatus('st-cadastro', `Concurso ${concursoTrim} excluído.`, 'ok');
+    await refreshCadastro();
+  } catch (e) {
+    showStatus('st-cadastro', e.message || 'Erro ao excluir concurso.', 'err');
   }
+}
 
   function bindEvents() {
     $('btn-salvar-cadastro').addEventListener('click', saveCadastro);
