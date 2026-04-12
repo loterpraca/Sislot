@@ -12,20 +12,104 @@
     editingMovId: null
   };
 
+  function concursoKey(f) {
+    return `${f.concurso}__${f.dt_sorteio || ''}`;
+  }
+
+  function getConcursosUnicos() {
+    const map = new Map();
+
+    for (const f of state.federais) {
+      const key = concursoKey(f);
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          concurso: f.concurso,
+          dt_sorteio: f.dt_sorteio,
+          label: `${f.concurso}${f.dt_sorteio ? ' • ' + fmtDate(f.dt_sorteio) : ''}`
+        });
+      }
+    }
+
+    return [...map.values()];
+  }
+
+  function getFederaisDoConcurso(key) {
+    if (!key) return [];
+    return state.federais.filter(f => concursoKey(f) === key);
+  }
+
+  function getFederalSelecionado() {
+    const key = $('mov-federal').value;
+    const origem = $('mov-loteria-origem').value;
+
+    if (!key || !origem) return null;
+
+    return state.federais.find(f =>
+      concursoKey(f) === key &&
+      String(f.loteria_id) === String(origem)
+    ) || null;
+  }
+
   async function loadMovs() {
-    const { data } = await sb
+    const { data, error } = await sb
       .from('federal_movimentacoes')
-      .select('*, federais!inner(concurso,dt_sorteio,modalidade), usuarios(nome)')
+      .select('*, federais!inner(concurso,dt_sorteio,modalidade)')
       .order('created_at', { ascending: false });
+
+    if (error) {
+      showStatus('st-mov', error.message, 'err');
+      state.movimentos = [];
+      return;
+    }
 
     state.movimentos = data || [];
   }
 
-  function fillStaticSelects() {
-    const lotLabel = x => `${x.id} • ${x.nome}`;
-    fillSelect('mov-loteria-origem', state.loterias, 'Selecione...', 'id', lotLabel);
-    fillSelect('mov-loteria-destino', state.loterias, 'Selecione...', 'id', lotLabel);
-    fillSelect('mov-federal', state.federais, 'Selecione...', 'id', x => x.concurso);
+  function fillConcursoSelect(selectedKey = '') {
+    const concursos = getConcursosUnicos();
+    fillSelect('mov-federal', concursos, 'Selecione...', 'key', x => x.label);
+
+    if (selectedKey) {
+      $('mov-federal').value = selectedKey;
+    }
+  }
+
+  function fillOrigemSelect(selectedOrigem = '') {
+    const key = $('mov-federal').value;
+    const federais = getFederaisDoConcurso(key);
+
+    const lojasOrigem = federais
+      .map(f => state.loterias.find(l => String(l.id) === String(f.loteria_id)))
+      .filter(Boolean);
+
+    fillSelect(
+      'mov-loteria-origem',
+      lojasOrigem,
+      key ? 'Selecione...' : 'Selecione o concurso primeiro...',
+      'id',
+      x => `${x.id} • ${x.nome}`
+    );
+
+    if (selectedOrigem) {
+      $('mov-loteria-origem').value = String(selectedOrigem);
+    }
+  }
+
+  function fillDestinoSelect() {
+    fillSelect(
+      'mov-loteria-destino',
+      state.loterias,
+      'Selecione...',
+      'id',
+      x => `${x.id} • ${x.nome}`
+    );
+  }
+
+  function fillStaticSelects(selectedConcursoKey = '', selectedOrigem = '') {
+    fillConcursoSelect(selectedConcursoKey);
+    fillOrigemSelect(selectedOrigem);
+    fillDestinoSelect();
   }
 
   function applyDestinoFilter() {
@@ -45,16 +129,17 @@
   }
 
   function syncMovValorByTipo() {
-    const f = lookupFederal(state.federais, $('mov-federal').value);
+    const f = getFederalSelecionado();
     if (!f) return;
 
     const tipo = $('mov-tipo-evento').value;
+
     if (tipo === 'DEVOLUCAO_CAIXA') {
-      $('mov-valor').value = f.valor_custo;
+      $('mov-valor').value = f.valor_custo ?? '';
     } else if (tipo === 'VENDA_CAMBISTA') {
       $('mov-valor').value = '';
     } else {
-      $('mov-valor').value = f.valor_fracao;
+      $('mov-valor').value = f.valor_fracao ?? '';
     }
 
     const qtd = Number($('mov-qtd').value || 0);
@@ -62,28 +147,14 @@
     $('mov-total').value = qtd && valor ? (qtd * valor).toFixed(2) : '';
   }
 
-  function clearMov() {
-    state.editingMovId = null;
-    $('mov-federal').value = '';
-    $('mov-modalidade').value = 'Federal';
-    $('mov-loteria-origem').value = '';
-    $('mov-loteria-destino').value = '';
-    $('mov-dt-concurso').value = '';
-    $('mov-tipo-evento').value = 'TRANSFERENCIA';
-    $('mov-qtd').value = '';
-    $('mov-valor').value = '';
-    $('mov-total').value = '';
-    $('mov-status-acerto').value = 'PENDENTE';
-    $('mov-observacao').value = '';
-    $('btn-excluir-mov').style.display = 'none';
-    $('mov-resumo-selec').innerHTML = `<div class="empty-title">Selecione um concurso</div><div class="empty-sub">Resumo rápido da origem escolhida.</div>`;
-    applyDestinoFilter();
-  }
-
   function renderResumoSelecao() {
-    const f = lookupFederal(state.federais, $('mov-federal').value);
+    const f = getFederalSelecionado();
+
     if (!f) {
-      $('mov-resumo-selec').innerHTML = `<div class="empty-title">Selecione um concurso</div><div class="empty-sub">Resumo rápido da origem escolhida.</div>`;
+      $('mov-resumo-selec').innerHTML = `
+        <div class="empty-title">Selecione concurso e loja origem</div>
+        <div class="empty-sub">Resumo rápido da origem escolhida.</div>
+      `;
       return;
     }
 
@@ -99,9 +170,40 @@
     `;
   }
 
+  function clearMov() {
+    state.editingMovId = null;
+
+    $('mov-federal').value = '';
+    fillOrigemSelect('');
+
+    $('mov-modalidade').value = 'Federal';
+    $('mov-loteria-origem').value = '';
+    $('mov-loteria-destino').value = '';
+    $('mov-dt-concurso').value = '';
+    $('mov-tipo-evento').value = 'TRANSFERENCIA';
+    $('mov-qtd').value = '';
+    $('mov-valor').value = '';
+    $('mov-total').value = '';
+    $('mov-status-acerto').value = 'PENDENTE';
+    $('mov-observacao').value = '';
+    $('btn-excluir-mov').style.display = 'none';
+
+    $('mov-resumo-selec').innerHTML = `
+      <div class="empty-title">Selecione concurso e loja origem</div>
+      <div class="empty-sub">Resumo rápido da origem escolhida.</div>
+    `;
+
+    applyDestinoFilter();
+  }
+
   function renderMovimentacoes() {
     $('tbody-mov').innerHTML = state.movimentos.length ? state.movimentos.map(m => {
-      const total = Number(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0)));
+      const total = Number(
+        m.valor_total_real ||
+        m.valor_total ||
+        (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0))
+      );
+
       const statusClass = m.status_acerto === 'PAGO' ? 'b-ok' : 'b-warn';
 
       return `
@@ -141,16 +243,31 @@
     const m = state.movimentos.find(x => String(x.id) === String(id));
     if (!m) return;
 
+    const f = lookupFederal(state.federais, m.federal_id);
+    if (!f) {
+      showStatus('st-mov', 'Federal da movimentação não encontrado.', 'err');
+      return;
+    }
+
     state.editingMovId = id;
-    $('mov-federal').value = m.federal_id;
+
+    fillStaticSelects(concursoKey(f), m.loteria_origem || f.loteria_id);
+
+    $('mov-federal').value = concursoKey(f);
+    fillOrigemSelect(m.loteria_origem || f.loteria_id);
+    $('mov-loteria-origem').value = String(m.loteria_origem || f.loteria_id);
+
     $('mov-modalidade').value = 'Federal';
-    $('mov-loteria-origem').value = m.loteria_origem || '';
     $('mov-loteria-destino').value = m.loteria_destino || '';
-    $('mov-dt-concurso').value = lookupFederal(state.federais, m.federal_id)?.dt_sorteio || '';
+    $('mov-dt-concurso').value = f.dt_sorteio || '';
     $('mov-tipo-evento').value = m.tipo_evento || 'TRANSFERENCIA';
-    $('mov-qtd').value = m.qtd_fracoes;
+    $('mov-qtd').value = m.qtd_fracoes ?? '';
     $('mov-valor').value = m.valor_fracao_real || m.valor_fracao || '';
-    $('mov-total').value = Number(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0))).toFixed(2);
+    $('mov-total').value = Number(
+      m.valor_total_real ||
+      m.valor_total ||
+      (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0))
+    ).toFixed(2);
     $('mov-status-acerto').value = m.status_acerto || 'PENDENTE';
     $('mov-observacao').value = m.observacao || '';
     $('btn-excluir-mov').style.display = 'inline-flex';
@@ -177,13 +294,13 @@
 
   async function saveMov() {
     try {
-      const federal = lookupFederal(state.federais, $('mov-federal').value);
+      const federal = getFederalSelecionado();
       const valor = Number($('mov-valor').value || 0);
       const qtd = Number($('mov-qtd').value || 0);
       const tipoEvento = $('mov-tipo-evento').value;
 
       const payload = {
-        federal_id: $('mov-federal').value,
+        federal_id: federal?.id || null,
         loteria_origem: Number($('mov-loteria-origem').value || 0) || null,
         loteria_destino: Number($('mov-loteria-destino').value || 0) || null,
         tipo: tipoEvento === 'TRANSFERENCIA' ? 'ENVIO' : 'DEVOLUCAO_EXTERNA',
@@ -203,7 +320,7 @@
       };
 
       if (!payload.federal_id || !payload.tipo_evento || !payload.qtd_fracoes || !payload.loteria_origem) {
-        showStatus('st-mov', 'Preencha concurso, origem, evento e quantidade.', 'err');
+        showStatus('st-mov', 'Preencha concurso, loja origem, evento e quantidade.', 'err');
         return;
       }
 
@@ -213,11 +330,18 @@
       }
 
       if (state.editingMovId) {
-        const { error } = await sb.from('federal_movimentacoes').update(payload).eq('id', state.editingMovId);
+        const { error } = await sb
+          .from('federal_movimentacoes')
+          .update(payload)
+          .eq('id', state.editingMovId);
+
         if (error) throw error;
         showStatus('st-mov', 'Movimentação atualizada.', 'ok');
       } else {
-        const { error } = await sb.from('federal_movimentacoes').insert(payload);
+        const { error } = await sb
+          .from('federal_movimentacoes')
+          .insert(payload);
+
         if (error) throw error;
         showStatus('st-mov', 'Movimentação registrada.', 'ok');
       }
@@ -238,18 +362,26 @@
 
   function bindEvents() {
     $('mov-federal').addEventListener('change', () => {
-      const f = lookupFederal(state.federais, $('mov-federal').value);
+      fillOrigemSelect('');
+      $('mov-loteria-origem').value = '';
+      $('mov-dt-concurso').value = '';
+      $('mov-valor').value = '';
+      $('mov-total').value = '';
+      renderResumoSelecao();
+      applyDestinoFilter();
+    });
+
+    $('mov-loteria-origem').addEventListener('change', () => {
+      const f = getFederalSelecionado();
       if (!f) return;
 
       $('mov-modalidade').value = 'Federal';
-      $('mov-loteria-origem').value = f.loteria_id;
-      $('mov-dt-concurso').value = f.dt_sorteio;
-      applyDestinoFilter();
+      $('mov-dt-concurso').value = f.dt_sorteio || '';
       syncMovValorByTipo();
       renderResumoSelecao();
+      applyDestinoFilter();
     });
 
-    $('mov-loteria-origem').addEventListener('change', applyDestinoFilter);
     $('mov-tipo-evento').addEventListener('change', syncMovValorByTipo);
 
     ['mov-qtd', 'mov-valor'].forEach(id => {
