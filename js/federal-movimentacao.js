@@ -89,19 +89,28 @@
         return concA.localeCompare(concB, 'pt-BR', { numeric: true });
       }
 
-      const lotA = lookupLoteriaName(state.loterias, a.loteria_id) || '';
-      const lotB = lookupLoteriaName(state.loterias, b.loteria_id) || '';
+      const lotA = nomeLoteriaExibicao(a.loteria_id);
+      const lotB = nomeLoteriaExibicao(b.loteria_id);
       return lotA.localeCompare(lotB, 'pt-BR');
     });
 
-  if (!agrupado) {
-    return filtrados;
-  }
+  if (!agrupado) return filtrados;
 
   const map = new Map();
 
   for (const f of filtrados) {
     const key = concursoKey(f);
+
+    const saldo =
+      Number(
+        f.saldo ??
+        f.saldo_atual ??
+        f.qtd_disponivel ??
+        f.qtd_fracoes_disponiveis ??
+        f.qtd_disponivel_loja ??
+        f.qtd_fracoes ??
+        0
+      ) || 0;
 
     if (!map.has(key)) {
       map.set(key, {
@@ -111,13 +120,21 @@
         modalidade: f.modalidade || 'Federal',
         valor_fracao: f.valor_fracao,
         valor_custo: f.valor_custo,
-        origens: [f.loteria_id]
+        saldos: []
       });
+    }
+
+    const item = map.get(key);
+    const existente = item.saldos.find(x => String(x.loteria_id) === String(f.loteria_id));
+
+    if (existente) {
+      existente.saldo += saldo;
     } else {
-      const item = map.get(key);
-      if (!item.origens.includes(f.loteria_id)) {
-        item.origens.push(f.loteria_id);
-      }
+      item.saldos.push({
+        loteria_id: f.loteria_id,
+        nome: nomeLoteriaExibicao(f.loteria_id),
+        saldo
+      });
     }
   }
 
@@ -416,52 +433,47 @@
 
   if (stEmpty) stEmpty.style.display = 'none';
   lista.style.display = 'grid';
-  lista.style.gap = '10px';
+  lista.className = 'federal-lista';
 
   lista.innerHTML = itens.map(item => {
     const isSelected = String(state.selectedConcursoKey || '') === String(item.key);
 
-    const style = isSelected
-      ? 'border:1px solid var(--accent);background:rgba(0,200,150,.06);'
-      : 'border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);';
-
-    const qtdOrigens = item.origens?.length || 0;
+    const saldosHtml = ordenarSaldosPorLoteria(item.saldos || [])
+  .map(s => `
+    <div class="fed-saldo-pill" title="${s.nome}">
+      <span class="fed-saldo-loja">${s.nome}</span>
+      <span class="fed-saldo-val">${fmtSaldo(s.saldo)}</span>
+    </div>
+  `)
+  .join('');
 
     return `
       <button
         type="button"
-        class="federal-card"
+        class="fed-card ${isSelected ? 'is-selected' : ''}"
         data-key="${item.key}"
-        style="
-          width:100%;
-          text-align:left;
-          border-radius:10px;
-          padding:14px 16px;
-          cursor:pointer;
-          transition:.2s;
-          ${style}
-        "
       >
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span class="badge b-info">Federal</span>
-              <span class="mono" style="font-weight:600">Concurso ${item.concurso || '—'}</span>
-            </div>
-
-            <div class="inline-pills">
-              <span class="pill">Data ${fmtDate(item.dt_sorteio)}</span>
-              <span class="pill">Fração ${fmtMoney(item.valor_fracao)}</span>
-              <span class="pill">Custo ${fmtMoney(item.valor_custo)}</span>
-              <span class="pill">${qtdOrigens} origem${qtdOrigens === 1 ? '' : 'ens'} disponível${qtdOrigens === 1 ? '' : 'eis'}</span>
-            </div>
+        <div class="fed-card-main">
+          <div class="fed-card-head">
+            <span class="fed-modalidade">Federal</span>
+            <span class="fed-concurso-chip">${item.concurso || '—'}</span>
+            <span class="fed-data-chip">${fmtDate(item.dt_sorteio)}</span>
           </div>
 
-          <div>
-            <span class="badge ${isSelected ? 'b-ok' : 'b-info'}">
-              ${isSelected ? 'Selecionado' : 'Selecionar'}
-            </span>
+          <div class="fed-card-tags">
+            <span class="fed-tag">Fração ${fmtMoney(item.valor_fracao)}</span>
+            <span class="fed-tag">Custo ${fmtMoney(item.valor_custo)}</span>
           </div>
+
+          <div class="fed-card-saldos">
+            ${saldosHtml || '<div class="fed-saldo-pill"><span class="fed-saldo-loja">—</span><span class="fed-saldo-val">0</span></div>'}
+          </div>
+        </div>
+
+        <div class="fed-card-ind">
+          <span class="badge ${isSelected ? 'b-ok' : 'b-info'}">
+            ${isSelected ? 'Selecionado' : 'Selecionar'}
+          </span>
         </div>
       </button>
     `;
@@ -800,7 +812,30 @@
   selectConcurso(card.dataset.key);
 });
   }
+function ordenarSaldosPorLoteria(saldos = []) {
+  const ordem = new Map(
+    (state.loterias || []).map((l, i) => [String(l.id), i])
+  );
 
+  return [...saldos].sort((a, b) => {
+    const ia = ordem.get(String(a.loteria_id));
+    const ib = ordem.get(String(b.loteria_id));
+
+    if (ia != null && ib != null) return ia - ib;
+    if (ia != null) return -1;
+    if (ib != null) return 1;
+
+    return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+  });
+}
+
+function nomeLoteriaExibicao(loteriaId) {
+  return lookupLoteriaName(state.loterias, loteriaId) || '—';
+}
+
+function fmtSaldo(v) {
+  return String(Number(v || 0));
+}
   async function bootstrap() {
     startClock('relogio');
     state.usuario = await requireSession();
