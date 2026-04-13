@@ -23,35 +23,35 @@
     </div>
 
     <div class="top-actions">
-  <div id="relogio"></div>
+      <div id="relogio"></div>
 
-  <a href="./federal.html" class="btn-topbar" title="Voltar para Federal">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-      <path d="M15 18l-6-6 6-6"></path>
-    </svg>
-    Voltar
-  </a>
+      <a href="./federal.html" class="btn-topbar" title="Voltar para Federal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+          <path d="M15 18l-6-6 6-6"></path>
+        </svg>
+        Voltar
+      </a>
 
-  <a href="./federal_movimentacao_hist.html" class="btn-topbar" title="Histórico de movimentações">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-      <path d="M3 3v5h5"></path>
-      <path d="M3.05 13a9 9 0 1 0 2.13-5.65L3 8"></path>
-      <path d="M12 7v5l3 3"></path>
-    </svg>
-    Histórico
-  </a>
+      <a href="./federal_movimentacao_hist.html" class="btn-topbar" title="Histórico de movimentações">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+          <path d="M3 3v5h5"></path>
+          <path d="M3.05 13a9 9 0 1 0 2.13-5.65L3 8"></path>
+          <path d="M12 7v5l3 3"></path>
+        </svg>
+        Histórico
+      </a>
 
-  <a href="./menu.html" class="btn-topbar btn-topbar-icon" aria-label="Menu principal" title="Menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-      <path d="M3 10.5 12 3l9 7.5"></path>
-      <path d="M5 9.5V21h14V9.5"></path>
-      <path d="M9 21v-6h6v6"></path>
-    </svg>
-  </a>
-</div>
+      <a href="./menu.html" class="btn-topbar btn-topbar-icon" aria-label="Menu principal" title="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+          <path d="M3 10.5 12 3l9 7.5"></path>
+          <path d="M5 9.5V21h14V9.5"></path>
+          <path d="M9 21v-6h6v6"></path>
+        </svg>
+      </a>
+    </div>
   </header>
 
   <main class="main">
@@ -65,60 +65,60 @@
     <div class="status-bar" id="st-mov"></div>
 
     <section class="card">
-  <div class="sep" style="margin-top:0">
-    <span class="sep-label">Data de referência</span>
-    <div class="sep-line"></div>
-    <span class="sep-count" id="federalCount">—</span>
-  </div>
-
-  <div class="date-bar">
-    <button type="button" class="btn-secondary" id="btnDtPrev" aria-label="Dia anterior">◀</button>
-
-    <button type="button" class="btn-secondary" id="dateDisplay">
-      <span id="dateDisplayText">—</span>
-    </button>
-
-    <button type="button" class="btn-secondary" id="btnDtNext" aria-label="Próximo dia">▶</button>
-
-    <button type="button" class="btn-secondary" id="btnHoje">Hoje</button>
-
-    <label class="check-inline">
-      <input type="checkbox" id="chkMostrarTodosConcursos">
-      <span>Mostrar todos</span>
-    </label>
-
-    <input type="date" id="calendarPicker" style="display:none" />
-  </div>
-</section>
-
-<section class="card" style="margin-top:14px">
-  <div class="sep" style="margin-top:0">
-    <span class="sep-label">Federais disponíveis</span>
-    <div class="sep-line"></div>
-  </div>
-
-  <div id="stFedLoading" class="empty">
-    <div class="empty-title">Buscando federais</div>
-    <div class="empty-sub">A lista será filtrada pela data de referência.</div>
-  </div>
-
-  <div id="stFedEmpty" class="empty" style="display:none">
-    <div class="empty-title">Nenhuma federal encontrada</div>
-    <div class="empty-sub">Não há concursos compatíveis com o filtro atual.</div>
-  </div>
-
-  <div id="federalLista" class="federal-lista" style="display:none"></div>
-</section>
-
-    <section class="card" id="mov-card" style="display:none; margin-top:18px">
       <div class="sep" style="margin-top:0">
-        <span class="sep-label">Movimentação do concurso selecionado</span>
+        <span class="sep-label">Data de referência</span>
+        <div class="sep-line"></div>
+        <span class="sep-count" id="federal-count">—</span>
+      </div>
+
+      <div class="date-bar">
+        <button type="button" class="btn-secondary" id="btn-dt-prev" aria-label="Dia anterior">◀</button>
+
+        <button type="button" class="btn-secondary" id="btn-date-display">
+          <span id="date-display-text">—</span>
+        </button>
+
+        <button type="button" class="btn-secondary" id="btn-dt-next" aria-label="Próximo dia">▶</button>
+
+        <button type="button" class="btn-secondary" id="btn-dt-hoje">Hoje</button>
+
+        <label class="check-inline">
+          <input type="checkbox" id="chk-mostrar-todos-concursos">
+          <span>Mostrar todos</span>
+        </label>
+
+        <input type="date" id="date-picker" style="display:none" />
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Federais disponíveis</span>
+        <div class="sep-line"></div>
+      </div>
+
+      <div id="st-fed-loading" class="empty">
+        <div class="empty-title">Buscando federais</div>
+        <div class="empty-sub">A lista será filtrada pela data de referência.</div>
+      </div>
+
+      <div id="st-fed-empty" class="empty" style="display:none">
+        <div class="empty-title">Nenhuma federal encontrada</div>
+        <div class="empty-sub">Não há concursos compatíveis com o filtro atual.</div>
+      </div>
+
+      <div id="federal-lista" class="federal-lista" style="display:none"></div>
+    </section>
+
+    <section class="card" id="mov-card" style="display:none; margin-top:14px">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Movimentação</span>
         <div class="sep-line"></div>
       </div>
 
       <div id="mov-resumo-selec" class="empty" style="margin-bottom:18px">
-        <div class="empty-title">Selecione um concurso na lista acima</div>
-        <div class="empty-sub">O resumo e os campos de movimentação serão liberados após a seleção.</div>
+        <div class="empty-title">Selecione concurso e loja origem</div>
+        <div class="empty-sub">Resumo rápido da origem escolhida.</div>
       </div>
 
       <div class="grid-3">
@@ -194,8 +194,6 @@
         <button class="btn-danger" id="btn-excluir-mov" style="display:none">Apagar linha</button>
       </div>
     </section>
-
-    
   </main>
 
   <script src="./js/federal-movimentacao.js"></script>
