@@ -5,14 +5,15 @@
   } = FED_BASE;
 
   const state = {
-    usuario: null,
-    loterias: [],
-    federais: [],
-    movimentos: [],
-    editingMovId: null,
-    selectedConcursoKey: null,
-    dataRef: hojeISO()
-  };
+  usuario: null,
+  loterias: [],
+  federais: [],
+  movimentos: [],
+  editingMovId: null,
+  selectedFederalId: null,
+  dataRef: hojeISO(),
+  mostrarTodosConcursos: false
+};
 
   function hojeISO() {
     const d = new Date();
