@@ -10,7 +10,7 @@
     federais: [],
     movimentos: [],
     editingMovId: null,
-    selectedFederalId: null,
+    selectedConcursoKey: null,
     dataRef: hojeISO()
   };
 
@@ -59,45 +59,80 @@
   }
 
   function getFederalSelecionado() {
-    if (state.selectedFederalId) {
-      const selected = getFederalById(state.selectedFederalId);
-      if (selected) return selected;
-    }
+  const key = $('mov-federal')?.value || state.selectedConcursoKey;
+  const origem = $('mov-loteria-origem')?.value;
 
-    const key = $('mov-federal')?.value;
-    const origem = $('mov-loteria-origem')?.value;
-    if (!key || !origem) return null;
+  if (!key || !origem) return null;
 
-    return state.federais.find(f =>
-      concursoKey(f) === key &&
-      String(f.loteria_id) === String(origem)
-    ) || null;
+  return state.federais.find(f =>
+    concursoKey(f) === key &&
+    String(f.loteria_id) === String(origem)
+  ) || null;
+}
+  
+  function federaisDisponiveis({ agrupado = false } = {}) {
+  const ref = state.dataRef;
+
+  const filtrados = state.federais
+    .filter(f => {
+      if (!f.dt_sorteio) return true;
+      return String(f.dt_sorteio).slice(0, 10) >= ref;
+    })
+    .sort((a, b) => {
+      const dtA = String(a.dt_sorteio || '');
+      const dtB = String(b.dt_sorteio || '');
+      if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
+
+      const concA = String(a.concurso || '');
+      const concB = String(b.concurso || '');
+      if (concA !== concB) {
+        return concA.localeCompare(concB, 'pt-BR', { numeric: true });
+      }
+
+      const lotA = lookupLoteriaName(state.loterias, a.loteria_id) || '';
+      const lotB = lookupLoteriaName(state.loterias, b.loteria_id) || '';
+      return lotA.localeCompare(lotB, 'pt-BR');
+    });
+
+  if (!agrupado) {
+    return filtrados;
   }
 
-  function federaisDisponiveis() {
-    const ref = state.dataRef;
+  const map = new Map();
 
-    return state.federais
-      .filter(f => {
-        // Regra provisória desta etapa:
-        // disponível = concurso com data de sorteio >= data de referência
-        if (!f.dt_sorteio) return true;
-        return String(f.dt_sorteio).slice(0, 10) >= ref;
-      })
-      .sort((a, b) => {
-        const dtA = String(a.dt_sorteio || '');
-        const dtB = String(b.dt_sorteio || '');
-        if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
+  for (const f of filtrados) {
+    const key = concursoKey(f);
 
-        const concA = String(a.concurso || '');
-        const concB = String(b.concurso || '');
-        if (concA !== concB) return concA.localeCompare(concB, 'pt-BR', { numeric: true });
-
-        const lotA = lookupLoteriaName(state.loterias, a.loteria_id) || '';
-        const lotB = lookupLoteriaName(state.loterias, b.loteria_id) || '';
-        return lotA.localeCompare(lotB, 'pt-BR');
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        concurso: f.concurso,
+        dt_sorteio: f.dt_sorteio,
+        modalidade: f.modalidade || 'Federal',
+        valor_fracao: f.valor_fracao,
+        valor_custo: f.valor_custo,
+        origens: [f.loteria_id]
       });
+    } else {
+      const item = map.get(key);
+      if (!item.origens.includes(f.loteria_id)) {
+        item.origens.push(f.loteria_id);
+      }
+    }
   }
+
+  return [...map.values()].sort((a, b) => {
+    const dtA = String(a.dt_sorteio || '');
+    const dtB = String(b.dt_sorteio || '');
+    if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
+
+    return String(a.concurso || '').localeCompare(
+      String(b.concurso || ''),
+      'pt-BR',
+      { numeric: true }
+    );
+  });
+}
 
   function getConcursosUnicos(disponiveisOnly = false) {
     const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
@@ -345,7 +380,7 @@
 
     if (!lista) return;
 
-    const itens = federaisDisponiveis();
+    const itens = federaisDisponiveis({ agrupado: true });
 
     if (count) {
       count.textContent = `${itens.length} federal${itens.length === 1 ? '' : 'is'} disponível${itens.length === 1 ? '' : 'eis'} em ${fmtDate(state.dataRef)}.`;
@@ -688,7 +723,7 @@
 
     $('mov-loteria-origem').addEventListener('change', () => {
       const f = getFederalSelecionado();
-      state.selectedFederalId = f?.id || null;
+      state.selectedConcursoKey = $('mov-federal').value || null;
 
       if (!f) {
         renderResumoSelecao();
