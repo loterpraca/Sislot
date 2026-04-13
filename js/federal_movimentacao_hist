@@ -242,16 +242,16 @@ $('f-mes-ref')?.addEventListener('change', () => {
       showStatus('st-hist', 'Histórico recarregado.', 'ok');
     });
 
-    $('btn-limpar-filtros')?.addEventListener('click', () => {
-      setDefaultDates();
-      $('f-concurso').value = '';
-      $('f-origem').value = '';
-      $('f-destino').value = '';
-      $('f-evento').value = '';
-      $('f-status').value = '';
-      $('f-busca').value = '';
-      aplicaFiltros();
-    });
+   $('btn-limpar-filtros')?.addEventListener('click', () => {
+  setDefaultMonth();
+  $('f-concurso').value = '';
+  $('f-origem').value = '';
+  $('f-destino').value = '';
+  $('f-evento').value = '';
+  $('f-status').value = '';
+  $('f-busca').value = '';
+  aplicaFiltros();
+});
   }
 
   async function bootstrap() {
@@ -261,9 +261,8 @@ $('f-mes-ref')?.addEventListener('change', () => {
 
     state.loterias = await loadLoterias();
     fillLoteriaFilters();
-    setDefaultDates();
+    setDefaultMonth();
     bindEvents();
-
     await loadMovs();
 
     $('st-loading').style.display = 'none';
