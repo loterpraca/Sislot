@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal Histórico de Movimentações — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/federal_movimentacao_hist.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./js/federal-base.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">LC</div>
+      <div>
+        <div class="brand-name">SisLot</div>
+        <div class="brand-sub">Federal • Histórico de Movimentações</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <div id="relogio"></div>
+      <button class="btn-topbar" type="button" onclick="location.href='./federal.html'">Voltar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="page-header">
+      <div>
+        <div class="page-title">Histórico de Movimentações</div>
+        <div class="page-sub">Consulta operacional das movimentações da Federal em formato de tabela.</div>
+      </div>
+    </section>
+
+    <div class="status-bar" id="st-hist"></div>
+
+    <section class="card">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Filtros</span>
+        <div class="sep-line"></div>
+        <span class="sep-count" id="histCount">—</span>
+      </div>
+
+      <div class="grid-5">
+        <div class="field">
+          <label class="field-label">Data inicial</label>
+          <input type="date" id="f-data-inicial" />
+        </div>
+
+        <div class="field">
+          <label class="field-label">Data final</label>
+          <input type="date" id="f-data-final" />
+        </div>
+
+        <div class="field">
+          <label class="field-label">Concurso</label>
+          <input type="text" id="f-concurso" placeholder="Ex: 1234" />
+        </div>
+
+        <div class="field">
+          <label class="field-label">Origem</label>
+          <select id="f-origem"></select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Destino</label>
+          <select id="f-destino"></select>
+        </div>
+      </div>
+
+      <div class="grid-4" style="margin-top:14px">
+        <div class="field">
+          <label class="field-label">Tipo de evento</label>
+          <select id="f-evento">
+            <option value="">Todos</option>
+            <option value="TRANSFERENCIA">Transferência</option>
+            <option value="DEVOLUCAO_CAIXA">Devolução Caixa</option>
+            <option value="VENDA_CAMBISTA">Venda Cambista</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Status</label>
+          <select id="f-status">
+            <option value="">Todos</option>
+            <option value="PENDENTE">Pendente</option>
+            <option value="PAGO">Pago</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Busca livre</label>
+          <input type="text" id="f-busca" placeholder="Origem, destino, observação..." />
+        </div>
+
+        <div class="field">
+          <label class="field-label">Atualização</label>
+          <div class="flex">
+            <button class="btn-primary" type="button" id="btn-recarregar">Recarregar</button>
+            <button class="btn-secondary" type="button" id="btn-limpar-filtros">Limpar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Movimentações</span>
+        <div class="sep-line"></div>
+      </div>
+
+      <div id="st-loading" class="empty">
+        <div class="empty-title">Buscando movimentações</div>
+        <div class="empty-sub">Aguarde enquanto o histórico é carregado.</div>
+      </div>
+
+      <div id="st-empty" class="empty" style="display:none">
+        <div class="empty-title">Nenhuma movimentação encontrada</div>
+        <div class="empty-sub">Ajuste os filtros para localizar os registros.</div>
+      </div>
+
+      <div class="table-wrap" id="tableWrap" style="display:none">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Carimbo</th>
+              <th>Data mov.</th>
+              <th>Concurso</th>
+              <th>Evento</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Qtd</th>
+              <th>Valor</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Observação</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-hist"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./js/federal_movimentacao_hist.js"></script>
+</body>
+</html>
