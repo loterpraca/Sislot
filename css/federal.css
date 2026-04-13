@@ -573,6 +573,142 @@ input[readonly] {
 /* =========================================================
    BADGES / PILLS / UTILITIES
 ========================================================= */
+/* LISTA DE FEDERAIS — VISUAL MAIS PRÓXIMO DOS BOLÕES */
+.federal-lista{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.fed-card{
+  width:100%;
+  text-align:left;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:8px;
+  border:1px solid var(--blue-border);
+  background:var(--blue-panel);
+  cursor:pointer;
+  transition:border-color .2s, background .2s, transform .2s;
+  border-left:3px solid transparent;
+}
+
+.fed-card:hover{
+  border-color:rgba(0,200,150,0.35);
+  background:rgba(0,200,150,0.02);
+}
+
+.fed-card.is-selected{
+  border-color:var(--accent) !important;
+  background:rgba(0,200,150,0.05) !important;
+  border-left-color:var(--accent) !important;
+}
+
+.fed-card-main{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+}
+
+.fed-card-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.fed-modalidade{
+  font-size:13px;
+  font-weight:600;
+  color:var(--text-bright);
+}
+
+.fed-concurso-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  color:var(--amber);
+  background:rgba(245,166,35,0.08);
+  border:1px solid rgba(245,166,35,0.2);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-data-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--text-mid);
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--blue-border);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-card-tags{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.fed-tag{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  padding:2px 7px;
+  border-radius:4px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--blue-border);
+  color:var(--text-mid);
+  white-space:nowrap;
+}
+
+.fed-card-saldos{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:2px;
+}
+
+.fed-saldo-pill{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  padding:2px 8px;
+  border-radius:4px;
+  background:rgba(30,58,110,0.6);
+  border:1px solid var(--blue-border);
+  color:var(--text-dim);
+  white-space:nowrap;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  max-width:100%;
+}
+
+.fed-saldo-loja{
+  color:var(--text-mid);
+}
+
+.fed-saldo-val{
+  color:var(--text-bright);
+  font-weight:700;
+}
+
+.fed-card-ind{
+  flex-shrink:0;
+}
+
+@media (max-width: 700px){
+  .fed-card{
+    grid-template-columns:1fr;
+  }
+
+  .fed-card-ind{
+    justify-self:start;
+  }
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
