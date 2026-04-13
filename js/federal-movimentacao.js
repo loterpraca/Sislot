@@ -192,29 +192,13 @@
   }
 
   function updateDateUI() {
-  if ($('date-display-text')) {
-    $('date-display-text').textContent = fmtDate(state.dataRef);
-  }
-
-  if ($('date-picker')) {
-    $('date-picker').value = state.dataRef;
-  }
-
-  if ($('chk-todos-concursos')) {
-    $('chk-todos-concursos').checked = !!state.mostrarTodosConcursos;
-  }
-
-  const concursoEl = $('concurso-display-text');
-  if (concursoEl) {
-    const item = getConcursoAgrupadoByKey(state.selectedConcursoKey);
-
-    if (item) {
-      concursoEl.textContent = item.concurso || '—';
-    } else {
-      concursoEl.textContent = '—';
+    if ($('date-display-text')) {
+      $('date-display-text').textContent = fmtDate(state.dataRef);
+    }
+    if ($('date-picker')) {
+      $('date-picker').value = state.dataRef;
     }
   }
-}
 
   function openMovCard() {
     const card = $('mov-card');
@@ -397,7 +381,7 @@
     applyDestinoFilter();
   }
 
-function clearMov() {
+  function clearMov() {
   state.editingMovId = null;
 
   if (state.selectedConcursoKey) {
@@ -432,16 +416,10 @@ function clearMov() {
 
   if (!lista) return;
 
-  const itens = getListaConcursosVisiveis();
+  const itens = federaisDisponiveis({ agrupado: true });
 
   if (count) {
-    if (state.mostrarTodosConcursos) {
-      count.textContent = `${itens.length} concurso${itens.length === 1 ? '' : 's'} disponível${itens.length === 1 ? '' : 'eis'} a partir de ${fmtDate(state.dataRef)}.`;
-    } else {
-      count.textContent = itens.length
-        ? `Concurso ativo em ${fmtDate(state.dataRef)}.`
-        : `Nenhum concurso disponível em ${fmtDate(state.dataRef)}.`;
-    }
+    count.textContent = `${itens.length} concurso${itens.length === 1 ? '' : 's'} disponível${itens.length === 1 ? '' : 'eis'} em ${fmtDate(state.dataRef)}.`;
   }
 
   if (stLoading) stLoading.style.display = 'none';
@@ -461,13 +439,13 @@ function clearMov() {
     const isSelected = String(state.selectedConcursoKey || '') === String(item.key);
 
     const saldosHtml = ordenarSaldosPorLoteria(item.saldos || [])
-      .map(s => `
-        <div class="fed-saldo-pill" title="${s.nome}">
-          <span class="fed-saldo-loja">${s.nome}</span>
-          <span class="fed-saldo-val">${fmtSaldo(s.saldo)}</span>
-        </div>
-      `)
-      .join('');
+  .map(s => `
+    <div class="fed-saldo-pill" title="${s.nome}">
+      <span class="fed-saldo-loja">${s.nome}</span>
+      <span class="fed-saldo-val">${fmtSaldo(s.saldo)}</span>
+    </div>
+  `)
+  .join('');
 
     return `
       <button
@@ -508,11 +486,6 @@ function clearMov() {
   state.selectedConcursoKey = key;
   state.editingMovId = null;
 
-  if (!state.mostrarTodosConcursos) {
-    syncDataByConcursoKey(key);
-  }
-
-  updateDateUI();
   renderListaFederais();
   openMovCard();
 
@@ -536,6 +509,7 @@ function clearMov() {
     $('mov-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
+
   function renderMovimentacoes() {
     $('tbody-mov').innerHTML = state.movimentos.length ? state.movimentos.map(m => {
       const total = Number(
@@ -717,102 +691,82 @@ function clearMov() {
   }
 
   async function refresh() {
-  state.federais = await loadFederais();
-  await loadMovs();
+    state.federais = await loadFederais();
+    await loadMovs();
 
-  if (!state.selectedConcursoKey) {
-    syncConcursoAtivoByData();
+    updateDateUI();
+    fillStaticSelects();
+    renderListaFederais();
+    renderMovimentacoes();
+
+    if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
+      openMovCard();
+      resetFormFromSelectedFederal();
+    }
   }
 
-  updateDateUI();
-  fillStaticSelects(state.selectedConcursoKey || '', '');
-  renderListaFederais();
-  renderMovimentacoes();
-
-  if (state.selectedConcursoKey) {
-    openMovCard();
-    clearMov();
-  } else {
-    closeMovCard();
-  }
-}
   function bindDateEvents() {
-  $('btn-conc-prev')?.addEventListener('click', () => {
-    moveConcurso(-1);
-    updateDateUI();
-    renderListaFederais();
-    clearMov();
-    openMovCard();
-  });
-
-  $('btn-conc-next')?.addEventListener('click', () => {
-    moveConcurso(1);
-    updateDateUI();
-    renderListaFederais();
-    clearMov();
-    openMovCard();
-  });
-
-  $('btn-date-display')?.addEventListener('click', () => {
-    $('date-picker')?.showPicker?.();
-    $('date-picker')?.click();
-  });
-
-  $('date-picker')?.addEventListener('change', (e) => {
-    const value = e.target.value || hojeISO();
-    state.dataRef = value;
-    syncConcursoAtivoByData();
-    updateDateUI();
-    renderListaFederais();
-    clearMov();
-
-    if (state.selectedConcursoKey) {
-      openMovCard();
-    } else {
+    $('btn-dt-prev')?.addEventListener('click', () => {
+      state.dataRef = addDays(state.dataRef, -1);
+      state.selectedFederalId = null;
+      state.editingMovId = null;
+      updateDateUI();
+      renderListaFederais();
       closeMovCard();
-    }
-  });
-
-  $('chk-todos-concursos')?.addEventListener('change', (e) => {
-    state.mostrarTodosConcursos = !!e.target.checked;
-
-    if (!state.mostrarTodosConcursos && !state.selectedConcursoKey) {
-      syncConcursoAtivoByData();
-    }
-
-    updateDateUI();
-    renderListaFederais();
-
-    if (state.selectedConcursoKey) {
-      openMovCard();
       clearMov();
-    } else {
+    });
+
+    $('btn-dt-next')?.addEventListener('click', () => {
+      state.dataRef = addDays(state.dataRef, 1);
+      state.selectedFederalId = null;
+      state.editingMovId = null;
+      updateDateUI();
+      renderListaFederais();
       closeMovCard();
-    }
-  });
-}
+      clearMov();
+    });
+
+    $('btn-dt-hoje')?.addEventListener('click', () => {
+      state.dataRef = hojeISO();
+      state.selectedFederalId = null;
+      state.editingMovId = null;
+      updateDateUI();
+      renderListaFederais();
+      closeMovCard();
+      clearMov();
+    });
+
+    $('btn-date-display')?.addEventListener('click', () => {
+      $('date-picker')?.showPicker?.();
+      $('date-picker')?.click();
+    });
+
+    $('date-picker')?.addEventListener('change', (e) => {
+      const value = e.target.value || hojeISO();
+      state.dataRef = value;
+      state.selectedFederalId = null;
+      state.editingMovId = null;
+      updateDateUI();
+      renderListaFederais();
+      closeMovCard();
+      clearMov();
+    });
+  }
 
   function bindEvents() {
     bindDateEvents();
 
-   $('mov-federal').addEventListener('change', () => {
-  state.selectedConcursoKey = $('mov-federal').value || null;
-
-  if (state.selectedConcursoKey && !state.mostrarTodosConcursos) {
-    syncDataByConcursoKey(state.selectedConcursoKey);
-  }
-
-  fillOrigemSelect('');
-  $('mov-loteria-origem').value = '';
-  $('mov-dt-concurso').value = '';
-  $('mov-valor').value = '';
-  $('mov-total').value = '';
-
-  updateDateUI();
-  renderResumoSelecao();
-  renderListaFederais();
-  applyDestinoFilter();
-});
+    $('mov-federal').addEventListener('change', () => {
+      state.selectedFederalId = null;
+      fillOrigemSelect('');
+      $('mov-loteria-origem').value = '';
+      $('mov-dt-concurso').value = '';
+      $('mov-valor').value = '';
+      $('mov-total').value = '';
+      renderResumoSelecao();
+      renderListaFederais();
+      applyDestinoFilter();
+    });
 
     $('mov-loteria-origem').addEventListener('change', () => {
       const f = getFederalSelecionado();
@@ -878,69 +832,7 @@ function ordenarSaldosPorLoteria(saldos = []) {
 function nomeLoteriaExibicao(loteriaId) {
   return lookupLoteriaName(state.loterias, loteriaId) || '—';
 }
-function getConcursoAgrupadoByKey(key) {
-  return federaisDisponiveis({ agrupado: true }).find(x => x.key === key) || null;
-}
 
-function getConcursosFuturosAgrupados() {
-  return federaisDisponiveis({ agrupado: true });
-}
-
-function getConcursoMaisProximoPorData(dataRef) {
-  return getConcursosFuturosAgrupados().find(x =>
-    !x.dt_sorteio || String(x.dt_sorteio).slice(0, 10) >= dataRef
-  ) || null;
-}
-
-function syncConcursoAtivoByData() {
-  const ativo = getConcursoMaisProximoPorData(state.dataRef);
-  state.selectedConcursoKey = ativo ? ativo.key : null;
-}
-
-function syncDataByConcursoKey(key) {
-  const item = getConcursoAgrupadoByKey(key);
-  if (!item || !item.dt_sorteio) return;
-
-  state.selectedConcursoKey = item.key;
-  state.dataRef = String(item.dt_sorteio).slice(0, 10);
-}
-
-function getListaConcursosVisiveis() {
-  const todos = getConcursosFuturosAgrupados();
-
-  if (state.mostrarTodosConcursos) {
-    return todos.filter(x =>
-      !x.dt_sorteio || String(x.dt_sorteio).slice(0, 10) >= state.dataRef
-    );
-  }
-
-  if (!state.selectedConcursoKey) return [];
-  return todos.filter(x => String(x.key) === String(state.selectedConcursoKey));
-}
-
-function moveConcurso(step) {
-  const todos = getConcursosFuturosAgrupados();
-  if (!todos.length) return;
-
-  let idx = todos.findIndex(x => String(x.key) === String(state.selectedConcursoKey));
-
-  if (idx < 0) {
-    const ativo = getConcursoMaisProximoPorData(state.dataRef);
-    idx = ativo ? todos.findIndex(x => String(x.key) === String(ativo.key)) : 0;
-  }
-
-  const nextIdx = idx + step;
-  if (nextIdx < 0 || nextIdx >= todos.length) return;
-
-  const next = todos[nextIdx];
-  if (!next) return;
-
-  state.selectedConcursoKey = next.key;
-  if (next.dt_sorteio) {
-    state.dataRef = String(next.dt_sorteio).slice(0, 10);
-  }
-}
-  
 function fmtSaldo(v) {
   return String(Number(v || 0));
 }
