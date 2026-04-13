@@ -255,6 +255,51 @@ input[readonly] {
 .btn-danger:hover {
   background: rgba(255, 82, 82, 0.16);
 }
+.date-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#btn-concurso-display{
+  min-width:140px;
+  justify-content:center;
+  font-family:"IBM Plex Mono", monospace;
+  font-weight:600;
+}
+
+#btn-date-display{
+  min-width:150px;
+  justify-content:center;
+  font-family:"IBM Plex Mono", monospace;
+}
+
+.check-inline{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:12px;
+  white-space:nowrap;
+}
+
+.check-inline input{
+  width:auto;
+  accent-color: var(--accent);
+}
+
+@media (max-width: 700px){
+  .date-bar{
+    gap:6px;
+  }
+
+  #btn-concurso-display,
+  #btn-date-display{
+    min-width:auto;
+    flex:1 1 auto;
+  }
+}
 
 /* =========================================================
    TABS
