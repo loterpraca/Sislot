@@ -84,7 +84,15 @@
   const m = String(hoje.getMonth() + 1).padStart(2, '0');
   return `${y}-${m}`;
 }
+function shiftMonth(ym, delta) {
+  const [y, m] = String(ym || mesAtualISO()).split('-').map(Number);
+  const dt = new Date(y, (m || 1) - 1, 1);
+  dt.setMonth(dt.getMonth() + delta);
 
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  return `${yy}-${mm}`;
+}
 function getMonthRange(ym) {
   if (!ym) {
     ym = mesAtualISO();
@@ -164,49 +172,53 @@ function setDefaultMonth() {
     renderTabela();
   }
 
-  function renderTabela() {
-    const tbody = $('tbody-hist');
-    const stEmpty = $('st-empty');
-    const tableWrap = $('tableWrap');
-    const histCount = $('histCount');
+ function renderTabela() {
+  const tbody = $('tbody-hist');
+  const stLoading = $('st-loading');
+  const stEmpty = $('st-empty');
+  const tableWrap = $('tableWrap');
+  const histCount = $('histCount');
 
-    histCount.textContent = `${state.filtrados.length} registro(s)`;
+  histCount.textContent = `${state.filtrados.length} registro(s)`;
 
-    if (!state.filtrados.length) {
-      stEmpty.style.display = 'flex';
-      tableWrap.style.display = 'none';
-      tbody.innerHTML = '';
-      return;
-    }
-
-    stEmpty.style.display = 'none';
-    tableWrap.style.display = 'block';
-
-    tbody.innerHTML = state.filtrados.map(m => {
-      const total = Number(
-        m.valor_total_real ||
-        m.valor_total ||
-        (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0))
-      );
-
-      return `
-        <tr>
-          <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
-          <td class="mono">${m.data_mov ? fmtDate(m.data_mov) : '—'}</td>
-          <td class="mono">${m.federais?.concurso || '—'}</td>
-          <td>${badgeEvento(m.tipo_evento || m.tipo)}</td>
-          <td>${nomeLoteria(m.loteria_origem)}</td>
-          <td>${m.loteria_destino ? nomeLoteria(m.loteria_destino) : '—'}</td>
-          <td class="mono">${m.qtd_fracoes ?? '—'}</td>
-          <td class="money">${money(m.valor_fracao_real || m.valor_fracao)}</td>
-          <td class="money">${money(total)}</td>
-          <td>${badgeStatus(m.status_acerto)}</td>
-          <td class="obs-cell">${m.observacao || '—'}</td>
-        </tr>
-      `;
-    }).join('');
+  if (stLoading) {
+    stLoading.style.display = 'none';
   }
 
+  if (!state.filtrados.length) {
+    stEmpty.style.display = 'flex';
+    tableWrap.style.display = 'none';
+    tbody.innerHTML = '';
+    return;
+  }
+
+  stEmpty.style.display = 'none';
+  tableWrap.style.display = 'block';
+
+  tbody.innerHTML = state.filtrados.map(m => {
+    const total = Number(
+      m.valor_total_real ||
+      m.valor_total ||
+      (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0))
+    );
+
+    return `
+      <tr>
+        <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
+        <td class="mono">${m.data_mov ? fmtDate(m.data_mov) : '—'}</td>
+        <td class="mono">${m.federais?.concurso || '—'}</td>
+        <td>${badgeEvento(m.tipo_evento || m.tipo)}</td>
+        <td>${nomeLoteria(m.loteria_origem)}</td>
+        <td>${m.loteria_destino ? nomeLoteria(m.loteria_destino) : '—'}</td>
+        <td class="mono">${m.qtd_fracoes ?? '—'}</td>
+        <td class="money">${money(m.valor_fracao_real || m.valor_fracao)}</td>
+        <td class="money">${money(total)}</td>
+        <td>${badgeStatus(m.status_acerto)}</td>
+        <td class="obs-cell">${m.observacao || '—'}</td>
+      </tr>
+    `;
+  }).join('');
+}
   function bindEvents() {
  [
   'f-data-inicial',
@@ -225,7 +237,28 @@ function setDefaultMonth() {
 $('f-mes-ref')?.addEventListener('change', () => {
   const mes = $('f-mes-ref').value || mesAtualISO();
   const { inicioISO, fimISO } = getMonthRange(mes);
+$('btn-mes-prev')?.addEventListener('click', () => {
+  const novoMes = shiftMonth($('f-mes-ref').value || mesAtualISO(), -1);
+  const { inicioISO, fimISO } = getMonthRange(novoMes);
 
+  $('f-mes-ref').value = novoMes;
+  $('f-data-inicial').value = inicioISO;
+  $('f-data-final').value = fimISO;
+
+  aplicaFiltros();
+});
+
+$('btn-mes-next')?.addEventListener('click', () => {
+  const novoMes = shiftMonth($('f-mes-ref').value || mesAtualISO(), 1);
+  const { inicioISO, fimISO } = getMonthRange(novoMes);
+
+  $('f-mes-ref').value = novoMes;
+  $('f-data-inicial').value = inicioISO;
+  $('f-data-final').value = fimISO;
+
+  aplicaFiltros();
+});
+  
   $('f-data-inicial').value = inicioISO;
   $('f-data-final').value = fimISO;
 
