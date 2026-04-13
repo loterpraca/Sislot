@@ -208,19 +208,29 @@ function setDefaultMonth() {
   }
 
   function bindEvents() {
-    [
-      'f-data-inicial',
-      'f-data-final',
-      'f-concurso',
-      'f-origem',
-      'f-destino',
-      'f-evento',
-      'f-status',
-      'f-busca'
-    ].forEach(id => {
-      $(id)?.addEventListener('input', aplicaFiltros);
-      $(id)?.addEventListener('change', aplicaFiltros);
-    });
+ [
+  'f-data-inicial',
+  'f-data-final',
+  'f-concurso',
+  'f-origem',
+  'f-destino',
+  'f-evento',
+  'f-status',
+  'f-busca'
+].forEach(id => {
+  $(id)?.addEventListener('input', aplicaFiltros);
+  $(id)?.addEventListener('change', aplicaFiltros);
+});
+
+$('f-mes-ref')?.addEventListener('change', () => {
+  const mes = $('f-mes-ref').value || mesAtualISO();
+  const { inicioISO, fimISO } = getMonthRange(mes);
+
+  $('f-data-inicial').value = inicioISO;
+  $('f-data-final').value = fimISO;
+
+  aplicaFiltros();
+});
 
     $('btn-recarregar')?.addEventListener('click', async () => {
       $('st-loading').style.display = 'flex';
