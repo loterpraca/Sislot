@@ -1,0 +1,239 @@
+(() => {
+  const {
+    sb, $, fmtMoney, fmtDate, startClock, showStatus, fillSelect,
+    requireSession, loadLoterias, lookupLoteriaName
+  } = FED_BASE;
+
+  const state = {
+    usuario: null,
+    loterias: [],
+    movimentos: [],
+    filtrados: []
+  };
+
+  function hojeISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function addDays(iso, delta) {
+    const [y, m, d] = String(iso).split('-').map(Number);
+    const dt = new Date(y, (m || 1) - 1, d || 1);
+    dt.setDate(dt.getDate() + delta);
+
+    const yy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  function money(v) {
+    return fmtMoney(Number(v || 0));
+  }
+
+  function badgeEvento(tipoEvento) {
+    if (!tipoEvento) return '<span class="badge b-neutral">—</span>';
+
+    const labels = {
+      TRANSFERENCIA: 'Transferência',
+      DEVOLUCAO_CAIXA: 'Devolução Caixa',
+      VENDA_CAMBISTA: 'Venda Cambista'
+    };
+
+    return `<span class="badge b-info">${labels[tipoEvento] || tipoEvento}</span>`;
+  }
+
+  function badgeStatus(status) {
+    if (status === 'PAGO') return '<span class="badge b-ok">Pago</span>';
+    if (status === 'PENDENTE') return '<span class="badge b-warn">Pendente</span>';
+    if (status === 'CANCELADO') return '<span class="badge b-neutral">Cancelado</span>';
+    return `<span class="badge b-neutral">${status || '—'}</span>`;
+  }
+
+  function nomeLoteria(id) {
+    if (!id) return '—';
+    return lookupLoteriaName(state.loterias, id) || '—';
+  }
+
+  async function loadMovs() {
+    const { data, error } = await sb
+      .from('federal_movimentacoes')
+      .select('*, federais!inner(concurso,dt_sorteio,modalidade)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      showStatus('st-hist', error.message, 'err');
+      state.movimentos = [];
+      return;
+    }
+
+    state.movimentos = data || [];
+  }
+
+  function fillLoteriaFilters() {
+    fillSelect('f-origem', state.loterias, 'Todas', 'id', x => `${x.id} • ${x.nome}`);
+    fillSelect('f-destino', state.loterias, 'Todos', 'id', x => `${x.id} • ${x.nome}`);
+  }
+
+  function setDefaultDates() {
+    const hoje = hojeISO();
+    $('f-data-final').value = hoje;
+    $('f-data-inicial').value = addDays(hoje, -30);
+  }
+
+  function getFiltros() {
+    return {
+      dataInicial: $('f-data-inicial').value || '',
+      dataFinal: $('f-data-final').value || '',
+      concurso: ($('f-concurso').value || '').trim().toLowerCase(),
+      origem: $('f-origem').value || '',
+      destino: $('f-destino').value || '',
+      evento: $('f-evento').value || '',
+      status: $('f-status').value || '',
+      busca: ($('f-busca').value || '').trim().toLowerCase()
+    };
+  }
+
+  function aplicaFiltros() {
+    const f = getFiltros();
+
+    state.filtrados = state.movimentos.filter(m => {
+      const createdAt = String(m.created_at || '').slice(0, 10);
+      const dataMov = String(m.data_mov || '').slice(0, 10);
+      const concurso = String(m.federais?.concurso || '').toLowerCase();
+      const origemNome = nomeLoteria(m.loteria_origem).toLowerCase();
+      const destinoNome = nomeLoteria(m.loteria_destino).toLowerCase();
+      const obs = String(m.observacao || '').toLowerCase();
+      const tipoEvento = String(m.tipo_evento || '');
+      const status = String(m.status_acerto || '');
+
+      const dataBase = dataMov || createdAt;
+
+      if (f.dataInicial && dataBase && dataBase < f.dataInicial) return false;
+      if (f.dataFinal && dataBase && dataBase > f.dataFinal) return false;
+      if (f.concurso && !concurso.includes(f.concurso)) return false;
+      if (f.origem && String(m.loteria_origem || '') !== String(f.origem)) return false;
+      if (f.destino && String(m.loteria_destino || '') !== String(f.destino)) return false;
+      if (f.evento && tipoEvento !== f.evento) return false;
+      if (f.status && status !== f.status) return false;
+
+      if (f.busca) {
+        const alvo = [
+          concurso,
+          origemNome,
+          destinoNome,
+          obs,
+          String(tipoEvento || '').toLowerCase(),
+          String(status || '').toLowerCase()
+        ].join(' ');
+
+        if (!alvo.includes(f.busca)) return false;
+      }
+
+      return true;
+    });
+
+    renderTabela();
+  }
+
+  function renderTabela() {
+    const tbody = $('tbody-hist');
+    const stEmpty = $('st-empty');
+    const tableWrap = $('tableWrap');
+    const histCount = $('histCount');
+
+    histCount.textContent = `${state.filtrados.length} registro(s)`;
+
+    if (!state.filtrados.length) {
+      stEmpty.style.display = 'flex';
+      tableWrap.style.display = 'none';
+      tbody.innerHTML = '';
+      return;
+    }
+
+    stEmpty.style.display = 'none';
+    tableWrap.style.display = 'block';
+
+    tbody.innerHTML = state.filtrados.map(m => {
+      const total = Number(
+        m.valor_total_real ||
+        m.valor_total ||
+        (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0))
+      );
+
+      return `
+        <tr>
+          <td class="mono">${new Date(m.created_at).toLocaleString('pt-BR')}</td>
+          <td class="mono">${m.data_mov ? fmtDate(m.data_mov) : '—'}</td>
+          <td class="mono">${m.federais?.concurso || '—'}</td>
+          <td>${badgeEvento(m.tipo_evento || m.tipo)}</td>
+          <td>${nomeLoteria(m.loteria_origem)}</td>
+          <td>${m.loteria_destino ? nomeLoteria(m.loteria_destino) : '—'}</td>
+          <td class="mono">${m.qtd_fracoes ?? '—'}</td>
+          <td class="money">${money(m.valor_fracao_real || m.valor_fracao)}</td>
+          <td class="money">${money(total)}</td>
+          <td>${badgeStatus(m.status_acerto)}</td>
+          <td class="obs-cell">${m.observacao || '—'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function bindEvents() {
+    [
+      'f-data-inicial',
+      'f-data-final',
+      'f-concurso',
+      'f-origem',
+      'f-destino',
+      'f-evento',
+      'f-status',
+      'f-busca'
+    ].forEach(id => {
+      $(id)?.addEventListener('input', aplicaFiltros);
+      $(id)?.addEventListener('change', aplicaFiltros);
+    });
+
+    $('btn-recarregar')?.addEventListener('click', async () => {
+      $('st-loading').style.display = 'flex';
+      $('tableWrap').style.display = 'none';
+      $('st-empty').style.display = 'none';
+
+      await loadMovs();
+      aplicaFiltros();
+      showStatus('st-hist', 'Histórico recarregado.', 'ok');
+    });
+
+    $('btn-limpar-filtros')?.addEventListener('click', () => {
+      setDefaultDates();
+      $('f-concurso').value = '';
+      $('f-origem').value = '';
+      $('f-destino').value = '';
+      $('f-evento').value = '';
+      $('f-status').value = '';
+      $('f-busca').value = '';
+      aplicaFiltros();
+    });
+  }
+
+  async function bootstrap() {
+    startClock('relogio');
+    state.usuario = await requireSession();
+    if (!state.usuario) return;
+
+    state.loterias = await loadLoterias();
+    fillLoteriaFilters();
+    setDefaultDates();
+    bindEvents();
+
+    await loadMovs();
+
+    $('st-loading').style.display = 'none';
+    aplicaFiltros();
+  }
+
+  bootstrap();
+})();
