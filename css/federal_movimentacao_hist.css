@@ -93,6 +93,23 @@ textarea::placeholder {
 /* =========================================================
    TOPBAR
 ========================================================= */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-topbar svg {
+  flex-shrink: 0;
+}
+
+.btn-topbar-icon {
+  padding: 6px 10px;
+  min-width: 34px;
+  justify-content: center;
+}
+
 .topbar {
   position: sticky;
   top: 0;
