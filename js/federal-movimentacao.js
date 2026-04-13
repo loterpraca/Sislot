@@ -717,82 +717,102 @@ function clearMov() {
   }
 
   async function refresh() {
-    state.federais = await loadFederais();
-    await loadMovs();
+  state.federais = await loadFederais();
+  await loadMovs();
+
+  if (!state.selectedConcursoKey) {
+    syncConcursoAtivoByData();
+  }
+
+  updateDateUI();
+  fillStaticSelects(state.selectedConcursoKey || '', '');
+  renderListaFederais();
+  renderMovimentacoes();
+
+  if (state.selectedConcursoKey) {
+    openMovCard();
+    clearMov();
+  } else {
+    closeMovCard();
+  }
+}
+  function bindDateEvents() {
+  $('btn-conc-prev')?.addEventListener('click', () => {
+    moveConcurso(-1);
+    updateDateUI();
+    renderListaFederais();
+    clearMov();
+    openMovCard();
+  });
+
+  $('btn-conc-next')?.addEventListener('click', () => {
+    moveConcurso(1);
+    updateDateUI();
+    renderListaFederais();
+    clearMov();
+    openMovCard();
+  });
+
+  $('btn-date-display')?.addEventListener('click', () => {
+    $('date-picker')?.showPicker?.();
+    $('date-picker')?.click();
+  });
+
+  $('date-picker')?.addEventListener('change', (e) => {
+    const value = e.target.value || hojeISO();
+    state.dataRef = value;
+    syncConcursoAtivoByData();
+    updateDateUI();
+    renderListaFederais();
+    clearMov();
+
+    if (state.selectedConcursoKey) {
+      openMovCard();
+    } else {
+      closeMovCard();
+    }
+  });
+
+  $('chk-todos-concursos')?.addEventListener('change', (e) => {
+    state.mostrarTodosConcursos = !!e.target.checked;
+
+    if (!state.mostrarTodosConcursos && !state.selectedConcursoKey) {
+      syncConcursoAtivoByData();
+    }
 
     updateDateUI();
-    fillStaticSelects();
     renderListaFederais();
-    renderMovimentacoes();
 
-    if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
+    if (state.selectedConcursoKey) {
       openMovCard();
-      resetFormFromSelectedFederal();
+      clearMov();
+    } else {
+      closeMovCard();
     }
-  }
-
-  function bindDateEvents() {
-    $('btn-dt-prev')?.addEventListener('click', () => {
-      state.dataRef = addDays(state.dataRef, -1);
-      state.selectedFederalId = null;
-      state.editingMovId = null;
-      updateDateUI();
-      renderListaFederais();
-      closeMovCard();
-      clearMov();
-    });
-
-    $('btn-dt-next')?.addEventListener('click', () => {
-      state.dataRef = addDays(state.dataRef, 1);
-      state.selectedFederalId = null;
-      state.editingMovId = null;
-      updateDateUI();
-      renderListaFederais();
-      closeMovCard();
-      clearMov();
-    });
-
-    $('btn-dt-hoje')?.addEventListener('click', () => {
-      state.dataRef = hojeISO();
-      state.selectedFederalId = null;
-      state.editingMovId = null;
-      updateDateUI();
-      renderListaFederais();
-      closeMovCard();
-      clearMov();
-    });
-
-    $('btn-date-display')?.addEventListener('click', () => {
-      $('date-picker')?.showPicker?.();
-      $('date-picker')?.click();
-    });
-
-    $('date-picker')?.addEventListener('change', (e) => {
-      const value = e.target.value || hojeISO();
-      state.dataRef = value;
-      state.selectedFederalId = null;
-      state.editingMovId = null;
-      updateDateUI();
-      renderListaFederais();
-      closeMovCard();
-      clearMov();
-    });
-  }
+  });
+}
 
   function bindEvents() {
     bindDateEvents();
 
-    $('mov-federal').addEventListener('change', () => {
-      state.selectedFederalId = null;
-      fillOrigemSelect('');
-      $('mov-loteria-origem').value = '';
-      $('mov-dt-concurso').value = '';
-      $('mov-valor').value = '';
-      $('mov-total').value = '';
-      renderResumoSelecao();
-      renderListaFederais();
-      applyDestinoFilter();
-    });
+   $('mov-federal').addEventListener('change', () => {
+  state.selectedConcursoKey = $('mov-federal').value || null;
+
+  if (state.selectedConcursoKey && !state.mostrarTodosConcursos) {
+    syncDataByConcursoKey(state.selectedConcursoKey);
+  }
+
+  fillOrigemSelect('');
+  $('mov-loteria-origem').value = '';
+  $('mov-dt-concurso').value = '';
+  $('mov-valor').value = '';
+  $('mov-total').value = '';
+
+  updateDateUI();
+  renderResumoSelecao();
+  renderListaFederais();
+  applyDestinoFilter();
+});
 
     $('mov-loteria-origem').addEventListener('change', () => {
       const f = getFederalSelecionado();
