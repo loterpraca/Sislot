@@ -657,20 +657,17 @@
     }
   }
 
-  async function refresh() {
-    state.federais = await loadFederais();
-    await loadMovs();
+ async function refresh() {
+  state.federais = await loadFederais();
 
-    updateDateUI();
-    fillStaticSelects();
-    renderListaFederais();
-    renderMovimentacoes();
+  updateDateUI();
+  fillStaticSelects();
+  renderListaFederais();
 
-    if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
-      selectFederalCard(state.selectedFederalId, { scroll: false });
-    }
+  if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
+    selectFederalCard(state.selectedFederalId, { scroll: false });
   }
-
+}
   function bindDateEvents() {
     const btnPrev = firstEl('btn-dt-prev', 'btnDtPrev');
     const btnNext = firstEl('btn-dt-next', 'btnDtNext');
