@@ -775,16 +775,7 @@
     $('btn-salvar-mov').addEventListener('click', saveMov);
     $('btn-limpar-mov').addEventListener('click', clearMov);
     $('btn-excluir-mov').addEventListener('click', () => deleteMov());
-
-    $('tbody-mov').addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-action]');
-      if (!btn) return;
-
-      const id = btn.dataset.id;
-      if (btn.dataset.action === 'editar') editMov(id);
-      if (btn.dataset.action === 'excluir') deleteMov(id);
-    });
-
+  
     firstEl('federal-lista', 'federalLista')?.addEventListener('click', (e) => {
       const card = e.target.closest('[data-id]');
       if (!card) return;
