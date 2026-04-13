@@ -192,13 +192,29 @@
   }
 
   function updateDateUI() {
-    if ($('date-display-text')) {
-      $('date-display-text').textContent = fmtDate(state.dataRef);
-    }
-    if ($('date-picker')) {
-      $('date-picker').value = state.dataRef;
+  if ($('date-display-text')) {
+    $('date-display-text').textContent = fmtDate(state.dataRef);
+  }
+
+  if ($('date-picker')) {
+    $('date-picker').value = state.dataRef;
+  }
+
+  if ($('chk-todos-concursos')) {
+    $('chk-todos-concursos').checked = !!state.mostrarTodosConcursos;
+  }
+
+  const concursoEl = $('concurso-display-text');
+  if (concursoEl) {
+    const item = getConcursoAgrupadoByKey(state.selectedConcursoKey);
+
+    if (item) {
+      concursoEl.textContent = item.concurso || '—';
+    } else {
+      concursoEl.textContent = '—';
     }
   }
+}
 
   function openMovCard() {
     const card = $('mov-card');
@@ -416,10 +432,16 @@
 
   if (!lista) return;
 
-  const itens = federaisDisponiveis({ agrupado: true });
+  const itens = getListaConcursosVisiveis();
 
   if (count) {
-    count.textContent = `${itens.length} concurso${itens.length === 1 ? '' : 's'} disponível${itens.length === 1 ? '' : 'eis'} em ${fmtDate(state.dataRef)}.`;
+    if (state.mostrarTodosConcursos) {
+      count.textContent = `${itens.length} concurso${itens.length === 1 ? '' : 's'} disponível${itens.length === 1 ? '' : 'eis'} a partir de ${fmtDate(state.dataRef)}.`;
+    } else {
+      count.textContent = itens.length
+        ? `Concurso ativo em ${fmtDate(state.dataRef)}.`
+        : `Nenhum concurso disponível em ${fmtDate(state.dataRef)}.`;
+    }
   }
 
   if (stLoading) stLoading.style.display = 'none';
@@ -439,13 +461,13 @@
     const isSelected = String(state.selectedConcursoKey || '') === String(item.key);
 
     const saldosHtml = ordenarSaldosPorLoteria(item.saldos || [])
-  .map(s => `
-    <div class="fed-saldo-pill" title="${s.nome}">
-      <span class="fed-saldo-loja">${s.nome}</span>
-      <span class="fed-saldo-val">${fmtSaldo(s.saldo)}</span>
-    </div>
-  `)
-  .join('');
+      .map(s => `
+        <div class="fed-saldo-pill" title="${s.nome}">
+          <span class="fed-saldo-loja">${s.nome}</span>
+          <span class="fed-saldo-val">${fmtSaldo(s.saldo)}</span>
+        </div>
+      `)
+      .join('');
 
     return `
       <button
@@ -832,7 +854,69 @@ function ordenarSaldosPorLoteria(saldos = []) {
 function nomeLoteriaExibicao(loteriaId) {
   return lookupLoteriaName(state.loterias, loteriaId) || '—';
 }
+function getConcursoAgrupadoByKey(key) {
+  return federaisDisponiveis({ agrupado: true }).find(x => x.key === key) || null;
+}
 
+function getConcursosFuturosAgrupados() {
+  return federaisDisponiveis({ agrupado: true });
+}
+
+function getConcursoMaisProximoPorData(dataRef) {
+  return getConcursosFuturosAgrupados().find(x =>
+    !x.dt_sorteio || String(x.dt_sorteio).slice(0, 10) >= dataRef
+  ) || null;
+}
+
+function syncConcursoAtivoByData() {
+  const ativo = getConcursoMaisProximoPorData(state.dataRef);
+  state.selectedConcursoKey = ativo ? ativo.key : null;
+}
+
+function syncDataByConcursoKey(key) {
+  const item = getConcursoAgrupadoByKey(key);
+  if (!item || !item.dt_sorteio) return;
+
+  state.selectedConcursoKey = item.key;
+  state.dataRef = String(item.dt_sorteio).slice(0, 10);
+}
+
+function getListaConcursosVisiveis() {
+  const todos = getConcursosFuturosAgrupados();
+
+  if (state.mostrarTodosConcursos) {
+    return todos.filter(x =>
+      !x.dt_sorteio || String(x.dt_sorteio).slice(0, 10) >= state.dataRef
+    );
+  }
+
+  if (!state.selectedConcursoKey) return [];
+  return todos.filter(x => String(x.key) === String(state.selectedConcursoKey));
+}
+
+function moveConcurso(step) {
+  const todos = getConcursosFuturosAgrupados();
+  if (!todos.length) return;
+
+  let idx = todos.findIndex(x => String(x.key) === String(state.selectedConcursoKey));
+
+  if (idx < 0) {
+    const ativo = getConcursoMaisProximoPorData(state.dataRef);
+    idx = ativo ? todos.findIndex(x => String(x.key) === String(ativo.key)) : 0;
+  }
+
+  const nextIdx = idx + step;
+  if (nextIdx < 0 || nextIdx >= todos.length) return;
+
+  const next = todos[nextIdx];
+  if (!next) return;
+
+  state.selectedConcursoKey = next.key;
+  if (next.dt_sorteio) {
+    state.dataRef = String(next.dt_sorteio).slice(0, 10);
+  }
+}
+  
 function fmtSaldo(v) {
   return String(Number(v || 0));
 }
