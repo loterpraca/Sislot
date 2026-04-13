@@ -392,79 +392,81 @@
 }
 
   function renderListaFederais() {
-    const lista = $('federal-lista');
-    const stLoading = $('st-fed-loading');
-    const stEmpty = $('st-fed-empty');
-    const count = $('federal-count');
+  const lista = $('federal-lista');
+  const stLoading = $('st-fed-loading');
+  const stEmpty = $('st-fed-empty');
+  const count = $('federal-count');
 
-    if (!lista) return;
+  if (!lista) return;
 
-    const itens = federaisDisponiveis({ agrupado: true });
+  const itens = federaisDisponiveis({ agrupado: true });
 
-    if (count) {
-      count.textContent = `${itens.length} federal${itens.length === 1 ? '' : 'is'} disponível${itens.length === 1 ? '' : 'eis'} em ${fmtDate(state.dataRef)}.`;
-    }
+  if (count) {
+    count.textContent = `${itens.length} concurso${itens.length === 1 ? '' : 's'} disponível${itens.length === 1 ? '' : 'eis'} em ${fmtDate(state.dataRef)}.`;
+  }
 
-    if (stLoading) stLoading.style.display = 'none';
+  if (stLoading) stLoading.style.display = 'none';
 
-    if (!itens.length) {
-      if (stEmpty) stEmpty.style.display = 'block';
-      lista.style.display = 'none';
-      lista.innerHTML = '';
-      return;
-    }
+  if (!itens.length) {
+    if (stEmpty) stEmpty.style.display = 'block';
+    lista.style.display = 'none';
+    lista.innerHTML = '';
+    return;
+  }
 
-    if (stEmpty) stEmpty.style.display = 'none';
-    lista.style.display = 'grid';
-    lista.style.gap = '10px';
+  if (stEmpty) stEmpty.style.display = 'none';
+  lista.style.display = 'grid';
+  lista.style.gap = '10px';
 
-    lista.innerHTML = itens.map(f => {
-      const isSelected = String(state.selectedConcursoKey || '') === String(item.key);
-      const origemNome = lookupLoteriaName(state.loterias, f.loteria_id);
-      const style = isSelected
-        ? 'border:1px solid var(--accent);background:rgba(0,200,150,.06);'
-        : 'border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);';
+  lista.innerHTML = itens.map(item => {
+    const isSelected = String(state.selectedConcursoKey || '') === String(item.key);
 
-      return `
-        <button
-          type="button"
-          class="federal-card"
-         data-key="${item.key}"
-          style="
-            width:100%;
-            text-align:left;
-            border-radius:10px;
-            padding:14px 16px;
-            cursor:pointer;
-            transition:.2s;
-            ${style}
-          "
-        >
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-            <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <span class="badge b-info">Federal</span>
-                <span class="mono" style="font-weight:600">Concurso ${f.concurso || '—'}</span>
-                <span class="badge b-warn">${origemNome || '—'}</span>
-              </div>
+    const style = isSelected
+      ? 'border:1px solid var(--accent);background:rgba(0,200,150,.06);'
+      : 'border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);';
 
-              <div class="inline-pills">
-                <span class="pill">Data ${fmtDate(f.dt_sorteio)}</span>
-                <span class="pill">Fração ${fmtMoney(f.valor_fracao)}</span>
-                <span class="pill">Custo ${fmtMoney(f.valor_custo)}</span>
-              </div>
+    const qtdOrigens = item.origens?.length || 0;
+
+    return `
+      <button
+        type="button"
+        class="federal-card"
+        data-key="${item.key}"
+        style="
+          width:100%;
+          text-align:left;
+          border-radius:10px;
+          padding:14px 16px;
+          cursor:pointer;
+          transition:.2s;
+          ${style}
+        "
+      >
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span class="badge b-info">Federal</span>
+              <span class="mono" style="font-weight:600">Concurso ${item.concurso || '—'}</span>
             </div>
 
-            <div>
-              <span class="badge ${isSelected ? 'b-ok' : 'b-info'}">
-                ${isSelected ? 'Selecionado' : 'Selecionar'}
-              </span>
+            <div class="inline-pills">
+              <span class="pill">Data ${fmtDate(item.dt_sorteio)}</span>
+              <span class="pill">Fração ${fmtMoney(item.valor_fracao)}</span>
+              <span class="pill">Custo ${fmtMoney(item.valor_custo)}</span>
+              <span class="pill">${qtdOrigens} origem${qtdOrigens === 1 ? '' : 'ens'} disponível${qtdOrigens === 1 ? '' : 'eis'}</span>
             </div>
           </div>
-        </button>
-      `;
-    }).join('');
-  }
+
+          <div>
+            <span class="badge ${isSelected ? 'b-ok' : 'b-info'}">
+              ${isSelected ? 'Selecionado' : 'Selecionar'}
+            </span>
+          </div>
+        </div>
+      </button>
+    `;
+  }).join('');
+}
 
   function selectConcurso(key, { scroll = true } = {}) {
   if (!key) return;
