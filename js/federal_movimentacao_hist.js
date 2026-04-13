@@ -220,72 +220,73 @@ function setDefaultMonth() {
   }).join('');
 }
   function bindEvents() {
- [
-  'f-data-inicial',
-  'f-data-final',
-  'f-concurso',
-  'f-origem',
-  'f-destino',
-  'f-evento',
-  'f-status',
-  'f-busca'
-].forEach(id => {
-  $(id)?.addEventListener('input', aplicaFiltros);
-  $(id)?.addEventListener('change', aplicaFiltros);
-});
+  [
+    'f-data-inicial',
+    'f-data-final',
+    'f-concurso',
+    'f-origem',
+    'f-destino',
+    'f-evento',
+    'f-status',
+    'f-busca'
+  ].forEach(id => {
+    $(id)?.addEventListener('input', aplicaFiltros);
+    $(id)?.addEventListener('change', aplicaFiltros);
+  });
 
-$('f-mes-ref')?.addEventListener('change', () => {
-  const mes = $('f-mes-ref').value || mesAtualISO();
-  const { inicioISO, fimISO } = getMonthRange(mes);
-$('btn-mes-prev')?.addEventListener('click', () => {
-  const novoMes = shiftMonth($('f-mes-ref').value || mesAtualISO(), -1);
-  const { inicioISO, fimISO } = getMonthRange(novoMes);
+  $('f-mes-ref')?.addEventListener('change', () => {
+    const mes = $('f-mes-ref').value || mesAtualISO();
+    const { inicioISO, fimISO } = getMonthRange(mes);
 
-  $('f-mes-ref').value = novoMes;
-  $('f-data-inicial').value = inicioISO;
-  $('f-data-final').value = fimISO;
+    $('f-data-inicial').value = inicioISO;
+    $('f-data-final').value = fimISO;
 
-  aplicaFiltros();
-});
+    aplicaFiltros();
+  });
 
-$('btn-mes-next')?.addEventListener('click', () => {
-  const novoMes = shiftMonth($('f-mes-ref').value || mesAtualISO(), 1);
-  const { inicioISO, fimISO } = getMonthRange(novoMes);
+  $('btn-mes-prev')?.addEventListener('click', () => {
+    const novoMes = shiftMonth($('f-mes-ref').value || mesAtualISO(), -1);
+    const { inicioISO, fimISO } = getMonthRange(novoMes);
 
-  $('f-mes-ref').value = novoMes;
-  $('f-data-inicial').value = inicioISO;
-  $('f-data-final').value = fimISO;
+    $('f-mes-ref').value = novoMes;
+    $('f-data-inicial').value = inicioISO;
+    $('f-data-final').value = fimISO;
 
-  aplicaFiltros();
-});
-  
-  $('f-data-inicial').value = inicioISO;
-  $('f-data-final').value = fimISO;
+    aplicaFiltros();
+  });
 
-  aplicaFiltros();
-});
+  $('btn-mes-next')?.addEventListener('click', () => {
+    const novoMes = shiftMonth($('f-mes-ref').value || mesAtualISO(), 1);
+    const { inicioISO, fimISO } = getMonthRange(novoMes);
 
-    $('btn-recarregar')?.addEventListener('click', async () => {
-      $('st-loading').style.display = 'flex';
-      $('tableWrap').style.display = 'none';
-      $('st-empty').style.display = 'none';
+    $('f-mes-ref').value = novoMes;
+    $('f-data-inicial').value = inicioISO;
+    $('f-data-final').value = fimISO;
 
-      await loadMovs();
-      aplicaFiltros();
-      showStatus('st-hist', 'Histórico recarregado.', 'ok');
-    });
+    aplicaFiltros();
+  });
 
-   $('btn-limpar-filtros')?.addEventListener('click', () => {
-  setDefaultMonth();
-  $('f-concurso').value = '';
-  $('f-origem').value = '';
-  $('f-destino').value = '';
-  $('f-evento').value = '';
-  $('f-status').value = '';
-  $('f-busca').value = '';
-  aplicaFiltros();
-});
-  }
+  $('btn-recarregar')?.addEventListener('click', async () => {
+    $('st-loading').style.display = 'flex';
+    $('tableWrap').style.display = 'none';
+    $('st-empty').style.display = 'none';
+
+    await loadMovs();
+    aplicaFiltros();
+    showStatus('st-hist', 'Histórico recarregado.', 'ok');
+  });
+
+  $('btn-limpar-filtros')?.addEventListener('click', () => {
+    setDefaultMonth();
+    $('f-concurso').value = '';
+    $('f-origem').value = '';
+    $('f-destino').value = '';
+    $('f-evento').value = '';
+    $('f-status').value = '';
+    $('f-busca').value = '';
+    aplicaFiltros();
+  });
+}
 
   async function bootstrap() {
     startClock('relogio');
