@@ -59,8 +59,8 @@
     return state.federais.find(f => String(f.id) === String(id)) || null;
   }
 
-  function getFederalSelecionado() {
-  const key = $('mov-federal')?.value || state.selectedConcursoKey;
+ function getFederalSelecionado() {
+  const key = $('mov-federal')?.value;
   const origem = $('mov-loteria-origem')?.value;
 
   if (!key || !origem) return null;
@@ -71,13 +71,11 @@
   ) || null;
 }
   
-  function federaisDisponiveis({ agrupado = false } = {}) {
-  const ref = state.dataRef;
-
-  const filtrados = state.federais
+  function federaisDisponiveis() {
+  return state.federais
     .filter(f => {
       if (!f.dt_sorteio) return true;
-      return String(f.dt_sorteio).slice(0, 10) >= ref;
+      return String(f.dt_sorteio).slice(0, 10) >= state.dataRef;
     })
     .sort((a, b) => {
       const dtA = String(a.dt_sorteio || '');
@@ -94,64 +92,7 @@
       const lotB = nomeLoteriaExibicao(b.loteria_id);
       return lotA.localeCompare(lotB, 'pt-BR');
     });
-
-  if (!agrupado) return filtrados;
-
-  const map = new Map();
-
-  for (const f of filtrados) {
-    const key = concursoKey(f);
-
-    const saldo =
-      Number(
-        f.saldo ??
-        f.saldo_atual ??
-        f.qtd_disponivel ??
-        f.qtd_fracoes_disponiveis ??
-        f.qtd_disponivel_loja ??
-        f.qtd_fracoes ??
-        0
-      ) || 0;
-
-    if (!map.has(key)) {
-      map.set(key, {
-        key,
-        concurso: f.concurso,
-        dt_sorteio: f.dt_sorteio,
-        modalidade: f.modalidade || 'Federal',
-        valor_fracao: f.valor_fracao,
-        valor_custo: f.valor_custo,
-        saldos: []
-      });
-    }
-
-    const item = map.get(key);
-    const existente = item.saldos.find(x => String(x.loteria_id) === String(f.loteria_id));
-
-    if (existente) {
-      existente.saldo += saldo;
-    } else {
-      item.saldos.push({
-        loteria_id: f.loteria_id,
-        nome: nomeLoteriaExibicao(f.loteria_id),
-        saldo
-      });
-    }
-  }
-
-  return [...map.values()].sort((a, b) => {
-    const dtA = String(a.dt_sorteio || '');
-    const dtB = String(b.dt_sorteio || '');
-    if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
-
-    return String(a.concurso || '').localeCompare(
-      String(b.concurso || ''),
-      'pt-BR',
-      { numeric: true }
-    );
-  });
 }
-
   function getConcursosUnicos(disponiveisOnly = false) {
     const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
     const map = new Map();
@@ -170,7 +111,21 @@
 
     return [...map.values()];
   }
+function getConcursoAtivoKey() {
+  const itens = federaisDisponiveis();
+  return itens.length ? concursoKey(itens[0]) : '';
+}
 
+function federaisVisiveis() {
+  const base = federaisDisponiveis();
+
+  if (state.mostrarTodosConcursos) {
+    return base;
+  }
+
+  const key = getConcursoAtivoKey();
+  return key ? base.filter(f => concursoKey(f) === key) : [];
+}
   function getFederaisDoConcurso(key, disponiveisOnly = false) {
     if (!key) return [];
     const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
@@ -487,35 +442,7 @@
   }).join('');
 }
 
-  function selectConcurso(key, { scroll = true } = {}) {
-  if (!key) return;
-
-  state.selectedConcursoKey = key;
-  state.editingMovId = null;
-
-  renderListaFederais();
-  openMovCard();
-
-  fillStaticSelects(key, '');
-  $('mov-federal').value = key;
-  $('mov-loteria-origem').value = '';
-  $('mov-loteria-destino').value = '';
-  $('mov-dt-concurso').value = '';
-  $('mov-tipo-evento').value = 'TRANSFERENCIA';
-  $('mov-qtd').value = '';
-  $('mov-valor').value = '';
-  $('mov-total').value = '';
-  $('mov-status-acerto').value = 'PENDENTE';
-  $('mov-observacao').value = '';
-  $('btn-excluir-mov').style.display = 'none';
-
-  renderResumoSelecao();
-  applyDestinoFilter();
-
-  if (scroll) {
-    $('mov-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-}
+ 
 function selectFederalCard(id, { scroll = true } = {}) {
   const f = getFederalById(id);
   if (!f) return;
