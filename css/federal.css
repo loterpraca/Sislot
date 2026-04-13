@@ -28,6 +28,14 @@
   --input: #0d1e3a;
   --err: #ff5252;
   --ok: #00c896;
+  --blue-deep: var(--deep);
+  --blue-mid: var(--mid);
+  --blue-panel: var(--panel);
+  --blue-border: var(--border);
+
+  --text-bright: var(--bright);
+  --text-mid: var(--muted);
+  --text-dim: var(--dim);
 }
 
 /* =========================================================
@@ -594,8 +602,12 @@ input[readonly] {
   cursor:pointer;
   transition:border-color .2s, background .2s, transform .2s;
   border-left:3px solid transparent;
+  color: var(--bright);
 }
 
+.fed-modalidade{
+  color: var(--sky);
+}
 .fed-card:hover{
   border-color:rgba(0,200,150,0.35);
   background:rgba(0,200,150,0.02);
