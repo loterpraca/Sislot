@@ -112,11 +112,10 @@ function setDefaultMonth() {
   const mes = mesAtualISO();
   const { inicioISO, fimISO } = getMonthRange(mes);
 
-  $('f-mes-ref').value = mes;
+  $('f-mes-ref') && ($('f-mes-ref').value = mes);
   $('f-data-inicial').value = inicioISO;
   $('f-data-final').value = fimISO;
 }
-
   function getFiltros() {
     return {
       dataInicial: $('f-data-inicial').value || '',
