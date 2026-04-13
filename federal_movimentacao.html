@@ -39,47 +39,50 @@
     <div class="status-bar" id="st-mov"></div>
 
     <section class="card">
-      <div class="sep" style="margin-top:0">
-        <span class="sep-label">Data de referência</span>
-        <div class="sep-line"></div>
-      </div>
+  <div class="sep" style="margin-top:0">
+    <span class="sep-label">Data de referência</span>
+    <div class="sep-line"></div>
+    <span class="sep-count" id="federalCount">—</span>
+  </div>
 
-      <div class="date-bar">
-        <div class="date-stepper">
-          <button type="button" class="btn-secondary" id="btn-dt-prev" aria-label="Dia anterior">◀</button>
+  <div class="date-bar">
+    <button type="button" class="btn-secondary" id="btnDtPrev" aria-label="Dia anterior">◀</button>
 
-          <button type="button" class="btn-secondary" id="btn-date-display">
-            <span id="date-display-text">—</span>
-          </button>
+    <button type="button" class="btn-secondary" id="dateDisplay">
+      <span id="dateDisplayText">—</span>
+    </button>
 
-          <button type="button" class="btn-secondary" id="btn-dt-next" aria-label="Próximo dia">▶</button>
-        </div>
+    <button type="button" class="btn-secondary" id="btnDtNext" aria-label="Próximo dia">▶</button>
 
-        <button type="button" class="btn-secondary" id="btn-dt-hoje">Hoje</button>
-        <input type="date" id="date-picker" style="display:none" />
-      </div>
-    </section>
+    <button type="button" class="btn-secondary" id="btnHoje">Hoje</button>
 
-    <section class="card" style="margin-top:18px">
-      <div class="sep" style="margin-top:0">
-        <span class="sep-label">Federais disponíveis na data</span>
-        <div class="sep-line"></div>
-      </div>
+    <label class="check-inline">
+      <input type="checkbox" id="chkMostrarTodosConcursos">
+      <span>Mostrar todos</span>
+    </label>
 
-      <div id="federal-count" class="page-sub" style="margin-bottom:12px"></div>
+    <input type="date" id="calendarPicker" style="display:none" />
+  </div>
+</section>
 
-      <div id="st-fed-loading" class="empty">
-        <div class="empty-title">Buscando concursos disponíveis</div>
-        <div class="empty-sub">A lista será montada com base na data de referência.</div>
-      </div>
+<section class="card" style="margin-top:14px">
+  <div class="sep" style="margin-top:0">
+    <span class="sep-label">Federais disponíveis</span>
+    <div class="sep-line"></div>
+  </div>
 
-      <div id="st-fed-empty" class="empty" style="display:none">
-        <div class="empty-title">Nenhum concurso disponível</div>
-        <div class="empty-sub">Não há federais disponíveis para a data selecionada.</div>
-      </div>
+  <div id="stFedLoading" class="empty">
+    <div class="empty-title">Buscando federais</div>
+    <div class="empty-sub">A lista será filtrada pela data de referência.</div>
+  </div>
 
-      <div id="federal-lista" class="federal-lista" style="display:none"></div>
-    </section>
+  <div id="stFedEmpty" class="empty" style="display:none">
+    <div class="empty-title">Nenhuma federal encontrada</div>
+    <div class="empty-sub">Não há concursos compatíveis com o filtro atual.</div>
+  </div>
+
+  <div id="federalLista" class="federal-lista" style="display:none"></div>
+</section>
 
     <section class="card" id="mov-card" style="display:none; margin-top:18px">
       <div class="sep" style="margin-top:0">
