@@ -78,11 +78,36 @@
     fillSelect('f-destino', state.loterias, 'Todos', 'id', x => `${x.id} • ${x.nome}`);
   }
 
-  function setDefaultDates() {
-    const hoje = hojeISO();
-    $('f-data-final').value = hoje;
-    $('f-data-inicial').value = addDays(hoje, -30);
+  function mesAtualISO() {
+  const hoje = new Date();
+  const y = hoje.getFullYear();
+  const m = String(hoje.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function getMonthRange(ym) {
+  if (!ym) {
+    ym = mesAtualISO();
   }
+
+  const [y, m] = String(ym).split('-').map(Number);
+  const inicio = new Date(y, (m || 1) - 1, 1);
+  const fim = new Date(y, (m || 1), 0);
+
+  const inicioISO = `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-${String(inicio.getDate()).padStart(2, '0')}`;
+  const fimISO = `${fim.getFullYear()}-${String(fim.getMonth() + 1).padStart(2, '0')}-${String(fim.getDate()).padStart(2, '0')}`;
+
+  return { inicioISO, fimISO };
+}
+
+function setDefaultMonth() {
+  const mes = mesAtualISO();
+  const { inicioISO, fimISO } = getMonthRange(mes);
+
+  $('f-mes-ref').value = mes;
+  $('f-data-inicial').value = inicioISO;
+  $('f-data-final').value = fimISO;
+}
 
   function getFiltros() {
     return {
