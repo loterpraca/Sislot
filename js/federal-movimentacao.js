@@ -397,7 +397,7 @@
     applyDestinoFilter();
   }
 
-  function clearMov() {
+function clearMov() {
   state.editingMovId = null;
 
   if (state.selectedConcursoKey) {
