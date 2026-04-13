@@ -62,11 +62,14 @@
       </div>
 
       <div class="grid-6">
-  <div class="field">
-    <label class="field-label">Mês de referência</label>
+ <div class="field">
+  <label class="field-label">Mês de referência</label>
+  <div class="month-nav">
+    <button type="button" class="btn-secondary month-nav-btn" id="btn-mes-prev" aria-label="Mês anterior">&lt;</button>
     <input type="month" id="f-mes-ref" />
+    <button type="button" class="btn-secondary month-nav-btn" id="btn-mes-next" aria-label="Próximo mês">&gt;</button>
   </div>
-
+</div>
   <div class="field">
     <label class="field-label">Data inicial</label>
     <input type="date" id="f-data-inicial" />
