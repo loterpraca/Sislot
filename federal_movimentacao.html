@@ -40,13 +40,56 @@
 
     <section class="card">
       <div class="sep" style="margin-top:0">
-        <span class="sep-label">Movimentação</span>
+        <span class="sep-label">Data de referência</span>
+        <div class="sep-line"></div>
+      </div>
+
+      <div class="date-bar">
+        <div class="date-stepper">
+          <button type="button" class="btn-secondary" id="btn-dt-prev" aria-label="Dia anterior">◀</button>
+
+          <button type="button" class="btn-secondary" id="btn-date-display">
+            <span id="date-display-text">—</span>
+          </button>
+
+          <button type="button" class="btn-secondary" id="btn-dt-next" aria-label="Próximo dia">▶</button>
+        </div>
+
+        <button type="button" class="btn-secondary" id="btn-dt-hoje">Hoje</button>
+        <input type="date" id="date-picker" style="display:none" />
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Federais disponíveis na data</span>
+        <div class="sep-line"></div>
+      </div>
+
+      <div id="federal-count" class="page-sub" style="margin-bottom:12px"></div>
+
+      <div id="st-fed-loading" class="empty">
+        <div class="empty-title">Buscando concursos disponíveis</div>
+        <div class="empty-sub">A lista será montada com base na data de referência.</div>
+      </div>
+
+      <div id="st-fed-empty" class="empty" style="display:none">
+        <div class="empty-title">Nenhum concurso disponível</div>
+        <div class="empty-sub">Não há federais disponíveis para a data selecionada.</div>
+      </div>
+
+      <div id="federal-lista" class="federal-lista" style="display:none"></div>
+    </section>
+
+    <section class="card" id="mov-card" style="display:none; margin-top:18px">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Movimentação do concurso selecionado</span>
         <div class="sep-line"></div>
       </div>
 
       <div id="mov-resumo-selec" class="empty" style="margin-bottom:18px">
-        <div class="empty-title">Selecione um concurso</div>
-        <div class="empty-sub">Resumo rápido da origem escolhida.</div>
+        <div class="empty-title">Selecione um concurso na lista acima</div>
+        <div class="empty-sub">O resumo e os campos de movimentação serão liberados após a seleção.</div>
       </div>
 
       <div class="grid-3">
