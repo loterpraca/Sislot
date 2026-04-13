@@ -1,19 +1,18 @@
 (() => {
   const {
-    sb, $, fmtMoney, fmtDate, startClock, showStatus, fillSelect,
-    requireSession, loadLoterias, loadFederais, lookupLoteriaName, lookupFederal
-  } = FED_BASE;
+  sb, $, fmtMoney, fmtDate, startClock, showStatus, fillSelect,
+  requireSession, loadLoterias, loadFederais, lookupLoteriaName
+} = FED_BASE;
 
-  const state = {
-    usuario: null,
-    loterias: [],
-    federais: [],
-    movimentos: [],
-    editingMovId: null,
-    selectedFederalId: null,
-    dataRef: hojeISO(),
-    mostrarTodosConcursos: false
-  };
+const state = {
+  usuario: null,
+  loterias: [],
+  federais: [],
+  editingMovId: null,
+  selectedFederalId: null,
+  dataRef: hojeISO(),
+  mostrarTodosConcursos: false
+};
 
   function firstEl(...ids) {
     for (const id of ids) {
