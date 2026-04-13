@@ -93,6 +93,26 @@ textarea::placeholder {
 /* =========================================================
    TOPBAR
 ========================================================= */
+.month-nav {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  gap: 8px;
+  align-items: center;
+}
+
+.month-nav-btn {
+  justify-content: center;
+  padding: 8px 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .month-nav {
+    grid-template-columns: 38px 1fr 38px;
+  }
+}
+
 .top-actions {
   display: flex;
   align-items: center;
