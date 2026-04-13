@@ -21,6 +21,7 @@
         <div class="brand-sub">Federal • Movimentação</div>
       </div>
     </div>
+
     <div class="top-actions">
       <div id="relogio"></div>
       <button class="btn-topbar" onclick="location.href='./federal.html'">Voltar</button>
@@ -37,59 +38,90 @@
 
     <div class="status-bar" id="st-mov"></div>
 
-    <div class="grid-2">
-      <section class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Nova movimentação</span><div class="sep-line"></div></div>
+    <section class="card">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Movimentação</span>
+        <div class="sep-line"></div>
+      </div>
 
-        <div class="grid-3">
-          <div class="field"><label class="field-label">Modalidade</label><input id="mov-modalidade" value="Federal" readonly></div>
-          <div class="field"><label class="field-label req">Concurso</label><select id="mov-federal"></select></div>
-          <div class="field"><label class="field-label">Data do concurso</label><input type="date" id="mov-dt-concurso" readonly></div>
+      <div id="mov-resumo-selec" class="empty" style="margin-bottom:18px">
+        <div class="empty-title">Selecione um concurso</div>
+        <div class="empty-sub">Resumo rápido da origem escolhida.</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="field">
+          <label class="field-label">Modalidade</label>
+          <input id="mov-modalidade" value="Federal" readonly>
         </div>
 
-        <div class="grid-3" style="margin-top:14px">
-          <div class="field"><label class="field-label req">Loteria origem</label><select id="mov-loteria-origem"></select></div>
-          <div class="field"><label class="field-label">Loteria destino</label><select id="mov-loteria-destino"></select></div>
-          <div class="field">
-            <label class="field-label req">Tipo de evento</label>
-            <select id="mov-tipo-evento">
-              <option value="TRANSFERENCIA">Transferência</option>
-              <option value="DEVOLUCAO_CAIXA">Devolução Caixa</option>
-              <option value="VENDA_CAMBISTA">Venda Cambista</option>
-            </select>
-          </div>
+        <div class="field">
+          <label class="field-label req">Concurso</label>
+          <select id="mov-federal"></select>
         </div>
 
-        <div class="grid-3" style="margin-top:14px">
-          <div class="field"><label class="field-label req">Qtd de frações</label><input type="number" id="mov-qtd"></div>
-          <div class="field"><label class="field-label req">Valor fração</label><input type="number" step="0.01" id="mov-valor"></div>
-          <div class="field"><label class="field-label">Valor total</label><input type="number" step="0.01" id="mov-total" readonly></div>
+        <div class="field">
+          <label class="field-label">Data do concurso</label>
+          <input type="date" id="mov-dt-concurso" readonly>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:14px">
+        <div class="field">
+          <label class="field-label req">Loteria origem</label>
+          <select id="mov-loteria-origem"></select>
         </div>
 
-        <div class="grid-1" style="margin-top:14px">
-          <div class="field"><label class="field-label">Status</label><input id="mov-status-acerto" value="PENDENTE" readonly></div>
+        <div class="field">
+          <label class="field-label">Loteria destino</label>
+          <select id="mov-loteria-destino"></select>
         </div>
 
-        <div class="field" style="margin-top:14px">
-          <label class="field-label">Observação</label>
-          <textarea id="mov-observacao" placeholder="Detalhes da operação"></textarea>
+        <div class="field">
+          <label class="field-label req">Tipo de evento</label>
+          <select id="mov-tipo-evento">
+            <option value="TRANSFERENCIA">Transferência</option>
+            <option value="DEVOLUCAO_CAIXA">Devolução Caixa</option>
+            <option value="VENDA_CAMBISTA">Venda Cambista</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:14px">
+        <div class="field">
+          <label class="field-label req">Qtd de frações</label>
+          <input type="number" id="mov-qtd">
         </div>
 
-        <div class="flex" style="margin-top:18px">
-          <button class="btn-primary" id="btn-salvar-mov">Salvar movimentação</button>
-          <button class="btn-secondary" id="btn-limpar-mov">Limpar</button>
-          <button class="btn-danger" id="btn-excluir-mov" style="display:none">Apagar linha</button>
+        <div class="field">
+          <label class="field-label req">Valor fração</label>
+          <input type="number" step="0.01" id="mov-valor">
         </div>
-      </section>
 
-      <section class="card">
-        <div class="sep" style="margin-top:0"><span class="sep-label">Resumo do concurso selecionado</span><div class="sep-line"></div></div>
-        <div id="mov-resumo-selec" class="empty">
-          <div class="empty-title">Selecione um concurso</div>
-          <div class="empty-sub">Resumo rápido da origem escolhida.</div>
+        <div class="field">
+          <label class="field-label">Valor total</label>
+          <input type="number" step="0.01" id="mov-total" readonly>
         </div>
-      </section>
-    </div>
+      </div>
+
+      <div class="grid-1" style="margin-top:14px">
+        <div class="field">
+          <label class="field-label">Status</label>
+          <input id="mov-status-acerto" value="PENDENTE" readonly>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label class="field-label">Observação</label>
+        <textarea id="mov-observacao" placeholder="Detalhes da operação"></textarea>
+      </div>
+
+      <div class="flex" style="margin-top:18px">
+        <button class="btn-primary" id="btn-salvar-mov">Salvar movimentação</button>
+        <button class="btn-secondary" id="btn-limpar-mov">Limpar</button>
+        <button class="btn-danger" id="btn-excluir-mov" style="display:none">Apagar linha</button>
+      </div>
+    </section>
 
     <section class="sep">
       <span class="sep-label">Histórico operacional</span>
