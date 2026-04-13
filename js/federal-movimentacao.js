@@ -692,19 +692,28 @@
   }
 
   async function refresh() {
-    state.federais = await loadFederais();
-    await loadMovs();
+  state.federais = await loadFederais();
+  await loadMovs();
 
-    updateDateUI();
-    fillStaticSelects();
-    renderListaFederais();
-    renderMovimentacoes();
+  updateDateUI();
+  fillStaticSelects();
+  renderListaFederais();
+  renderMovimentacoes();
 
-    if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
-      openMovCard();
-      resetFormFromSelectedFederal();
+  if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
+    openMovCard();
+    const f = getFederalById(state.selectedFederalId);
+    if (f) {
+      fillStaticSelects(concursoKey(f), f.loteria_id);
+      $('mov-federal').value = concursoKey(f);
+      fillOrigemSelect(f.loteria_id);
+      $('mov-loteria-origem').value = String(f.loteria_id);
+      $('mov-dt-concurso').value = f.dt_sorteio || '';
+      renderResumoSelecao();
+      applyDestinoFilter();
     }
   }
+}
 
   function bindDateEvents() {
     $('btn-dt-prev')?.addEventListener('click', () => {
