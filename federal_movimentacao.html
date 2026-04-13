@@ -39,33 +39,27 @@
     <div class="status-bar" id="st-mov"></div>
 
     <section class="card">
-  <div class="sep" style="margin-top:0">
-    <span class="sep-label">Data de referência</span>
-    <div class="sep-line"></div>
-  </div>
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Data de referência</span>
+        <div class="sep-line"></div>
+      </div>
 
-  <div class="date-bar">
-    <button type="button" class="btn-secondary" id="btn-conc-prev" aria-label="Concurso anterior">◀</button>
+      <div class="date-bar">
+        <div class="date-stepper">
+          <button type="button" class="btn-secondary" id="btn-dt-prev" aria-label="Dia anterior">◀</button>
 
-    <button type="button" class="btn-secondary" id="btn-concurso-display">
-      <span id="concurso-display-text">—</span>
-    </button>
+          <button type="button" class="btn-secondary" id="btn-date-display">
+            <span id="date-display-text">—</span>
+          </button>
 
-    <button type="button" class="btn-secondary" id="btn-conc-next" aria-label="Próximo concurso">▶</button>
+          <button type="button" class="btn-secondary" id="btn-dt-next" aria-label="Próximo dia">▶</button>
+        </div>
 
-    <button type="button" class="btn-secondary" id="btn-date-display">
-      <span id="date-display-text">—</span>
-    </button>
+        <button type="button" class="btn-secondary" id="btn-dt-hoje">Hoje</button>
+        <input type="date" id="date-picker" style="display:none" />
+      </div>
+    </section>
 
-    <label class="check-inline">
-      <input type="checkbox" id="chk-todos-concursos">
-      <span>Todos</span>
-    </label>
-
-    <input type="date" id="date-picker" style="display:none" />
-  </div>
-</section>
-    
     <section class="card" style="margin-top:18px">
       <div class="sep" style="margin-top:0">
         <span class="sep-label">Federais disponíveis na data</span>
