@@ -508,6 +508,11 @@
   state.selectedConcursoKey = key;
   state.editingMovId = null;
 
+  if (!state.mostrarTodosConcursos) {
+    syncDataByConcursoKey(key);
+  }
+
+  updateDateUI();
   renderListaFederais();
   openMovCard();
 
@@ -531,7 +536,6 @@
     $('mov-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
-
   function renderMovimentacoes() {
     $('tbody-mov').innerHTML = state.movimentos.length ? state.movimentos.map(m => {
       const total = Number(
