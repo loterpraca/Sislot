@@ -62,7 +62,9 @@
   function concursoKey(f) {
     return `${f.concurso}__${f.dt_sorteio || ''}`;
   }
-
+function fmtSaldo(v) {
+  return String(Number(v || 0));
+}
   function nomeLoteriaExibicao(loteriaId) {
     return lookupLoteriaName(state.loterias, loteriaId) || '—';
   }
