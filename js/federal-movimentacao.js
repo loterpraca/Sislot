@@ -720,6 +720,52 @@ function resumoFederalDisponivel() {
     });
 }
 
+  function getConcursosUnicos(disponiveisOnly = false) {
+  const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
+  const map = new Map();
+
+  for (const f of base) {
+    const key = concursoKey(f);
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        concurso: f.concurso,
+        dt_sorteio: f.dt_sorteio,
+        label: `${f.concurso}${f.dt_sorteio ? ' • ' + fmtDate(f.dt_sorteio) : ''}`
+      });
+    }
+  }
+
+  return [...map.values()];
+}
+
+function getFederaisDoConcurso(key, disponiveisOnly = false) {
+  if (!key) return [];
+  const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
+  return base.filter(f => concursoKey(f) === key);
+}
+function federaisDisponiveis() {
+  return state.federais
+    .filter(f => {
+      if (!f.dt_sorteio) return true;
+      return String(f.dt_sorteio).slice(0, 10) >= state.dataRef;
+    })
+    .sort((a, b) => {
+      const dtA = String(a.dt_sorteio || '');
+      const dtB = String(b.dt_sorteio || '');
+      if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
+
+      const concA = String(a.concurso || '');
+      const concB = String(b.concurso || '');
+      if (concA !== concB) {
+        return concA.localeCompare(concB, 'pt-BR', { numeric: true });
+      }
+
+      const lotA = nomeLoteriaExibicao(a.loteria_id);
+      const lotB = nomeLoteriaExibicao(b.loteria_id);
+      return lotA.localeCompare(lotB, 'pt-BR');
+    });
+}
 function getResumoConcursoAtivoKey() {
   const itens = resumoFederalDisponivel();
   if (!itens.length) return '';
