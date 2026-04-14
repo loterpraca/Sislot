@@ -673,19 +673,13 @@ input[readonly] {
 
 .fed-card{
   width:100%;
-  text-align:left;
   display:grid;
-  grid-template-columns:1fr auto;
-  gap:12px;
+  grid-template-columns:minmax(0,1fr) auto;
   align-items:center;
-  padding:12px 14px;
-  border-radius:8px;
-  border:1px solid var(--blue-border);
-  background:var(--blue-panel);
-  cursor:pointer;
-  transition:border-color .2s, background .2s, transform .2s;
-  border-left:3px solid transparent;
-  color: var(--bright);
+  gap:16px;
+  text-align:left;
+  padding:14px 16px;
+  border-radius:10px;
 }
 
 .fed-modalidade{
@@ -703,10 +697,110 @@ input[readonly] {
 }
 
 .fed-card-main{
+  min-width:0;
   display:flex;
   flex-direction:column;
+  gap:8px;
+}
+.fed-card-line1{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.fed-card-line2{
+  display:flex;
+  align-items:center;
   gap:6px;
-  min-width:0;
+  flex-wrap:wrap;
+}
+
+.fed-card-ind{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  align-self:center;
+  min-width:120px;
+}
+
+.fed-card-ind .btn-topbar{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:110px;
+  white-space:nowrap;
+}
+
+.fed-card-ind .is-selected-btn{
+  border-color:rgba(0,212,160,.35);
+  color:#00d4a0;
+}
+
+.fed-modalidade-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  color:#38bdf8;
+  background:rgba(56,189,248,.10);
+  border:1px solid rgba(56,189,248,.25);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-concurso-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  color:#22c55e;
+  background:rgba(34,197,94,.10);
+  border:1px solid rgba(34,197,94,.25);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-data-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--text-mid);
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--blue-border);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-fracao-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--text-mid);
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--blue-border);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-origem-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--amber);
+  background:rgba(245,166,35,.08);
+  border:1px solid rgba(245,166,35,.20);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-saldo-pill-main{
+  border-color:rgba(245,166,35,.25);
+}
+
+@media (max-width: 820px){
+  .fed-card{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+
+  .fed-card-ind{
+    justify-content:flex-start;
+    min-width:0;
+  }
 }
 
 .fed-card-head{
