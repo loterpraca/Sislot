@@ -463,15 +463,10 @@ function buildFederalPosicoes() {
           <span class="fed-modalidade-chip">Federal</span>
           <span class="fed-concurso-chip">${r.concurso || '—'}</span>
           <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
+          <span class="fed-tag">Fração ${fmtMoney(r.valor_fracao)}</span>
           <span class="fed-origem-chip">${origemNome}</span>
         </div>
-
-          <div class="fed-card-tags">
-            <span class="fed-tag">${origemNome}</span>
-            <span class="fed-tag">Fração ${fmtMoney(r.valor_fracao)}</span>
-            <span class="fed-tag">Custo ${fmtMoney(r.valor_custo)}</span>
-          </div>
-
+        
           <div class="fed-card-saldos">
             <div class="fed-saldo-pill" title="${origemNome}">
               <span class="fed-saldo-loja">${origemNome}</span>
