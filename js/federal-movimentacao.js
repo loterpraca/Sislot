@@ -4,12 +4,12 @@
     requireSession, loadLoterias, loadFederais, lookupLoteriaName
   } = FED_BASE;
 
- const state = {
+const state = {
   usuario: null,
   loterias: [],
   federais: [],
   resumoFederal: [],
-  detalheFederal: [],
+  movimentacoes: [],
   selectedFederalId: null,
   dataRef: hojeISO(),
   mostrarTodosConcursos: false
