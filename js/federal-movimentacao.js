@@ -445,7 +445,7 @@ function buildFederalPosicoes() {
     const origemNome = r.loja_origem || nomeLoteriaExibicao(r.loteria_id);
     const estoqueAtual = fmtSaldo(r.estoque_atual || 0);
 
-    const destinos = getDistribuicaoDestinosByFederal(r.federal_id);
+    const destinos = getDistribuicaoDestinosByFederal(r);
     const destinosHtml = destinos.map(d => `
       <div class="fed-saldo-pill" title="${d.loja_destino_nome}">
         <span class="fed-saldo-loja">${d.loja_destino_nome}</span>
@@ -788,27 +788,38 @@ function resumoFederalVisivel() {
 }
 
 
-function getDistribuicaoDestinosByFederal(federalId) {
-  const rows = state.movimentacoes.filter(m =>
-    String(m.federal_id) === String(federalId) &&
-    String(m.tipo_evento || '') === 'TRANSFERENCIA' &&
-    String(m.status_acerto || '').toUpperCase() !== 'CANCELADO' &&
-    m.loteria_destino
-  );
+function getDistribuicaoDestinosByFederal(resumoRow) {
+  const origemId = String(resumoRow.loteria_id);
+  const federalId = String(resumoRow.federal_id);
 
+  // começa com TODAS as lojas destino possíveis, zeradas
   const map = new Map();
 
-  for (const row of rows) {
-    const destId = String(row.loteria_destino);
-    const atual = map.get(destId) || {
-      loteria_destino: row.loteria_destino,
-      loja_destino_nome: nomeLoteriaExibicao(row.loteria_destino),
-      qtd_enviada: 0
-    };
+  (state.loterias || []).forEach(l => {
+    const lotId = String(l.id);
+    if (lotId === origemId) return; // não repete a própria origem
 
-    atual.qtd_enviada += Number(row.qtd_fracoes || 0);
-    map.set(destId, atual);
-  }
+    map.set(lotId, {
+      loteria_destino: l.id,
+      loja_destino_nome: l.nome,
+      qtd_enviada: 0
+    });
+  });
+
+  // soma o que essa origem realmente enviou
+  (state.movimentacoes || []).forEach(m => {
+    if (String(m.federal_id) !== federalId) return;
+    if (String(m.loteria_origem || '') !== origemId) return;
+    if (String(m.tipo_evento || '') !== 'TRANSFERENCIA') return;
+    if (String(m.status_acerto || '').toUpperCase() === 'CANCELADO') return;
+    if (!m.loteria_destino) return;
+
+    const destId = String(m.loteria_destino);
+    const item = map.get(destId);
+    if (!item) return;
+
+    item.qtd_enviada += Number(m.qtd_fracoes || 0);
+  });
 
   return [...map.values()].sort((a, b) =>
     String(a.loja_destino_nome || '').localeCompare(String(b.loja_destino_nome || ''), 'pt-BR')
