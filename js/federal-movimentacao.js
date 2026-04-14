@@ -12,9 +12,9 @@ const state = {
   movimentacoes: [],
   selectedFederalId: null,
   dataRef: hojeISO(),
-  mostrarTodosConcursos: false
+  mostrarTodosConcursos: false,
+  movDraft: {}
 };
-
   function firstEl(...ids) {
     for (const id of ids) {
       const el = $(id);
