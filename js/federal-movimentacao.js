@@ -330,7 +330,9 @@ async function loadDetalheFederal() {
   async function loadMovimentacoesResumo() {
   const { data, error } = await sb
     .from('federal_movimentacoes')
-    .select('federal_id,loteria_origem,loteria_destino,qtd_fracoes,tipo_evento,status_acerto');
+    .select('federal_id,loteria_origem,loteria_destino,qtd_fracoes,tipo_evento,status_acerto')
+    .eq('tipo_evento', 'TRANSFERENCIA')
+    .not('loteria_destino', 'is', null);
 
   if (error) {
     showStatus('st-mov', error.message, 'err');
@@ -770,8 +772,7 @@ function federaisDisponiveis() {
 }
 function getResumoConcursoAtivoKey() {
   const itens = resumoFederalDisponivel();
-  if (!itens.length) return '';
-  return `${itens[0].concurso}__${itens[0].dt_sorteio || ''}`;
+  return itens.length ? `${itens[0].concurso}__${itens[0].dt_sorteio || ''}` : '';
 }
 
 function resumoFederalVisivel() {
@@ -787,24 +788,26 @@ function resumoFederalVisivel() {
     : [];
 }
 
+
 function getDistribuicaoDestinosByFederal(federalId) {
-  const rows = state.detalheFederal.filter(
-    d => String(d.federal_origem_id) === String(federalId)
+  const rows = state.movimentacoes.filter(m =>
+    String(m.federal_id) === String(federalId) &&
+    String(m.tipo_evento || '') === 'TRANSFERENCIA' &&
+    String(m.status_acerto || '').toUpperCase() !== 'CANCELADO' &&
+    m.loteria_destino
   );
 
   const map = new Map();
 
   for (const row of rows) {
-    const destId = String(row.loja_destino_id || '');
-    if (!destId) continue;
-
+    const destId = String(row.loteria_destino);
     const atual = map.get(destId) || {
-      loja_destino_id: row.loja_destino_id,
-      loja_destino_nome: row.loja_destino_nome || nomeLoteriaExibicao(row.loja_destino_id),
+      loteria_destino: row.loteria_destino,
+      loja_destino_nome: nomeLoteriaExibicao(row.loteria_destino),
       qtd_enviada: 0
     };
 
-    atual.qtd_enviada += Number(row.qtd_enviada || 0);
+    atual.qtd_enviada += Number(row.qtd_fracoes || 0);
     map.set(destId, atual);
   }
 
