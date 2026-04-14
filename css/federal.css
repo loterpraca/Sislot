@@ -124,7 +124,45 @@ input[readonly] {
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(8px);
 }
+.fed-modalidade-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  color:#38bdf8;
+  background:rgba(56,189,248,.10);
+  border:1px solid rgba(56,189,248,.25);
+  border-radius:4px;
+  padding:1px 7px;
+}
 
+.fed-concurso-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  color:#22c55e;
+  background:rgba(34,197,94,.10);
+  border:1px solid rgba(34,197,94,.25);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-data-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--text-mid);
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--blue-border);
+  border-radius:4px;
+  padding:1px 7px;
+}
+
+.fed-origem-chip{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  color:var(--amber);
+  background:rgba(245,166,35,.08);
+  border:1px solid rgba(245,166,35,.20);
+  border-radius:4px;
+  padding:1px 7px;
+}
 .brand {
   display: flex;
   align-items: center;
