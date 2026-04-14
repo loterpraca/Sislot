@@ -4,11 +4,12 @@
     requireSession, loadLoterias, loadFederais, lookupLoteriaName
   } = FED_BASE;
 
-  const state = {
+ const state = {
   usuario: null,
   loterias: [],
   federais: [],
-  movimentacoes: [],
+  resumoFederal: [],
+  detalheFederal: [],
   selectedFederalId: null,
   dataRef: hojeISO(),
   mostrarTodosConcursos: false
@@ -66,10 +67,7 @@
     return lookupLoteriaName(state.loterias, loteriaId) || '—';
   }
 
-  function fmtSaldo(v) {
-    return String(Number(v || 0));
-  }
-
+  
   function getEstoqueInicialFederal(f) {
   return Number(
     f.qtd_fracoes ??
@@ -98,46 +96,7 @@
       String(f.loteria_id) === String(origem)
     ) || null;
   }
-
-  function federaisDisponiveis() {
-    return state.federais
-      .filter(f => {
-        if (!f.dt_sorteio) return true;
-        return String(f.dt_sorteio).slice(0, 10) >= state.dataRef;
-      })
-      .sort((a, b) => {
-        const dtA = String(a.dt_sorteio || '');
-        const dtB = String(b.dt_sorteio || '');
-        if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
-
-        const concA = String(a.concurso || '');
-        const concB = String(b.concurso || '');
-        if (concA !== concB) {
-          return concA.localeCompare(concB, 'pt-BR', { numeric: true });
-        }
-
-        const lotA = nomeLoteriaExibicao(a.loteria_id);
-        const lotB = nomeLoteriaExibicao(b.loteria_id);
-        return lotA.localeCompare(lotB, 'pt-BR');
-      });
-  }
-
-  function getConcursoAtivoKey() {
-    const itens = federaisDisponiveis();
-    return itens.length ? concursoKey(itens[0]) : '';
-  }
-
-  function federaisVisiveis() {
-    const base = federaisDisponiveis();
-
-    if (state.mostrarTodosConcursos) {
-      return base;
-    }
-
-    const key = getConcursoAtivoKey();
-    return key ? base.filter(f => concursoKey(f) === key) : [];
-  }
-
+ 
   function getConcursosUnicos(disponiveisOnly = false) {
     const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
     const map = new Map();
@@ -337,7 +296,35 @@
       </div>
     `;
   }
+async function loadResumoFederal() {
+  const { data, error } = await sb
+    .from('view_resumo_federal')
+    .select('*')
+    .order('dt_sorteio', { ascending: true })
+    .order('concurso', { ascending: true });
 
+  if (error) {
+    showStatus('st-mov', error.message, 'err');
+    state.resumoFederal = [];
+    return;
+  }
+
+  state.resumoFederal = data || [];
+}
+
+async function loadDetalheFederal() {
+  const { data, error } = await sb
+    .from('view_detalhe_federal')
+    .select('*');
+
+  if (error) {
+    showStatus('st-mov', error.message, 'err');
+    state.detalheFederal = [];
+    return;
+  }
+
+  state.detalheFederal = data || [];
+}
   async function loadMovimentacoesResumo() {
   const { data, error } = await sb
     .from('federal_movimentacoes')
@@ -422,14 +409,13 @@ function buildFederalPosicoes() {
 
   if (!lista) return;
 
-  const itens = federaisVisiveis();
-  const { estoquePorLoja, enviadoPorDestino } = buildFederalPosicoes();
+  const itens = resumoFederalVisivel();
 
   if (stLoading) stLoading.style.display = 'none';
 
   if (count) {
     if (!state.mostrarTodosConcursos) {
-      const key = getConcursoAtivoKey();
+      const key = getResumoConcursoAtivoKey();
       const primeiro = itens[0];
       count.textContent = key && primeiro
         ? `${primeiro.concurso} • ${itens.length} loja(s)`
@@ -450,41 +436,36 @@ function buildFederalPosicoes() {
   lista.style.display = 'flex';
   lista.className = 'federal-lista';
 
-  lista.innerHTML = itens.map(f => {
-    const isSelected = String(state.selectedFederalId || '') === String(f.id);
-    const origemNome = nomeLoteriaExibicao(f.loteria_id);
+  lista.innerHTML = itens.map(r => {
+    const isSelected = String(state.selectedFederalId || '') === String(r.federal_id);
+    const origemNome = r.loja_origem || nomeLoteriaExibicao(r.loteria_id);
+    const estoqueAtual = fmtSaldo(r.estoque_atual || 0);
 
-    const posKey = `${concursoKey(f)}::${String(f.loteria_id)}`;
-    const estoqueAtual = fmtSaldo(estoquePorLoja.get(posKey) || 0);
-
-    const dist = enviadoPorDestino.get(posKey) || {};
-    const distHtml = Object.entries(dist)
-      .sort((a, b) => Number(a[0]) - Number(b[0]))
-      .map(([destId, qtd]) => `
-        <div class="fed-saldo-pill" title="${nomeLoteriaExibicao(destId)}">
-          <span class="fed-saldo-loja">${nomeLoteriaExibicao(destId)}</span>
-          <span class="fed-saldo-val">${fmtSaldo(qtd)}</span>
-        </div>
-      `)
-      .join('');
+    const destinos = getDistribuicaoDestinosByFederal(r.federal_id);
+    const destinosHtml = destinos.map(d => `
+      <div class="fed-saldo-pill" title="${d.loja_destino_nome}">
+        <span class="fed-saldo-loja">${d.loja_destino_nome}</span>
+        <span class="fed-saldo-val">${fmtSaldo(d.qtd_enviada)}</span>
+      </div>
+    `).join('');
 
     return `
       <button
         type="button"
         class="fed-card ${isSelected ? 'is-selected' : ''}"
-        data-id="${f.id}"
+        data-id="${r.federal_id}"
       >
         <div class="fed-card-main">
           <div class="fed-card-head">
             <span class="fed-modalidade">Federal</span>
-            <span class="fed-concurso-chip">${f.concurso || '—'}</span>
-            <span class="fed-data-chip">${fmtDate(f.dt_sorteio)}</span>
+            <span class="fed-concurso-chip">${r.concurso || '—'}</span>
+            <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
           </div>
 
           <div class="fed-card-tags">
             <span class="fed-tag">${origemNome}</span>
-            <span class="fed-tag">Fração ${fmtMoney(f.valor_fracao)}</span>
-            <span class="fed-tag">Custo ${fmtMoney(f.valor_custo)}</span>
+            <span class="fed-tag">Fração ${fmtMoney(r.valor_fracao)}</span>
+            <span class="fed-tag">Custo ${fmtMoney(r.valor_custo)}</span>
           </div>
 
           <div class="fed-card-saldos">
@@ -492,7 +473,7 @@ function buildFederalPosicoes() {
               <span class="fed-saldo-loja">${origemNome}</span>
               <span class="fed-saldo-val">${estoqueAtual}</span>
             </div>
-            ${distHtml}
+            ${destinosHtml}
           </div>
         </div>
 
@@ -596,9 +577,10 @@ function buildFederalPosicoes() {
     }
   }
 
- async function refresh() {
+async function refresh() {
   state.federais = await loadFederais();
-  await loadMovimentacoesResumo();
+  await loadResumoFederal();
+  await loadDetalheFederal();
 
   updateDateUI();
   fillStaticSelects();
@@ -717,7 +699,71 @@ function buildFederalPosicoes() {
       selectFederalCard(card.dataset.id);
     });
   }
+function resumoFederalDisponivel() {
+  return state.resumoFederal
+    .filter(r => {
+      if (!r.dt_sorteio) return true;
+      return String(r.dt_sorteio).slice(0, 10) >= state.dataRef;
+    })
+    .sort((a, b) => {
+      const dtA = String(a.dt_sorteio || '');
+      const dtB = String(b.dt_sorteio || '');
+      if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
 
+      const concA = String(a.concurso || '');
+      const concB = String(b.concurso || '');
+      if (concA !== concB) {
+        return concA.localeCompare(concB, 'pt-BR', { numeric: true });
+      }
+
+      return String(a.loja_origem || '').localeCompare(String(b.loja_origem || ''), 'pt-BR');
+    });
+}
+
+function getResumoConcursoAtivoKey() {
+  const itens = resumoFederalDisponivel();
+  if (!itens.length) return '';
+  return `${itens[0].concurso}__${itens[0].dt_sorteio || ''}`;
+}
+
+function resumoFederalVisivel() {
+  const base = resumoFederalDisponivel();
+
+  if (state.mostrarTodosConcursos) {
+    return base;
+  }
+
+  const key = getResumoConcursoAtivoKey();
+  return key
+    ? base.filter(r => `${r.concurso}__${r.dt_sorteio || ''}` === key)
+    : [];
+}
+
+function getDistribuicaoDestinosByFederal(federalId) {
+  const rows = state.detalheFederal.filter(
+    d => String(d.federal_origem_id) === String(federalId)
+  );
+
+  const map = new Map();
+
+  for (const row of rows) {
+    const destId = String(row.loja_destino_id || '');
+    if (!destId) continue;
+
+    const atual = map.get(destId) || {
+      loja_destino_id: row.loja_destino_id,
+      loja_destino_nome: row.loja_destino_nome || nomeLoteriaExibicao(row.loja_destino_id),
+      qtd_enviada: 0
+    };
+
+    atual.qtd_enviada += Number(row.qtd_enviada || 0);
+    map.set(destId, atual);
+  }
+
+  return [...map.values()].sort((a, b) =>
+    String(a.loja_destino_nome || '').localeCompare(String(b.loja_destino_nome || ''), 'pt-BR')
+  );
+}
   async function bootstrap() {
     startClock('relogio');
     state.usuario = await requireSession();
