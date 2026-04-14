@@ -5,13 +5,14 @@
   } = FED_BASE;
 
   const state = {
-    usuario: null,
-    loterias: [],
-    federais: [],
-    selectedFederalId: null,
-    dataRef: hojeISO(),
-    mostrarTodosConcursos: false
-  };
+  usuario: null,
+  loterias: [],
+  federais: [],
+  movimentacoes: [],
+  selectedFederalId: null,
+  dataRef: hojeISO(),
+  mostrarTodosConcursos: false
+};
 
   function firstEl(...ids) {
     for (const id of ids) {
@@ -69,17 +70,17 @@
     return String(Number(v || 0));
   }
 
-  function getSaldoFederal(f) {
-    return Number(
-      f.saldo ??
-      f.saldo_atual ??
-      f.qtd_disponivel ??
-      f.qtd_fracoes_disponiveis ??
-      f.qtd_disponivel_loja ??
-      f.qtd_fracoes ??
-      0
-    ) || 0;
-  }
+  function getEstoqueInicialFederal(f) {
+  return Number(
+    f.qtd_fracoes ??
+    f.qtd_disponivel ??
+    f.qtd_fracoes_disponiveis ??
+    f.qtd_disponivel_loja ??
+    f.saldo ??
+    f.saldo_atual ??
+    0
+  ) || 0;
+}
 
   function getFederalById(id) {
     if (!id) return null;
@@ -337,6 +338,59 @@
     `;
   }
 
+  async function loadMovimentacoesResumo() {
+  const { data, error } = await sb
+    .from('federal_movimentacoes')
+    .select('federal_id,loteria_origem,loteria_destino,qtd_fracoes,tipo_evento,status_acerto');
+
+  if (error) {
+    showStatus('st-mov', error.message, 'err');
+    state.movimentacoes = [];
+    return;
+  }
+
+  state.movimentacoes = data || [];
+}
+function buildFederalPosicoes() {
+  const estoquePorLoja = new Map();
+  const enviadoPorDestino = new Map();
+
+  // base inicial por concurso + loja
+  for (const f of state.federais) {
+    const key = `${concursoKey(f)}::${String(f.loteria_id)}`;
+    estoquePorLoja.set(key, getEstoqueInicialFederal(f));
+  }
+
+  // aplica movimentações
+  for (const m of state.movimentacoes) {
+    if (String(m.status_acerto || '').toUpperCase() === 'CANCELADO') continue;
+
+    const federalOrigem = getFederalById(m.federal_id);
+    if (!federalOrigem) continue;
+
+    const qtd = Number(m.qtd_fracoes || 0);
+    if (!qtd) continue;
+
+    const concKey = concursoKey(federalOrigem);
+    const origemId = String(m.loteria_origem || federalOrigem.loteria_id || '');
+    const destinoId = String(m.loteria_destino || '');
+
+    const origemKey = `${concKey}::${origemId}`;
+    estoquePorLoja.set(origemKey, Number(estoquePorLoja.get(origemKey) || 0) - qtd);
+
+    if (destinoId) {
+      const destinoKey = `${concKey}::${destinoId}`;
+      estoquePorLoja.set(destinoKey, Number(estoquePorLoja.get(destinoKey) || 0) + qtd);
+
+      const distKey = `${concKey}::${origemId}`;
+      const atual = enviadoPorDestino.get(distKey) || {};
+      atual[destinoId] = Number(atual[destinoId] || 0) + qtd;
+      enviadoPorDestino.set(distKey, atual);
+    }
+  }
+
+  return { estoquePorLoja, enviadoPorDestino };
+}
   function clearMov() {
     state.selectedFederalId = null;
 
@@ -361,81 +415,96 @@
   }
 
   function renderListaFederais() {
-    const lista = firstEl('federal-lista', 'federalLista');
-    const stLoading = firstEl('st-fed-loading', 'stFedLoading');
-    const stEmpty = firstEl('st-fed-empty', 'stFedEmpty');
-    const count = firstEl('federal-count', 'federalCount');
+  const lista = firstEl('federal-lista', 'federalLista');
+  const stLoading = firstEl('st-fed-loading', 'stFedLoading');
+  const stEmpty = firstEl('st-fed-empty', 'stFedEmpty');
+  const count = firstEl('federal-count', 'federalCount');
 
-    if (!lista) return;
+  if (!lista) return;
 
-    const itens = federaisVisiveis();
+  const itens = federaisVisiveis();
+  const { estoquePorLoja, enviadoPorDestino } = buildFederalPosicoes();
 
-    if (stLoading) stLoading.style.display = 'none';
+  if (stLoading) stLoading.style.display = 'none';
 
-    if (count) {
-      if (!state.mostrarTodosConcursos) {
-        const key = getConcursoAtivoKey();
-        const primeiro = itens[0];
-        count.textContent = key && primeiro
-          ? `${primeiro.concurso} • ${itens.length} loja(s)`
-          : '0';
-      } else {
-        count.textContent = `${itens.length} registro(s)`;
-      }
+  if (count) {
+    if (!state.mostrarTodosConcursos) {
+      const key = getConcursoAtivoKey();
+      const primeiro = itens[0];
+      count.textContent = key && primeiro
+        ? `${primeiro.concurso} • ${itens.length} loja(s)`
+        : '0';
+    } else {
+      count.textContent = `${itens.length} registro(s)`;
     }
-
-    if (!itens.length) {
-      if (stEmpty) stEmpty.style.display = 'block';
-      lista.style.display = 'none';
-      lista.innerHTML = '';
-      return;
-    }
-
-    if (stEmpty) stEmpty.style.display = 'none';
-    lista.style.display = 'flex';
-    lista.className = 'federal-lista';
-
-    lista.innerHTML = itens.map(f => {
-      const isSelected = String(state.selectedFederalId || '') === String(f.id);
-      const origemNome = nomeLoteriaExibicao(f.loteria_id);
-      const saldo = fmtSaldo(getSaldoFederal(f));
-
-      return `
-        <button
-          type="button"
-          class="fed-card ${isSelected ? 'is-selected' : ''}"
-          data-id="${f.id}"
-        >
-          <div class="fed-card-main">
-            <div class="fed-card-head">
-              <span class="fed-modalidade">Federal</span>
-              <span class="fed-concurso-chip">${f.concurso || '—'}</span>
-              <span class="fed-data-chip">${fmtDate(f.dt_sorteio)}</span>
-            </div>
-
-            <div class="fed-card-tags">
-              <span class="fed-tag">${origemNome}</span>
-              <span class="fed-tag">Fração ${fmtMoney(f.valor_fracao)}</span>
-              <span class="fed-tag">Custo ${fmtMoney(f.valor_custo)}</span>
-            </div>
-
-            <div class="fed-card-saldos">
-              <div class="fed-saldo-pill" title="${origemNome}">
-                <span class="fed-saldo-loja">${origemNome}</span>
-                <span class="fed-saldo-val">${saldo}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="fed-card-ind">
-            <span class="badge ${isSelected ? 'b-ok' : 'b-info'}">
-              ${isSelected ? 'Selecionado' : 'Selecionar'}
-            </span>
-          </div>
-        </button>
-      `;
-    }).join('');
   }
+
+  if (!itens.length) {
+    if (stEmpty) stEmpty.style.display = 'block';
+    lista.style.display = 'none';
+    lista.innerHTML = '';
+    return;
+  }
+
+  if (stEmpty) stEmpty.style.display = 'none';
+  lista.style.display = 'flex';
+  lista.className = 'federal-lista';
+
+  lista.innerHTML = itens.map(f => {
+    const isSelected = String(state.selectedFederalId || '') === String(f.id);
+    const origemNome = nomeLoteriaExibicao(f.loteria_id);
+
+    const posKey = `${concursoKey(f)}::${String(f.loteria_id)}`;
+    const estoqueAtual = fmtSaldo(estoquePorLoja.get(posKey) || 0);
+
+    const dist = enviadoPorDestino.get(posKey) || {};
+    const distHtml = Object.entries(dist)
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([destId, qtd]) => `
+        <div class="fed-saldo-pill" title="${nomeLoteriaExibicao(destId)}">
+          <span class="fed-saldo-loja">${nomeLoteriaExibicao(destId)}</span>
+          <span class="fed-saldo-val">${fmtSaldo(qtd)}</span>
+        </div>
+      `)
+      .join('');
+
+    return `
+      <button
+        type="button"
+        class="fed-card ${isSelected ? 'is-selected' : ''}"
+        data-id="${f.id}"
+      >
+        <div class="fed-card-main">
+          <div class="fed-card-head">
+            <span class="fed-modalidade">Federal</span>
+            <span class="fed-concurso-chip">${f.concurso || '—'}</span>
+            <span class="fed-data-chip">${fmtDate(f.dt_sorteio)}</span>
+          </div>
+
+          <div class="fed-card-tags">
+            <span class="fed-tag">${origemNome}</span>
+            <span class="fed-tag">Fração ${fmtMoney(f.valor_fracao)}</span>
+            <span class="fed-tag">Custo ${fmtMoney(f.valor_custo)}</span>
+          </div>
+
+          <div class="fed-card-saldos">
+            <div class="fed-saldo-pill" title="${origemNome}">
+              <span class="fed-saldo-loja">${origemNome}</span>
+              <span class="fed-saldo-val">${estoqueAtual}</span>
+            </div>
+            ${distHtml}
+          </div>
+        </div>
+
+        <div class="fed-card-ind">
+          <span class="badge ${isSelected ? 'b-ok' : 'b-info'}">
+            ${isSelected ? 'Selecionado' : 'Selecionar'}
+          </span>
+        </div>
+      </button>
+    `;
+  }).join('');
+}
 
   function selectFederalCard(id, { scroll = true } = {}) {
     const f = getFederalById(id);
@@ -527,17 +596,18 @@
     }
   }
 
-  async function refresh() {
-    state.federais = await loadFederais();
+ async function refresh() {
+  state.federais = await loadFederais();
+  await loadMovimentacoesResumo();
 
-    updateDateUI();
-    fillStaticSelects();
-    renderListaFederais();
+  updateDateUI();
+  fillStaticSelects();
+  renderListaFederais();
 
-    if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
-      selectFederalCard(state.selectedFederalId, { scroll: false });
-    }
+  if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
+    selectFederalCard(state.selectedFederalId, { scroll: false });
   }
+}
 
   function bindDateEvents() {
     const btnPrev = firstEl('btn-dt-prev', 'btnDtPrev');
