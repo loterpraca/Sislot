@@ -459,28 +459,29 @@ function buildFederalPosicoes() {
         class="fed-card ${isSelected ? 'is-selected' : ''}"
         data-id="${r.federal_id}"
       >
-        <div class="fed-card-head">
-          <span class="fed-modalidade-chip">Federal</span>
-          <span class="fed-concurso-chip">${r.concurso || '—'}</span>
-          <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
-          <span class="fed-tag">Fração ${fmtMoney(r.valor_fracao)}</span>
-          <span class="fed-origem-chip">${origemNome}</span>
-        </div>
-        
-          <div class="fed-card-saldos">
-            <div class="fed-saldo-pill" title="${origemNome}">
-              <span class="fed-saldo-loja">${origemNome}</span>
-              <span class="fed-saldo-val">${estoqueAtual}</span>
-            </div>
-            ${destinosHtml}
-          </div>
-        </div>
+        <div class="fed-card-main">
+  <div class="fed-card-line1">
+    <span class="fed-modalidade-chip">Federal</span>
+    <span class="fed-concurso-chip">${r.concurso || '—'}</span>
+    <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
+    <span class="fed-fracao-chip">Fração ${fmtMoney(r.valor_fracao)}</span>
+    <span class="fed-origem-chip">${origemNome}</span>
+  </div>
 
-        <div class="fed-card-ind">
-          <span class="badge ${isSelected ? 'b-ok' : 'b-info'}">
-            ${isSelected ? 'Selecionado' : 'Selecionar'}
-          </span>
-        </div>
+  <div class="fed-card-line2">
+    <div class="fed-saldo-pill fed-saldo-pill-main" title="${origemNome}">
+      <span class="fed-saldo-loja">${origemNome}</span>
+      <span class="fed-saldo-val">${estoqueAtual}</span>
+    </div>
+    ${destinosHtml}
+  </div>
+</div>
+
+<div class="fed-card-ind">
+  <span class="btn-topbar ${isSelected ? 'is-selected-btn' : ''}">
+    ${isSelected ? 'Selecionado' : 'Selecionar'}
+  </span>
+</div>
       </button>
     `;
   }).join('');
