@@ -459,12 +459,12 @@ function buildFederalPosicoes() {
         class="fed-card ${isSelected ? 'is-selected' : ''}"
         data-id="${r.federal_id}"
       >
-        <div class="fed-card-main">
-          <div class="fed-card-head">
-            <span class="fed-modalidade">Federal</span>
-            <span class="fed-concurso-chip">${r.concurso || '—'}</span>
-            <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
-          </div>
+        <div class="fed-card-head">
+          <span class="fed-modalidade-chip">Federal</span>
+          <span class="fed-concurso-chip">${r.concurso || '—'}</span>
+          <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
+          <span class="fed-origem-chip">${origemNome}</span>
+        </div>
 
           <div class="fed-card-tags">
             <span class="fed-tag">${origemNome}</span>
