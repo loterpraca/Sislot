@@ -584,7 +584,7 @@ function buildFederalPosicoes() {
 async function refresh() {
   state.federais = await loadFederais();
   await loadResumoFederal();
-  await loadDetalheFederal();
+  await loadMovimentacoesResumo();
 
   updateDateUI();
   fillStaticSelects();
@@ -594,7 +594,6 @@ async function refresh() {
     selectFederalCard(state.selectedFederalId, { scroll: false });
   }
 }
-
   function bindDateEvents() {
     const btnPrev = firstEl('btn-dt-prev', 'btnDtPrev');
     const btnNext = firstEl('btn-dt-next', 'btnDtNext');
