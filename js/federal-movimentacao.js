@@ -392,7 +392,6 @@
     if ($('mov-federal')) $('mov-federal').value = '';
     fillOrigemSelect('');
     if ($('mov-loteria-origem')) $('mov-loteria-origem').value = '';
-    if ($('mov-observacao')) $('mov-observacao').value = '';
 
     renderResumoSelecao();
     renderMovDestinosGrid();
@@ -646,14 +645,13 @@
         ? `
           <div class="mov-status-inline">
             <span class="mov-status-pill ${calc.hasError ? 'is-warn' : 'is-ok'}">
-              ${calc.hasError ? 'Excedeu a remessa' : 'Desfecho dentro da remessa'}
+              ${calc.hasError ? 'Excedeu a remessa' : 'Desfecho disponível'}
             </span>
-            <span class="mov-status-pill">Remessa #${transfer.id}</span>
           </div>
         `
         : `
           <div class="mov-status-inline">
-            <span class="mov-status-pill">Sem remessa aberta</span>
+            <span class="mov-status-pill">Sem desfecho</span>
           </div>
         `;
 
@@ -662,7 +660,9 @@
           <div class="mov-dest-toggle">
             <div class="mov-dest-head">
               <div class="mov-dest-name">${l.nome}</div>
-              <div class="mov-dest-arrow">⌄</div>
+              <button type="button" class="mov-dest-action" data-toggle-desfecho data-dest-id="${l.id}">
+                Desfecho
+              </button>
             </div>
 
             <div class="mov-mini-grid">
@@ -679,7 +679,7 @@
             ${statusHtml}
           </div>
 
-          <div class="mov-input-zone" data-no-toggle>
+          <div class="mov-input-zone">
             <div class="mov-input-grid">
               <div class="field">
                 <label class="field-label">Qtd frações</label>
@@ -700,15 +700,13 @@
                 <div class="mov-inline-readonly">${money(transferValue)}</div>
               </div>
             </div>
-            <div class="mov-input-caption">Nova transferência para ${l.nome}. O desfecho da remessa fica na expansão do card.</div>
           </div>
 
           <div class="mov-card-footer">
             <div class="mov-dest-hist">${hist.expr}</div>
-            <div class="mov-card-hint">Clique fora dos inputs para expandir.</div>
           </div>
 
-          <div class="mov-expand" data-no-toggle>
+          <div class="mov-expand">
             ${renderExpandContent({ federal, destino: l, transfer, calc })}
           </div>
         </div>
@@ -720,7 +718,7 @@
     if (!transfer || !calc) {
       return `
         <div class="mov-empty-expand">
-          Salve ao menos uma transferência para ${destino.nome} antes de informar venda, cambista, devolução de caixa ou retorno à origem.
+          Salve uma transferência para ${destino.nome} antes de preencher o desfecho.
         </div>
       `;
     }
@@ -845,7 +843,6 @@
     fillOrigemSelect(f.loteria_id);
     $('mov-loteria-origem').value = String(f.loteria_id);
 
-    if ($('mov-observacao')) $('mov-observacao').value = '';
 
     renderResumoSelecao();
     renderMovDestinosGrid();
@@ -866,7 +863,7 @@
       }
 
       const origemId = num(resumo.loteria_id);
-      const obs = $('mov-observacao')?.value.trim() || null;
+      const obs = null;
       const valorDefault = getDefaultTransferValue(federal);
 
       const payloads = Object.entries(state.movDraft || {})
@@ -1106,12 +1103,10 @@
         return;
       }
 
-      if (e.target.closest('[data-no-toggle]')) return;
+      const toggleBtn = e.target.closest('[data-toggle-desfecho]');
+      if (!toggleBtn) return;
 
-      const card = e.target.closest('[data-dest-card]');
-      if (!card) return;
-
-      const destId = String(card.dataset.destId || '');
+      const destId = String(toggleBtn.dataset.destId || '');
       state.expandedDestinoId = state.expandedDestinoId === destId ? null : destId;
       renderMovDestinosGrid();
     });
