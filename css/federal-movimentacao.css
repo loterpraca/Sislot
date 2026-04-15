@@ -377,3 +377,76 @@
     align-items:stretch;
   }
 }
+
+
+/* =========================================================
+   FEDERAL MOVIMENTAÇÃO — AJUSTE COMPACTO V4
+========================================================= */
+.mov-dest-toggle{
+  gap:4px;
+}
+
+.mov-dest-action.is-ready{
+  color:var(--accent);
+  border-color:rgba(0,200,150,.35);
+  background:rgba(0,200,150,.07);
+}
+
+.mov-input-zone{
+  margin-top:6px;
+  padding:8px 10px;
+}
+
+.mov-card-footer{
+  align-items:flex-start;
+  justify-content:flex-start;
+  gap:6px;
+  margin-top:8px;
+}
+
+.mov-inline-metrics{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.mov-inline-metrics span{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  font-family:"IBM Plex Mono", monospace;
+  font-size:10px;
+}
+
+.mov-inline-metrics b{
+  color:var(--bright);
+  font-weight:700;
+}
+
+.mov-inline-metrics span:first-child{
+  border-color:rgba(0,200,150,.24);
+  background:rgba(0,200,150,.07);
+}
+
+.mov-inline-metrics span:first-child b{
+  color:var(--accent);
+}
+
+.mov-dest-hist{
+  color:var(--dim);
+  font-family:"IBM Plex Mono", monospace;
+  font-size:11px;
+  line-height:1.25;
+  min-height:auto;
+}
+
+.mov-mini-grid-single,
+.mov-status-inline{
+  display:none;
+}
