@@ -474,25 +474,39 @@
 
     if (!origem || !f) {
       resumo.innerHTML = `
-        <div class="inline-pills">
-          <span class="pill">Modalidade Federal</span>
-          <span class="pill">Concurso ${base.concurso}</span>
-          <span class="pill">Data ${fmtDate(base.dt_sorteio)}</span>
-          <span class="pill">Origens ${federaisConcurso.length}</span>
+        <div class="mov-bilhete-head">
+          <span class="fed-modalidade-chip">Federal</span>
+          <span class="fed-concurso-chip">#${base.concurso || '—'}</span>
+          <span class="fed-data-chip">${fmtDate(base.dt_sorteio)}</span>
         </div>
         <div class="empty-sub" style="margin-top:10px">Selecione agora a loja de origem.</div>
       `;
       return;
     }
 
+    const resumoRow = getResumoByFederalId(f.id) || {};
+    const lojas = getResumoMovimentacaoPorLoja(resumoRow);
+    const origemNome = lookupLoteriaName(state.loterias, f.loteria_id);
+
     resumo.innerHTML = `
-      <div class="inline-pills">
-        <span class="pill">Modalidade Federal</span>
-        <span class="pill">Origem ${lookupLoteriaName(state.loterias, f.loteria_id)}</span>
-        <span class="pill">Concurso ${f.concurso}</span>
-        <span class="pill">Data ${fmtDate(f.dt_sorteio)}</span>
-        <span class="pill">Fração ${money(f.valor_fracao)}</span>
-        <span class="pill">Custo ${money(f.valor_custo)}</span>
+      <div class="mov-bilhete-head">
+        <span class="fed-modalidade-chip">Federal</span>
+        <span class="fed-concurso-chip">#${f.concurso || '—'}</span>
+        <span class="fed-data-chip">${fmtDate(f.dt_sorteio)}</span>
+        <span class="fed-fracao-chip">${money(f.valor_fracao)}</span>
+        <span class="fed-origem-chip">${origemNome}</span>
+      </div>
+
+      <div class="mov-lojas-wrap">
+        <div class="mov-lojas-title">Movimentação por Loja</div>
+        <div class="mov-lojas-strip">
+          ${lojas.map(item => `
+            <div class="mov-loja-chip ${item.destaque || ''}">
+              <span>${item.nome}</span>
+              <strong>${item.valor}</strong>
+            </div>
+          `).join('')}
+        </div>
       </div>
     `;
   }
@@ -615,6 +629,25 @@
     );
   }
 
+  function getResumoMovimentacaoPorLoja(resumoRow) {
+    const origemNome = resumoRow.loja_origem || nomeLoteriaExibicao(resumoRow.loteria_id);
+    const itens = [{
+      nome: origemNome,
+      valor: fmtSaldo(resumoRow.estoque_atual || 0),
+      destaque: 'is-origin'
+    }];
+
+    getDistribuicaoDestinosByFederal(resumoRow).forEach(item => {
+      itens.push({
+        nome: item.loja_destino_nome,
+        valor: fmtSaldo(item.qtd_enviada || 0),
+        destaque: item.qtd_enviada > 0 ? 'is-active' : ''
+      });
+    });
+
+    return itens;
+  }
+
   function renderMovDestinosGrid() {
     const box = $('mov-destinos-grid');
     const federal = getFederalSelecionado();
@@ -638,7 +671,6 @@
       const transfer = getActiveTransfer(resumo, l.id);
       const draft = getDraftByDestino(l.id);
       const isExpanded = String(state.expandedDestinoId || '') === String(l.id);
-      const transferValue = getDefaultTransferValue(federal);
       const calc = transfer ? getDesfechoCalc(transfer, federal) : null;
 
       const statusHtml = calc
@@ -665,14 +697,10 @@
               </button>
             </div>
 
-            <div class="mov-mini-grid">
+            <div class="mov-mini-grid mov-mini-grid-single">
               <div class="mov-balance-box">
                 <span>Saldo líquido</span>
                 <strong>${fmtSaldo(hist.saldo)}</strong>
-              </div>
-              <div class="mov-mini-box">
-                <span>Valor fração</span>
-                <strong>${money(transferValue)}</strong>
               </div>
             </div>
 
@@ -680,25 +708,18 @@
           </div>
 
           <div class="mov-input-zone">
-            <div class="mov-input-grid">
-              <div class="field">
-                <label class="field-label">Qtd frações</label>
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  class="mov-dest-input"
-                  data-dest-input
-                  data-dest-id="${l.id}"
-                  value="${draft.qtd ?? ''}"
-                  placeholder="0"
-                >
-              </div>
-
-              <div class="field">
-                <label class="field-label">Valor default</label>
-                <div class="mov-inline-readonly">${money(transferValue)}</div>
-              </div>
+            <div class="field">
+              <label class="field-label">Qtd frações</label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                class="mov-dest-input"
+                data-dest-input
+                data-dest-id="${l.id}"
+                value="${draft.qtd ?? ''}"
+                placeholder="0"
+              >
             </div>
           </div>
 
