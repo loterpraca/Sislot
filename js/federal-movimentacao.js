@@ -346,8 +346,22 @@
     const totalRetorno = rows.reduce((acc, row) => acc + num(row.qtd_retorno_origem), 0);
     const saldo = totalTransferido - totalVenda - totalDevolucao - totalCambista - totalRetorno;
 
+    const exprMov = [...rows]
+      .sort((a, b) => {
+        const at = String(a.created_at || a.data_mov || '');
+        const bt = String(b.created_at || b.data_mov || '');
+        if (at !== bt) return at.localeCompare(bt, 'pt-BR');
+        return num(a.id) - num(b.id);
+      })
+      .map((row, idx) => {
+        const qtd = num(row.qtd_fracoes || 0);
+        if (idx === 0) return String(qtd);
+        return qtd >= 0 ? `+${qtd}` : String(qtd);
+      })
+      .join('');
+
     return {
-      expr: `T ${totalTransferido} • V ${totalVenda} • CX ${totalDevolucao} • CB ${totalCambista} • RT ${totalRetorno}`,
+      expr: exprMov || '0',
       saldo,
       totalTransferido,
       totalVenda,
@@ -672,39 +686,17 @@
       const draft = getDraftByDestino(l.id);
       const isExpanded = String(state.expandedDestinoId || '') === String(l.id);
       const calc = transfer ? getDesfechoCalc(transfer, federal) : null;
-
-      const statusHtml = calc
-        ? `
-          <div class="mov-status-inline">
-            <span class="mov-status-pill ${calc.hasError ? 'is-warn' : 'is-ok'}">
-              ${calc.hasError ? 'Excedeu a remessa' : 'Desfecho disponível'}
-            </span>
-          </div>
-        `
-        : `
-          <div class="mov-status-inline">
-            <span class="mov-status-pill">Sem desfecho</span>
-          </div>
-        `;
+      const hasDesfecho = !!transfer;
 
       return `
         <div class="mov-dest-card ${isExpanded ? 'is-expanded' : ''}" data-dest-card data-dest-id="${l.id}">
           <div class="mov-dest-toggle">
             <div class="mov-dest-head">
               <div class="mov-dest-name">${l.nome}</div>
-              <button type="button" class="mov-dest-action" data-toggle-desfecho data-dest-id="${l.id}">
+              <button type="button" class="mov-dest-action ${hasDesfecho ? 'is-ready' : ''}" data-toggle-desfecho data-dest-id="${l.id}">
                 Desfecho
               </button>
             </div>
-
-            <div class="mov-mini-grid mov-mini-grid-single">
-              <div class="mov-balance-box">
-                <span>Saldo líquido</span>
-                <strong>${fmtSaldo(hist.saldo)}</strong>
-              </div>
-            </div>
-
-            ${statusHtml}
           </div>
 
           <div class="mov-input-zone">
@@ -724,6 +716,14 @@
           </div>
 
           <div class="mov-card-footer">
+            <div class="mov-inline-metrics">
+              <span>SL <b>${fmtSaldo(hist.saldo)}</b></span>
+              <span>T <b>${fmtSaldo(hist.totalTransferido)}</b></span>
+              <span>V <b>${fmtSaldo(hist.totalVenda)}</b></span>
+              <span>CX <b>${fmtSaldo(hist.totalDevolucao)}</b></span>
+              <span>CB <b>${fmtSaldo(hist.totalCambista)}</b></span>
+              <span>RT <b>${fmtSaldo(hist.totalRetorno)}</b></span>
+            </div>
             <div class="mov-dest-hist">${hist.expr}</div>
           </div>
 
