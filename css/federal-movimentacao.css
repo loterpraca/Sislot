@@ -2,6 +2,72 @@
    FEDERAL MOVIMENTAÇÃO — EXTENSÃO LOCAL
 ========================================================= */
 
+.mov-bilhete-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.mov-lojas-wrap{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px dashed rgba(255,255,255,.08);
+}
+
+.mov-lojas-title{
+  margin-bottom:8px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.mov-lojas-strip{
+  display:grid;
+  grid-template-columns:repeat(5, minmax(0,1fr));
+  gap:8px;
+}
+
+.mov-loja-chip{
+  min-width:0;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.03);
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.mov-loja-chip span{
+  color:var(--muted);
+  font-size:10px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.mov-loja-chip strong{
+  color:var(--bright);
+  font-family:"IBM Plex Mono", monospace;
+  font-size:14px;
+}
+
+.mov-loja-chip.is-origin{
+  border-color:rgba(245,166,35,.24);
+  background:rgba(245,166,35,.08);
+}
+
+.mov-loja-chip.is-origin strong{
+  color:var(--amber);
+}
+
+.mov-loja-chip.is-active{
+  border-color:rgba(0,200,150,.22);
+}
+
 .mov-dest-card{
   position:relative;
   overflow:hidden;
@@ -57,6 +123,10 @@
   display:grid;
   grid-template-columns:repeat(2, minmax(0,1fr));
   gap:8px;
+}
+
+.mov-mini-grid-single{
+  grid-template-columns:1fr;
 }
 
 .mov-mini-box,
@@ -116,8 +186,7 @@
 
 .mov-input-zone,
 .mov-expand,
-.mov-expand-actions,
-.mov-desfecho-note{
+.mov-expand-actions{
   position:relative;
   z-index:2;
 }
@@ -131,12 +200,6 @@
 
 .mov-input-zone .field-label{
   margin-bottom:2px;
-}
-
-.mov-input-grid{
-  display:grid;
-  grid-template-columns:1.2fr .9fr;
-  gap:8px;
 }
 
 .mov-inline-readonly{
@@ -249,16 +312,10 @@
 .mov-expand-actions{
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:flex-end;
   gap:10px;
   flex-wrap:wrap;
   margin-top:10px;
-}
-
-.mov-desfecho-note{
-  color:var(--dim);
-  font-size:10px;
-  line-height:1.35;
 }
 
 .mov-empty-expand{
@@ -305,13 +362,16 @@
 
 @media (max-width:1100px){
   .mov-mini-grid,
-  .mov-input-grid,
   .mov-expand-controls{
     grid-template-columns:1fr;
   }
 }
 
 @media (max-width:700px){
+  .mov-lojas-strip{
+    grid-template-columns:repeat(3, minmax(0,1fr));
+  }
+
   .mov-expand-actions{
     flex-direction:column;
     align-items:stretch;
