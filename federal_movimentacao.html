@@ -59,7 +59,7 @@
     <section class="page-header">
       <div>
         <div class="page-title">Movimentação Operacional</div>
-        <div class="page-sub">Transferência primeiro. Desfecho da remessa depois, no mesmo card da loja.</div>
+        <div class="page-sub">Transferência e desfecho da remessa por loja.</div>
       </div>
     </section>
 
@@ -128,16 +128,7 @@
         <input type="hidden" id="mov-tipo-evento" value="TRANSFERENCIA">
       </div>
 
-      <div class="mov-op-note mov-op-note-main">
-        Digite a quantidade para criar novas transferências. Clique no card da loja para abrir o desfecho da remessa já existente.
-      </div>
-
       <div id="mov-destinos-grid" class="mov-destinos-grid"></div>
-
-      <div class="field" style="margin-top:14px">
-        <label class="field-label">Observação</label>
-        <textarea id="mov-observacao" placeholder="Observação geral desta operação"></textarea>
-      </div>
 
       <div class="flex" style="margin-top:18px">
         <button class="btn-primary" id="btn-salvar-mov">Salvar transferências</button>
