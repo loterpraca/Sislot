@@ -4,17 +4,20 @@
     requireSession, loadLoterias, loadFederais, lookupLoteriaName
   } = FED_BASE;
 
-const state = {
-  usuario: null,
-  loterias: [],
-  federais: [],
-  resumoFederal: [],
-  movimentacoes: [],
-  selectedFederalId: null,
-  dataRef: hojeISO(),
-  mostrarTodosConcursos: false,
-  movDraft: {}
-};
+  const state = {
+    usuario: null,
+    loterias: [],
+    federais: [],
+    resumoFederal: [],
+    movimentacoes: [],
+    selectedFederalId: null,
+    dataRef: hojeISO(),
+    mostrarTodosConcursos: false,
+    movDraft: {},
+    desfechoDraft: {},
+    expandedDestinoId: null
+  };
+
   function firstEl(...ids) {
     for (const id of ids) {
       const el = $(id);
@@ -22,87 +25,7 @@ const state = {
     }
     return null;
   }
-function getResumoByFederalId(federalId) {
-  return state.resumoFederal.find(r => String(r.federal_id) === String(federalId)) || null;
-}
 
-function getHistoricoDestino(resumoRow, destinoId) {
-  const federalId = String(resumoRow.federal_id);
-  const origemId = String(resumoRow.loteria_id);
-  const destId = String(destinoId);
-
-  const partes = [];
-  let saldo = 0;
-
-  (state.movimentacoes || []).forEach(m => {
-    if (String(m.federal_id) !== federalId) return;
-    if (String(m.tipo_evento || '') !== 'TRANSFERENCIA') return;
-    if (String(m.status_acerto || '').toUpperCase() === 'CANCELADO') return;
-
-    const mOrig = String(m.loteria_origem || '');
-    const mDest = String(m.loteria_destino || '');
-    const qtd = Number(m.qtd_fracoes || 0);
-    if (!qtd) return;
-
-    if (mOrig === origemId && mDest === destId) {
-      partes.push(`+ ${qtd}`);
-      saldo += qtd;
-    } else if (mOrig === destId && mDest === origemId) {
-      partes.push(`- ${qtd}`);
-      saldo -= qtd;
-    }
-  });
-
-  return {
-    expr: partes.length ? partes.join(' ').replace(/^\+\s/, '') : '0',
-    saldo
-  };
-}
-
-function renderMovDestinosGrid() {
-  const box = $('mov-destinos-grid');
-  const federal = getFederalSelecionado();
-  const resumo = federal ? getResumoByFederalId(federal.id) : null;
-
-  if (!box) return;
-
-  if (!federal || !resumo) {
-    box.innerHTML = '';
-    return;
-  }
-
-  const origemId = String(resumo.loteria_id);
-
-  const destinos = (state.loterias || [])
-    .filter(l => String(l.id) !== origemId)
-    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
-
-  box.innerHTML = destinos.map(l => {
-    const hist = getHistoricoDestino(resumo, l.id);
-    const draftVal = state.movDraft[String(l.id)] ?? '';
-
-    return `
-      <div class="mov-dest-card">
-        <div class="mov-dest-head">
-          <div class="mov-dest-name">${l.nome}</div>
-          <div class="mov-dest-badge">Destino</div>
-        </div>
-
-        <input
-          type="number"
-          step="1"
-          class="mov-dest-input"
-          data-dest-id="${l.id}"
-          value="${draftVal}"
-          placeholder="0"
-        >
-
-        <div class="mov-dest-hist">${hist.expr}</div>
-        <div class="mov-dest-net">Saldo líquido: <b>${hist.saldo}</b></div>
-      </div>
-    `;
-  }).join('');
-}
   function hojeISO() {
     const d = new Date();
     const y = d.getFullYear();
@@ -139,28 +62,35 @@ function renderMovDestinosGrid() {
     return toISODate(d);
   }
 
+  function num(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function int(value, fallback = 0) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function money(value) {
+    return fmtMoney(num(value || 0));
+  }
+
+  function fmtSaldo(v) {
+    return String(num(v || 0));
+  }
+
   function concursoKey(f) {
     return `${f.concurso}__${f.dt_sorteio || ''}`;
   }
-function fmtSaldo(v) {
-  return String(Number(v || 0));
-}
+
   function nomeLoteriaExibicao(loteriaId) {
     return lookupLoteriaName(state.loterias, loteriaId) || '—';
   }
 
-  
-  function getEstoqueInicialFederal(f) {
-  return Number(
-    f.qtd_fracoes ??
-    f.qtd_disponivel ??
-    f.qtd_fracoes_disponiveis ??
-    f.qtd_disponivel_loja ??
-    f.saldo ??
-    f.saldo_atual ??
-    0
-  ) || 0;
-}
+  function getResumoByFederalId(federalId) {
+    return state.resumoFederal.find(r => String(r.federal_id) === String(federalId)) || null;
+  }
 
   function getFederalById(id) {
     if (!id) return null;
@@ -178,7 +108,25 @@ function fmtSaldo(v) {
       String(f.loteria_id) === String(origem)
     ) || null;
   }
- 
+
+  function getDefaultTransferValue(federal) {
+    return num(federal?.valor_fracao || 0);
+  }
+
+  function getDefaultVendaValue(federal) {
+    return num(federal?.valor_fracao || 0);
+  }
+
+  function getDefaultDevolucaoValue(federal) {
+    return num(federal?.valor_custo || 0);
+  }
+
+  function getDefaultCambistaValue(row, federal) {
+    const saved = num(row?.valor_cambista || 0);
+    if (saved > 0) return saved;
+    return num(federal?.valor_fracao || 0);
+  }
+
   function getConcursosUnicos(disponiveisOnly = false) {
     const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
     const map = new Map();
@@ -204,22 +152,76 @@ function fmtSaldo(v) {
     return base.filter(f => concursoKey(f) === key);
   }
 
+  function federaisDisponiveis() {
+    return state.federais
+      .filter(f => {
+        if (!f.dt_sorteio) return true;
+        return String(f.dt_sorteio).slice(0, 10) >= state.dataRef;
+      })
+      .sort((a, b) => {
+        const dtA = String(a.dt_sorteio || '');
+        const dtB = String(b.dt_sorteio || '');
+        if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
+
+        const concA = String(a.concurso || '');
+        const concB = String(b.concurso || '');
+        if (concA !== concB) {
+          return concA.localeCompare(concB, 'pt-BR', { numeric: true });
+        }
+
+        const lotA = nomeLoteriaExibicao(a.loteria_id);
+        const lotB = nomeLoteriaExibicao(b.loteria_id);
+        return lotA.localeCompare(lotB, 'pt-BR');
+      });
+  }
+
+  function resumoFederalDisponivel() {
+    return state.resumoFederal
+      .filter(r => {
+        if (!r.dt_sorteio) return true;
+        return String(r.dt_sorteio).slice(0, 10) >= state.dataRef;
+      })
+      .sort((a, b) => {
+        const dtA = String(a.dt_sorteio || '');
+        const dtB = String(b.dt_sorteio || '');
+        if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
+
+        const concA = String(a.concurso || '');
+        const concB = String(b.concurso || '');
+        if (concA !== concB) {
+          return concA.localeCompare(concB, 'pt-BR', { numeric: true });
+        }
+
+        return String(a.loja_origem || '').localeCompare(String(b.loja_origem || ''), 'pt-BR');
+      });
+  }
+
+  function getResumoConcursoAtivoKey() {
+    const itens = resumoFederalDisponivel();
+    return itens.length ? `${itens[0].concurso}__${itens[0].dt_sorteio || ''}` : '';
+  }
+
+  function resumoFederalVisivel() {
+    const base = resumoFederalDisponivel();
+
+    if (state.mostrarTodosConcursos) {
+      return base;
+    }
+
+    const key = getResumoConcursoAtivoKey();
+    return key
+      ? base.filter(r => `${r.concurso}__${r.dt_sorteio || ''}` === key)
+      : [];
+  }
+
   function updateDateUI() {
     const dateText = firstEl('date-display-text', 'dateDisplayText');
     const datePicker = firstEl('date-picker', 'calendarPicker');
     const chkTodos = firstEl('chk-mostrar-todos-concursos', 'chkMostrarTodosConcursos');
 
-    if (dateText) {
-      dateText.textContent = fmtDate(state.dataRef);
-    }
-
-    if (datePicker) {
-      datePicker.value = state.dataRef;
-    }
-
-    if (chkTodos) {
-      chkTodos.checked = !!state.mostrarTodosConcursos;
-    }
+    if (dateText) dateText.textContent = fmtDate(state.dataRef);
+    if (datePicker) datePicker.value = state.dataRef;
+    if (chkTodos) chkTodos.checked = !!state.mostrarTodosConcursos;
   }
 
   function openMovCard() {
@@ -230,11 +232,6 @@ function fmtSaldo(v) {
   function closeMovCard() {
     const card = firstEl('mov-card', 'movCard');
     if (card) card.style.display = 'none';
-  }
-
-  function hideDeleteButton() {
-    const btn = $('btn-excluir-mov');
-    if (btn) btn.style.display = 'none';
   }
 
   function fillConcursoSelect(selectedKey = '') {
@@ -276,63 +273,185 @@ function fmtSaldo(v) {
     }
   }
 
-  function fillDestinoSelect() {
-    fillSelect(
-      'mov-loteria-destino',
-      state.loterias,
-      'Selecione...',
-      'id',
-      x => `${x.id} • ${x.nome}`
-    );
-  }
-
   function fillStaticSelects(selectedConcursoKey = '', selectedOrigem = '') {
     fillConcursoSelect(selectedConcursoKey);
     fillOrigemSelect(selectedOrigem);
-    fillDestinoSelect();
   }
 
-  function applyDestinoFilter() {
-    const origem = $('mov-loteria-origem')?.value;
-    const sel = $('mov-loteria-destino');
-    if (!sel) return;
+  async function loadResumoFederal() {
+    const { data, error } = await sb
+      .from('view_resumo_federal')
+      .select('*')
+      .order('dt_sorteio', { ascending: true })
+      .order('concurso', { ascending: true });
 
-    [...sel.options].forEach(opt => {
-      if (!opt.value) {
-        opt.hidden = false;
-        return;
-      }
-      opt.hidden = !!origem && opt.value === origem;
+    if (error) {
+      showStatus('st-mov', error.message, 'err');
+      state.resumoFederal = [];
+      return;
+    }
+
+    state.resumoFederal = data || [];
+  }
+
+  async function loadMovimentacoesResumo() {
+    const { data, error } = await sb
+      .from('federal_movimentacoes')
+      .select([
+        'id',
+        'federal_id',
+        'loteria_origem',
+        'loteria_destino',
+        'qtd_fracoes',
+        'qtd_vendida',
+        'qtd_devolucao_caixa',
+        'qtd_venda_cambista',
+        'valor_cambista',
+        'qtd_retorno_origem',
+        'tipo_evento',
+        'status_acerto',
+        'created_at',
+        'updated_at',
+        'data_mov',
+        'observacao'
+      ].join(','))
+      .eq('tipo_evento', 'TRANSFERENCIA')
+      .not('loteria_destino', 'is', null)
+      .order('id', { ascending: false });
+
+    if (error) {
+      showStatus('st-mov', error.message, 'err');
+      state.movimentacoes = [];
+      return;
+    }
+
+    state.movimentacoes = data || [];
+  }
+
+  function getHistoricoDestino(resumoRow, destinoId) {
+    const federalId = String(resumoRow.federal_id);
+    const origemId = String(resumoRow.loteria_id);
+    const destId = String(destinoId);
+
+    const rows = (state.movimentacoes || []).filter(m => {
+      if (String(m.federal_id) !== federalId) return false;
+      if (String(m.status_acerto || '').toUpperCase() === 'CANCELADO') return false;
+      return String(m.loteria_origem || '') === origemId && String(m.loteria_destino || '') === destId;
     });
 
-    if (origem && sel.value === origem) {
-      sel.value = '';
-    }
+    const totalTransferido = rows.reduce((acc, row) => acc + num(row.qtd_fracoes), 0);
+    const totalVenda = rows.reduce((acc, row) => acc + num(row.qtd_vendida), 0);
+    const totalDevolucao = rows.reduce((acc, row) => acc + num(row.qtd_devolucao_caixa), 0);
+    const totalCambista = rows.reduce((acc, row) => acc + num(row.qtd_venda_cambista), 0);
+    const totalRetorno = rows.reduce((acc, row) => acc + num(row.qtd_retorno_origem), 0);
+    const saldo = totalTransferido - totalVenda - totalDevolucao - totalCambista - totalRetorno;
+
+    return {
+      expr: `T ${totalTransferido} • V ${totalVenda} • CX ${totalDevolucao} • CB ${totalCambista} • RT ${totalRetorno}`,
+      saldo,
+      totalTransferido,
+      totalVenda,
+      totalDevolucao,
+      totalCambista,
+      totalRetorno,
+      rows
+    };
   }
 
-  function syncTotal() {
-    const qtd = Number($('mov-qtd')?.value || 0);
-    const valor = Number($('mov-valor')?.value || 0);
-    if ($('mov-total')) {
-      $('mov-total').value = qtd && valor ? (qtd * valor).toFixed(2) : '';
-    }
+  function getActiveTransfer(resumoRow, destinoId) {
+    const hist = getHistoricoDestino(resumoRow, destinoId);
+
+    const ordered = [...hist.rows].sort((a, b) => {
+      const idA = num(a.id);
+      const idB = num(b.id);
+      return idB - idA;
+    });
+
+    const withSaldo = ordered.find(row => {
+      const saldoRow = num(row.qtd_fracoes) - num(row.qtd_vendida) - num(row.qtd_devolucao_caixa) - num(row.qtd_venda_cambista) - num(row.qtd_retorno_origem);
+      return saldoRow > 0;
+    });
+
+    return withSaldo || ordered[0] || null;
   }
 
-  function syncMovValorByTipo() {
-    const f = getFederalSelecionado();
-    if (!f) return;
+  function getDraftByDestino(destinoId) {
+    const key = String(destinoId);
+    if (!state.movDraft[key]) {
+      state.movDraft[key] = { qtd: '' };
+    }
+    return state.movDraft[key];
+  }
 
-    const tipo = $('mov-tipo-evento')?.value;
+  function clearMov() {
+    state.selectedFederalId = null;
+    state.movDraft = {};
+    state.desfechoDraft = {};
+    state.expandedDestinoId = null;
 
-    if (tipo === 'DEVOLUCAO_CAIXA') {
-      $('mov-valor').value = f.valor_custo ?? '';
-    } else if (tipo === 'VENDA_CAMBISTA') {
-      $('mov-valor').value = '';
-    } else {
-      $('mov-valor').value = f.valor_fracao ?? '';
+    if ($('mov-federal')) $('mov-federal').value = '';
+    fillOrigemSelect('');
+    if ($('mov-loteria-origem')) $('mov-loteria-origem').value = '';
+    if ($('mov-observacao')) $('mov-observacao').value = '';
+
+    renderResumoSelecao();
+    renderMovDestinosGrid();
+    renderListaFederais();
+  }
+
+  function ensureDesfechoDraft(row, federal) {
+    if (!row) return null;
+
+    const key = String(row.id);
+    if (!state.desfechoDraft[key]) {
+      state.desfechoDraft[key] = {
+        qtd_vendida: String(int(row.qtd_vendida || 0)),
+        qtd_devolucao_caixa: String(int(row.qtd_devolucao_caixa || 0)),
+        valor_devolucao_caixa: String(getDefaultDevolucaoValue(federal).toFixed(2)),
+        qtd_venda_cambista: String(int(row.qtd_venda_cambista || 0)),
+        valor_cambista: String(getDefaultCambistaValue(row, federal).toFixed(2)),
+        qtd_retorno_origem: String(int(row.qtd_retorno_origem || 0))
+      };
     }
 
-    syncTotal();
+    return state.desfechoDraft[key];
+  }
+
+  function getDesfechoCalc(row, federal) {
+    const draft = ensureDesfechoDraft(row, federal);
+    if (!row || !draft) return null;
+
+    const qtdTransferida = int(row.qtd_fracoes || 0);
+    const qtdVendida = int(draft.qtd_vendida || 0);
+    const qtdDevolucao = int(draft.qtd_devolucao_caixa || 0);
+    const qtdCambista = int(draft.qtd_venda_cambista || 0);
+    const qtdRetorno = int(draft.qtd_retorno_origem || 0);
+
+    const valorVenda = getDefaultVendaValue(federal);
+    const valorDevolucao = num(draft.valor_devolucao_caixa || getDefaultDevolucaoValue(federal));
+    const valorCambista = num(draft.valor_cambista || getDefaultCambistaValue(row, federal));
+
+    const totalQtd = qtdVendida + qtdDevolucao + qtdCambista + qtdRetorno;
+    const saldoRestante = qtdTransferida - totalQtd;
+    const totalFinanceiro =
+      (qtdVendida * valorVenda) +
+      (qtdDevolucao * valorDevolucao) +
+      (qtdCambista * valorCambista);
+
+    return {
+      qtdTransferida,
+      qtdVendida,
+      qtdDevolucao,
+      qtdCambista,
+      qtdRetorno,
+      totalQtd,
+      saldoRestante,
+      valorVenda,
+      valorDevolucao,
+      valorCambista,
+      totalFinanceiro,
+      hasError: totalQtd > qtdTransferida
+    };
   }
 
   function renderResumoSelecao() {
@@ -373,302 +492,512 @@ function fmtSaldo(v) {
         <span class="pill">Origem ${lookupLoteriaName(state.loterias, f.loteria_id)}</span>
         <span class="pill">Concurso ${f.concurso}</span>
         <span class="pill">Data ${fmtDate(f.dt_sorteio)}</span>
-        <span class="pill">Fração ${fmtMoney(f.valor_fracao)}</span>
-        <span class="pill">Custo ${fmtMoney(f.valor_custo)}</span>
+        <span class="pill">Fração ${money(f.valor_fracao)}</span>
+        <span class="pill">Custo ${money(f.valor_custo)}</span>
       </div>
     `;
   }
-async function loadResumoFederal() {
-  const { data, error } = await sb
-    .from('view_resumo_federal')
-    .select('*')
-    .order('dt_sorteio', { ascending: true })
-    .order('concurso', { ascending: true });
 
-  if (error) {
-    showStatus('st-mov', error.message, 'err');
-    state.resumoFederal = [];
-    return;
-  }
-
-  state.resumoFederal = data || [];
-}
-
-async function loadDetalheFederal() {
-  const { data, error } = await sb
-    .from('view_detalhe_federal')
-    .select('*');
-
-  if (error) {
-    showStatus('st-mov', error.message, 'err');
-    state.detalheFederal = [];
-    return;
-  }
-
-  state.detalheFederal = data || [];
-}
-  async function loadMovimentacoesResumo() {
-  const { data, error } = await sb
-    .from('federal_movimentacoes')
-    .select('federal_id,loteria_origem,loteria_destino,qtd_fracoes,tipo_evento,status_acerto')
-    .eq('tipo_evento', 'TRANSFERENCIA')
-    .not('loteria_destino', 'is', null);
-
-  if (error) {
-    showStatus('st-mov', error.message, 'err');
-    state.movimentacoes = [];
-    return;
-  }
-
-  state.movimentacoes = data || [];
-}
-function buildFederalPosicoes() {
-  const estoquePorLoja = new Map();
-  const enviadoPorDestino = new Map();
-
-  // base inicial por concurso + loja
-  for (const f of state.federais) {
-    const key = `${concursoKey(f)}::${String(f.loteria_id)}`;
-    estoquePorLoja.set(key, getEstoqueInicialFederal(f));
-  }
-
-  // aplica movimentações
-  for (const m of state.movimentacoes) {
-    if (String(m.status_acerto || '').toUpperCase() === 'CANCELADO') continue;
-
-    const federalOrigem = getFederalById(m.federal_id);
-    if (!federalOrigem) continue;
-
-    const qtd = Number(m.qtd_fracoes || 0);
-    if (!qtd) continue;
-
-    const concKey = concursoKey(federalOrigem);
-    const origemId = String(m.loteria_origem || federalOrigem.loteria_id || '');
-    const destinoId = String(m.loteria_destino || '');
-
-    const origemKey = `${concKey}::${origemId}`;
-    estoquePorLoja.set(origemKey, Number(estoquePorLoja.get(origemKey) || 0) - qtd);
-
-    if (destinoId) {
-      const destinoKey = `${concKey}::${destinoId}`;
-      estoquePorLoja.set(destinoKey, Number(estoquePorLoja.get(destinoKey) || 0) + qtd);
-
-      const distKey = `${concKey}::${origemId}`;
-      const atual = enviadoPorDestino.get(distKey) || {};
-      atual[destinoId] = Number(atual[destinoId] || 0) + qtd;
-      enviadoPorDestino.set(distKey, atual);
-    }
-  }
-
-  return { estoquePorLoja, enviadoPorDestino };
-}
-  function clearMov() {
-  state.selectedFederalId = null;
-  state.movDraft = {};
-
-  if ($('mov-federal')) $('mov-federal').value = '';
-  fillOrigemSelect('');
-
-  if ($('mov-loteria-origem')) $('mov-loteria-origem').value = '';
-  if ($('mov-valor')) $('mov-valor').value = '';
-  if ($('mov-observacao')) $('mov-observacao').value = '';
-
-  renderResumoSelecao();
-  renderMovDestinosGrid();
-  renderListaFederais();
-}
   function renderListaFederais() {
-  const lista = firstEl('federal-lista', 'federalLista');
-  const stLoading = firstEl('st-fed-loading', 'stFedLoading');
-  const stEmpty = firstEl('st-fed-empty', 'stFedEmpty');
-  const count = firstEl('federal-count', 'federalCount');
+    const lista = firstEl('federal-lista', 'federalLista');
+    const stLoading = firstEl('st-fed-loading', 'stFedLoading');
+    const stEmpty = firstEl('st-fed-empty', 'stFedEmpty');
+    const count = firstEl('federal-count', 'federalCount');
 
-  if (!lista) return;
+    if (!lista) return;
 
-  const itens = resumoFederalVisivel();
+    const itens = resumoFederalVisivel();
 
-  if (stLoading) stLoading.style.display = 'none';
+    if (stLoading) stLoading.style.display = 'none';
 
-  if (count) {
-    if (!state.mostrarTodosConcursos) {
-      const key = getResumoConcursoAtivoKey();
-      const primeiro = itens[0];
-      count.textContent = key && primeiro
-        ? `${primeiro.concurso} • ${itens.length} loja(s)`
-        : '0';
-    } else {
-      count.textContent = `${itens.length} registro(s)`;
+    if (count) {
+      if (!state.mostrarTodosConcursos) {
+        const key = getResumoConcursoAtivoKey();
+        const primeiro = itens[0];
+        count.textContent = key && primeiro
+          ? `${primeiro.concurso} • ${itens.length} loja(s)`
+          : '0';
+      } else {
+        count.textContent = `${itens.length} registro(s)`;
+      }
     }
-  }
 
-  if (!itens.length) {
-    if (stEmpty) stEmpty.style.display = 'block';
-    lista.style.display = 'none';
-    lista.innerHTML = '';
-    return;
-  }
-
-  if (stEmpty) stEmpty.style.display = 'none';
-  lista.style.display = 'flex';
-  lista.className = 'federal-lista';
-
-  lista.innerHTML = itens.map(r => {
-    const isSelected = String(state.selectedFederalId || '') === String(r.federal_id);
-    const origemNome = r.loja_origem || nomeLoteriaExibicao(r.loteria_id);
-    const estoqueAtual = fmtSaldo(r.estoque_atual || 0);
-
-    const destinos = getDistribuicaoDestinosByFederal(r);
-    const destinosHtml = destinos.map(d => `
-      <div class="fed-saldo-pill" title="${d.loja_destino_nome}">
-        <span class="fed-saldo-loja">${d.loja_destino_nome}</span>
-        <span class="fed-saldo-val">${fmtSaldo(d.qtd_enviada)}</span>
-      </div>
-    `).join('');
-
-    return `
-      <button
-        type="button"
-        class="fed-card ${isSelected ? 'is-selected' : ''}"
-        data-id="${r.federal_id}"
-      >
-        <div class="fed-card-main">
-  <div class="fed-card-line1">
-    <span class="fed-modalidade-chip">Federal</span>
-    <span class="fed-concurso-chip">${r.concurso || '—'}</span>
-    <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
-    <span class="fed-fracao-chip">Fração ${fmtMoney(r.valor_fracao)}</span>
-    <span class="fed-origem-chip">${origemNome}</span>
-  </div>
-
-  <div class="fed-card-line2">
-    <div class="fed-saldo-pill fed-saldo-pill-main" title="${origemNome}">
-      <span class="fed-saldo-loja">${origemNome}</span>
-      <span class="fed-saldo-val">${estoqueAtual}</span>
-    </div>
-    ${destinosHtml}
-  </div>
-</div>
-
-<div class="fed-card-ind">
-  <span class="btn-topbar ${isSelected ? 'is-selected-btn' : ''}">
-    ${isSelected ? 'Selecionado' : 'Selecionar'}
-  </span>
-</div>
-      </button>
-    `;
-  }).join('');
-}
-
- function selectFederalCard(id, { scroll = true } = {}) {
-  const f = getFederalById(id);
-  if (!f) return;
-
-  state.selectedFederalId = f.id;
-  state.movDraft = {};
-
-  renderListaFederais();
-  openMovCard();
-
-  fillStaticSelects(concursoKey(f), f.loteria_id);
-
-  $('mov-federal').value = concursoKey(f);
-  fillOrigemSelect(f.loteria_id);
-  $('mov-loteria-origem').value = String(f.loteria_id);
-
-  if ($('mov-valor')) $('mov-valor').value = f.valor_fracao ?? '';
-  if ($('mov-observacao')) $('mov-observacao').value = '';
-
-  renderResumoSelecao();
-  renderMovDestinosGrid();
-
-  if (scroll) {
-    firstEl('mov-card', 'movCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-}
-  async function saveMov() {
-  try {
-    const federal = getFederalSelecionado();
-    const resumo = federal ? getResumoByFederalId(federal.id) : null;
-    const valor = Number($('mov-valor')?.value || 0);
-
-    if (!federal || !resumo) {
-      showStatus('st-mov', 'Selecione a Federal antes de movimentar.', 'err');
+    if (!itens.length) {
+      if (stEmpty) stEmpty.style.display = 'block';
+      lista.style.display = 'none';
+      lista.innerHTML = '';
       return;
     }
 
-    const origemId = Number(resumo.loteria_id);
-    const obs = $('mov-observacao')?.value.trim() || null;
+    if (stEmpty) stEmpty.style.display = 'none';
+    lista.style.display = 'flex';
+    lista.className = 'federal-lista';
 
-    const payloads = Object.entries(state.movDraft || {})
-      .map(([destId, raw]) => ({
-        destId: Number(destId),
-        signedQty: Number(raw || 0)
-      }))
-      .filter(x => x.signedQty !== 0)
-      .map(x => {
-        const isRetorno = x.signedQty < 0;
-        const qtd = Math.abs(x.signedQty);
+    lista.innerHTML = itens.map(r => {
+      const isSelected = String(state.selectedFederalId || '') === String(r.federal_id);
+      const origemNome = r.loja_origem || nomeLoteriaExibicao(r.loteria_id);
+      const estoqueAtual = fmtSaldo(r.estoque_atual || 0);
 
-        return {
+      const destinos = getDistribuicaoDestinosByFederal(r);
+      const destinosHtml = destinos.map(d => `
+        <div class="fed-saldo-pill" title="${d.loja_destino_nome}">
+          <span class="fed-saldo-loja">${d.loja_destino_nome}</span>
+          <span class="fed-saldo-val">${fmtSaldo(d.qtd_enviada)}</span>
+        </div>
+      `).join('');
+
+      return `
+        <button
+          type="button"
+          class="fed-card ${isSelected ? 'is-selected' : ''}"
+          data-id="${r.federal_id}"
+        >
+          <div class="fed-card-main">
+            <div class="fed-card-line1">
+              <span class="fed-modalidade-chip">Federal</span>
+              <span class="fed-concurso-chip">${r.concurso || '—'}</span>
+              <span class="fed-data-chip">${fmtDate(r.dt_sorteio)}</span>
+              <span class="fed-fracao-chip">Fração ${money(r.valor_fracao)}</span>
+              <span class="fed-origem-chip">${origemNome}</span>
+            </div>
+
+            <div class="fed-card-line2">
+              <div class="fed-saldo-pill fed-saldo-pill-main" title="${origemNome}">
+                <span class="fed-saldo-loja">${origemNome}</span>
+                <span class="fed-saldo-val">${estoqueAtual}</span>
+              </div>
+              ${destinosHtml}
+            </div>
+          </div>
+
+          <div class="fed-card-ind">
+            <span class="btn-topbar ${isSelected ? 'is-selected-btn' : ''}">
+              ${isSelected ? 'Selecionado' : 'Selecionar'}
+            </span>
+          </div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function getDistribuicaoDestinosByFederal(resumoRow) {
+    const origemId = String(resumoRow.loteria_id);
+    const federalId = String(resumoRow.federal_id);
+
+    const map = new Map();
+
+    (state.loterias || []).forEach(l => {
+      const lotId = String(l.id);
+      if (lotId === origemId) return;
+
+      map.set(lotId, {
+        loteria_destino: l.id,
+        loja_destino_nome: l.nome,
+        qtd_enviada: 0
+      });
+    });
+
+    (state.movimentacoes || []).forEach(m => {
+      if (String(m.federal_id) !== federalId) return;
+      if (String(m.loteria_origem || '') !== origemId) return;
+      if (String(m.tipo_evento || '') !== 'TRANSFERENCIA') return;
+      if (String(m.status_acerto || '').toUpperCase() === 'CANCELADO') return;
+      if (!m.loteria_destino) return;
+
+      const destId = String(m.loteria_destino);
+      const item = map.get(destId);
+      if (!item) return;
+
+      item.qtd_enviada += num(m.qtd_fracoes || 0);
+    });
+
+    return [...map.values()].sort((a, b) =>
+      String(a.loja_destino_nome || '').localeCompare(String(b.loja_destino_nome || ''), 'pt-BR')
+    );
+  }
+
+  function renderMovDestinosGrid() {
+    const box = $('mov-destinos-grid');
+    const federal = getFederalSelecionado();
+    const resumo = federal ? getResumoByFederalId(federal.id) : null;
+
+    if (!box) return;
+
+    if (!federal || !resumo) {
+      box.innerHTML = '';
+      return;
+    }
+
+    const origemId = String(resumo.loteria_id);
+
+    const destinos = (state.loterias || [])
+      .filter(l => String(l.id) !== origemId)
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+
+    box.innerHTML = destinos.map(l => {
+      const hist = getHistoricoDestino(resumo, l.id);
+      const transfer = getActiveTransfer(resumo, l.id);
+      const draft = getDraftByDestino(l.id);
+      const isExpanded = String(state.expandedDestinoId || '') === String(l.id);
+      const transferValue = getDefaultTransferValue(federal);
+      const calc = transfer ? getDesfechoCalc(transfer, federal) : null;
+
+      const statusHtml = calc
+        ? `
+          <div class="mov-status-inline">
+            <span class="mov-status-pill ${calc.hasError ? 'is-warn' : 'is-ok'}">
+              ${calc.hasError ? 'Excedeu a remessa' : 'Desfecho dentro da remessa'}
+            </span>
+            <span class="mov-status-pill">Remessa #${transfer.id}</span>
+          </div>
+        `
+        : `
+          <div class="mov-status-inline">
+            <span class="mov-status-pill">Sem remessa aberta</span>
+          </div>
+        `;
+
+      return `
+        <div class="mov-dest-card ${isExpanded ? 'is-expanded' : ''}" data-dest-card data-dest-id="${l.id}">
+          <div class="mov-dest-toggle">
+            <div class="mov-dest-head">
+              <div class="mov-dest-name">${l.nome}</div>
+              <div class="mov-dest-arrow">⌄</div>
+            </div>
+
+            <div class="mov-mini-grid">
+              <div class="mov-balance-box">
+                <span>Saldo líquido</span>
+                <strong>${fmtSaldo(hist.saldo)}</strong>
+              </div>
+              <div class="mov-mini-box">
+                <span>Valor fração</span>
+                <strong>${money(transferValue)}</strong>
+              </div>
+            </div>
+
+            ${statusHtml}
+          </div>
+
+          <div class="mov-input-zone" data-no-toggle>
+            <div class="mov-input-grid">
+              <div class="field">
+                <label class="field-label">Qtd frações</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  class="mov-dest-input"
+                  data-dest-input
+                  data-dest-id="${l.id}"
+                  value="${draft.qtd ?? ''}"
+                  placeholder="0"
+                >
+              </div>
+
+              <div class="field">
+                <label class="field-label">Valor default</label>
+                <div class="mov-inline-readonly">${money(transferValue)}</div>
+              </div>
+            </div>
+            <div class="mov-input-caption">Nova transferência para ${l.nome}. O desfecho da remessa fica na expansão do card.</div>
+          </div>
+
+          <div class="mov-card-footer">
+            <div class="mov-dest-hist">${hist.expr}</div>
+            <div class="mov-card-hint">Clique fora dos inputs para expandir.</div>
+          </div>
+
+          <div class="mov-expand" data-no-toggle>
+            ${renderExpandContent({ federal, destino: l, transfer, calc })}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderExpandContent({ federal, destino, transfer, calc }) {
+    if (!transfer || !calc) {
+      return `
+        <div class="mov-empty-expand">
+          Salve ao menos uma transferência para ${destino.nome} antes de informar venda, cambista, devolução de caixa ou retorno à origem.
+        </div>
+      `;
+    }
+
+    const draft = state.desfechoDraft[String(transfer.id)] || {};
+
+    return `
+      <div class="mov-expand-grid">
+        <div class="mov-mini-grid">
+          <div class="mov-mini-box">
+            <span>Qtd transferida</span>
+            <strong>${fmtSaldo(calc.qtdTransferida)}</strong>
+          </div>
+          <div class="mov-fin-box">
+            <span>Total financeiro</span>
+            <strong>${money(calc.totalFinanceiro)}</strong>
+          </div>
+        </div>
+
+        <div class="mov-expand-row">
+          <div class="mov-expand-top">
+            <span class="mov-expand-label is-sale">Venda</span>
+            <span class="mov-expand-meta">Preço fixo ${money(calc.valorVenda)}</span>
+          </div>
+          <div class="mov-expand-controls">
+            <div class="field">
+              <label class="field-label">Qtd vendida</label>
+              <input type="number" min="0" step="1" data-mov-id="${transfer.id}" data-field="qtd_vendida" value="${draft.qtd_vendida ?? '0'}">
+            </div>
+            <div class="field">
+              <label class="field-label">Valor</label>
+              <div class="mov-inline-readonly">${money(calc.valorVenda)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mov-expand-row">
+          <div class="mov-expand-top">
+            <span class="mov-expand-label is-blue">Devolução Caixa</span>
+            <span class="mov-expand-meta">Preço default ${money(getDefaultDevolucaoValue(federal))}</span>
+          </div>
+          <div class="mov-expand-controls">
+            <div class="field">
+              <label class="field-label">Qtd devolução</label>
+              <input type="number" min="0" step="1" data-mov-id="${transfer.id}" data-field="qtd_devolucao_caixa" value="${draft.qtd_devolucao_caixa ?? '0'}">
+            </div>
+            <div class="field">
+              <label class="field-label">Preço devolução</label>
+              <input type="number" min="0" step="0.01" data-mov-id="${transfer.id}" data-field="valor_devolucao_caixa" value="${draft.valor_devolucao_caixa ?? getDefaultDevolucaoValue(federal).toFixed(2)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="mov-expand-row">
+          <div class="mov-expand-top">
+            <span class="mov-expand-label is-gray">Venda Cambista</span>
+            <span class="mov-expand-meta">Preço editável</span>
+          </div>
+          <div class="mov-expand-controls">
+            <div class="field">
+              <label class="field-label">Qtd cambista</label>
+              <input type="number" min="0" step="1" data-mov-id="${transfer.id}" data-field="qtd_venda_cambista" value="${draft.qtd_venda_cambista ?? '0'}">
+            </div>
+            <div class="field">
+              <label class="field-label">Valor cambista</label>
+              <input type="number" min="0" step="0.01" data-mov-id="${transfer.id}" data-field="valor_cambista" value="${draft.valor_cambista ?? getDefaultCambistaValue(transfer, federal).toFixed(2)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="mov-expand-row">
+          <div class="mov-expand-top">
+            <span class="mov-expand-label is-return">Retorno origem</span>
+            <span class="mov-expand-meta">Sem financeiro</span>
+          </div>
+          <div class="mov-expand-controls single">
+            <div class="field">
+              <label class="field-label">Qtd retorno</label>
+              <input type="number" min="0" step="1" data-mov-id="${transfer.id}" data-field="qtd_retorno_origem" value="${draft.qtd_retorno_origem ?? '0'}">
+            </div>
+          </div>
+        </div>
+
+        <div class="mov-mini-grid">
+          <div class="mov-balance-box">
+            <span>Saldo restante</span>
+            <strong>${fmtSaldo(calc.saldoRestante)}</strong>
+          </div>
+          <div class="mov-mini-box">
+            <span>Total itens do desfecho</span>
+            <strong>${fmtSaldo(calc.totalQtd)}</strong>
+          </div>
+        </div>
+
+        <div class="mov-expand-actions">
+          <div class="mov-desfecho-note">
+            O preço de devolução entra no cálculo visual do card. Com o banco atual, só o valor cambista é persistido como valor variável.
+          </div>
+          <button type="button" class="btn-primary" data-save-desfecho data-mov-id="${transfer.id}" ${calc.hasError ? 'disabled' : ''}>
+            Salvar desfecho
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function selectFederalCard(id, { scroll = true } = {}) {
+    const f = getFederalById(id);
+    if (!f) return;
+
+    state.selectedFederalId = f.id;
+    state.movDraft = {};
+    state.desfechoDraft = {};
+    state.expandedDestinoId = null;
+
+    renderListaFederais();
+    openMovCard();
+
+    fillStaticSelects(concursoKey(f), f.loteria_id);
+
+    $('mov-federal').value = concursoKey(f);
+    fillOrigemSelect(f.loteria_id);
+    $('mov-loteria-origem').value = String(f.loteria_id);
+
+    if ($('mov-observacao')) $('mov-observacao').value = '';
+
+    renderResumoSelecao();
+    renderMovDestinosGrid();
+
+    if (scroll) {
+      firstEl('mov-card', 'movCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  async function saveMov() {
+    try {
+      const federal = getFederalSelecionado();
+      const resumo = federal ? getResumoByFederalId(federal.id) : null;
+
+      if (!federal || !resumo) {
+        showStatus('st-mov', 'Selecione a Federal antes de movimentar.', 'err');
+        return;
+      }
+
+      const origemId = num(resumo.loteria_id);
+      const obs = $('mov-observacao')?.value.trim() || null;
+      const valorDefault = getDefaultTransferValue(federal);
+
+      const payloads = Object.entries(state.movDraft || {})
+        .map(([destId, data]) => ({
+          destId: num(destId),
+          qtd: int(data?.qtd || 0)
+        }))
+        .filter(x => x.qtd > 0)
+        .map(x => ({
           federal_id: federal.id,
-          loteria_origem: isRetorno ? x.destId : origemId,
-          loteria_destino: isRetorno ? origemId : x.destId,
+          loteria_origem: origemId,
+          loteria_destino: x.destId,
           tipo: 'ENVIO',
           tipo_evento: 'TRANSFERENCIA',
-          qtd_fracoes: qtd,
-          valor_fracao: valor,
-          valor_fracao_ref: Number(federal.valor_fracao || 0),
-          valor_fracao_real: valor,
+          qtd_fracoes: x.qtd,
+          qtd_vendida: 0,
+          qtd_devolucao_caixa: 0,
+          qtd_venda_cambista: 0,
+          valor_cambista: null,
+          qtd_retorno_origem: 0,
+          valor_fracao: valorDefault,
+          valor_fracao_ref: num(federal.valor_fracao || 0),
+          valor_fracao_real: valorDefault,
           valor_a_acertar: 0,
           status_acerto: 'PENDENTE',
           data_mov: state.dataRef,
           observacao: obs,
           criado_por: state.usuario?.id || null,
           updated_at: new Date().toISOString()
-        };
-      });
+        }));
 
-    if (!payloads.length) {
-      showStatus('st-mov', 'Preencha ao menos uma loja com quantidade.', 'err');
-      return;
+      if (!payloads.length) {
+        showStatus('st-mov', 'Preencha ao menos uma loja com quantidade.', 'err');
+        return;
+      }
+
+      const { error } = await sb
+        .from('federal_movimentacoes')
+        .insert(payloads);
+
+      if (error) throw error;
+
+      showStatus('st-mov', 'Transferências registradas.', 'ok');
+
+      const keepFederalId = state.selectedFederalId;
+      state.movDraft = {};
+      await refresh();
+
+      if (keepFederalId && getFederalById(keepFederalId)) {
+        selectFederalCard(keepFederalId, { scroll: false });
+      } else {
+        clearMov();
+        closeMovCard();
+      }
+    } catch (e) {
+      showStatus('st-mov', e.message, 'err');
     }
+  }
 
-    const { error } = await sb
-      .from('federal_movimentacoes')
-      .insert(payloads);
+  async function saveDesfecho(movId) {
+    try {
+      const federal = getFederalSelecionado();
+      const row = (state.movimentacoes || []).find(m => String(m.id) === String(movId));
+      if (!row || !federal) {
+        showStatus('st-mov', 'Remessa não encontrada para salvar o desfecho.', 'err');
+        return;
+      }
 
-    if (error) throw error;
+      const calc = getDesfechoCalc(row, federal);
+      const draft = state.desfechoDraft[String(movId)] || {};
+      if (!calc) {
+        showStatus('st-mov', 'Não foi possível montar o cálculo do desfecho.', 'err');
+        return;
+      }
 
-    showStatus('st-mov', 'Movimentações registradas.', 'ok');
+      if (calc.hasError) {
+        showStatus('st-mov', 'O desfecho ultrapassou a quantidade transferida.', 'err');
+        return;
+      }
 
-    const keepFederalId = state.selectedFederalId;
-    state.movDraft = {};
-    await refresh();
+      const payload = {
+        qtd_vendida: calc.qtdVendida,
+        qtd_devolucao_caixa: calc.qtdDevolucao,
+        qtd_venda_cambista: calc.qtdCambista,
+        valor_cambista: calc.qtdCambista > 0 ? calc.valorCambista : null,
+        qtd_retorno_origem: calc.qtdRetorno,
+        updated_at: new Date().toISOString()
+      };
 
-    if (keepFederalId && getFederalById(keepFederalId)) {
-      selectFederalCard(keepFederalId, { scroll: false });
-    } else {
-      clearMov();
-      closeMovCard();
+      const { error } = await sb
+        .from('federal_movimentacoes')
+        .update(payload)
+        .eq('id', movId);
+
+      if (error) throw error;
+
+      const defaultDevolucao = getDefaultDevolucaoValue(federal);
+      const visualDevolucao = num(draft.valor_devolucao_caixa || defaultDevolucao);
+
+      await refresh();
+
+      if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
+        selectFederalCard(state.selectedFederalId, { scroll: false });
+        state.expandedDestinoId = String(row.loteria_destino || '');
+        renderMovDestinosGrid();
+      }
+
+      if (Math.abs(visualDevolucao - defaultDevolucao) > 0.0001) {
+        showStatus('st-mov', 'Desfecho salvo. O valor de devolução ficou apenas no cálculo visual do card; o banco continua usando o valor padrão.', 'warn');
+      } else {
+        showStatus('st-mov', 'Desfecho salvo.', 'ok');
+      }
+    } catch (e) {
+      showStatus('st-mov', e.message, 'err');
     }
-  } catch (e) {
-    showStatus('st-mov', e.message, 'err');
   }
-}
 
-async function refresh() {
-  state.federais = await loadFederais();
-  await loadResumoFederal();
-  await loadMovimentacoesResumo();
+  async function refresh() {
+    state.federais = await loadFederais();
+    await loadResumoFederal();
+    await loadMovimentacoesResumo();
 
-  updateDateUI();
-  fillStaticSelects();
-  renderListaFederais();
+    updateDateUI();
+    fillStaticSelects();
+    renderListaFederais();
 
-  if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
-    selectFederalCard(state.selectedFederalId, { scroll: false });
+    if (state.selectedFederalId && getFederalById(state.selectedFederalId)) {
+      selectFederalCard(state.selectedFederalId, { scroll: false });
+    }
   }
-}
+
   function bindDateEvents() {
     const btnPrev = firstEl('btn-dt-prev', 'btnDtPrev');
     const btnNext = firstEl('btn-dt-next', 'btnDtNext');
@@ -728,201 +1057,95 @@ async function refresh() {
     });
   }
 
-function bindEvents() {
-  bindDateEvents();
+  function bindEvents() {
+    bindDateEvents();
 
-  $('mov-federal')?.addEventListener('change', () => {
-    state.selectedFederalId = null;
-    state.movDraft = {};
-
-    fillOrigemSelect('');
-
-    if ($('mov-loteria-origem')) $('mov-loteria-origem').value = '';
-    if ($('mov-dt-concurso')) $('mov-dt-concurso').value = '';
-    if ($('mov-valor')) $('mov-valor').value = '';
-
-    renderResumoSelecao();
-    renderMovDestinosGrid();
-    renderListaFederais();
-  });
-
-  $('mov-loteria-origem')?.addEventListener('change', () => {
-    const f = getFederalSelecionado();
-
-    if (!f) {
+    $('mov-federal')?.addEventListener('change', () => {
+      state.selectedFederalId = null;
       state.movDraft = {};
+      state.desfechoDraft = {};
+      state.expandedDestinoId = null;
+
+      fillOrigemSelect('');
+
+      if ($('mov-loteria-origem')) $('mov-loteria-origem').value = '';
+      if ($('mov-dt-concurso')) $('mov-dt-concurso').value = '';
+
       renderResumoSelecao();
       renderMovDestinosGrid();
       renderListaFederais();
-      return;
-    }
+    });
 
-    state.selectedFederalId = f.id;
+    $('mov-loteria-origem')?.addEventListener('change', () => {
+      const f = getFederalSelecionado();
 
-    if ($('mov-modalidade')) $('mov-modalidade').value = 'Federal';
-    if ($('mov-dt-concurso')) $('mov-dt-concurso').value = f.dt_sorteio || '';
-
-    syncMovValorByTipo();
-    renderResumoSelecao();
-    renderMovDestinosGrid();
-    renderListaFederais();
-  });
-
-  $('mov-tipo-evento')?.addEventListener('change', () => {
-    syncMovValorByTipo();
-  });
-
-  $('mov-valor')?.addEventListener('input', () => {
-    // reservado para futuros cálculos, se precisar
-  });
-
-  $('mov-destinos-grid')?.addEventListener('input', (e) => {
-    const input = e.target.closest('.mov-dest-input');
-    if (!input) return;
-
-    const destId = String(input.dataset.destId || '');
-    if (!destId) return;
-
-    const raw = input.value;
-    if (raw === '' || raw === null) {
-      delete state.movDraft[destId];
-    } else {
-      state.movDraft[destId] = raw;
-    }
-  });
-
-  $('btn-salvar-mov')?.addEventListener('click', saveMov);
-  $('btn-limpar-mov')?.addEventListener('click', clearMov);
-
-  firstEl('federal-lista', 'federalLista')?.addEventListener('click', (e) => {
-    const card = e.target.closest('[data-id]');
-    if (!card) return;
-    selectFederalCard(card.dataset.id);
-  });
-}
-function resumoFederalDisponivel() {
-  return state.resumoFederal
-    .filter(r => {
-      if (!r.dt_sorteio) return true;
-      return String(r.dt_sorteio).slice(0, 10) >= state.dataRef;
-    })
-    .sort((a, b) => {
-      const dtA = String(a.dt_sorteio || '');
-      const dtB = String(b.dt_sorteio || '');
-      if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
-
-      const concA = String(a.concurso || '');
-      const concB = String(b.concurso || '');
-      if (concA !== concB) {
-        return concA.localeCompare(concB, 'pt-BR', { numeric: true });
+      if (!f) {
+        state.movDraft = {};
+        state.desfechoDraft = {};
+        state.expandedDestinoId = null;
+        renderResumoSelecao();
+        renderMovDestinosGrid();
+        renderListaFederais();
+        return;
       }
 
-      return String(a.loja_origem || '').localeCompare(String(b.loja_origem || ''), 'pt-BR');
+      state.selectedFederalId = f.id;
+
+      if ($('mov-modalidade')) $('mov-modalidade').value = 'Federal';
+      if ($('mov-dt-concurso')) $('mov-dt-concurso').value = f.dt_sorteio || '';
+
+      renderResumoSelecao();
+      renderMovDestinosGrid();
+      renderListaFederais();
     });
-}
 
-  function getConcursosUnicos(disponiveisOnly = false) {
-  const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
-  const map = new Map();
-
-  for (const f of base) {
-    const key = concursoKey(f);
-    if (!map.has(key)) {
-      map.set(key, {
-        key,
-        concurso: f.concurso,
-        dt_sorteio: f.dt_sorteio,
-        label: `${f.concurso}${f.dt_sorteio ? ' • ' + fmtDate(f.dt_sorteio) : ''}`
-      });
-    }
-  }
-
-  return [...map.values()];
-}
-
-function getFederaisDoConcurso(key, disponiveisOnly = false) {
-  if (!key) return [];
-  const base = disponiveisOnly ? federaisDisponiveis() : state.federais;
-  return base.filter(f => concursoKey(f) === key);
-}
-function federaisDisponiveis() {
-  return state.federais
-    .filter(f => {
-      if (!f.dt_sorteio) return true;
-      return String(f.dt_sorteio).slice(0, 10) >= state.dataRef;
-    })
-    .sort((a, b) => {
-      const dtA = String(a.dt_sorteio || '');
-      const dtB = String(b.dt_sorteio || '');
-      if (dtA !== dtB) return dtA.localeCompare(dtB, 'pt-BR');
-
-      const concA = String(a.concurso || '');
-      const concB = String(b.concurso || '');
-      if (concA !== concB) {
-        return concA.localeCompare(concB, 'pt-BR', { numeric: true });
+    $('mov-destinos-grid')?.addEventListener('click', (e) => {
+      const saveBtn = e.target.closest('[data-save-desfecho]');
+      if (saveBtn) {
+        saveDesfecho(saveBtn.dataset.movId);
+        return;
       }
 
-      const lotA = nomeLoteriaExibicao(a.loteria_id);
-      const lotB = nomeLoteriaExibicao(b.loteria_id);
-      return lotA.localeCompare(lotB, 'pt-BR');
+      if (e.target.closest('[data-no-toggle]')) return;
+
+      const card = e.target.closest('[data-dest-card]');
+      if (!card) return;
+
+      const destId = String(card.dataset.destId || '');
+      state.expandedDestinoId = state.expandedDestinoId === destId ? null : destId;
+      renderMovDestinosGrid();
     });
-}
-function getResumoConcursoAtivoKey() {
-  const itens = resumoFederalDisponivel();
-  return itens.length ? `${itens[0].concurso}__${itens[0].dt_sorteio || ''}` : '';
-}
 
-function resumoFederalVisivel() {
-  const base = resumoFederalDisponivel();
+    $('mov-destinos-grid')?.addEventListener('input', (e) => {
+      const qtyInput = e.target.closest('[data-dest-input]');
+      if (qtyInput) {
+        const destId = String(qtyInput.dataset.destId || '');
+        if (!destId) return;
+        getDraftByDestino(destId).qtd = qtyInput.value;
+        return;
+      }
 
-  if (state.mostrarTodosConcursos) {
-    return base;
+      const desfechoInput = e.target.closest('[data-mov-id][data-field]');
+      if (desfechoInput) {
+        const movId = String(desfechoInput.dataset.movId || '');
+        const field = String(desfechoInput.dataset.field || '');
+        if (!movId || !field) return;
+        if (!state.desfechoDraft[movId]) state.desfechoDraft[movId] = {};
+        state.desfechoDraft[movId][field] = desfechoInput.value;
+        renderMovDestinosGrid();
+      }
+    });
+
+    $('btn-salvar-mov')?.addEventListener('click', saveMov);
+    $('btn-limpar-mov')?.addEventListener('click', clearMov);
+
+    firstEl('federal-lista', 'federalLista')?.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-id]');
+      if (!card) return;
+      selectFederalCard(card.dataset.id);
+    });
   }
 
-  const key = getResumoConcursoAtivoKey();
-  return key
-    ? base.filter(r => `${r.concurso}__${r.dt_sorteio || ''}` === key)
-    : [];
-}
-
-
-function getDistribuicaoDestinosByFederal(resumoRow) {
-  const origemId = String(resumoRow.loteria_id);
-  const federalId = String(resumoRow.federal_id);
-
-  // começa com TODAS as lojas destino possíveis, zeradas
-  const map = new Map();
-
-  (state.loterias || []).forEach(l => {
-    const lotId = String(l.id);
-    if (lotId === origemId) return; // não repete a própria origem
-
-    map.set(lotId, {
-      loteria_destino: l.id,
-      loja_destino_nome: l.nome,
-      qtd_enviada: 0
-    });
-  });
-
-  // soma o que essa origem realmente enviou
-  (state.movimentacoes || []).forEach(m => {
-    if (String(m.federal_id) !== federalId) return;
-    if (String(m.loteria_origem || '') !== origemId) return;
-    if (String(m.tipo_evento || '') !== 'TRANSFERENCIA') return;
-    if (String(m.status_acerto || '').toUpperCase() === 'CANCELADO') return;
-    if (!m.loteria_destino) return;
-
-    const destId = String(m.loteria_destino);
-    const item = map.get(destId);
-    if (!item) return;
-
-    item.qtd_enviada += Number(m.qtd_fracoes || 0);
-  });
-
-  return [...map.values()].sort((a, b) =>
-    String(a.loja_destino_nome || '').localeCompare(String(b.loja_destino_nome || ''), 'pt-BR')
-  );
-}
   async function bootstrap() {
     startClock('relogio');
     state.usuario = await requireSession();
