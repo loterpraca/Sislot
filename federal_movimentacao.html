@@ -7,6 +7,7 @@
 
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/federal.css">
+  <link rel="stylesheet" href="./css/federal-movimentacao.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./sislot-config.js"></script>
@@ -58,7 +59,7 @@
     <section class="page-header">
       <div>
         <div class="page-title">Movimentação Operacional</div>
-        <div class="page-sub">Transferência, devolução Caixa e venda cambista.</div>
+        <div class="page-sub">Transferência primeiro. Desfecho da remessa depois, no mesmo card da loja.</div>
       </div>
     </section>
 
@@ -110,42 +111,39 @@
       <div id="federal-lista" class="federal-lista" style="display:none"></div>
     </section>
 
-   <section class="card" id="mov-card" style="display:none; margin-top:14px">
-  <div class="sep" style="margin-top:0">
-    <span class="sep-label">Movimentação</span>
-    <div class="sep-line"></div>
-  </div>
+    <section class="card" id="mov-card" style="display:none; margin-top:14px">
+      <div class="sep" style="margin-top:0">
+        <span class="sep-label">Movimentação</span>
+        <div class="sep-line"></div>
+      </div>
 
-  <div id="mov-resumo-selec" class="mov-selec-card"></div>
+      <div id="mov-resumo-selec" class="mov-selec-card"></div>
 
-  <div class="mov-hidden">
-    <select id="mov-federal"></select>
-    <select id="mov-loteria-origem"></select>
-    <input type="hidden" id="mov-modalidade" value="Federal">
-    <input type="hidden" id="mov-dt-concurso">
-    <input type="hidden" id="mov-status-acerto" value="PENDENTE">
-    <input type="hidden" id="mov-tipo-evento" value="TRANSFERENCIA">
-  </div>
+      <div class="mov-hidden">
+        <select id="mov-federal"></select>
+        <select id="mov-loteria-origem"></select>
+        <input type="hidden" id="mov-modalidade" value="Federal">
+        <input type="hidden" id="mov-dt-concurso">
+        <input type="hidden" id="mov-status-acerto" value="PENDENTE">
+        <input type="hidden" id="mov-tipo-evento" value="TRANSFERENCIA">
+      </div>
 
-  <div class="mov-op-head">
-    <div class="field mov-field-sm">
-      <label class="field-label">Valor fração</label>
-      <input type="number" step="0.01" id="mov-valor">
-    </div>
-  </div>
+      <div class="mov-op-note mov-op-note-main">
+        Digite a quantidade para criar novas transferências. Clique no card da loja para abrir o desfecho da remessa já existente.
+      </div>
 
-  <div id="mov-destinos-grid" class="mov-destinos-grid"></div>
+      <div id="mov-destinos-grid" class="mov-destinos-grid"></div>
 
-  <div class="field" style="margin-top:14px">
-    <label class="field-label">Observação</label>
-    <textarea id="mov-observacao" placeholder="Observação geral desta operação"></textarea>
-  </div>
+      <div class="field" style="margin-top:14px">
+        <label class="field-label">Observação</label>
+        <textarea id="mov-observacao" placeholder="Observação geral desta operação"></textarea>
+      </div>
 
-  <div class="flex" style="margin-top:18px">
-    <button class="btn-primary" id="btn-salvar-mov">Salvar movimentação</button>
-    <button class="btn-secondary" id="btn-limpar-mov">Limpar</button>
-  </div>
-</section>
+      <div class="flex" style="margin-top:18px">
+        <button class="btn-primary" id="btn-salvar-mov">Salvar transferências</button>
+        <button class="btn-secondary" id="btn-limpar-mov">Limpar</button>
+      </div>
+    </section>
   </main>
 
   <script src="./js/federal-movimentacao.js"></script>
