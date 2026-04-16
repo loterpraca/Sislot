@@ -709,8 +709,8 @@
             <div class="field">
               <label class="field-label">Qtd frações (+/-)</label>
               <input
-                type="number"
-                step="1"
+                type="text"
+                inputmode="numeric"
                 class="mov-dest-input"
                 data-dest-input
                 data-dest-id="${l.id}"
@@ -909,7 +909,7 @@
       const ops = [...opsMap.values()];
 
       if (!ops.length) {
-        showStatus('st-mov', 'Preencha ao menos uma loja com quantidade.', 'err');
+        showStatus('st-mov', 'Digite uma quantidade válida. Use 10, -10 ou 5.', 'err');
         return;
       }
 
