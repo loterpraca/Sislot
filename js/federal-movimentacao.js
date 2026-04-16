@@ -872,8 +872,19 @@
     if (scroll) firstEl('mov-card', 'movCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  async function saveMov() {
+  function collectTransferOpsFromGrid() {
+    const inputs = [...document.querySelectorAll('#mov-destinos-grid [data-dest-input]')];
+    return inputs
+      .map(input => ({
+        destId: num(input.dataset.destId),
+        qtd: int(input.value || 0)
+      }))
+      .filter(x => x.destId && x.qtd !== 0);
+  }
+
+  async function saveMov(ev) {
     try {
+      ev?.preventDefault?.();
       const federal = getFederalSelecionado();
       const resumo = federal ? getResumoByFederalId(federal.id) : null;
       if (!federal || !resumo) {
@@ -882,17 +893,27 @@
       }
 
       const origemId = num(resumo.loteria_id);
-      const ops = Object.entries(state.movDraft || {})
+      const opsFromDom = collectTransferOpsFromGrid();
+      const opsFromState = Object.entries(state.movDraft || {})
         .map(([destId, data]) => ({
           destId: num(destId),
           qtd: int(data?.qtd || 0)
         }))
-        .filter(x => x.qtd !== 0);
+        .filter(x => x.destId && x.qtd !== 0);
+
+      const opsMap = new Map();
+      [...opsFromState, ...opsFromDom].forEach(op => {
+        if (!op.destId || op.qtd === 0) return;
+        opsMap.set(String(op.destId), op);
+      });
+      const ops = [...opsMap.values()];
 
       if (!ops.length) {
         showStatus('st-mov', 'Preencha ao menos uma loja com quantidade.', 'err');
         return;
       }
+
+      showStatus('st-mov', 'Salvando transferências...', 'warn');
 
       for (const op of ops) {
         const { error } = await sb.rpc('rpc_federal_transferir_delta', {
@@ -918,7 +939,8 @@
         closeMovCard();
       }
     } catch (e) {
-      showStatus('st-mov', e.message, 'err');
+      showStatus('st-mov', e?.message || 'Falha ao salvar transferências.', 'err');
+      console.error('[federal-movimentacao.saveMov]', e);
     }
   }
 
