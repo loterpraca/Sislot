@@ -873,7 +873,9 @@ function coletarTela3() {
 // FEDERAIS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function chaveFederalItem(item) { return `FEDERAL|${Number(item.federal_id || 0)}`; }
+function chaveFederalItem(item) {
+    return `FEDERAL|${String(item.federal_id || '').trim()}`;
+}
 
 function aplicarContextoEdicaoFederais(lista) {
     const salvos = ESTADO.tela2?.federais || [];
@@ -1059,16 +1061,17 @@ async function carregarFederaisDoFechamento(fechId) {
         .select(`federal_id,qtd_vendida,valor_unitario,desconto,valor_liquido`)
         .eq('fechamento_id', fechId)
         .eq('canal', 'FECHAMENTO');
+
     if (error) throw error;
+
     return (data || []).map(f => ({
-        federal_id: f.federal_id,
+        federal_id: String(f.federal_id),
         valorUnit: Number(f.valor_unitario || 0),
         qtdVendida: Number(f.qtd_vendida || 0),
         subtotal: Number(f.valor_liquido || 0),
         desconto: Number(f.desconto || 0)
     }));
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // ESTADO FS / B3
 // ─────────────────────────────────────────────────────────────────────────────
