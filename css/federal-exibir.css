@@ -845,6 +845,220 @@ button{
     grid-template-columns:1fr;
   }
 
+   /* ── Container de menu do módulo Federal ─────────────────── */
+.federal-menu-shell{
+  width:min(1180px, 100%);
+  margin:0 auto 18px;
+  padding:18px 18px 16px;
+  background:linear-gradient(180deg, rgba(14,27,50,.96) 0%, rgba(10,19,38,.98) 100%);
+  border:1px solid var(--border);
+  border-radius:20px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:
+    0 0 0 1px rgba(0,200,150,.04),
+    0 20px 50px rgba(0,0,0,.28);
+}
+
+.federal-menu-shell::before{
+  content:'';
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:1px;
+  background:linear-gradient(
+    90deg,
+    transparent 4%,
+    rgba(0,200,150,.22) 35%,
+    rgba(56,189,248,.14) 65%,
+    transparent 96%
+  );
+  pointer-events:none;
+}
+
+.federal-menu-shell::after{
+  content:'';
+  position:absolute;
+  inset:auto -120px -120px auto;
+  width:260px;
+  height:260px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(0,200,150,.08) 0%, transparent 68%);
+  pointer-events:none;
+}
+
+.federal-menu-head{
+  text-align:center;
+  margin-bottom:16px;
+}
+
+.federal-menu-kicker{
+  font-family:var(--mono);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--accent);
+  opacity:.82;
+  margin-bottom:8px;
+}
+
+.federal-menu-title{
+  font-size:22px;
+  font-weight:700;
+  color:var(--text);
+  letter-spacing:-.02em;
+  line-height:1.05;
+}
+
+.federal-menu-sub{
+  margin-top:6px;
+  font-size:12px;
+  color:var(--text2);
+  line-height:1.5;
+}
+
+.federal-menu-grid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:12px;
+}
+
+.federal-menu-card{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:10px;
+  min-height:132px;
+  padding:16px 16px 14px;
+  text-decoration:none;
+  background:linear-gradient(180deg, var(--panel2) 0%, var(--panel) 100%);
+  border:1px solid var(--border);
+  border-radius:16px;
+  overflow:hidden;
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    background .18s ease,
+    box-shadow .18s ease;
+}
+
+.federal-menu-card::before{
+  content:'';
+  position:absolute;
+  inset:0 auto 0 0;
+  width:3px;
+  background:linear-gradient(180deg, var(--blue) 0%, var(--accent) 100%);
+  opacity:.34;
+  transition:opacity .18s ease;
+}
+
+.federal-menu-card::after{
+  content:'';
+  position:absolute;
+  inset:auto -40px -40px auto;
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(56,189,248,.08) 0%, transparent 72%);
+  pointer-events:none;
+}
+
+.federal-menu-card:hover{
+  transform:translateY(-2px);
+  border-color:var(--border2);
+  background:linear-gradient(180deg, var(--panel3) 0%, var(--panel2) 100%);
+  box-shadow:0 14px 28px rgba(0,0,0,.22);
+}
+
+.federal-menu-card:hover::before{
+  opacity:.85;
+}
+
+.federal-menu-card-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:34px;
+  height:22px;
+  border-radius:999px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.08em;
+  color:var(--text3);
+}
+
+.federal-menu-card-title{
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+  letter-spacing:-.02em;
+  line-height:1.05;
+}
+
+.federal-menu-card-sub{
+  font-size:12px;
+  line-height:1.55;
+  color:var(--text2);
+  max-width:28ch;
+}
+
+.federal-menu-card.is-active{
+  border-color:rgba(0,200,150,.34);
+  background:
+    linear-gradient(180deg, rgba(0,200,150,.09) 0%, rgba(255,255,255,.02) 100%),
+    linear-gradient(180deg, var(--panel2) 0%, var(--panel) 100%);
+  box-shadow:
+    0 0 0 1px rgba(0,200,150,.06),
+    0 14px 28px rgba(0,200,150,.10);
+}
+
+.federal-menu-card.is-active::before{
+  opacity:1;
+}
+
+.federal-menu-card.is-active .federal-menu-card-tag{
+  color:#07121e;
+  background:linear-gradient(135deg, var(--accent) 0%, #00a87e 100%);
+  border-color:transparent;
+}
+
+.federal-menu-card.is-active .federal-menu-card-title{
+  color:#f7fffc;
+}
+
+.federal-menu-card.is-active .federal-menu-card-sub{
+  color:#b9f5e4;
+}
+
+@media (max-width: 1100px){
+  .federal-menu-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px){
+  .federal-menu-shell{
+    padding:16px 14px 14px;
+  }
+
+  .federal-menu-grid{
+    grid-template-columns:1fr;
+  }
+
+  .federal-menu-card{
+    min-height:116px;
+  }
+
+  .federal-menu-title{
+    font-size:19px;
+  }
+}
   .drawer{
     width:100vw;
   }
