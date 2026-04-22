@@ -4,15 +4,15 @@
     requireSession, loadLoterias, loadFederais, lookupLoteriaName
   } = FED_BASE;
 
-  const state = {
-    usuario: null,
-    loterias: [],
-    federais: [],
-    resumo: [],
-    movimentos: [],
-    vendasFuncionario: [],
-    lancFederalId: null
-  };
+ const state = {
+  usuario: null,
+  loterias: [],
+  federais: [],
+  resumo: [],
+  detalheLojas: [],
+  vendasFuncionario: [],
+  lancFederalId: null
+};
 
   async function loadResumo() {
     const { data, error } = await sb
@@ -24,15 +24,15 @@
     state.resumo = error ? [] : (data || []);
   }
 
-  async function loadMovs() {
-    const { data } = await sb
-      .from('federal_movimentacoes')
-      .select('*, federais!inner(concurso,dt_sorteio,modalidade), usuarios(nome)')
-      .order('created_at', { ascending: false });
+  async function loadDetalheLojas() {
+  const { data, error } = await sb
+    .from('view_detalhe_federal_lojas')
+    .select('*')
+    .order('dt_sorteio', { ascending: false })
+    .order('loja_destino');
 
-    state.movimentos = data || [];
-  }
-
+  state.detalheLojas = error ? [] : (data || []);
+}
   async function loadVendasFuncionario() {
     const { data } = await sb
       .from('view_federal_vendas_funcionario')
@@ -44,28 +44,28 @@
   }
 
   function renderKPIs(rows) {
-    const totalInicial = rows.reduce((a, x) => a + Number(x.qtd_inicial || 0), 0);
-    const totalVendida = rows.reduce((a, x) => a + Number(x.qtd_vendida_total || 0), 0);
-    const totalDev = rows.reduce((a, x) => a + Number(x.qtd_devolvida_origem || 0) + Number(x.qtd_devolvida_terceiros || 0), 0);
-    const totalEnc = rows.reduce((a, x) => a + Number(x.qtd_encalhe || 0), 0);
-    const totalPrem = rows.reduce((a, x) => a + Number(x.premio_encalhe_total || 0), 0);
-    const totalRes = rows.reduce((a, x) => a + Number(x.resultado || 0), 0);
+  const totalInicial = rows.reduce((a, x) => a + Number(x.qtd_inicial || 0), 0);
+  const totalApurada = rows.reduce((a, x) => a + Number(x.qtd_apurada || 0), 0);
+  const totalSaldo = rows.reduce((a, x) => a + Number(x.saldo_final || 0), 0);
+  const totalEnc = rows.reduce((a, x) => a + Number(x.qtd_encalhe || 0), 0);
+  const totalPrem = rows.reduce((a, x) => a + Number(x.premio_encalhe_total || 0), 0);
+  const totalRes = rows.reduce((a, x) => a + Number(x.resultado || 0), 0);
 
-    $('kpis-visao').innerHTML = [
-      ['Qtd Inicial', totalInicial, 'Carga base'],
-      ['Vendida', totalVendida, 'Funcionários + externa'],
-      ['Devolvida', totalDev, 'Origem + terceiros'],
-      ['Encalhe', totalEnc, 'Qtd restante sem venda'],
-      ['Prêmio', fmtMoney(totalPrem), 'Total de prêmio'],
-      ['Resultado', fmtMoney(totalRes), 'Apuração geral']
-    ].map(([l, v, s]) => `
-      <div class="kpi">
-        <div class="kpi-label">${l}</div>
-        <div class="kpi-value">${v}</div>
-        <div class="kpi-sub">${s}</div>
-      </div>
-    `).join('');
-  }
+  $('kpis-visao').innerHTML = [
+    ['Qtd Inicial', totalInicial, 'Carga base'],
+    ['Qtd Apurada', totalApurada, 'Operação total'],
+    ['Saldo Final', totalSaldo, 'Inicial - apurada'],
+    ['Encalhe', totalEnc, 'Qtd final sem venda'],
+    ['Prêmio', fmtMoney(totalPrem), 'Prêmio/encalhe'],
+    ['Resultado', fmtMoney(totalRes), 'Apuração financeira']
+  ].map(([l, v, s]) => `
+    <div class="kpi">
+      <div class="kpi-label">${l}</div>
+      <div class="kpi-value">${v}</div>
+      <div class="kpi-sub">${s}</div>
+    </div>
+  `).join('');
+}
 
   function renderVisao() {
     let rows = [...state.resumo];
@@ -82,43 +82,39 @@
 
     renderKPIs(rows);
 
-    $('tbody-visao').innerHTML = rows.length ? rows.map(r => {
-      const res = Number(r.resultado || 0);
-
-      return `
-        <tr>
-          <td>${r.modalidade || 'Federal'}</td>
-          <td>${r.loja_origem}</td>
-          <td class="mono">${r.concurso}</td>
-          <td class="mono">${fmtDate(r.dt_sorteio)}</td>
-          <td class="mono">${r.qtd_inicial}</td>
-          <td class="mono">${r.qtd_vendida_funcionarios}</td>
-          <td class="mono">${r.qtd_vendida_externa}</td>
-          <td class="mono">${r.qtd_devolvida_origem}</td>
-          <td class="mono">${r.qtd_devolvida_terceiros}</td>
-          <td class="mono">${r.qtd_encalhe}</td>
-          <td class="money">${fmtMoney(r.premio_encalhe_total)}</td>
-          <td class="mono">${r.estoque_atual}</td>
-          <td class="money ${res >= 0 ? 'pos' : 'neg'}">${fmtMoney(res)}</td>
-          <td>
-            <div class="flex" style="flex-wrap:nowrap;gap:6px">
-              <button class="btn-amber" data-action="detalhar" data-id="${r.federal_id}">Detalhar</button>
-              <button class="btn-secondary" data-action="lancar" data-id="${r.federal_id}">Lançamento</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('') : `
-      <tr>
-        <td colspan="14">
-          <div class="empty">
-            <div class="empty-title">Nada encontrado</div>
-            <div class="empty-sub">Ajuste os filtros.</div>
-          </div>
-        </td>
-      </tr>
-    `;
-  }
+   $('tbody-visao').innerHTML = rows.length ? rows.map(r => `
+  <tr>
+    <td>${r.modalidade || 'Federal'}</td>
+    <td>${r.loja_origem || '—'}</td>
+    <td class="mono">${r.concurso || '—'}</td>
+    <td class="mono">${fmtDate(r.dt_sorteio)}</td>
+    <td class="mono">${r.qtd_inicial ?? 0}</td>
+    <td class="mono">${r.qtd_vendida_whatsapp ?? 0}</td>
+    <td class="mono">${r.qtd_vendida_caixa ?? 0}</td>
+    <td class="mono">${r.qtd_vendida_funcionarios ?? 0}</td>
+    <td class="mono">${r.qtd_dev_cx_interna ?? 0}</td>
+    <td class="mono">${r.qtd_venda_externa ?? 0}</td>
+    <td class="mono">${r.qtd_dev_cx_externa ?? 0}</td>
+    <td class="mono">${r.qtd_encalhe ?? 0}</td>
+    <td class="mono">${r.qtd_apurada ?? 0}</td>
+    <td class="mono">${r.saldo_final ?? 0}</td>
+    <td>
+      <div class="flex" style="flex-wrap:nowrap;gap:6px">
+        <button class="btn-amber" data-action="detalhar" data-id="${r.federal_id}">Detalhar</button>
+        <button class="btn-secondary" data-action="lancar" data-id="${r.federal_id}">Lançamento</button>
+      </div>
+    </td>
+  </tr>
+`).join('') : `
+  <tr>
+    <td colspan="15">
+      <div class="empty">
+        <div class="empty-title">Nada encontrado</div>
+        <div class="empty-sub">Ajuste os filtros.</div>
+      </div>
+    </td>
+  </tr>
+`;
 
   function openDrawer(title, sub, bodyHtml, actions = []) {
     $('drawer-title').textContent = title;
@@ -284,11 +280,11 @@
   }
 
   async function refresh() {
-    state.federais = await loadFederais();
-    await Promise.all([loadResumo(), loadMovs(), loadVendasFuncionario()]);
-    fillSelect('filtro-loja', state.loterias, 'Todas / selecione...', 'id', x => `${x.id} • ${x.nome}`);
-    renderVisao();
-  }
+  state.federais = await loadFederais();
+  await Promise.all([loadResumo(), loadDetalheLojas(), loadVendasFuncionario()]);
+  fillSelect('filtro-loja', state.loterias, 'Todas / selecione...', 'id', x => `${x.id} • ${x.nome}`);
+  renderVisao();
+}
 
   function bindEvents() {
     $('btn-filtrar-visao').addEventListener('click', renderVisao);
