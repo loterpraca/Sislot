@@ -222,64 +222,122 @@
   }
 
   function openFederalDetail(federalId) {
-    const resumo = state.resumo.find(x => String(x.federal_id) === String(federalId));
-    const vendas = state.vendasFuncionario.filter(x => String(x.federal_id) === String(federalId));
-    const movs = state.movimentos.filter(x => String(x.federal_id) === String(federalId));
+  const resumo = state.resumo.find(x => String(x.federal_id) === String(federalId));
+  const vendas = (state.vendasFuncionario || []).filter(x => String(x.federal_id) === String(federalId));
+  const lojas = (state.detalheLojas || []).filter(x => String(x.federal_id) === String(federalId));
 
-    openDrawer(
-      `Federal ${resumo?.concurso || ''}`,
-      `${resumo?.loja_origem || ''} • ${fmtDate(resumo?.dt_sorteio)}`,
-      `
-        <div class="card" style="margin-bottom:14px">
-          <div class="inline-pills">
-            <span class="pill">Qtd inicial ${resumo?.qtd_inicial ?? 0}</span>
-            <span class="pill">Vend. func ${resumo?.qtd_vendida_funcionarios ?? 0}</span>
-            <span class="pill">Vend. externa ${resumo?.qtd_vendida_externa ?? 0}</span>
-            <span class="pill">Dev. origem ${resumo?.qtd_devolvida_origem ?? 0}</span>
-            <span class="pill">Dev. terceiros ${resumo?.qtd_devolvida_terceiros ?? 0}</span>
-            <span class="pill">Encalhe ${resumo?.qtd_encalhe ?? 0}</span>
-            <span class="pill">Resultado ${fmtMoney(resumo?.resultado || 0)}</span>
-          </div>
+  openDrawer(
+    `Federal ${resumo?.concurso || ''}`,
+    `${resumo?.loja_origem || ''} • ${fmtDate(resumo?.dt_sorteio)}`,
+    `
+      <div class="card" style="margin-bottom:14px">
+        <div class="inline-pills">
+          <span class="pill">Qtd inicial ${resumo?.qtd_inicial ?? 0}</span>
+          <span class="pill">WhatsApp ${resumo?.qtd_vendida_whatsapp ?? 0}</span>
+          <span class="pill">Caixa ${resumo?.qtd_vendida_caixa ?? 0}</span>
+          <span class="pill">Funcionários ${resumo?.qtd_vendida_funcionarios ?? 0}</span>
+          <span class="pill">Dev. interna ${resumo?.qtd_dev_cx_interna ?? 0}</span>
+          <span class="pill">Venda externa ${resumo?.qtd_venda_externa ?? 0}</span>
+          <span class="pill">Dev. externa ${resumo?.qtd_dev_cx_externa ?? 0}</span>
+          <span class="pill">Encalhe ${resumo?.qtd_encalhe ?? 0}</span>
+          <span class="pill">Qtd apurada ${resumo?.qtd_apurada ?? 0}</span>
+          <span class="pill">Saldo final ${resumo?.saldo_final ?? 0}</span>
+          <span class="pill">Resultado ${fmtMoney(resumo?.resultado || 0)}</span>
         </div>
+      </div>
 
-        <div class="sep"><span class="sep-label">Vendas por funcionário</span><div class="sep-line"></div></div>
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th>Funcionário</th><th>Qtd</th><th>Total</th></tr></thead>
-            <tbody>
-              ${vendas.length ? vendas.map(v => `
-                <tr>
-                  <td>${v.funcionario_nome}</td>
-                  <td class="mono">${v.qtd_vendida}</td>
-                  <td class="money">${fmtMoney(v.total_vendido)}</td>
-                </tr>
-              `).join('') : `<tr><td colspan="3" class="muted">Sem vendas lançadas</td></tr>`}
-            </tbody>
-          </table>
-        </div>
+      <div class="sep">
+        <span class="sep-label">Vendas por funcionário</span>
+        <div class="sep-line"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Funcionário</th>
+              <th>Qtd</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${vendas.length ? vendas.map(v => `
+              <tr>
+                <td>${v.funcionario_nome || '—'}</td>
+                <td class="mono">${v.qtd_vendida ?? 0}</td>
+                <td class="money">${fmtMoney(v.total_vendido || 0)}</td>
+              </tr>
+            `).join('') : `<tr><td colspan="3" class="muted">Sem vendas de fechamento</td></tr>`}
+          </tbody>
+        </table>
+      </div>
 
-        <div class="sep"><span class="sep-label">Eventos</span><div class="sep-line"></div></div>
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th>Evento</th><th>Origem</th><th>Destino</th><th>Qtd</th><th>Total</th></tr></thead>
-            <tbody>
-              ${movs.length ? movs.map(m => `
-                <tr>
-                  <td>${m.tipo_evento || m.tipo}</td>
-                  <td>${lookupLoteriaName(state.loterias, m.loteria_origem)}</td>
-                  <td>${m.loteria_destino ? lookupLoteriaName(state.loterias, m.loteria_destino) : '—'}</td>
-                  <td class="mono">${m.qtd_fracoes}</td>
-                  <td class="money">${fmtMoney(m.valor_total_real || m.valor_total || (Number(m.qtd_fracoes || 0) * Number(m.valor_fracao_real || m.valor_fracao || 0)))}</td>
-                </tr>
-              `).join('') : `<tr><td colspan="5" class="muted">Sem eventos</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-      `,
-      [{ label: 'Fechar', kind: 'secondary', onClick: closeDrawer }]
-    );
-  }
+      <div class="sep">
+        <span class="sep-label">Operação externa por loja</span>
+        <div class="sep-line"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Loja</th>
+              <th>Enviado</th>
+              <th>Venda Ext.</th>
+              <th>Cambista</th>
+              <th>Total Ext.</th>
+              <th>Dev. Caixa</th>
+              <th>Retorno</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lojas.length ? lojas.map(d => `
+              <tr>
+                <td>${d.loja_destino || '—'}</td>
+                <td class="mono">${d.qtd_enviada ?? 0}</td>
+                <td class="mono">${d.qtd_venda_externa ?? 0}</td>
+                <td class="mono">${d.qtd_venda_cambista ?? 0}</td>
+                <td class="mono">${d.qtd_total_externo ?? 0}</td>
+                <td class="mono">${d.qtd_devolucao_caixa ?? 0}</td>
+                <td class="mono">${d.qtd_retorno_origem ?? 0}</td>
+              </tr>
+            `).join('') : `<tr><td colspan="7" class="muted">Sem operação externa</td></tr>`}
+          </tbody>
+        </table>
+      </div>
 
+      <div class="sep">
+        <span class="sep-label">Financeiro externo por loja</span>
+        <div class="sep-line"></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Loja</th>
+              <th>Venda Ext.</th>
+              <th>Cambista</th>
+              <th>Dev. Caixa</th>
+              <th>Total</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lojas.length ? lojas.map(d => `
+              <tr>
+                <td>${d.loja_destino || '—'}</td>
+                <td class="money">${fmtMoney(d.valor_venda_externa || 0)}</td>
+                <td class="money">${fmtMoney(d.valor_cambista_total || 0)}</td>
+                <td class="money">${fmtMoney(d.valor_devolucao_caixa || 0)}</td>
+                <td class="money">${fmtMoney(d.valor_total_terceiros || 0)}</td>
+                <td>${d.status_acerto || 'PENDENTE'}</td>
+              </tr>
+            `).join('') : `<tr><td colspan="6" class="muted">Sem dados financeiros externos</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    `,
+    [{ label: 'Fechar', kind: 'secondary', onClick: closeDrawer }]
+  );
+}
   async function refresh() {
   state.federais = await loadFederais();
   await Promise.all([loadResumo(), loadDetalheLojas(), loadVendasFuncionario()]);
