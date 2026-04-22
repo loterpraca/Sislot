@@ -4,16 +4,39 @@
     requireSession, loadLoterias, loadFederais, lookupLoteriaName
   } = FED_BASE;
 
- const state = {
+const state = {
   usuario: null,
   loterias: [],
   federais: [],
   resumo: [],
   detalheLojas: [],
   vendasFuncionario: [],
-  lancFederalId: null
+  lancFederalId: null,
+  filtroInicializado: false
 };
+function getUserPrincipalLoteriaId() {
+  return String(
+    state.usuario?.loteria_id ??
+    state.usuario?.loteriaId ??
+    state.usuario?.loteria_principal_id ??
+    state.usuario?.loteria_principal ??
+    state.usuario?.principal_loteria_id ??
+    ''
+  );
+}
 
+function aplicarFiltroLojaPrincipal() {
+  const principalId = getUserPrincipalLoteriaId();
+  if (!principalId) return;
+
+  const select = $('filtro-loja');
+  if (!select) return;
+
+  const existe = Array.from(select.options).some(o => String(o.value) === principalId);
+  if (existe) {
+    select.value = principalId;
+  }
+}
   async function loadResumo() {
     const { data, error } = await sb
       .from('view_resumo_federal')
@@ -43,30 +66,7 @@
     state.vendasFuncionario = data || [];
   }
 
-  function renderKPIs(rows) {
-  const totalInicial = rows.reduce((a, x) => a + Number(x.qtd_inicial || 0), 0);
-  const totalApurada = rows.reduce((a, x) => a + Number(x.qtd_apurada || 0), 0);
-  const totalSaldo = rows.reduce((a, x) => a + Number(x.saldo_final || 0), 0);
-  const totalEnc = rows.reduce((a, x) => a + Number(x.qtd_encalhe || 0), 0);
-  const totalPrem = rows.reduce((a, x) => a + Number(x.premio_encalhe_total || 0), 0);
-  const totalRes = rows.reduce((a, x) => a + Number(x.resultado || 0), 0);
-
-  $('kpis-visao').innerHTML = [
-    ['Qtd Inicial', totalInicial, 'Carga base'],
-    ['Qtd Apurada', totalApurada, 'Operação total'],
-    ['Saldo Final', totalSaldo, 'Inicial - apurada'],
-    ['Encalhe', totalEnc, 'Qtd final sem venda'],
-    ['Prêmio', fmtMoney(totalPrem), 'Prêmio/encalhe'],
-    ['Resultado', fmtMoney(totalRes), 'Apuração financeira']
-  ].map(([l, v, s]) => `
-    <div class="kpi">
-      <div class="kpi-label">${l}</div>
-      <div class="kpi-value">${v}</div>
-      <div class="kpi-sub">${s}</div>
-    </div>
-  `).join('');
-}
-
+ 
  function renderVisao() {
   let rows = [...state.resumo];
 
@@ -80,9 +80,7 @@
   if (di) rows = rows.filter(x => x.dt_sorteio >= di);
   if (df) rows = rows.filter(x => x.dt_sorteio <= df);
 
-  renderKPIs(rows);
-
-  $('tbody-visao').innerHTML = rows.length ? rows.map(r => `
+   $('tbody-visao').innerHTML = rows.length ? rows.map(r => `
     <tr>
       <td>${r.modalidade || 'Federal'}</td>
       <td>${r.loja_origem || '—'}</td>
@@ -303,37 +301,6 @@
           </tbody>
         </table>
       </div>
-
-      <div class="sep">
-        <span class="sep-label">Financeiro externo por loja</span>
-        <div class="sep-line"></div>
-      </div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Loja</th>
-              <th>Venda Ext.</th>
-              <th>Cambista</th>
-              <th>Dev. Caixa</th>
-              <th>Total</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lojas.length ? lojas.map(d => `
-              <tr>
-                <td>${d.loja_destino || '—'}</td>
-                <td class="money">${fmtMoney(d.valor_venda_externa || 0)}</td>
-                <td class="money">${fmtMoney(d.valor_cambista_total || 0)}</td>
-                <td class="money">${fmtMoney(d.valor_devolucao_caixa || 0)}</td>
-                <td class="money">${fmtMoney(d.valor_total_terceiros || 0)}</td>
-                <td>${d.status_acerto || 'PENDENTE'}</td>
-              </tr>
-            `).join('') : `<tr><td colspan="6" class="muted">Sem dados financeiros externos</td></tr>`}
-          </tbody>
-        </table>
-      </div>
     `,
     [{ label: 'Fechar', kind: 'secondary', onClick: closeDrawer }]
   );
@@ -341,38 +308,41 @@
   async function refresh() {
   state.federais = await loadFederais();
   await Promise.all([loadResumo(), loadDetalheLojas(), loadVendasFuncionario()]);
-  fillSelect('filtro-loja', state.loterias, 'Todas / selecione...', 'id', x => `${x.id} • ${x.nome}`);
-  renderVisao();
-}
 
-  function bindEvents() {
-    $('btn-filtrar-visao').addEventListener('click', renderVisao);
+  fillSelect('filtro-loja', state.loterias, '', 'id', x => `${x.id} • ${x.nome}`);
 
-    $('btn-limpar-visao').addEventListener('click', () => {
-      ['filtro-concurso', 'filtro-loja', 'filtro-dt-ini', 'filtro-dt-fim'].forEach(id => $(id).value = '');
-      renderVisao();
-    });
-
-    $('btn-recarregar-visao').addEventListener('click', refresh);
-
-    $('tbody-visao').addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-action]');
-      if (!btn) return;
-
-      const id = btn.dataset.id;
-      if (btn.dataset.action === 'detalhar') openFederalDetail(id);
-      if (btn.dataset.action === 'lancar') openLancamento(id);
-    });
-
-    $('overlay').addEventListener('click', closeDrawer);
-    $('btn-close-drawer').addEventListener('click', closeDrawer);
-
-    $('overlay-lanc').addEventListener('click', closeLancamento);
-    $('btn-close-lanc').addEventListener('click', closeLancamento);
-    $('btn-cancel-lanc').addEventListener('click', closeLancamento);
-    $('btn-save-lanc').addEventListener('click', saveLancamento);
+  if (!state.filtroInicializado) {
+    aplicarFiltroLojaPrincipal();
+    state.filtroInicializado = true;
   }
 
+  renderVisao();
+}
+  function bindEvents() {
+  const autoRender = () => renderVisao();
+
+  $('filtro-concurso').addEventListener('input', autoRender);
+  $('filtro-loja').addEventListener('change', autoRender);
+  $('filtro-dt-ini').addEventListener('change', autoRender);
+  $('filtro-dt-fim').addEventListener('change', autoRender);
+
+  $('tbody-visao').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+    if (btn.dataset.action === 'detalhar') openFederalDetail(id);
+    if (btn.dataset.action === 'lancar') openLancamento(id);
+  });
+
+  $('overlay').addEventListener('click', closeDrawer);
+  $('btn-close-drawer').addEventListener('click', closeDrawer);
+
+  $('overlay-lanc').addEventListener('click', closeLancamento);
+  $('btn-close-lanc').addEventListener('click', closeLancamento);
+  $('btn-cancel-lanc').addEventListener('click', closeLancamento);
+  $('btn-save-lanc').addEventListener('click', saveLancamento);
+}
   async function bootstrap() {
     startClock('relogio');
     state.usuario = await requireSession();
