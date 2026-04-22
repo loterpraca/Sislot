@@ -67,54 +67,55 @@
   `).join('');
 }
 
-  function renderVisao() {
-    let rows = [...state.resumo];
+ function renderVisao() {
+  let rows = [...state.resumo];
 
-    const c = $('filtro-concurso').value.trim();
-    const loja = $('filtro-loja').value;
-    const di = $('filtro-dt-ini').value;
-    const df = $('filtro-dt-fim').value;
+  const c = $('filtro-concurso').value.trim();
+  const loja = $('filtro-loja').value;
+  const di = $('filtro-dt-ini').value;
+  const df = $('filtro-dt-fim').value;
 
-    if (c) rows = rows.filter(x => String(x.concurso).includes(c));
-    if (loja) rows = rows.filter(x => String(x.loteria_id) === String(loja));
-    if (di) rows = rows.filter(x => x.dt_sorteio >= di);
-    if (df) rows = rows.filter(x => x.dt_sorteio <= df);
+  if (c) rows = rows.filter(x => String(x.concurso).includes(c));
+  if (loja) rows = rows.filter(x => String(x.loteria_id) === String(loja));
+  if (di) rows = rows.filter(x => x.dt_sorteio >= di);
+  if (df) rows = rows.filter(x => x.dt_sorteio <= df);
 
-    renderKPIs(rows);
+  renderKPIs(rows);
 
-   $('tbody-visao').innerHTML = rows.length ? rows.map(r => `
-  <tr>
-    <td>${r.modalidade || 'Federal'}</td>
-    <td>${r.loja_origem || '—'}</td>
-    <td class="mono">${r.concurso || '—'}</td>
-    <td class="mono">${fmtDate(r.dt_sorteio)}</td>
-    <td class="mono">${r.qtd_inicial ?? 0}</td>
-    <td class="mono">${r.qtd_vendida_whatsapp ?? 0}</td>
-    <td class="mono">${r.qtd_vendida_caixa ?? 0}</td>
-    <td class="mono">${r.qtd_vendida_funcionarios ?? 0}</td>
-    <td class="mono">${r.qtd_dev_cx_interna ?? 0}</td>
-    <td class="mono">${r.qtd_venda_externa ?? 0}</td>
-    <td class="mono">${r.qtd_dev_cx_externa ?? 0}</td>
-    <td class="mono">${r.qtd_encalhe ?? 0}</td>
-    <td class="mono">${r.qtd_apurada ?? 0}</td>
-    <td class="mono">${r.saldo_final ?? 0}</td>
-    <td>
-      <div class="flex" style="flex-wrap:nowrap;gap:6px">
-        <button class="btn-amber" data-action="detalhar" data-id="${r.federal_id}">Detalhar</button>
-        <button class="btn-secondary" data-action="lancar" data-id="${r.federal_id}">Lançamento</button>
-      </div>
-    </td>
-  </tr>
-`).join('') : `
-  <tr>
-    <td colspan="15">
-      <div class="empty">
-        <div class="empty-title">Nada encontrado</div>
-        <div class="empty-sub">Ajuste os filtros.</div>
-      </div>
-    </td>
-  </tr>
-`;
+  $('tbody-visao').innerHTML = rows.length ? rows.map(r => `
+    <tr>
+      <td>${r.modalidade || 'Federal'}</td>
+      <td>${r.loja_origem || '—'}</td>
+      <td class="mono">${r.concurso || '—'}</td>
+      <td class="mono">${fmtDate(r.dt_sorteio)}</td>
+      <td class="mono">${r.qtd_inicial ?? 0}</td>
+      <td class="mono">${r.qtd_vendida_whatsapp ?? 0}</td>
+      <td class="mono">${r.qtd_vendida_caixa ?? 0}</td>
+      <td class="mono">${r.qtd_vendida_funcionarios ?? 0}</td>
+      <td class="mono">${r.qtd_dev_cx_interna ?? 0}</td>
+      <td class="mono">${r.qtd_venda_externa ?? 0}</td>
+      <td class="mono">${r.qtd_dev_cx_externa ?? 0}</td>
+      <td class="mono">${r.qtd_encalhe ?? 0}</td>
+      <td class="mono">${r.qtd_apurada ?? 0}</td>
+      <td class="mono">${r.saldo_final ?? 0}</td>
+      <td>
+        <div class="flex" style="flex-wrap:nowrap;gap:6px">
+          <button class="btn-amber" data-action="detalhar" data-id="${r.federal_id}">Detalhar</button>
+          <button class="btn-secondary" data-action="lancar" data-id="${r.federal_id}">Lançamento</button>
+        </div>
+      </td>
+    </tr>
+  `).join('') : `
+    <tr>
+      <td colspan="15">
+        <div class="empty">
+          <div class="empty-title">Nada encontrado</div>
+          <div class="empty-sub">Ajuste os filtros.</div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
 
   function openDrawer(title, sub, bodyHtml, actions = []) {
     $('drawer-title').textContent = title;
