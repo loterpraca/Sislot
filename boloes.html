@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bolões — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/hub.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
+</head>
+<body>
+
+  <!-- ===== TOPBAR ===== -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">SL</div>
+      <div>
+        <div class="brand-name">SISLOT</div>
+        <div class="brand-sub">Bolões</div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="clock" id="relogio">--:--:--</div>
+
+      <a href="./menu.html" class="btn-nav">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        Menu principal
+      </a>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-tag">
+        <div class="hero-tag-dot"></div>
+        Módulo Bolões
+      </div>
+      <h1 class="hero-title">Gestão de <span>Bolões</span></h1>
+      <p class="hero-sub">Cadastre bolões, distribua cotas entre lojas, acompanhe saldos e feche a operação com a visão mestra.</p>
+    </div>
+
+    <!-- CARDS HUB -->
+    <div class="hub-grid">
+
+      <!-- Cadastro -->
+      <a class="hub-card" href="./bolao-cadastro.html" style="--hc-color:#00c896">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 12V22H4V12"/>
+            <path d="M22 7H2v5h20V7z"/>
+            <path d="M12 22V7"/>
+            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Cadastro</div>
+          <div class="hc-desc">Criar e gerenciar bolões</div>
+        </div>
+      </a>
+
+      <!-- Movimentação -->
+      <a class="hub-card" href="./movimentar.html" style="--hc-color:#38bdf8">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Movimentação</div>
+          <div class="hc-desc">Distribuir cotas entre lojas</div>
+        </div>
+      </a>
+
+      <!-- Exibição -->
+      <a class="hub-card" href="./exibir.html" style="--hc-color:#f5a623">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Exibição</div>
+          <div class="hc-desc">Consultar saldos de bolões</div>
+        </div>
+      </a>
+
+      <!-- Resultados / Apuração -->
+      <a class="hub-card" href="./apuracao.html" style="--hc-color:#22c55e">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="M7 14l3-3 3 2 4-5"/>
+            <circle cx="7"  cy="14" r="1"/>
+            <circle cx="10" cy="11" r="1"/>
+            <circle cx="13" cy="13" r="1"/>
+            <circle cx="17" cy="8"  r="1"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Resultados</div>
+          <div class="hc-desc">Lançamentos finais dos bolões</div>
+        </div>
+      </a>
+
+      <!-- Mestra -->
+      <a class="hub-card" href="./boloes_mestra.html" style="--hc-color:#a78bfa">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Mestra</div>
+          <div class="hc-desc">Visão consolidada de todas as lojas</div>
+        </div>
+      </a>
+
+    </div><!-- /hub-grid -->
+
+    <!-- SEÇÃO INDICADORES RÁPIDOS -->
+    <div class="hub-section">
+      <div class="sep">
+        <span class="sep-label">Indicadores rápidos</span>
+        <div class="sep-line"></div>
+      </div>
+
+      <div class="hub-info-row">
+        <div class="hub-info-box">
+          <div class="hib-icon" style="background:rgba(0,200,150,.10);border:1px solid rgba(0,200,150,.22)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c896" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 12V22H4V12"/>
+              <path d="M22 7H2v5h20V7z"/>
+              <path d="M12 22V7"/>
+            </svg>
+          </div>
+          <div>
+            <div class="hib-label">Bolões ativos</div>
+            <div class="hib-value" id="kpi-boloesAtivos">—</div>
+          </div>
+        </div>
+
+        <div class="hub-info-box">
+          <div class="hib-icon" style="background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.22)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 1 21 5 17 9"/>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+              <polyline points="7 23 3 19 7 15"/>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+            </svg>
+          </div>
+          <div>
+            <div class="hib-label">Movimentações hoje</div>
+            <div class="hib-value" id="kpi-movsHoje">—</div>
+          </div>
+        </div>
+
+        <div class="hub-info-box">
+          <div class="hib-icon" style="background:rgba(37,211,102,.10);border:1px solid rgba(37,211,102,.22)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.62 5.1 2 2 0 0 1 3.6 3h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.6a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 19v1.42z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="hib-label">Vendas WPP hoje</div>
+            <div class="hib-value" id="kpi-wppHoje">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>SISLOT v2.0 · Módulo Bolões · Sistema de Gestão de Lotéricas</footer>
+
+  <script>
+    /* clock */
+    function tick() {
+      const el = document.getElementById('relogio');
+      if (!el) return;
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    /* KPIs — integração Supabase (adapte conforme tabelas reais) */
+    (async () => {
+      try {
+        const { createClient } = supabase;
+        const sb = createClient(SISLOT_CONFIG.url, SISLOT_CONFIG.anonKey);
+        const hoje = new Date().toISOString().slice(0, 10);
+
+        /* bolões ativos */
+        const { count: cBoloes } = await sb
+          .from('boloes')
+          .select('*', { count: 'exact', head: true })
+          .eq('ativo', true);
+
+        document.getElementById('kpi-boloesAtivos').textContent =
+          cBoloes != null ? cBoloes : '—';
+
+        /* movimentações hoje — tabela de bolões */
+        const { count: cMovs } = await sb
+          .from('movimentacoes')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', hoje);
+
+        document.getElementById('kpi-movsHoje').textContent =
+          cMovs != null ? cMovs : '—';
+
+        /* vendas whatsapp hoje */
+        const { count: cWpp } = await sb
+          .from('vendas_whatsapp')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', hoje);
+
+        document.getElementById('kpi-wppHoje').textContent =
+          cWpp != null ? cWpp : '—';
+
+      } catch (_) {
+        /* silencioso — página funciona sem dados */
+      }
+    })();
+  </script>
+
+</body>
+</html>

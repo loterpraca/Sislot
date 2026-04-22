@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federal — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/hub.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
+</head>
+<body>
+
+  <!-- ===== TOPBAR ===== -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">SL</div>
+      <div>
+        <div class="brand-name">SISLOT</div>
+        <div class="brand-sub">Federal</div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="clock" id="relogio">--:--:--</div>
+
+      <a href="./menu.html" class="btn-nav">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        Menu principal
+      </a>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-tag">
+        <div class="hero-tag-dot"></div>
+        Módulo Federal
+      </div>
+      <h1 class="hero-title">Loteria <span>Federal</span></h1>
+      <p class="hero-sub">Gerencie concursos, movimentações, exibição de resultados e a visão mestra da operação.</p>
+    </div>
+
+    <!-- CARDS HUB -->
+    <div class="hub-grid">
+
+      <!-- Cadastro -->
+      <a class="hub-card" href="./federal_cadastro.html" style="--hc-color:#00c896">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8M12 17v4"/>
+            <path d="M9 8h1M12 8h3"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Cadastro</div>
+          <div class="hc-desc">Criar e editar concursos federais</div>
+        </div>
+      </a>
+
+      <!-- Movimentação -->
+      <a class="hub-card" href="./federal_movimentacao.html" style="--hc-color:#38bdf8">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 1 21 5 17 9"/>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Movimentação</div>
+          <div class="hc-desc">Transferir frações entre lojas</div>
+        </div>
+      </a>
+
+      <!-- Exibição -->
+      <a class="hub-card" href="./federal_exibicao.html" style="--hc-color:#f5a623">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Exibição</div>
+          <div class="hc-desc">Resumo analítico por concurso</div>
+        </div>
+      </a>
+
+      <!-- Resultados -->
+      <a class="hub-card" href="./federal_resultado.html" style="--hc-color:#22c55e">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="M7 14l3-3 3 2 4-5"/>
+            <circle cx="7"  cy="14" r="1"/>
+            <circle cx="10" cy="11" r="1"/>
+            <circle cx="13" cy="13" r="1"/>
+            <circle cx="17" cy="8"  r="1"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Resultados</div>
+          <div class="hc-desc">Apuração financeira final</div>
+        </div>
+      </a>
+
+      <!-- Mestra -->
+      <a class="hub-card" href="./federal_mestra.html" style="--hc-color:#a78bfa">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-title">Mestra</div>
+          <div class="hc-desc">Visão consolidada de todas as lojas</div>
+        </div>
+      </a>
+
+    </div><!-- /hub-grid -->
+
+    <!-- SEÇÃO INDICADORES RÁPIDOS -->
+    <div class="hub-section">
+      <div class="sep">
+        <span class="sep-label">Indicadores rápidos</span>
+        <div class="sep-line"></div>
+      </div>
+
+      <div class="hub-info-row">
+        <div class="hub-info-box">
+          <div class="hib-icon" style="background:rgba(0,200,150,.10);border:1px solid rgba(0,200,150,.22)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c896" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8M12 17v4"/>
+            </svg>
+          </div>
+          <div>
+            <div class="hib-label">Concursos ativos</div>
+            <div class="hib-value" id="kpi-concursos">—</div>
+          </div>
+        </div>
+
+        <div class="hub-info-box">
+          <div class="hib-icon" style="background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.22)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 1 21 5 17 9"/>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+              <polyline points="7 23 3 19 7 15"/>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+            </svg>
+          </div>
+          <div>
+            <div class="hib-label">Movimentações hoje</div>
+            <div class="hib-value" id="kpi-movs">—</div>
+          </div>
+        </div>
+
+        <div class="hub-info-box">
+          <div class="hib-icon" style="background:rgba(245,166,35,.10);border:1px solid rgba(245,166,35,.22)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div>
+            <div class="hib-label">Próximo sorteio</div>
+            <div class="hib-value" id="kpi-sorteio">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>SISLOT v2.0 · Módulo Federal · Sistema de Gestão de Lotéricas</footer>
+
+  <script>
+    /* clock */
+    function tick() {
+      const el = document.getElementById('relogio');
+      if (!el) return;
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    /* KPIs — integração Supabase (adapte conforme tabelas reais) */
+    (async () => {
+      try {
+        const { createClient } = supabase;
+        const sb = createClient(SISLOT_CONFIG.url, SISLOT_CONFIG.anonKey);
+
+        /* concursos ativos */
+        const { count: cConcursos } = await sb
+          .from('federais')
+          .select('*', { count: 'exact', head: true })
+          .eq('ativo', true);
+
+        document.getElementById('kpi-concursos').textContent =
+          cConcursos != null ? cConcursos : '—';
+
+        /* movimentações hoje */
+        const hoje = new Date().toISOString().slice(0, 10);
+        const { count: cMovs } = await sb
+          .from('federal_movimentacoes')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', hoje)
+          .eq('tipo_evento', 'TRANSFERENCIA');
+
+        document.getElementById('kpi-movs').textContent =
+          cMovs != null ? cMovs : '—';
+
+        /* próximo sorteio */
+        const { data: proximos } = await sb
+          .from('federais')
+          .select('concurso, dt_sorteio')
+          .eq('ativo', true)
+          .gte('dt_sorteio', hoje)
+          .order('dt_sorteio', { ascending: true })
+          .limit(1);
+
+        if (proximos && proximos.length) {
+          const f = proximos[0];
+          const dt = new Date(f.dt_sorteio + 'T12:00:00');
+          const dia = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+          document.getElementById('kpi-sorteio').textContent = `#${f.concurso} · ${dia}`;
+        }
+      } catch (_) {
+        /* silencioso — página funciona sem dados */
+      }
+    })();
+  </script>
+
+</body>
+</html>
