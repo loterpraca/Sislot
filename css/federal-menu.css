@@ -1,0 +1,100 @@
+/* ===== MENU FEDERAL COMPACTO ===== */
+
+.federal-menu-bar{
+  width:100%;
+  margin:0 0 14px;
+  padding:10px 12px;
+  background:linear-gradient(180deg, rgba(14,27,50,.94) 0%, rgba(10,19,38,.98) 100%);
+  border:1px solid var(--border);
+  border-radius:14px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+
+.federal-menu-bar::before{
+  content:'';
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:1px;
+  background:linear-gradient(
+    90deg,
+    transparent 4%,
+    rgba(0,200,150,.18) 35%,
+    rgba(56,189,248,.12) 65%,
+    transparent 96%
+  );
+  pointer-events:none;
+}
+
+.federal-menu-strip{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:8px;
+  align-items:center;
+}
+
+.federal-menu-pill{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 14px;
+  text-decoration:none;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:linear-gradient(180deg, var(--panel2) 0%, var(--panel) 100%);
+  color:var(--text2);
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  transition:
+    transform .16s ease,
+    border-color .16s ease,
+    color .16s ease,
+    background .16s ease,
+    box-shadow .16s ease;
+  white-space:nowrap;
+}
+
+.federal-menu-pill:hover{
+  transform:translateY(-1px);
+  color:var(--text);
+  border-color:var(--border2);
+  background:linear-gradient(180deg, var(--panel3) 0%, var(--panel2) 100%);
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+
+.federal-menu-pill.is-active{
+  color:#041019;
+  border-color:rgba(0,200,150,.42);
+  background:linear-gradient(135deg, var(--accent) 0%, #00a87e 100%);
+  box-shadow:
+    0 0 0 1px rgba(0,200,150,.08),
+    0 8px 18px rgba(0,200,150,.22);
+}
+
+@media (max-width: 900px){
+  .federal-menu-strip{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px){
+  .federal-menu-bar{
+    padding:8px;
+  }
+
+  .federal-menu-strip{
+    grid-template-columns:1fr;
+  }
+
+  .federal-menu-pill{
+    min-height:40px;
+    font-size:10px;
+  }
+}
