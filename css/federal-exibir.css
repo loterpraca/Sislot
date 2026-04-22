@@ -778,74 +778,14 @@ button{
 }
 
 .page-header{
-  margin-bottom:12px;
+  margin-bottom:14px;
 }
 
 .table-wrap{
   margin-top:4px;
 }
-/* responsive */
-@media (max-width: 1024px){
-  .toolbar{
-    align-items:stretch;
-  }
 
-  .toolbar-left{
-    width:100%;
-  }
-
-  .toolbar-right{
-    width:100%;
-    justify-content:flex-end;
-  }
-
-  .grid-3{
-    grid-template-columns:1fr;
-  }
-}
-/* navegação do módulo acima do título */
-.federal-nav{
-  display:grid;
-  grid-template-columns:repeat(4, minmax(0, 1fr));
-  gap:10px;
-  margin:0 0 18px;
-}
-
-.page-header{
-  margin-bottom:14px;
-}
-@media (max-width: 760px){
-  .main{
-    padding:14px 12px 48px;
-  }
-
-  .topbar{
-    padding:0 14px;
-  }
-
-  #relogio{
-    display:none;
-  }
-
-  .toolbar-left{
-    flex-direction:column;
-    align-items:stretch;
-  }
-
-  .toolbar-right{
-    justify-content:stretch;
-  }
-
-  .toolbar-right > button{
-    flex:1;
-  }
-
-  .grid-2,
-  .grid-3{
-    grid-template-columns:1fr;
-  }
-
-   /* ── Container de menu do módulo Federal ─────────────────── */
+/* ===== MENU FEDERAL PREMIUM ===== */
 .federal-menu-shell{
   width:min(1180px, 100%);
   margin:0 auto 18px;
@@ -1036,9 +976,59 @@ button{
   color:#b9f5e4;
 }
 
+/* responsive */
 @media (max-width: 1100px){
   .federal-menu-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px){
+  .toolbar{
+    align-items:stretch;
+  }
+
+  .toolbar-left{
+    width:100%;
+  }
+
+  .grid-3{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 760px){
+  .main{
+    padding:14px 12px 48px;
+  }
+
+  .topbar{
+    padding:0 14px;
+  }
+
+  #relogio{
+    display:none;
+  }
+
+  .toolbar-left{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .grid-2,
+  .grid-3{
+    grid-template-columns:1fr;
+  }
+
+  .drawer{
+    width:100vw;
+  }
+
+  .drawer-head,
+  .drawer-body,
+  .drawer-foot{
+    padding-left:16px;
+    padding-right:16px;
   }
 }
 
@@ -1058,16 +1048,4 @@ button{
   .federal-menu-title{
     font-size:19px;
   }
-}
-  .drawer{
-    width:100vw;
-  }
-
-  .drawer-head,
-  .drawer-body,
-  .drawer-foot{
-    padding-left:16px;
-    padding-right:16px;
-  }
-   
 }
