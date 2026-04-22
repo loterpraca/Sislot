@@ -803,7 +803,17 @@ button{
     grid-template-columns:1fr;
   }
 }
+/* navegação do módulo acima do título */
+.federal-nav{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:10px;
+  margin:0 0 18px;
+}
 
+.page-header{
+  margin-bottom:14px;
+}
 @media (max-width: 760px){
   .main{
     padding:14px 12px 48px;
