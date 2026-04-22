@@ -768,7 +768,22 @@ button{
 .grid-3{
   grid-template-columns:repeat(3, minmax(0, 1fr));
 }
+/* Federal Exibição sem KPI e com filtros enxutos */
+.toolbar{
+  align-items:flex-end;
+}
 
+.toolbar-right{
+  display:none;
+}
+
+.page-header{
+  margin-bottom:12px;
+}
+
+.table-wrap{
+  margin-top:4px;
+}
 /* responsive */
 @media (max-width: 1024px){
   .toolbar{
@@ -830,4 +845,5 @@ button{
     padding-left:16px;
     padding-right:16px;
   }
+   
 }
