@@ -1,15 +1,22 @@
 (() => {
-  const { sb, $, fmtMoney, fmtDate, startClock, showStatus, requireSession, loadFederais, nextWedOrSat, nextQuaSabFrom } = FED_BASE;
+  const {
+    sb,
+    $,
+    fmtMoney,
+    fmtDate,
+    startClock,
+    showStatus,
+    requireSession,
+    loadFederais,
+    nextWedOrSat,
+    nextQuaSabFrom
+  } = FED_BASE;
 
   const state = {
     usuario: null,
     federais: [],
+    parametrosRecebimento: [],
     editingCadastroConcurso: null
-  };
-
-  const QTD_PADRAO = {
-    qua: { centro: 80, boulevard: 80, lotobel: 60, santa: 60, via: 90 },
-    sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 80, via: 110 }
   };
 
   function applyFederalType(tipo) {
@@ -22,25 +29,65 @@
     }
   }
 
+  async function loadParametrosRecebimento() {
+    const { data, error } = await sb
+      .from('federal_parametros_recebimento')
+      .select('regra, loteria_id, qtd_recebida, ativo')
+      .eq('ativo', true);
+
+    if (error) throw error;
+    state.parametrosRecebimento = data || [];
+  }
+
+  function getRegraRecebimento() {
+    const tipo = $('cad-tipo')?.value || 'COMUM';
+
+    if (tipo === 'ESPECIAL') {
+      return 'ESPECIAL';
+    }
+
+    const rawDate = $('cad-dt-sorteio')?.value;
+    const d = rawDate ? new Date(rawDate + 'T12:00:00') : new Date();
+
+    return d.getDay() === 6 ? 'SABADO_COMUM' : 'QUARTA_COMUM';
+  }
+
+  function getQtdRecebimentoPorLoja(regra, loteriaId) {
+    const row = state.parametrosRecebimento.find(
+      x => x.regra === regra && Number(x.loteria_id) === Number(loteriaId)
+    );
+
+    return Number(row?.qtd_recebida || 0);
+  }
+
+  function fillQtdPadraoCadastro() {
+    const regra = getRegraRecebimento();
+
+    $('cad-qtd-centro').value = getQtdRecebimentoPorLoja(regra, 1);
+    $('cad-qtd-boulevard').value = getQtdRecebimentoPorLoja(regra, 2);
+    $('cad-qtd-lotobel').value = getQtdRecebimentoPorLoja(regra, 3);
+    $('cad-qtd-santa').value = getQtdRecebimentoPorLoja(regra, 4);
+    $('cad-qtd-via').value = getQtdRecebimentoPorLoja(regra, 5);
+  }
+
   function suggestNextConcurso() {
-    const nums = state.federais.map(f => parseInt(f.concurso, 10)).filter(n => !isNaN(n));
+    const nums = state.federais
+      .map(f => parseInt(f.concurso, 10))
+      .filter(n => !isNaN(n));
+
     return nums.length ? String(Math.max(...nums) + 1) : '';
   }
 
   function suggestNextSorteio() {
     if (!state.federais.length) return nextWedOrSat();
-    const dates = state.federais.map(f => f.dt_sorteio).filter(Boolean).sort().reverse();
-    return nextQuaSabFrom(dates[0], 1);
-  }
 
-  function fillQtdPadraoCadastro() {
-    const d = $('cad-dt-sorteio').value ? new Date($('cad-dt-sorteio').value + 'T12:00:00') : new Date();
-    const pad = d.getDay() === 6 ? QTD_PADRAO.sab : QTD_PADRAO.qua;
-    $('cad-qtd-centro').value = pad.centro;
-    $('cad-qtd-boulevard').value = pad.boulevard;
-    $('cad-qtd-lotobel').value = pad.lotobel;
-    $('cad-qtd-santa').value = pad.santa;
-    $('cad-qtd-via').value = pad.via;
+    const dates = state.federais
+      .map(f => f.dt_sorteio)
+      .filter(Boolean)
+      .sort()
+      .reverse();
+
+    return nextQuaSabFrom(dates[0], 1);
   }
 
   function setCadastroDefaults() {
@@ -60,12 +107,14 @@
           acc[f.concurso] = {
             concurso: f.concurso,
             dt_sorteio: f.dt_sorteio,
+            tipo: f.tipo || (Number(f.valor_fracao) === 10 ? 'ESPECIAL' : 'COMUM'),
             valor_fracao: f.valor_fracao,
             valor_custo: f.valor_custo,
             qt_fracoes_bilhete: f.qt_fracoes_bilhete,
             itens: []
           };
         }
+
         acc[f.concurso].itens.push(f);
         return acc;
       }, {})
@@ -73,13 +122,14 @@
 
     $('cnt-cadastros').textContent = grupos.length;
 
-    $('tbody-cadastro').innerHTML = grupos.length ? grupos.map(g => {
-      const tipo = Number(g.valor_fracao) === 10 ? 'ESPECIAL' : 'COMUM';
-      const totalIni = g.itens.reduce((a, x) => a + Number(x.qtd_recebidas || 0), 0);
-      const totalDev = g.itens.reduce((a, x) => a + Number(x.qtd_devolvidas || 0), 0);
-      const totalEnc = g.itens.reduce((a, x) => a + Number(x.qtd_encalhe || 0), 0);
+    $('tbody-cadastro').innerHTML = grupos.length
+      ? grupos.map(g => {
+          const tipo = g.tipo || 'COMUM';
+          const totalIni = g.itens.reduce((a, x) => a + Number(x.qtd_recebidas || 0), 0);
+          const totalDev = g.itens.reduce((a, x) => a + Number(x.qtd_devolvidas || 0), 0);
+          const totalEnc = g.itens.reduce((a, x) => a + Number(x.qtd_encalhe || 0), 0);
 
-      return `
+          return `
         <tr>
           <td>Todos</td>
           <td class="mono">${g.concurso}</td>
@@ -98,7 +148,8 @@
           </td>
         </tr>
       `;
-    }).join('') : `
+        }).join('')
+      : `
       <tr>
         <td colspan="10">
           <div class="empty">
@@ -118,6 +169,7 @@
     try {
       const concurso = $('cad-concurso').value.trim();
       const dt_sorteio = $('cad-dt-sorteio').value;
+      const tipo = $('cad-tipo').value;
       const valor_fracao = Number($('cad-valor-fracao').value || 0);
       const valor_custo = Number($('cad-valor-custo').value || 0);
       const qt_fracoes_bilhete = Number($('cad-fracoes-bilhete').value || 10);
@@ -142,6 +194,7 @@
             .update({
               concurso,
               dt_sorteio,
+              tipo,
               valor_fracao,
               valor_custo,
               qt_fracoes_bilhete,
@@ -162,6 +215,7 @@
             modalidade: 'Federal',
             concurso,
             dt_sorteio,
+            tipo,
             valor_fracao,
             valor_custo,
             qt_fracoes_bilhete,
@@ -195,7 +249,7 @@
 
     $('cad-concurso').value = f.concurso;
     $('cad-dt-sorteio').value = f.dt_sorteio;
-    $('cad-tipo').value = Number(f.valor_fracao) === 10 ? 'ESPECIAL' : 'COMUM';
+    $('cad-tipo').value = f.tipo || (Number(f.valor_fracao) === 10 ? 'ESPECIAL' : 'COMUM');
     $('cad-valor-fracao').value = f.valor_fracao;
     $('cad-valor-custo').value = f.valor_custo;
     $('cad-fracoes-bilhete').value = f.qt_fracoes_bilhete;
@@ -206,53 +260,60 @@
     $('cad-qtd-via').value = itens.find(x => x.loteria_id === 5)?.qtd_recebidas || 0;
   }
 
- async function deleteCadastro(concurso) {
-  const concursoTrim = String(concurso || '').trim();
-  if (!concursoTrim) return;
+  async function deleteCadastro(concurso) {
+    const concursoTrim = String(concurso || '').trim();
+    if (!concursoTrim) return;
 
-  if (!confirm(`Excluir o concurso ${concursoTrim} em todas as loterias?`)) return;
+    if (!confirm(`Excluir o concurso ${concursoTrim} em todas as loterias?`)) return;
 
-  try {
-    const { data, error } = await sb
-      .rpc('rpc_federal_validar_exclusao_concurso', { p_concurso: concursoTrim });
+    try {
+      const { data, error } = await sb
+        .rpc('rpc_federal_validar_exclusao_concurso', { p_concurso: concursoTrim });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const info = Array.isArray(data) ? data[0] : data;
-    if (!info) {
-      showStatus('st-cadastro', 'Não foi possível validar a exclusão.', 'err');
-      return;
+      const info = Array.isArray(data) ? data[0] : data;
+      if (!info) {
+        showStatus('st-cadastro', 'Não foi possível validar a exclusão.', 'err');
+        return;
+      }
+
+      if (!info.pode_excluir) {
+        showStatus('st-cadastro', `Exclusão bloqueada: ${info.motivo}`, 'err');
+        return;
+      }
+
+      const { error: delError } = await sb
+        .from('federais')
+        .delete()
+        .eq('concurso', concursoTrim);
+
+      if (delError) throw delError;
+
+      if (String(state.editingCadastroConcurso || '').trim() === concursoTrim) {
+        state.editingCadastroConcurso = null;
+        setCadastroDefaults();
+      }
+
+      showStatus('st-cadastro', `Concurso ${concursoTrim} excluído.`, 'ok');
+      await refreshCadastro();
+    } catch (e) {
+      showStatus('st-cadastro', e.message || 'Erro ao excluir concurso.', 'err');
     }
-
-    if (!info.pode_excluir) {
-      showStatus('st-cadastro', `Exclusão bloqueada: ${info.motivo}`, 'err');
-      return;
-    }
-
-    const { error: delError } = await sb
-      .from('federais')
-      .delete()
-      .eq('concurso', concursoTrim);
-
-    if (delError) throw delError;
-
-    if (String(state.editingCadastroConcurso || '').trim() === concursoTrim) {
-      state.editingCadastroConcurso = null;
-      setCadastroDefaults();
-    }
-
-    showStatus('st-cadastro', `Concurso ${concursoTrim} excluído.`, 'ok');
-    await refreshCadastro();
-  } catch (e) {
-    showStatus('st-cadastro', e.message || 'Erro ao excluir concurso.', 'err');
   }
-}
 
   function bindEvents() {
     $('btn-salvar-cadastro').addEventListener('click', saveCadastro);
     $('btn-limpar-cadastro').addEventListener('click', setCadastroDefaults);
-    $('cad-tipo').addEventListener('change', e => applyFederalType(e.target.value));
-    $('cad-dt-sorteio').addEventListener('change', fillQtdPadraoCadastro);
+
+    $('cad-tipo').addEventListener('change', e => {
+      applyFederalType(e.target.value);
+      fillQtdPadraoCadastro();
+    });
+
+    $('cad-dt-sorteio').addEventListener('change', () => {
+      fillQtdPadraoCadastro();
+    });
 
     $('cad-data-prev').addEventListener('click', () => {
       $('cad-dt-sorteio').value = nextQuaSabFrom($('cad-dt-sorteio').value || suggestNextSorteio(), -1);
@@ -264,7 +325,7 @@
       fillQtdPadraoCadastro();
     });
 
-    $('tbody-cadastro').addEventListener('click', (e) => {
+    $('tbody-cadastro').addEventListener('click', e => {
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
 
@@ -275,13 +336,18 @@
   }
 
   async function bootstrap() {
-    startClock('relogio');
-    state.usuario = await requireSession();
-    if (!state.usuario) return;
+    try {
+      startClock('relogio');
+      state.usuario = await requireSession();
+      if (!state.usuario) return;
 
-    await refreshCadastro();
-    setCadastroDefaults();
-    bindEvents();
+      await loadParametrosRecebimento();
+      await refreshCadastro();
+      setCadastroDefaults();
+      bindEvents();
+    } catch (e) {
+      showStatus('st-cadastro', e.message || 'Erro ao inicializar cadastro federal.', 'err');
+    }
   }
 
   bootstrap();
