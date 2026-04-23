@@ -1242,7 +1242,94 @@ input[readonly] {
   .federal-menu-strip { grid-template-columns: 1fr; }
   .federal-menu-pill { min-height: 40px; font-size: 10px; }
 }
+/* =========================================================
+   CADASTRO — AJUSTE MOBILE
+========================================================= */
+.cad-grid-2,
+.cad-grid-3{
+  display:grid;
+  gap:14px;
+}
 
+.cad-grid-2{
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+.cad-grid-3{
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+}
+
+.cad-date-inline{
+  display:grid;
+  grid-template-columns:36px minmax(0, 1fr) 36px;
+  gap:0;
+  align-items:stretch;
+}
+
+.cad-date-btn{
+  min-height:34px;
+  padding:0;
+  justify-content:center;
+  border-radius:0;
+}
+
+#cad-data-prev.cad-date-btn{
+  border-radius:8px 0 0 8px;
+}
+
+#cad-data-next.cad-date-btn{
+  border-radius:0 8px 8px 0;
+}
+
+.cad-date-input{
+  min-height:34px;
+  border-radius:0;
+}
+
+/* tablet */
+@media (max-width: 900px){
+  .cad-grid-3{
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* smartphone */
+@media (max-width: 700px){
+  .cad-grid-2{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:10px;
+  }
+
+  .cad-grid-3{
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+  }
+
+  .cad-grid-2 .field,
+  .cad-grid-3 .field{
+    min-width:0;
+  }
+
+  .cad-date-inline{
+    grid-template-columns:32px minmax(0, 1fr) 32px;
+  }
+
+  .cad-date-btn,
+  .cad-date-input{
+    min-height:34px;
+  }
+}
+
+/* celular muito estreito */
+@media (max-width: 420px){
+  .cad-grid-2{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .cad-grid-3{
+    grid-template-columns:1fr 1fr;
+  }
+}
 /* =========================================================
    ANIMAÇÕES
 ========================================================= */
