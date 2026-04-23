@@ -8,8 +8,8 @@
   };
 
   const QTD_PADRAO = {
-    qua: { centro: 80, boulevard: 80, lotobel: 60, santa: 6, via: 9 },
-    sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 8, via: 11 }
+    qua: { centro: 80, boulevard: 80, lotobel: 60, santa: 60, via: 90 },
+    sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 80, via: 110 }
   };
 
   function applyFederalType(tipo) {
