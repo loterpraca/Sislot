@@ -6,7 +6,7 @@
   <title>Federal Cadastro — SISLOT</title>
 
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-   <link rel="stylesheet" href="./css/federal.css">
+  <link rel="stylesheet" href="./css/federal.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./sislot-config.js"></script>
@@ -27,8 +27,8 @@
     </div>
   </header>
 
-<main class="main">
-  <section class="page-header">
+  <main class="main">
+    <section class="page-header">
       <div>
         <div class="page-title">Cadastro de Concurso</div>
         <div class="page-sub">Cadastro limpo, sem fechamento, auditoria e ajustes.</div>
@@ -38,19 +38,31 @@
     <div class="status-bar" id="st-cadastro"></div>
 
     <section class="card" id="card-form-cadastro">
-      <div class="sep"><span class="sep-label">Dados do concurso</span><div class="sep-line"></div></div>
+      <div class="sep">
+        <span class="sep-label">Dados do concurso</span>
+        <div class="sep-line"></div>
+      </div>
 
-      <div class="grid-4">
-        <div class="field"><label class="field-label">Modalidade</label><input value="Federal" readonly></div>
-        <div class="field"><label class="field-label req">Concurso</label><input id="cad-concurso" placeholder="3060"></div>
+      <div class="cad-grid-2" style="margin-top:14px">
+        <div class="field">
+          <label class="field-label">Modalidade</label>
+          <input value="Federal" readonly>
+        </div>
+
+        <div class="field">
+          <label class="field-label req">Concurso</label>
+          <input id="cad-concurso" placeholder="3060">
+        </div>
+
         <div class="field">
           <label class="field-label req">Data sorteio</label>
-          <div style="display:grid;grid-template-columns:36px 1fr 36px;gap:0;align-items:stretch">
-            <button type="button" class="btn-secondary" id="cad-data-prev" style="border-radius:8px 0 0 8px;padding:0;height:34px;justify-content:center">−</button>
-            <input type="date" id="cad-dt-sorteio" style="border-radius:0;height:34px">
-            <button type="button" class="btn-secondary" id="cad-data-next" style="border-radius:0 8px 8px 0;padding:0;height:34px;justify-content:center">+</button>
+          <div class="cad-date-inline">
+            <button type="button" class="btn-secondary cad-date-btn" id="cad-data-prev">−</button>
+            <input type="date" id="cad-dt-sorteio" class="cad-date-input">
+            <button type="button" class="btn-secondary cad-date-btn" id="cad-data-next">+</button>
           </div>
         </div>
+
         <div class="field">
           <label class="field-label req">Tipo</label>
           <select id="cad-tipo">
@@ -58,23 +70,51 @@
             <option value="ESPECIAL">Especial</option>
           </select>
         </div>
+
+        <div class="field">
+          <label class="field-label req">Valor fração</label>
+          <input type="number" id="cad-valor-fracao" step="0.01">
+        </div>
+
+        <div class="field">
+          <label class="field-label req">Valor custo</label>
+          <input type="number" id="cad-valor-custo" step="0.01">
+        </div>
       </div>
 
-      <div class="grid-4" style="margin-top:14px">
-        <div class="field"><label class="field-label req">Valor fração</label><input type="number" id="cad-valor-fracao" step="0.01"></div>
-        <div class="field"><label class="field-label req">Valor custo</label><input type="number" id="cad-valor-custo" step="0.01"></div>
-        <div class="field"><label class="field-label req">Frações/bilhete</label><input type="number" id="cad-fracoes-bilhete" value="10"></div>
-        <div class="field"><label class="field-label">Padrão automático</label><input value="Quarta / Sábado" readonly></div>
+      <!-- Mantido oculto para não quebrar o JS -->
+      <input type="hidden" id="cad-fracoes-bilhete" value="10">
+
+      <div class="sep">
+        <span class="sep-label">Qtd inicial por loteria</span>
+        <div class="sep-line"></div>
       </div>
 
-      <div class="sep"><span class="sep-label">Qtd inicial por loteria</span><div class="sep-line"></div></div>
+      <div class="cad-grid-3" style="margin-top:14px">
+        <div class="field">
+          <label class="field-label">Centro</label>
+          <input type="number" id="cad-qtd-centro">
+        </div>
 
-      <div class="grid-5" style="margin-top:14px">
-        <div class="field"><label class="field-label">Centro</label><input type="number" id="cad-qtd-centro"></div>
-        <div class="field"><label class="field-label">Boulevard</label><input type="number" id="cad-qtd-boulevard"></div>
-        <div class="field"><label class="field-label">Lotobel</label><input type="number" id="cad-qtd-lotobel"></div>
-        <div class="field"><label class="field-label">Santa Tereza</label><input type="number" id="cad-qtd-santa"></div>
-        <div class="field"><label class="field-label">Via Brasil</label><input type="number" id="cad-qtd-via"></div>
+        <div class="field">
+          <label class="field-label">Boulevard</label>
+          <input type="number" id="cad-qtd-boulevard">
+        </div>
+
+        <div class="field">
+          <label class="field-label">Lotobel</label>
+          <input type="number" id="cad-qtd-lotobel">
+        </div>
+
+        <div class="field">
+          <label class="field-label">Santa Tereza</label>
+          <input type="number" id="cad-qtd-santa">
+        </div>
+
+        <div class="field">
+          <label class="field-label">Via Brasil</label>
+          <input type="number" id="cad-qtd-via">
+        </div>
       </div>
 
       <div class="flex" style="margin-top:14px">
