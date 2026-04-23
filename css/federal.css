@@ -1243,19 +1243,21 @@ input[readonly] {
   .federal-menu-pill { min-height: 40px; font-size: 10px; }
 }
 /* =========================================================
-   CADASTRO — AJUSTE MOBILE
+   CADASTRO — DESKTOP 3 POR LINHA / MOBILE ENXUTO
 ========================================================= */
-.cad-grid-2,
-.cad-grid-3{
+.cad-grid-top,
+.cad-grid-bottom,
+.cad-grid-lojas{
   display:grid;
   gap:14px;
 }
 
-.cad-grid-2{
-  grid-template-columns:repeat(2, minmax(0, 1fr));
+.cad-grid-top,
+.cad-grid-bottom{
+  grid-template-columns:repeat(3, minmax(0, 1fr));
 }
 
-.cad-grid-3{
+.cad-grid-lojas{
   grid-template-columns:repeat(3, minmax(0, 1fr));
 }
 
@@ -1288,25 +1290,32 @@ input[readonly] {
 
 /* tablet */
 @media (max-width: 900px){
-  .cad-grid-3{
+  .cad-grid-top,
+  .cad-grid-bottom{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .cad-grid-lojas{
     grid-template-columns:repeat(3, minmax(0, 1fr));
   }
 }
 
 /* smartphone */
 @media (max-width: 700px){
-  .cad-grid-2{
+  .cad-grid-top,
+  .cad-grid-bottom{
     grid-template-columns:repeat(2, minmax(0, 1fr));
     gap:10px;
   }
 
-  .cad-grid-3{
+  .cad-grid-lojas{
     grid-template-columns:repeat(3, minmax(0, 1fr));
     gap:10px;
   }
 
-  .cad-grid-2 .field,
-  .cad-grid-3 .field{
+  .cad-grid-top .field,
+  .cad-grid-bottom .field,
+  .cad-grid-lojas .field{
     min-width:0;
   }
 
@@ -1322,11 +1331,12 @@ input[readonly] {
 
 /* celular muito estreito */
 @media (max-width: 420px){
-  .cad-grid-2{
+  .cad-grid-top,
+  .cad-grid-bottom{
     grid-template-columns:1fr 1fr;
   }
 
-  .cad-grid-3{
+  .cad-grid-lojas{
     grid-template-columns:1fr 1fr;
   }
 }
