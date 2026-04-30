@@ -168,16 +168,10 @@ async function bootstrap() {
   const lojaTree = $('lojaTreeWrap');
   if (lojaTree) lojaTree.addEventListener('click', ciclarLojaTree);
 
-  ['saldo-periodo','saldo-mes','saldo-produto','saldo-status'].forEach(id => {
-    $(id)?.addEventListener('change', () => {
-      if (id === 'saldo-periodo') {
-        const wrap = $('wrap-saldo-mes');
-        if (wrap) wrap.style.display = $(id).value === 'total' ? 'none' : '';
-      }
-      renderSaldo();
-    });
+  ['saldo-produto','saldo-status'].forEach(id => {
+  $(id)?.addEventListener('change', renderSaldo);
   });
-
+  
   $('btn-pagar-tudo')?.addEventListener('click', pagarTudo);
 
   ['mov-produto','mov-origem','mov-destino','mov-mes','mov-status'].forEach(id => {
@@ -285,7 +279,7 @@ function preencherSelectsMes() {
     state.detalhes.map(m => String(m.mes_ref || '').slice(0, 10)).filter(Boolean)
   )].sort().reverse();
 
-  ['saldo-mes','mov-mes'].forEach(id => {
+  ['mov-mes'].forEach(id => {
     const sel = $(id); if (!sel) return;
     const cur = sel.value;
     sel.innerHTML = `<option value="">${id === 'saldo-mes' ? 'Todos os meses' : 'Todos'}</option>`;
