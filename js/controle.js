@@ -221,18 +221,32 @@ async function loadCards() {
 }
 
 async function loadDetalhes() {
-  const { data, error } = await sb
-    .from('view_controle_financeiro_detalhe')
-    .select('*')
-    .order('id', { ascending: false });
+  const PAGE_SIZE = 1000;
+  let from = 0;
+  let all = [];
 
-  if (error) {
-    console.error('loadDetalhes error:', error);
-    state.detalhes = [];
-    return;
+  while (true) {
+    const { data, error } = await sb
+      .from('view_controle_financeiro_detalhe')
+      .select('*')
+      .order('id', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error('loadDetalhes error:', error);
+      state.detalhes = [];
+      return;
+    }
+
+    const rows = data || [];
+    all = all.concat(rows);
+
+    if (rows.length < PAGE_SIZE) break;
+
+    from += PAGE_SIZE;
   }
 
-  state.detalhes = (data || []).map(r => ({
+  state.detalhes = all.map(r => ({
     ...r,
     produto: r.origem_tipo,
     valor_acerto: Number(r.valor || 0),
@@ -244,6 +258,8 @@ async function loadDetalhes() {
     qtd_label: '—',
     unit_label: '—',
   }));
+
+  console.log('[Controle] detalhes carregados:', state.detalhes.length);
 }
 
 // ══════════════════════════════════════════════════════════
