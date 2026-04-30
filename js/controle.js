@@ -324,14 +324,14 @@ function preencherSelectsLojas() {
 // RENDER — ABA SALDO
 // ══════════════════════════════════════════════════════════
 function renderSaldo() {
-  const periodo = $('saldo-periodo')?.value || 'mes';
-  const mesRef  = $('saldo-mes')?.value     || '';
   const produto = $('saldo-produto')?.value || '';
   const status  = $('saldo-status')?.value  || 'PENDENTE';
 
   let cards = [...state.cards];
 
-  if (produto) cards = cards.filter(c => c.origem_tipo === produto);
+  if (produto) {
+    cards = cards.filter(c => c.origem_tipo === produto);
+  }
 
   if (state.lojaFiltro) {
     const id = String(state.lojaFiltro);
@@ -340,32 +340,26 @@ function renderSaldo() {
     );
   }
 
+  // A view_card_acertos só traz saldo pendente consolidado.
+  // Se selecionar PAGO, não há card de saldo líquido a exibir.
   if (status && status !== 'PENDENTE') {
     cards = [];
   }
 
-  if (periodo !== 'total' && mesRef) {
-    const detalhesMes = detalhesFiltradosBase().filter(m =>
-      String(m.mes_ref || '').slice(0, 10) === String(mesRef)
-    );
-
-    const permitidos = new Set(
-      detalhesMes.map(m => `${m.origem_tipo}|${Math.min(Number(m.loja_credora_id), Number(m.loja_devedora_id))}|${Math.max(Number(m.loja_credora_id), Number(m.loja_devedora_id))}`)
-    );
-
-    cards = cards.filter(c =>
-      permitidos.has(`${c.origem_tipo}|${Math.min(Number(c.loja_a_id), Number(c.loja_b_id))}|${Math.max(Number(c.loja_a_id), Number(c.loja_b_id))}`)
-    );
-  }
-
-  const detalhesParaKpi = detalhesFiltradosBase().filter(m => {
+  // KPIs da aba saldo devem usar state.detalhes diretamente,
+  // não detalhesFiltradosBase(), porque aquela função lê filtros da aba Movimentações.
+  const detalhesParaKpi = state.detalhes.filter(m => {
     if (produto && m.origem_tipo !== produto) return false;
-    if (periodo !== 'total' && mesRef && String(m.mes_ref || '').slice(0,10) !== String(mesRef)) return false;
     if (status && m.acerto_status !== status) return false;
+
     if (state.lojaFiltro) {
       const id = String(state.lojaFiltro);
-      if (String(m.loja_credora_id) !== id && String(m.loja_devedora_id) !== id) return false;
+      if (
+        String(m.loja_credora_id) !== id &&
+        String(m.loja_devedora_id) !== id
+      ) return false;
     }
+
     return true;
   });
 
@@ -386,7 +380,7 @@ function renderSaldo() {
       { l:'Total pendente', v:fmtMoney(totalPendente), s:`${qtdPendente} relação(ões)`, cor:'var(--amber)'  },
       { l:'Total quitado',  v:fmtMoney(totalPago),     s:`${qtdQuitado} relação(ões)`, cor:'var(--accent)' },
       { l:'Pares',          v:cards.length,            s:'com pendência',               cor:'var(--sky)'    },
-      { l:'Referência',     v:mesRef ? fmtMes(mesRef) : periodo === 'total' ? 'Acumulado' : 'Todos', s:'período', cor:'var(--purple)' },
+      { l:'Referência',     v:'Acumulado',              s:'consolidado geral',           cor:'var(--purple)' },
     ].map(({ l, v, s, cor }) => `
       <div class="kpi" style="--kpi-color:${cor}">
         <div class="kpi-label">${l}</div>
@@ -397,11 +391,7 @@ function renderSaldo() {
 
   const sepLabel = $('sep-label-saldo');
   if (sepLabel) {
-    sepLabel.textContent = periodo === 'total'
-      ? 'Saldo total acumulado por par de lojas'
-      : mesRef
-        ? `Saldo de ${fmtMes(mesRef)} por par de lojas`
-        : 'Saldo por par de lojas — todos os meses';
+    sepLabel.textContent = 'Saldo total acumulado por par de lojas';
   }
 
   const sepCount = $('saldo-count');
