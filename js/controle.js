@@ -191,14 +191,18 @@ async function bootstrap() {
 // LOAD
 // ══════════════════════════════════════════════════════════
 async function refreshAll() {
-  await Promise.all([loadCards(), loadDetalhes()]);
+  await loadDetalhes();
+
+  // Gera os cards da aba Saldo com base no detalhe real do financeiro.
+  // Assim não depende da view_card_acertos.
+  state.cards = gerarCardsAPartirDosDetalhes();
+
   preencherSelectsMes();
   preencherSelectsLojas();
   atualizarHeaderLoja();
   renderSaldo();
   renderMovimentacoes();
 }
-
 async function loadCards() {
   const { data, error } = await sb
     .from('view_card_acertos')
@@ -329,7 +333,74 @@ function preencherSelectsLojas() {
     });
   });
 }
+function gerarCardsAPartirDosDetalhes() {
+  const mapa = new Map();
 
+  state.detalhes
+    .filter(m => m.acerto_status === 'PENDENTE')
+    .forEach(m => {
+      const origemTipo = m.origem_tipo;
+      const devedoraId = Number(m.loja_devedora_id);
+      const credoraId  = Number(m.loja_credora_id);
+      const valor      = Number(m.valor || 0);
+
+      if (!origemTipo || !devedoraId || !credoraId || !valor) return;
+
+      const lojaAId = Math.min(devedoraId, credoraId);
+      const lojaBId = Math.max(devedoraId, credoraId);
+      const key = `${origemTipo}|${lojaAId}|${lojaBId}`;
+
+      if (!mapa.has(key)) {
+        mapa.set(key, {
+          origem_tipo: origemTipo,
+          loja_a_id: lojaAId,
+          loja_a_nome: lookupLoja(lojaAId),
+          loja_b_id: lojaBId,
+          loja_b_nome: lookupLoja(lojaBId),
+          saldo: 0,
+          qtd_pendencias: 0,
+        });
+      }
+
+      const item = mapa.get(key);
+
+      // Mesma lógica do saldo líquido:
+      // saldo positivo = loja A deve loja B
+      // saldo negativo = loja B deve loja A
+      if (devedoraId === lojaAId && credoraId === lojaBId) {
+        item.saldo += valor;
+      } else {
+        item.saldo -= valor;
+      }
+
+      item.qtd_pendencias += 1;
+    });
+
+  return [...mapa.values()]
+    .filter(p => Math.abs(p.saldo) > 0.009)
+    .map(p => {
+      const saldoPositivo = p.saldo > 0;
+
+      return {
+        origem_tipo: p.origem_tipo,
+        loja_a_id: p.loja_a_id,
+        loja_a_nome: p.loja_a_nome,
+        loja_b_id: p.loja_b_id,
+        loja_b_nome: p.loja_b_nome,
+        devedor: saldoPositivo ? p.loja_a_nome : p.loja_b_nome,
+        credor:  saldoPositivo ? p.loja_b_nome : p.loja_a_nome,
+        valor_liquido: Math.abs(p.saldo),
+        qtd_pendencias: p.qtd_pendencias,
+        mes_ref: null,
+        status_acerto: 'PENDENTE',
+      };
+    })
+    .sort((a, b) =>
+      String(a.origem_tipo).localeCompare(String(b.origem_tipo)) ||
+      String(a.devedor).localeCompare(String(b.devedor)) ||
+      String(a.credor).localeCompare(String(b.credor))
+    );
+}
 // ══════════════════════════════════════════════════════════
 // RENDER — ABA SALDO
 // ══════════════════════════════════════════════════════════
