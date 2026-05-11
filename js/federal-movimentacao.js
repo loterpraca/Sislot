@@ -1133,7 +1133,7 @@
       renderMovDestinosGrid();
     });
 
-    $('mov-destinos-grid')?.addEventListener('input', (e) => {
+   $('mov-destinos-grid')?.addEventListener('input', (e) => {
   const qtyInput = e.target.closest('[data-dest-input]');
   if (qtyInput) {
     const destId = String(qtyInput.dataset.destId || '');
@@ -1161,6 +1161,7 @@
     return;
   }
 });
+
 $('mov-destinos-grid')?.addEventListener('change', (e) => {
   const desfechoInput = e.target.closest('[data-desfecho-key][data-field]');
   if (!desfechoInput) return;
