@@ -107,8 +107,14 @@ function formatarDataSegura(data) {
 
 function atualizarDateDisplay() {
     const displayEl = $('dateDisplay');
+    const pickerEl = $('datePicker');
+
     if (displayEl) {
         displayEl.textContent = formatarDataSegura(dataAtual);
+    }
+
+    if (pickerEl) {
+        pickerEl.value = isoDate(dataAtual);
     }
 }
 
