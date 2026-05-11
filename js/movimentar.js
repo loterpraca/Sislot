@@ -106,18 +106,17 @@ function formatarDataSegura(data) {
 }
 
 function atualizarDateDisplay() {
-    const displayEl = $('dateDisplay');
-    const pickerEl = $('datePicker');
+    const displayTextEl = $('dateDisplayText');
+    const pickerEl = $('calendarPicker');
 
-    if (displayEl) {
-        displayEl.textContent = formatarDataSegura(dataAtual);
+    if (displayTextEl) {
+        displayTextEl.textContent = formatarDataSegura(dataAtual);
     }
 
     if (pickerEl) {
         pickerEl.value = isoDate(dataAtual);
     }
 }
-
 // =====================================================
 // FUNÇÕES ASSÍNCRONAS
 // =====================================================
