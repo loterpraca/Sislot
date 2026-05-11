@@ -31,6 +31,7 @@
     <div class="sl-header-info">
       <div class="sl-header-nome" id="headerNome">Todas as Lojas</div>
       <div class="sl-header-sub">Movimentação de Cotas</div>
+      
     </div>
 
     <div class="sl-header-clock" id="relogio">--:--:--</div>
@@ -61,6 +62,12 @@
      MAIN
 ════════════════════════════════════════════════════ -->
 <div class="mov-main">
+
+  <div class="mov-page-head">
+    <div class="mov-page-title">Movimentar Cotas</div>
+    <div class="mov-page-subtitle">Selecione um bolão vigente e distribua as cotas entre as lojas</div>
+    <div class="mov-count mov-count-head" id="boloesCount"></div>
+  </div>
 
   <!-- FILTER BAR -->
   <div class="mov-filter-bar" id="filterBar">
@@ -149,9 +156,7 @@
       </button>
 
     </div>
-
-    <div class="mov-count" id="boloesCount"></div>
-  </div>
+   </div>
 
   <!-- LISTA -->
   <div class="mov-list-area" id="listArea">
