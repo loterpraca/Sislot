@@ -1162,23 +1162,6 @@
   }
 });
 
-$('mov-destinos-grid')?.addEventListener('change', (e) => {
-  const desfechoInput = e.target.closest('[data-desfecho-key][data-field]');
-  if (!desfechoInput) return;
-
-  const desfechoKey = String(desfechoInput.dataset.desfechoKey || '');
-  const field = String(desfechoInput.dataset.field || '');
-
-  if (!desfechoKey || !field) return;
-
-  if (!state.desfechoDraft[desfechoKey]) {
-    state.desfechoDraft[desfechoKey] = {};
-  }
-
-  state.desfechoDraft[desfechoKey][field] = desfechoInput.value;
-
-  renderMovDestinosGrid();
-});
     $('btn-salvar-mov')?.addEventListener('click', saveMov);
     $('btn-limpar-mov')?.addEventListener('click', clearMov);
 
