@@ -759,10 +759,10 @@
             <span>Qtd total transferida</span>
             <strong>${fmtSaldo(calc.qtdTransferida)}</strong>
           </div>
-          <div class="mov-fin-box">
-            <span>Total financeiro</span>
-            <strong>${money(calc.totalFinanceiro)}</strong>
-          </div>
+         <div class="mov-fin-box">
+  <span>Total financeiro</span>
+  <strong data-preview-total-financeiro>${money(calc.totalFinanceiro)}</strong>
+</div>
         </div>
 
         <div class="mov-expand-row">
@@ -773,7 +773,7 @@
           <div class="mov-expand-controls">
             <div class="field">
               <label class="field-label">Qtd vendida</label>
-              <div class="mov-inline-readonly">${fmtSaldo(calc.qtdVendida)}</div>
+              <div class="mov-inline-readonly" data-preview-qtd-vendida>${fmtSaldo(calc.qtdVendida)}</div>
             </div>
             <div class="field">
               <label class="field-label">Valor</label>
@@ -831,19 +831,19 @@
 
         <div class="mov-mini-grid">
           <div class="mov-balance-box">
-            <span>Saldo restante</span>
-            <strong>${fmtSaldo(calc.saldoRestante)}</strong>
-          </div>
-          <div class="mov-mini-box">
-            <span>Total itens do desfecho</span>
-            <strong>${fmtSaldo(calc.totalQtd)}</strong>
-          </div>
+  <span>Saldo restante</span>
+  <strong data-preview-saldo-restante>${fmtSaldo(calc.saldoRestante)}</strong>
+</div>
+         <div class="mov-mini-box">
+  <span>Total itens do desfecho</span>
+  <strong data-preview-total-qtd>${fmtSaldo(calc.totalQtd)}</strong>
+</div>
         </div>
 
         <div class="mov-expand-actions">
-          <button type="button" class="btn-primary" data-save-desfecho data-dest-id="${destino.id}" ${calc.hasError ? 'disabled' : ''}>
-            Salvar desfecho
-          </button>
+         <button type="button" class="btn-primary" data-save-desfecho data-preview-save-btn data-dest-id="${destino.id}" ${calc.hasError ? 'disabled' : ''}>
+  Salvar desfecho
+</button>
         </div>
       </div>
     `;
@@ -1079,6 +1079,38 @@
     });
   }
 
+  function updateDesfechoPreview(destinoId) {
+  const federal = getFederalSelecionado();
+  const resumo = federal ? getResumoByFederalId(federal.id) : null;
+
+  if (!federal || !resumo || !destinoId) return;
+
+  const card = document.querySelector(
+    `#mov-destinos-grid [data-dest-card][data-dest-id="${CSS.escape(String(destinoId))}"]`
+  );
+
+  if (!card) return;
+
+  const calc = getDesfechoCalc(resumo, destinoId, federal);
+  if (!calc) return;
+
+  const qtdVendidaEl = card.querySelector('[data-preview-qtd-vendida]');
+  const totalFinanceiroEl = card.querySelector('[data-preview-total-financeiro]');
+  const saldoRestanteEl = card.querySelector('[data-preview-saldo-restante]');
+  const totalQtdEl = card.querySelector('[data-preview-total-qtd]');
+  const saveBtn = card.querySelector('[data-preview-save-btn]');
+
+  if (qtdVendidaEl) qtdVendidaEl.textContent = fmtSaldo(calc.qtdVendida);
+  if (totalFinanceiroEl) totalFinanceiroEl.textContent = money(calc.totalFinanceiro);
+  if (saldoRestanteEl) saldoRestanteEl.textContent = fmtSaldo(calc.saldoRestante);
+  if (totalQtdEl) totalQtdEl.textContent = fmtSaldo(calc.totalQtd);
+
+  if (saveBtn) {
+    saveBtn.disabled = !!calc.hasError;
+  }
+
+  card.classList.toggle('has-error', !!calc.hasError);
+}
   function bindEvents() {
     bindDateEvents();
 
@@ -1155,7 +1187,9 @@
     }
 
     state.desfechoDraft[desfechoKey][field] = desfechoInput.value;
-
+    
+    updateDesfechoPreview(desfechoInput.dataset.destId);
+    
     // Não renderizar aqui.
     // Renderizar enquanto digita destrói o input e faz perder o foco.
     return;
