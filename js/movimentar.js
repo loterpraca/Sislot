@@ -617,7 +617,7 @@ const datePicker = $('calendarPicker');
         fecharPanel();
         buscarBoloes();
     });
-    if (dateDisplay && datePicker) {
+   if (dateDisplay && datePicker) {
     dateDisplay.addEventListener('click', () => {
         datePicker.value = isoDate(dataAtual);
 
