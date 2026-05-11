@@ -17,6 +17,28 @@ const fmtDate  = v => {
   const [y, m, d] = s.split('-');
   return `${d}/${m}/${y}`;
 };
+const fmtDateTime = v => {
+  if (!v) return '—';
+
+  const raw = String(v)
+    .replace(' ', 'T')
+    .replace(/(\.\d{3})\d+/, '$1');
+
+  const d = new Date(raw);
+
+  if (isNaN(d.getTime())) {
+    return fmtDate(v);
+  }
+
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+};
 const fmtMes = mesIso => {
   if (!mesIso) return '—';
   const [y, m] = String(mesIso).slice(0, 7).split('-');
@@ -251,17 +273,28 @@ async function loadDetalhes() {
   }
 
   state.detalhes = all.map(r => ({
-    ...r,
-    produto: r.origem_tipo,
-    valor_acerto: Number(r.valor || 0),
-    mes_ref: mesDeData(r.mes_ref || r.data_acerto || r.created_at),
-    ref_label: r.referencia || `${r.origem_tipo} #${r.movimentacao_id}`,
-    loteria_origem: r.loja_credora_id,
-    loteria_destino: r.loja_devedora_id,
-    data_ref_exibicao: r.data_acerto || r.mes_ref || r.created_at,
-    qtd_label: '—',
-    unit_label: '—',
-  }));
+  ...r,
+  produto: r.origem_tipo,
+  valor_acerto: Number(r.valor || 0),
+
+  // Competência financeira usada no filtro "Mês"
+  mes_ref: mesDeData(r.mes_ref),
+
+  ref_label: r.referencia || `${r.origem_tipo} #${r.movimentacao_id}`,
+  loteria_origem: r.loja_credora_id,
+  loteria_destino: r.loja_devedora_id,
+
+  // Datas para exibição
+  data_ref_exibicao: r.data_movimento || r.data_acerto || r.mes_ref,
+  data_update_exibicao: r.data_update || null,
+
+  // Usuários para auditoria
+  usuario_movimento_nome: r.usuario_movimento_nome || '—',
+  usuario_acerto_nome: r.usuario_acerto_nome || '—',
+
+  qtd_label: '—',
+  unit_label: '—',
+}));
 
   console.log('[Controle] detalhes carregados:', state.detalhes.length);
 }
@@ -547,7 +580,7 @@ function renderMovimentacoes() {
     const corProd = PRODUTO_COR[m.origem_tipo] || 'var(--muted)';
 
     return `<tr>
-      <td class="mono">${fmtDate(m.mes_ref || m.data_ref_exibicao)}</td>
+      <td class="mono">${(m.mes_ref || m.data_ref_exibicao)}</td>
       <td>
         <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;
                      background:${corProd}18;color:${corProd};border:1px solid ${corProd}40">
@@ -561,7 +594,7 @@ function renderMovimentacoes() {
       <td class="money">${m.unit_label || '—'}</td>
       <td class="money">${fmtMoney(m.valor)}</td>
       <td><span class="badge ${statusClass}">${m.acerto_status || 'PENDENTE'}</span></td>
-      <td class="mono">${fmtDate(m.data_acerto)}</td>
+      <td class="mono">${(m.data_acerto)}</td>
     </tr>`;
   }).join('')
   : `<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--dim)">
