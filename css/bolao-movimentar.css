@@ -58,6 +58,67 @@
 }
 
 /* ── Seção de data ───────────────────────────────────────── */
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.date-stepper {
+  display: grid;
+  grid-template-columns: 38px minmax(138px, 170px) 38px;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.date-display {
+  min-width: 138px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.date-display:active {
+  transform: scale(.98);
+}
+
+.date-picker-hidden {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+@media (max-width: 520px) {
+  .date-bar {
+    align-items: stretch;
+  }
+
+  .date-stepper {
+    grid-template-columns: 40px minmax(150px, 1fr) 40px;
+    width: 100%;
+  }
+
+  .date-display {
+    min-width: 150px;
+  }
+
+  .boloes-count {
+    width: 100%;
+  }
+}
+
 .mov-date-section {
   display: flex;
   align-items: center;
