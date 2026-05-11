@@ -1160,20 +1160,55 @@ body.panel-open .mov-list-area {
   }
 }
 /* ═══════════════════════════════════════════════════════════
-   SISLOT — PATCHES: calendário escuro + contador no header
-   Adicione ao final do movimentar.css (ou importe após ele)
+   SISLOT — PATCHES v2
+   Cole no FINAL do movimentar.css
 ════════════════════════════════════════════════════════════ */
 
 /* ──────────────────────────────────────────────────────────
-   1. CABEÇALHO DA PÁGINA — novo layout com contador
+   1. INPUT DE DATA OCULTO
+   O class é "date-picker-hidden" mas o CSS base define
+   ".mov-calendar-hidden" — daí o input aparece visível.
 ────────────────────────────────────────────────────────── */
+.date-picker-hidden {
+  position: fixed !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  color: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  /* tema escuro para quando o picker nativo abre */
+  color-scheme: dark;
+}
 
+.date-picker-hidden::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
+
+/* ──────────────────────────────────────────────────────────
+   2. CABEÇALHO DA PÁGINA — empilhar verticalmente
+   O base CSS provavelmente coloca .page-header em flex-row.
+   Sobrescrevemos para flex-column com o contador no meio.
+────────────────────────────────────────────────────────── */
 .page-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 3px !important;
   margin-bottom: 16px;
-  padding: 2px 2px 0;
+  padding: 0;
+}
+
+/* Remove qualquer wrapper intermediário que possa existir */
+.page-header > div {
+  display: contents; /* dissolve o <div> sem quebrar os filhos */
 }
 
 .page-title {
@@ -1181,18 +1216,33 @@ body.panel-open .mov-list-area {
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.03em;
-  line-height: 1.15;
+  line-height: 1.2;
+  order: 1;
 }
 
-/* Contador de bolões — entre o título e o subtítulo */
+/* Linha de acento sutil sob o título */
+.page-title::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin-top: 5px;
+  background: linear-gradient(90deg, var(--t1), transparent);
+  border-radius: 2px;
+  opacity: .7;
+}
+
+/* Contador — entre título e subtítulo */
 .boloes-count {
+  order: 2;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text3);
-  min-height: 18px; /* reserva espaço mesmo quando vazio */
+  min-height: 16px;
+  margin: 1px 0;
 }
 
 .boloes-count span {
@@ -1201,94 +1251,48 @@ body.panel-open .mov-list-area {
   color: var(--t1);
 }
 
-/* Badge "pill" opcional — o JS continua funcionando com o innerHTML atual */
+/* Ponto verde antes do contador quando há conteúdo */
 .boloes-count:not(:empty)::before {
   content: '';
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--t1);
-  opacity: .7;
+  opacity: .65;
   flex-shrink: 0;
 }
 
 .page-subtitle {
+  order: 3;
   font-size: 12px;
   color: var(--text3);
   line-height: 1.4;
 }
 
 /* ──────────────────────────────────────────────────────────
-   2. CALENDÁRIO NATIVO — tema escuro
-   color-scheme: dark faz o picker do browser respeitar o
-   tema escuro em Chrome/Edge/Safari. Sem isso aparece branco.
+   3. DATE-BAR — remover possível espaço do contador antigo
 ────────────────────────────────────────────────────────── */
-
-.date-picker-hidden {
-  /* herda a posição off-screen do CSS original */
-  color-scheme: dark;
+.date-bar .boloes-count {
+  display: none !important; /* caso o HTML antigo ainda tenha um aqui */
 }
 
 /* ──────────────────────────────────────────────────────────
-   3. DATE-BAR — sem o contador (foi pro header)
+   4. PEQUENOS POLIMENTOS PREMIUM
 ────────────────────────────────────────────────────────── */
 
-/* Remove o espaço que antes era ocupado pelo .boloes-count
-   dentro da .date-bar (agora ele está no .page-header).
-   Se o seu CSS original já tem .date-bar com justify-content,
-   o bloco abaixo apenas garante o alinhamento limpo. */
-.date-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
+/* Scrollbar fina no painel de movimentação */
+.mov-panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--t4, #1a3060) transparent;
 }
+.mov-panel::-webkit-scrollbar       { width: 4px; }
+.mov-panel::-webkit-scrollbar-thumb { background: var(--t4, #1a3060); border-radius: 4px; }
 
-/* ──────────────────────────────────────────────────────────
-   4. TOQUES PREMIUM — detalhes refinados
-────────────────────────────────────────────────────────── */
-
-/* Linha de acento sutil sob o título da página */
-.page-title::after {
-  content: '';
-  display: block;
-  width: 28px;
-  height: 2px;
-  margin-top: 5px;
-  background: linear-gradient(90deg, var(--t1), var(--t2, var(--t1)));
-  border-radius: 2px;
-  opacity: .7;
-}
-
-/* Botão de data: fonte mono e tamanho generoso no mobile */
-.date-display {
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: .03em;
-}
-
-/* Sutil brilho nas cards ao passar o dedo (mobile touch) */
+/* Toque ativo nos cards (mobile) */
 @media (hover: none) {
   .bolao-card:active {
     background: var(--t5);
     border-color: var(--t4);
   }
-}
-
-/* Scrollbar discreta no painel móvel */
-.mov-panel {
-  scrollbar-width: thin;
-  scrollbar-color: var(--t4, #1a3060) transparent;
-}
-
-.mov-panel::-webkit-scrollbar {
-  width: 4px;
-}
-
-.mov-panel::-webkit-scrollbar-thumb {
-  background: var(--t4, #1a3060);
-  border-radius: 4px;
 }
