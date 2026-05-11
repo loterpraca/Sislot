@@ -589,6 +589,8 @@ function bind() {
     const btnDtPrev = $('btnDtPrev');
     const btnDtNext = $('btnDtNext');
     const btnHoje = $('btnHoje');
+    const dateDisplay = $('dateDisplay');
+    const datePicker = $('datePicker');
     const btnFecharPanel = $('btnFecharPanel');
     const btnZerarMov = $('btnZerarMov');
     const btnMovimentar = $('btnMovimentar');
@@ -616,6 +618,31 @@ function bind() {
         fecharPanel();
         buscarBoloes();
     });
+    if (dateDisplay && datePicker) {
+    dateDisplay.addEventListener('click', () => {
+        datePicker.value = isoDate(dataAtual);
+
+        if (typeof datePicker.showPicker === 'function') {
+            datePicker.showPicker();
+        } else {
+            datePicker.click();
+        }
+    });
+}
+
+if (datePicker) {
+    datePicker.addEventListener('change', () => {
+        if (!datePicker.value) return;
+
+        const [y, m, d] = datePicker.value.split('-').map(Number);
+        dataAtual = new Date(y, m - 1, d);
+
+        atualizarDateDisplay();
+        fecharPanel();
+        buscarBoloes();
+    });
+}
+    
     if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
     if (btnZerarMov) btnZerarMov.addEventListener('click', () => zerarMov());
     if (btnMovimentar) btnMovimentar.addEventListener('click', onMovimentar);
