@@ -696,6 +696,20 @@
 .mov-list-area { padding-bottom: 16px; }
 body.panel-open .mov-list-area { padding-bottom: 400px; }
 
+.mov-count-head {
+  position: static !important;
+  margin-top: 8px;
+  width: fit-content;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.mov-count-head span {
+  color: var(--t1);
+  font-weight: 700;
+}
 /* ── Animações exclusivas ────────────────────────────────── */
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(5px); }
