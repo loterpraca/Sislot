@@ -274,28 +274,41 @@ async function loadDetalhes() {
 
   state.detalhes = all.map(r => ({
   ...r,
+
+  // Mantém origem_tipo para filtros internos: FEDERAL, BOLAO, PRODUTO
   produto: r.origem_tipo,
   valor_acerto: Number(r.valor || 0),
 
   // Competência financeira usada no filtro "Mês"
   mes_ref: mesDeData(r.mes_ref),
 
-  ref_label: r.referencia || `${r.origem_tipo} #${r.movimentacao_id}`,
+  // Coluna Módulo da tabela: Virada, Federal, Lotofácil, Trevo da Sorte, Dia das Mães...
+  modalidade_label: r.modalidade || '—',
+
+  concurso_label: r.concurso || '—',
+  qtd_jogos_label: r.qtd_jogos ?? '—',
+  qtd_dezenas_label: r.qtd_dezenas ?? '—',
+
   loteria_origem: r.loja_credora_id,
   loteria_destino: r.loja_devedora_id,
 
-  // Datas para exibição
+  // Datas
   data_ref_exibicao: r.data_movimento || r.data_acerto || r.mes_ref,
   data_update_exibicao: r.data_update || null,
 
-  // Usuários para auditoria
+  // Usuários
   usuario_movimento_nome: r.usuario_movimento_nome || '—',
   usuario_acerto_nome: r.usuario_acerto_nome || '—',
 
-  qtd_label: '—',
-  unit_label: '—',
-}));
+  // Qtd e valores da transação
+  qtd_label: r.qtd_transacao ?? '—',
 
+  unit_label: r.valor_unitario_transacao != null
+    ? fmtMoney(r.valor_unitario_transacao)
+    : '—',
+
+  valor_total_transacao: Number(r.valor_total_transacao ?? r.valor ?? 0),
+}));
   console.log('[Controle] detalhes carregados:', state.detalhes.length);
 }
 
@@ -566,10 +579,11 @@ function buildCardNovo(p) {
 function renderMovimentacoes() {
   const movs = detalhesFiltradosBase();
   const totalPendente = movs.filter(m => m.acerto_status === 'PENDENTE')
-    .reduce((a, m) => a + Number(m.valor || 0), 0);
-  const totalPago = movs.filter(m => m.acerto_status === 'PAGO')
-    .reduce((a, m) => a + Number(m.valor || 0), 0);
+  .reduce((a, m) => a + Number(m.valor_total_transacao ?? m.valor ?? 0), 0);
 
+const totalPago = movs.filter(m => m.acerto_status === 'PAGO')
+  .reduce((a, m) => a + Number(m.valor_total_transacao ?? m.valor ?? 0), 0);
+  
   const tbody = $('tbody-movimentacoes');
   if (!tbody) return;
 
@@ -579,7 +593,7 @@ function renderMovimentacoes() {
       : 'b-warn';
     const corProd = PRODUTO_COR[m.origem_tipo] || 'var(--muted)';
 
-    return `<tr>
+   return `<tr>
   <td class="mono">${fmtDateTime(m.data_ref_exibicao)}</td>
   <td class="mono">${fmtDateTime(m.data_update_exibicao)}</td>
   <td>${m.usuario_movimento_nome || '—'}</td>
@@ -587,22 +601,27 @@ function renderMovimentacoes() {
   <td>
     <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;
                  background:${corProd}18;color:${corProd};border:1px solid ${corProd}40">
-      ${m.origem_tipo}
+      ${m.modalidade_label || '—'}
     </span>
   </td>
 
-  <td class="mono" style="font-size:11px">${m.ref_label}</td>
+  <td class="mono">${m.concurso_label || '—'}</td>
+  <td class="mono">${m.qtd_jogos_label ?? '—'}</td>
+  <td class="mono">${m.qtd_dezenas_label ?? '—'}</td>
+
   <td>${lookupLoja(m.loja_credora_id)}</td>
   <td>${lookupLoja(m.loja_devedora_id)}</td>
+
   <td class="mono">${m.qtd_label || '—'}</td>
   <td class="money">${m.unit_label || '—'}</td>
-  <td class="money">${fmtMoney(m.valor)}</td>
+  <td class="money">${fmtMoney(m.valor_total_transacao ?? m.valor)}</td>
+
   <td><span class="badge ${statusClass}">${m.acerto_status || 'PENDENTE'}</span></td>
   <td class="mono">${fmtDate(m.data_acerto)}</td>
   <td>${m.usuario_acerto_nome || '—'}</td>
 </tr>`;
   }).join('')
-  : `<tr><td colspan="13" style="padding:32px;text-align:center;color:var(--dim)">
+  : `<tr><td colspan="15" style="padding:32px;text-align:center;color:var(--dim)">
       Nenhum registro para os filtros selecionados.
      </td></tr>`;
 
