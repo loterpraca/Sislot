@@ -105,17 +105,57 @@ function formatarDataSegura(data) {
     }
 }
 
+function dataAtualISO() {
+    const d = dataAtual instanceof Date ? dataAtual : new Date(dataAtual);
+
+    if (isNaN(d.getTime())) return '';
+
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+
+    return `${y}-${m}-${dia}`;
+}
+
 function atualizarDateDisplay() {
-    const displayTextEl = $('dateDisplayText');
-    const pickerEl = $('calendarPicker');
+    const texto = $('dateDisplayText');
+    const picker = $('calendarPicker');
 
-    if (displayTextEl) {
-        displayTextEl.textContent = formatarDataSegura(dataAtual);
+    const iso = dataAtualISO();
+    if (!iso) return;
+
+    const [y, m, d] = iso.split('-');
+
+    if (texto) {
+        texto.textContent = `${d}/${m}/${y}`;
     }
 
-    if (pickerEl) {
-        pickerEl.value = isoDate(dataAtual);
+    if (picker) {
+        picker.value = iso;
     }
+}
+
+function aplicarDataReferencia(novaData) {
+    dataAtual = new Date(
+        novaData.getFullYear(),
+        novaData.getMonth(),
+        novaData.getDate()
+    );
+
+    atualizarDateDisplay();
+    fecharPanel();
+    buscarBoloes();
+}
+
+function moverDataReferencia(deltaDias) {
+    const d = new Date(
+        dataAtual.getFullYear(),
+        dataAtual.getMonth(),
+        dataAtual.getDate()
+    );
+
+    d.setDate(d.getDate() + deltaDias);
+    aplicarDataReferencia(d);
 }
 // =====================================================
 // FUNÇÕES ASSÍNCRONAS
@@ -132,7 +172,7 @@ async function buscarBoloes() {
     if (listaEl) listaEl.style.display = 'none';
     if (countEl) countEl.innerHTML = '';
 
-    const iso = isoDate(dataAtual);
+   const iso = dataAtualISO();
 
     const { data: boloes, error } = await sb
         .from('boloes')
@@ -599,47 +639,44 @@ const datePicker = $('calendarPicker');
     
     if (btnMenu) btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
     if (btnLogout) btnLogout.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
-    if (btnDtPrev) btnDtPrev.addEventListener('click', () => {
-        dataAtual.setDate(dataAtual.getDate() - 1);
+   if (btnDtPrev) {
+    btnDtPrev.onclick = () => moverDataReferencia(-1);
+}
+
+if (btnDtNext) {
+    btnDtNext.onclick = () => moverDataReferencia(1);
+}
+
+if (btnHoje) {
+    btnHoje.onclick = () => {
+        const hoje = new Date();
+        aplicarDataReferencia(new Date(
+            hoje.getFullYear(),
+            hoje.getMonth(),
+            hoje.getDate()
+        ));
+    };
+}
+
+if (dateDisplay && datePicker) {
+    dateDisplay.onclick = () => {
         atualizarDateDisplay();
-        fecharPanel();
-        buscarBoloes();
-    });
-    if (btnDtNext) btnDtNext.addEventListener('click', () => {
-        dataAtual.setDate(dataAtual.getDate() + 1);
-        atualizarDateDisplay();
-        fecharPanel();
-        buscarBoloes();
-    });
-    if (btnHoje) btnHoje.addEventListener('click', () => {
-        dataAtual = new Date();
-        atualizarDateDisplay();
-        fecharPanel();
-        buscarBoloes();
-    });
-   if (dateDisplay && datePicker) {
-    dateDisplay.addEventListener('click', () => {
-        datePicker.value = isoDate(dataAtual);
 
         if (typeof datePicker.showPicker === 'function') {
             datePicker.showPicker();
         } else {
             datePicker.click();
         }
-    });
+    };
 }
 
 if (datePicker) {
-    datePicker.addEventListener('change', () => {
+    datePicker.onchange = () => {
         if (!datePicker.value) return;
 
         const [y, m, d] = datePicker.value.split('-').map(Number);
-        dataAtual = new Date(y, m - 1, d);
-
-        atualizarDateDisplay();
-        fecharPanel();
-        buscarBoloes();
-    });
+        aplicarDataReferencia(new Date(y, m - 1, d));
+    };
 }
     
     if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
