@@ -1159,3 +1159,136 @@ body.panel-open .mov-list-area {
     flex: 1;
   }
 }
+/* ═══════════════════════════════════════════════════════════
+   SISLOT — PATCHES: calendário escuro + contador no header
+   Adicione ao final do movimentar.css (ou importe após ele)
+════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────
+   1. CABEÇALHO DA PÁGINA — novo layout com contador
+────────────────────────────────────────────────────────── */
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 2px 2px 0;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+/* Contador de bolões — entre o título e o subtítulo */
+.boloes-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  min-height: 18px; /* reserva espaço mesmo quando vazio */
+}
+
+.boloes-count span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--t1);
+}
+
+/* Badge "pill" opcional — o JS continua funcionando com o innerHTML atual */
+.boloes-count:not(:empty)::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--t1);
+  opacity: .7;
+  flex-shrink: 0;
+}
+
+.page-subtitle {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.4;
+}
+
+/* ──────────────────────────────────────────────────────────
+   2. CALENDÁRIO NATIVO — tema escuro
+   color-scheme: dark faz o picker do browser respeitar o
+   tema escuro em Chrome/Edge/Safari. Sem isso aparece branco.
+────────────────────────────────────────────────────────── */
+
+.date-picker-hidden {
+  /* herda a posição off-screen do CSS original */
+  color-scheme: dark;
+}
+
+/* ──────────────────────────────────────────────────────────
+   3. DATE-BAR — sem o contador (foi pro header)
+────────────────────────────────────────────────────────── */
+
+/* Remove o espaço que antes era ocupado pelo .boloes-count
+   dentro da .date-bar (agora ele está no .page-header).
+   Se o seu CSS original já tem .date-bar com justify-content,
+   o bloco abaixo apenas garante o alinhamento limpo. */
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+/* ──────────────────────────────────────────────────────────
+   4. TOQUES PREMIUM — detalhes refinados
+────────────────────────────────────────────────────────── */
+
+/* Linha de acento sutil sob o título da página */
+.page-title::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin-top: 5px;
+  background: linear-gradient(90deg, var(--t1), var(--t2, var(--t1)));
+  border-radius: 2px;
+  opacity: .7;
+}
+
+/* Botão de data: fonte mono e tamanho generoso no mobile */
+.date-display {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+/* Sutil brilho nas cards ao passar o dedo (mobile touch) */
+@media (hover: none) {
+  .bolao-card:active {
+    background: var(--t5);
+    border-color: var(--t4);
+  }
+}
+
+/* Scrollbar discreta no painel móvel */
+.mov-panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--t4, #1a3060) transparent;
+}
+
+.mov-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mov-panel::-webkit-scrollbar-thumb {
+  background: var(--t4, #1a3060);
+  border-radius: 4px;
+}
