@@ -344,8 +344,15 @@ function abrirPanel(b) {
                 ${loja.nome}${ehOrigem ? ' ★' : ''}
             </div>
             <div class="destino-input-wrap">
-                <input type="number" class="destino-input" id="dest-${loja.slug}"
-                    placeholder="0" min="-999" step="1" ${ehOrigem ? 'disabled' : ''}/>
+               <input
+    type="text"
+    inputmode="text"
+    class="destino-input"
+    id="dest-${loja.slug}"
+    placeholder="10 ou -10"
+    autocomplete="off"
+    ${ehOrigem ? 'disabled' : ''}
+/>
             </div>
             <div class="destino-hist" id="hist-${loja.slug}" title="Histórico">${ehOrigem ? '(origem)' : histStr}</div>
             <div class="destino-sub" id="sub-${loja.slug}">—</div>
@@ -367,10 +374,22 @@ function abrirPanel(b) {
     }
 }
 
+function parseDeltaCotas(value) {
+    const s = String(value || '')
+        .trim()
+        .replace(/\s+/g, '');
+
+    if (!s) return 0;
+
+    // Aceita: 10 ou -10
+    if (!/^-?\d+$/.test(s)) return 0;
+
+    return parseInt(s, 10) || 0;
+}
 function onDestInput(slug) {
     const inp = $(`dest-${slug}`);
     const sub = $(`sub-${slug}`);
-    const qtd = parseInt(inp?.value, 10) || 0;
+    const qtd = parseDeltaCotas(inp?.value);
     const cota = bolaoSelecionado?.valor_cota || 0;
 
     if (qtd !== 0) {
@@ -393,7 +412,7 @@ function calcTotal() {
     let total = 0;
     LOJAS.forEach(l => {
         const inp = $(`dest-${l.slug}`);
-        if (inp && !inp.disabled) total += Math.abs(parseInt(inp.value, 10) || 0);
+        if (inp && !inp.disabled) total += Math.abs(parseDeltaCotas(inp.value));
     });
     const totalEl = $('movTotal');
     if (totalEl) totalEl.textContent = total + ' cotas';
@@ -433,7 +452,7 @@ function onMovimentar() {
     LOJAS.forEach(l => {
         const inp = $(`dest-${l.slug}`);
         if (!inp || inp.disabled) return;
-        const qtd = parseInt(inp.value, 10) || 0;
+       const qtd = parseDeltaCotas(inp.value);
         if (qtd !== 0) {
             deltas[l.slug] = qtd;
             temDelta = true;
@@ -608,7 +627,7 @@ function bind() {
         LOJAS.forEach(l => {
             const inp = $(`dest-${l.slug}`);
             if (!inp || inp.disabled) return;
-            const qtd = parseInt(inp.value, 10) || 0;
+            const qtd = parseDeltaCotas(inp.value);
             if (qtd !== 0) deltas[l.slug] = qtd;
         });
         await doMovimentar(bolaoSelecionado, deltas);
