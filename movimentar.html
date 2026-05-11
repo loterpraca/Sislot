@@ -38,38 +38,43 @@
 </header>
 
 <div class="main">
+
+  <!-- ── Cabeçalho: título + contador + subtítulo ── -->
   <div class="page-header">
-    <div>
-      <div class="page-title">Movimentar Cotas</div>
-      <div class="page-subtitle">Selecione um bolão vigente e distribua as cotas entre as lojas</div>
-    </div>
+    <div class="page-title">Movimentar Cotas</div>
+    <!-- CONTADOR movido para cá: fica entre o título e o subtítulo -->
+    <div class="boloes-count" id="boloesCount"></div>
+    <div class="page-subtitle">Selecione um bolão vigente e distribua as cotas entre as lojas</div>
   </div>
 
+  <!-- ── Barra de data (sem o contador, que foi para o header) ── -->
   <div class="date-bar">
     <div class="date-label">Data Ref</div>
-   <div class="date-stepper">
-  <button class="btn-date" id="btnDtPrev" title="Dia anterior">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="15 18 9 12 15 6"/>
-    </svg>
-  </button>
+    <div class="date-stepper">
+      <button class="btn-date" id="btnDtPrev" title="Dia anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
 
-  <button type="button" class="date-display" id="dateDisplay" title="Clique para escolher uma data">
-    —
-  </button>
+      <!-- Botão visível com a data formatada -->
+      <button type="button" class="date-display" id="dateDisplay" title="Clique para escolher uma data">
+        —
+      </button>
 
-  <input type="date" id="datePicker" class="date-picker-hidden"/>
+      <!-- Input nativo oculto — id="datePicker" (o JS usa este ID) -->
+      <input type="date" id="datePicker" class="date-picker-hidden"/>
 
-  <button class="btn-date" id="btnDtNext" title="Próximo dia">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
-  </button>
-</div>
+      <button class="btn-date" id="btnDtNext" title="Próximo dia">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+    </div>
     <button class="btn-hoje" id="btnHoje">Hoje</button>
-    <div class="boloes-count" id="boloesCount"></div>
   </div>
 
+  <!-- ── Área principal de listagem ── -->
   <div class="list-area" id="listArea">
     <div id="stLoading" class="state-box">
       <div class="spinner"></div>
@@ -89,6 +94,7 @@
   </div>
 </div>
 
+<!-- ── Painel de movimentação ── -->
 <div class="mov-panel" id="movPanel">
   <div class="mov-panel-inner">
     <div class="mov-panel-header">
@@ -127,6 +133,7 @@
   </div>
 </div>
 
+<!-- ── Modal de confirmação ── -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
     <div class="confirm-icon">⇄</div>
