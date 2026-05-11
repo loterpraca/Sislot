@@ -588,8 +588,8 @@ function bind() {
     const btnDtPrev = $('btnDtPrev');
     const btnDtNext = $('btnDtNext');
     const btnHoje = $('btnHoje');
-    const dateDisplay = $('dateDisplay');
-    const datePicker = $('datePicker');
+const dateDisplay = $('dateDisplay');
+const datePicker = $('calendarPicker');
     const btnFecharPanel = $('btnFecharPanel');
     const btnZerarMov = $('btnZerarMov');
     const btnMovimentar = $('btnMovimentar');
