@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="./css/sislot-base.css"/>
   <link rel="stylesheet" href="./css/sislot-components.css"/>
-  <link rel="stylesheet" href="./css/bolao-movimentar.css?v=20260511-6"/>
+  <link rel="stylesheet" href="./css/bolao-movimentar.css"/>
 </head>
 <body>
 
@@ -31,7 +31,6 @@
     <div class="sl-header-info">
       <div class="sl-header-nome" id="headerNome">Todas as Lojas</div>
       <div class="sl-header-sub">Movimentação de Cotas</div>
-
     </div>
 
     <div class="sl-header-clock" id="relogio">--:--:--</div>
@@ -62,11 +61,6 @@
      MAIN
 ════════════════════════════════════════════════════ -->
 <div class="mov-main">
-
-  <div class="mov-page-head">
-    <div class="mov-page-title">Movimentar Cotas</div>
-    <div class="mov-count-head" id="boloesCount"></div>
-  </div>
 
   <!-- FILTER BAR -->
   <div class="mov-filter-bar" id="filterBar">
@@ -155,7 +149,9 @@
       </button>
 
     </div>
-   </div>
+
+    <div class="mov-count" id="boloesCount"></div>
+  </div>
 
   <!-- LISTA -->
   <div class="mov-list-area" id="listArea">
@@ -240,6 +236,6 @@
 <script src="./sislot-security.js"></script>
 <script src="./js/sislot-utils.js"></script>
 <script src="./js/sislot-theme.js"></script>
-<script src="./js/bolao-movimentar.js?v=20260511-6"></script>
+<script src="./js/bolao-movimentar.js"></script>
 </body>
 </html>
