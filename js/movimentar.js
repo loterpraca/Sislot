@@ -345,12 +345,14 @@ function abrirPanel(b) {
             </div>
             <div class="destino-input-wrap">
                <input
-    type="text"
-    inputmode="text"
+    type="number"
+    inputmode="decimal"
     class="destino-input"
     id="dest-${loja.slug}"
     placeholder="10 ou -10"
     autocomplete="off"
+    min="-999"
+    step="1"
     ${ehOrigem ? 'disabled' : ''}
 />
             </div>
