@@ -1134,24 +1134,33 @@
     });
 
     $('mov-destinos-grid')?.addEventListener('input', (e) => {
-      const qtyInput = e.target.closest('[data-dest-input]');
-      if (qtyInput) {
-        const destId = String(qtyInput.dataset.destId || '');
-        if (!destId) return;
-        getDraftByDestino(destId).qtd = qtyInput.value;
-        return;
-      }
+  const qtyInput = e.target.closest('[data-dest-input]');
+  if (qtyInput) {
+    const destId = String(qtyInput.dataset.destId || '');
+    if (!destId) return;
 
-      const desfechoInput = e.target.closest('[data-desfecho-key][data-field]');
-      if (desfechoInput) {
-        const desfechoKey = String(desfechoInput.dataset.desfechoKey || '');
-        const field = String(desfechoInput.dataset.field || '');
-        if (!desfechoKey || !field) return;
-        if (!state.desfechoDraft[desfechoKey]) state.desfechoDraft[desfechoKey] = {};
-        state.desfechoDraft[desfechoKey][field] = desfechoInput.value;
-        renderMovDestinosGrid();
-      }
-    });
+    getDraftByDestino(destId).qtd = qtyInput.value;
+    return;
+  }
+
+  const desfechoInput = e.target.closest('[data-desfecho-key][data-field]');
+  if (desfechoInput) {
+    const desfechoKey = String(desfechoInput.dataset.desfechoKey || '');
+    const field = String(desfechoInput.dataset.field || '');
+
+    if (!desfechoKey || !field) return;
+
+    if (!state.desfechoDraft[desfechoKey]) {
+      state.desfechoDraft[desfechoKey] = {};
+    }
+
+    state.desfechoDraft[desfechoKey][field] = desfechoInput.value;
+
+    // Não renderizar aqui.
+    // Renderizar enquanto digita destrói o input e faz perder o foco.
+    return;
+  }
+});
 
     $('btn-salvar-mov')?.addEventListener('click', saveMov);
     $('btn-limpar-mov')?.addEventListener('click', clearMov);
