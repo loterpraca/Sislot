@@ -1,6 +1,6 @@
 /**
  * SISLOT - Movimentação de Cotas
- * Versão corrigida - sem erros de await
+ * Versão corrigida - IDs do datePicker e dateDisplay ajustados
  */
 
 const sb = supabase.createClient(
@@ -12,7 +12,7 @@ const utils = window.SISLOT_UTILS || {};
 
 const $ = utils.$ || (id => document.getElementById(id));
 const fmtBRL = utils.fmtBRL || (v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','));
-const fmtData = utils.fmtData || (s => { 
+const fmtData = utils.fmtData || (s => {
     if (!s) return '—';
     try {
         const d = new Date(s);
@@ -28,22 +28,21 @@ const isoDate = utils.isoDate || (date => {
     if (isNaN(d.getTime())) return '';
     return d.toISOString().slice(0, 10);
 });
-const setStatus = utils.setStatus || ((id, msg, tipo) => { 
-    const el = $(id); 
-    if (el) { 
-        el.textContent = msg; 
-        el.className = `status-bar show ${tipo || 'ok'}`; 
-    } 
+const setStatus = utils.setStatus || ((id, msg, tipo) => {
+    const el = $(id);
+    if (el) {
+        el.textContent = msg;
+        el.className = `status-bar show ${tipo || 'ok'}`;
+    }
 });
-const updateClock = utils.updateClock || (() => { 
-    const el = $('relogio'); 
-    if (!el) return; 
-    const now = new Date(); 
-    el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR'); 
+const updateClock = utils.updateClock || (() => {
+    const el = $('relogio');
+    if (!el) return;
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR');
 });
 const startClock = utils.startClock || (() => { updateClock(); setInterval(updateClock, 1000); });
 
-// Inicia o relógio
 startClock();
 
 const LOJAS = [
@@ -64,21 +63,18 @@ let saldosPorLoja = {};
 let historicoPorLoja = {};
 
 // =====================================================
-// FUNÇÃO DE DATA EMBUTIDA (FALLBACK SEGURO)
+// FORMATAÇÃO DE DATA
 // =====================================================
 
 function formatarDataSegura(data) {
     if (!data) return '—';
-    
     try {
         let dia, mes, ano;
-        
         if (data instanceof Date && !isNaN(data.getTime())) {
             dia = data.getDate();
             mes = data.getMonth() + 1;
             ano = data.getFullYear();
-        }
-        else if (typeof data === 'string') {
+        } else if (typeof data === 'string') {
             const matchISO = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (matchISO) {
                 dia = parseInt(matchISO[3]);
@@ -93,11 +89,9 @@ function formatarDataSegura(data) {
                 }
             }
         }
-        
         if (dia && mes && ano) {
             return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
         }
-        
         return '—';
     } catch (e) {
         console.error('Erro formatar data:', e);
@@ -107,32 +101,26 @@ function formatarDataSegura(data) {
 
 function dataAtualISO() {
     const d = dataAtual instanceof Date ? dataAtual : new Date(dataAtual);
-
     if (isNaN(d.getTime())) return '';
-
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const dia = String(d.getDate()).padStart(2, '0');
-
     return `${y}-${m}-${dia}`;
 }
 
+// FIX: usava $('dateDisplayText') e $('calendarPicker') — IDs inexistentes.
+// Correto: $('dateDisplay') e $('datePicker').
 function atualizarDateDisplay() {
-    const texto = $('dateDisplayText');
-    const picker = $('calendarPicker');
+    const btn    = $('dateDisplay'); // botão visível com a data
+    const picker = $('datePicker');  // input[type=date] oculto
 
     const iso = dataAtualISO();
     if (!iso) return;
 
     const [y, m, d] = iso.split('-');
 
-    if (texto) {
-        texto.textContent = `${d}/${m}/${y}`;
-    }
-
-    if (picker) {
-        picker.value = iso;
-    }
+    if (btn) btn.textContent = `${d}/${m}/${y}`;
+    if (picker) picker.value = iso;
 }
 
 function aplicarDataReferencia(novaData) {
@@ -141,7 +129,6 @@ function aplicarDataReferencia(novaData) {
         novaData.getMonth(),
         novaData.getDate()
     );
-
     atualizarDateDisplay();
     fecharPanel();
     buscarBoloes();
@@ -153,26 +140,26 @@ function moverDataReferencia(deltaDias) {
         dataAtual.getMonth(),
         dataAtual.getDate()
     );
-
     d.setDate(d.getDate() + deltaDias);
     aplicarDataReferencia(d);
 }
+
 // =====================================================
 // FUNÇÕES ASSÍNCRONAS
 // =====================================================
 
 async function buscarBoloes() {
     const loadingEl = $('stLoading');
-    const vazioEl = $('stVazio');
-    const listaEl = $('stLista');
-    const countEl = $('boloesCount');
-    
-    if (loadingEl) loadingEl.style.display = 'flex';
-    if (vazioEl) vazioEl.style.display = 'none';
-    if (listaEl) listaEl.style.display = 'none';
-    if (countEl) countEl.innerHTML = '';
+    const vazioEl   = $('stVazio');
+    const listaEl   = $('stLista');
+    const countEl   = $('boloesCount');
 
-   const iso = dataAtualISO();
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (vazioEl)   vazioEl.style.display   = 'none';
+    if (listaEl)   listaEl.style.display   = 'none';
+    if (countEl)   countEl.innerHTML       = '';
+
+    const iso = dataAtualISO();
 
     const { data: boloes, error } = await sb
         .from('boloes')
@@ -196,6 +183,8 @@ async function buscarBoloes() {
             if (vazioSub) vazioSub.textContent = `Nenhum bolão ativo para ${formatarDataSegura(dataAtual)}.`;
             vazioEl.style.display = 'flex';
         }
+        // Zera o contador no header
+        if (countEl) countEl.innerHTML = '';
         return;
     }
 
@@ -216,9 +205,10 @@ async function buscarBoloes() {
 }
 
 function renderBoloes(boloes, posicoes, movs) {
-    const lista = $('stLista');
+    const lista   = $('stLista');
+    const countEl = $('boloesCount');
     if (!lista) return;
-    
+
     lista.innerHTML = '';
 
     const grupos = {};
@@ -268,6 +258,7 @@ function renderBoloes(boloes, posicoes, movs) {
             if (!saldoPills) {
                 saldoPills = '<div class="saldo-pill"><span class="sp-loja">Sem distribuição</span></div>';
             }
+
             const card = document.createElement('div');
             card.className = 'bolao-card';
             card.dataset.id = b.id;
@@ -302,8 +293,11 @@ function renderBoloes(boloes, posicoes, movs) {
     });
 
     lista.style.display = 'block';
-    const countEl = $('boloesCount');
-    if (countEl) countEl.innerHTML = `<span>${totalCards}</span> bolões vigentes`;
+
+    // Atualiza contador no cabeçalho
+    if (countEl) {
+        countEl.innerHTML = `<span>${totalCards}</span> bolões vigentes`;
+    }
 }
 
 function selecionarBolao(b, posicoes, movs) {
@@ -325,13 +319,12 @@ function selecionarBolao(b, posicoes, movs) {
     });
 
     const movsBolao = movs.filter(m => m.bolao_id === b.id);
-
     movsBolao.forEach(m => {
         const origemId = m.loteria_origem;
-        const destId = m.loteria_destino;
-        const qtd = Number(m.qtd_cotas || 0);
+        const destId   = m.loteria_destino;
+        const qtd      = Number(m.qtd_cotas || 0);
 
-        if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
+        if (!historicoPorLoja[destId])   historicoPorLoja[destId]   = [];
         historicoPorLoja[destId].push(qtd);
 
         if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
@@ -362,7 +355,7 @@ function abrirPanel(b) {
     }
 
     LOJAS.forEach(loja => {
-        const id = lojaIdPorSlug[loja.slug];
+        const id  = lojaIdPorSlug[loja.slug];
         const qtd = Number(saldosPorLoja[id] || 0);
         if (qtd === 0 && id !== b.loteria_id) return;
 
@@ -376,10 +369,10 @@ function abrirPanel(b) {
     if (grid) grid.innerHTML = '';
 
     LOJAS.forEach(loja => {
-        const id = lojaIdPorSlug[loja.slug];
+        const id       = lojaIdPorSlug[loja.slug];
         const ehOrigem = id === b.loteria_id;
-        const hist = historicoPorLoja[id] || [];
-        const histStr = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '—';
+        const hist     = historicoPorLoja[id] || [];
+        const histStr  = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '—';
 
         const field = document.createElement('div');
         field.className = 'destino-field';
@@ -390,13 +383,13 @@ function abrirPanel(b) {
             </div>
             <div class="destino-input-wrap">
                <input
-    inputmode="numeric"
-    class="destino-input"
-    id="dest-${loja.slug}"
-    placeholder="0"
-    autocomplete="off"
-    ${ehOrigem ? 'disabled' : ''}
-/>
+                    inputmode="numeric"
+                    class="destino-input"
+                    id="dest-${loja.slug}"
+                    placeholder="0"
+                    autocomplete="off"
+                    ${ehOrigem ? 'disabled' : ''}
+                />
             </div>
             <div class="destino-hist" id="hist-${loja.slug}" title="Histórico">${ehOrigem ? '(origem)' : histStr}</div>
             <div class="destino-sub" id="sub-${loja.slug}">—</div>
@@ -419,34 +412,23 @@ function abrirPanel(b) {
 }
 
 function parseDeltaCotas(value) {
-    const s = String(value || '')
-        .trim()
-        .replace(/\s+/g, '');
-
+    const s = String(value || '').trim().replace(/\s+/g, '');
     if (!s) return 0;
-
-    // Aceita: 10 ou -10
     if (!/^-?\d+$/.test(s)) return 0;
-
     return parseInt(s, 10) || 0;
 }
+
 function onDestInput(slug) {
-    const inp = $(`dest-${slug}`);
-    const sub = $(`sub-${slug}`);
-    const qtd = parseDeltaCotas(inp?.value);
+    const inp  = $(`dest-${slug}`);
+    const sub  = $(`sub-${slug}`);
+    const qtd  = parseDeltaCotas(inp?.value);
     const cota = bolaoSelecionado?.valor_cota || 0;
 
     if (qtd !== 0) {
-        if (sub) {
-            sub.textContent = fmtBRL(Math.abs(qtd) * cota);
-            sub.className = 'destino-sub on';
-        }
+        if (sub) { sub.textContent = fmtBRL(Math.abs(qtd) * cota); sub.className = 'destino-sub on'; }
         if (inp) inp.classList.add('filled');
     } else {
-        if (sub) {
-            sub.textContent = '—';
-            sub.className = 'destino-sub';
-        }
+        if (sub) { sub.textContent = '—'; sub.className = 'destino-sub'; }
         if (inp) inp.classList.remove('filled');
     }
     calcTotal();
@@ -469,10 +451,7 @@ function zerarMov(limparStatus = true) {
             inp.value = '';
             inp.classList.remove('filled');
             const sub = $(`sub-${l.slug}`);
-            if (sub) {
-                sub.textContent = '—';
-                sub.className = 'destino-sub';
-            }
+            if (sub) { sub.textContent = '—'; sub.className = 'destino-sub'; }
         }
     });
     calcTotal();
@@ -492,22 +471,19 @@ function onMovimentar() {
     const b = bolaoSelecionado;
     const deltas = {};
     let temDelta = false;
-    
+
     LOJAS.forEach(l => {
         const inp = $(`dest-${l.slug}`);
         if (!inp || inp.disabled) return;
-       const qtd = parseDeltaCotas(inp.value);
-        if (qtd !== 0) {
-            deltas[l.slug] = qtd;
-            temDelta = true;
-        }
+        const qtd = parseDeltaCotas(inp.value);
+        if (qtd !== 0) { deltas[l.slug] = qtd; temDelta = true; }
     });
-    
+
     if (!temDelta) {
         setStatus('statusBar', 'Informe ao menos um valor de destino.', 'err');
         return;
     }
-    
+
     const linhas = [
         `📍 Origem: ${b.loterias?.nome || '—'}`,
         `🎯 ${b.modalidade} — Concurso ${b.concurso}`,
@@ -516,23 +492,23 @@ function onMovimentar() {
         '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:',
         '(Histórico [Mov] → Final)',
     ];
-    
+
     const icones = {
-        'boulevard': '🏢',
-        'centro': '🏙️',
-        'lotobel': '🏛️',
+        'boulevard':    '🏢',
+        'centro':       '🏙️',
+        'lotobel':      '🏛️',
         'santa-tereza': '⛪',
-        'via-brasil': '🛣️',
+        'via-brasil':   '🛣️',
     };
-    
+
     LOJAS.forEach(l => {
-        const id = lojaIdPorSlug[l.slug];
+        const id    = lojaIdPorSlug[l.slug];
         const delta = deltas[l.slug] || 0;
-        const hist = historicoPorLoja[id] || [];
+        const hist  = historicoPorLoja[id] || [];
         const saldo = Number(saldosPorLoja[id] || 0);
         const final = saldo + delta;
         if (delta === 0 && hist.length === 0) return;
-        const histStr = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
+        const histStr  = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
         const deltaStr = delta > 0 ? `[+${delta}]` : delta < 0 ? `[${delta}]` : '';
         if (delta !== 0) {
             linhas.push(`${icones[l.slug] || '📍'} ${l.nome}: ${histStr} ${deltaStr} → ${final}`);
@@ -540,9 +516,9 @@ function onMovimentar() {
             linhas.push(`${icones[l.slug] || '📍'} ${l.nome}: ${histStr} → ${saldo} (sem alteração)`);
         }
     });
-    
+
     linhas.push('', '⚠️ Confirma a movimentação?');
-    
+
     const confirmBody = $('confirmBody');
     if (confirmBody) confirmBody.textContent = linhas.join('\n');
     const confirmOverlay = $('confirmOverlay');
@@ -551,12 +527,9 @@ function onMovimentar() {
 
 async function doMovimentar(b, deltas) {
     const btn = $('btnMovimentar');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Registrando…';
-    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Registrando…'; }
     setStatus('statusBar', 'Registrando movimentação…', 'info');
-    
+
     try {
         const inserts = [];
         for (const [slug, qtd] of Object.entries(deltas)) {
@@ -564,33 +537,32 @@ async function doMovimentar(b, deltas) {
             const destId = lojaIdPorSlug[slug];
             if (!destId) throw new Error(`Loja não encontrada: ${slug}`);
             inserts.push({
-                bolao_id: b.id,
-                loteria_origem: b.loteria_id,
+                bolao_id:        b.id,
+                loteria_origem:  b.loteria_id,
                 loteria_destino: destId,
-                qtd_cotas: qtd,
-                valor_unitario: b.valor_cota,
-                status: 'ATIVO',
-                criado_por: usuario.id,
+                qtd_cotas:       qtd,
+                valor_unitario:  b.valor_cota,
+                status:          'ATIVO',
+                criado_por:      usuario.id,
             });
         }
         if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
-        
+
         const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
         if (error) throw new Error(error.message);
-        
+
         const bolaoIdAtual = bolaoSelecionado?.id;
-        
-        // Atualizar saldos locais
+
         if (bolaoSelecionado) {
             const origemId = bolaoSelecionado.loteria_id;
             Object.entries(deltas).forEach(([slug, qtdRaw]) => {
-                const qtd = Number(qtdRaw || 0);
+                const qtd    = Number(qtdRaw || 0);
                 const destId = lojaIdPorSlug[slug];
                 if (!destId || qtd === 0) return;
                 if (saldosPorLoja[destId] == null) saldosPorLoja[destId] = 0;
-                saldosPorLoja[destId] += qtd;
+                saldosPorLoja[destId]  += qtd;
                 saldosPorLoja[origemId] -= qtd;
-                if (!historicoPorLoja[destId]) historicoPorLoja[destId] = [];
+                if (!historicoPorLoja[destId])   historicoPorLoja[destId]   = [];
                 historicoPorLoja[destId].push(qtd);
                 if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
                 historicoPorLoja[origemId].push(-qtd);
@@ -598,11 +570,11 @@ async function doMovimentar(b, deltas) {
             if (saldosPorLoja[origemId] < 0) saldosPorLoja[origemId] = 0;
             abrirPanel(bolaoSelecionado);
         }
-        
+
         setStatus('statusBar', '✓ Movimentação registrada com sucesso!', 'ok');
         zerarMov(false);
         await buscarBoloes();
-        
+
         if (bolaoIdAtual) {
             const card = document.querySelector(`.bolao-card[data-id="${bolaoIdAtual}"]`);
             if (card) card.classList.add('selected');
@@ -623,65 +595,58 @@ async function doMovimentar(b, deltas) {
 }
 
 function bind() {
-    const btnMenu = $('btnMenu');
-    const btnLogout = $('btnLogout');
-    const btnDtPrev = $('btnDtPrev');
-    const btnDtNext = $('btnDtNext');
-    const btnHoje = $('btnHoje');
-const dateDisplay = $('dateDisplay');
-const datePicker = $('calendarPicker');
+    const btnMenu        = $('btnMenu');
+    const btnLogout      = $('btnLogout');
+    const btnDtPrev      = $('btnDtPrev');
+    const btnDtNext      = $('btnDtNext');
+    const btnHoje        = $('btnHoje');
+    const dateDisplay    = $('dateDisplay');   // botão visível
+    const datePicker     = $('datePicker');    // FIX: era 'calendarPicker' (ID inexistente)
     const btnFecharPanel = $('btnFecharPanel');
-    const btnZerarMov = $('btnZerarMov');
-    const btnMovimentar = $('btnMovimentar');
-    const confirmCancel = $('confirmCancel');
+    const btnZerarMov    = $('btnZerarMov');
+    const btnMovimentar  = $('btnMovimentar');
+    const confirmCancel  = $('confirmCancel');
     const confirmOverlay = $('confirmOverlay');
-    const confirmOk = $('confirmOk');
-    
-    if (btnMenu) btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
+    const confirmOk      = $('confirmOk');
+
+    if (btnMenu)   btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
     if (btnLogout) btnLogout.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
-   if (btnDtPrev) {
-    btnDtPrev.onclick = () => moverDataReferencia(-1);
-}
 
-if (btnDtNext) {
-    btnDtNext.onclick = () => moverDataReferencia(1);
-}
+    if (btnDtPrev) btnDtPrev.onclick = () => moverDataReferencia(-1);
+    if (btnDtNext) btnDtNext.onclick = () => moverDataReferencia(1);
 
-if (btnHoje) {
-    btnHoje.onclick = () => {
-        const hoje = new Date();
-        aplicarDataReferencia(new Date(
-            hoje.getFullYear(),
-            hoje.getMonth(),
-            hoje.getDate()
-        ));
-    };
-}
+    if (btnHoje) {
+        btnHoje.onclick = () => {
+            const hoje = new Date();
+            aplicarDataReferencia(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
+        };
+    }
 
-if (dateDisplay && datePicker) {
-    dateDisplay.onclick = () => {
-        atualizarDateDisplay();
+    // Clique no botão da data abre o picker nativo
+    if (dateDisplay && datePicker) {
+        dateDisplay.onclick = () => {
+            atualizarDateDisplay();
+            if (typeof datePicker.showPicker === 'function') {
+                datePicker.showPicker();
+            } else {
+                datePicker.click();
+            }
+        };
+    }
 
-        if (typeof datePicker.showPicker === 'function') {
-            datePicker.showPicker();
-        } else {
-            datePicker.click();
-        }
-    };
-}
+    // Mudança no picker aplica nova data
+    if (datePicker) {
+        datePicker.onchange = () => {
+            if (!datePicker.value) return;
+            const [y, m, d] = datePicker.value.split('-').map(Number);
+            aplicarDataReferencia(new Date(y, m - 1, d));
+        };
+    }
 
-if (datePicker) {
-    datePicker.onchange = () => {
-        if (!datePicker.value) return;
-
-        const [y, m, d] = datePicker.value.split('-').map(Number);
-        aplicarDataReferencia(new Date(y, m - 1, d));
-    };
-}
-    
     if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
-    if (btnZerarMov) btnZerarMov.addEventListener('click', () => zerarMov());
-    if (btnMovimentar) btnMovimentar.addEventListener('click', onMovimentar);
+    if (btnZerarMov)    btnZerarMov.addEventListener('click', () => zerarMov());
+    if (btnMovimentar)  btnMovimentar.addEventListener('click', onMovimentar);
+
     if (confirmCancel) confirmCancel.addEventListener('click', () => {
         if (confirmOverlay) confirmOverlay.classList.remove('show');
     });
@@ -703,26 +668,20 @@ if (datePicker) {
 }
 
 // =====================================================
-// INICIALIZAÇÃO (async)
+// INICIALIZAÇÃO
 // =====================================================
 
 async function init() {
     console.log('movimentar.js - init rodando!');
-    
+
     updateClock();
     setInterval(updateClock, 1000);
 
     const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user?.id) {
-        location.href = './login.html';
-        return;
-    }
+    if (!session?.user?.id) { location.href = './login.html'; return; }
 
     const usr = await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
-    if (!usr) {
-        location.href = './login.html';
-        return;
-    }
+    if (!usr) { location.href = './login.html'; return; }
     usuario = usr;
 
     const { data: lojas } = await sb
@@ -734,8 +693,8 @@ async function init() {
     if (lojas) {
         lojas.forEach(l => {
             lojaIdPorSlug[l.slug] = l.id;
-            lojaSlugPorId[l.id] = l.slug;
-            lojaNomePorId[l.id] = l.nome;
+            lojaSlugPorId[l.id]   = l.slug;
+            lojaNomePorId[l.id]   = l.nome;
         });
     }
 
@@ -745,5 +704,4 @@ async function init() {
     await buscarBoloes();
 }
 
-// Inicia
 init();
