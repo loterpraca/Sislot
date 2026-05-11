@@ -580,24 +580,29 @@ function renderMovimentacoes() {
     const corProd = PRODUTO_COR[m.origem_tipo] || 'var(--muted)';
 
     return `<tr>
-      <td class="mono">${(m.mes_ref || m.data_ref_exibicao)}</td>
-      <td>
-        <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;
-                     background:${corProd}18;color:${corProd};border:1px solid ${corProd}40">
-          ${m.origem_tipo}
-        </span>
-      </td>
-      <td class="mono" style="font-size:11px">${m.ref_label}</td>
-      <td>${lookupLoja(m.loja_credora_id)}</td>
-      <td>${lookupLoja(m.loja_devedora_id)}</td>
-      <td class="mono">${m.qtd_label || '—'}</td>
-      <td class="money">${m.unit_label || '—'}</td>
-      <td class="money">${fmtMoney(m.valor)}</td>
-      <td><span class="badge ${statusClass}">${m.acerto_status || 'PENDENTE'}</span></td>
-      <td class="mono">${(m.data_acerto)}</td>
-    </tr>`;
+  <td class="mono">${fmtDateTime(m.data_ref_exibicao)}</td>
+  <td class="mono">${fmtDateTime(m.data_update_exibicao)}</td>
+  <td>${m.usuario_movimento_nome || '—'}</td>
+
+  <td>
+    <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;
+                 background:${corProd}18;color:${corProd};border:1px solid ${corProd}40">
+      ${m.origem_tipo}
+    </span>
+  </td>
+
+  <td class="mono" style="font-size:11px">${m.ref_label}</td>
+  <td>${lookupLoja(m.loja_credora_id)}</td>
+  <td>${lookupLoja(m.loja_devedora_id)}</td>
+  <td class="mono">${m.qtd_label || '—'}</td>
+  <td class="money">${m.unit_label || '—'}</td>
+  <td class="money">${fmtMoney(m.valor)}</td>
+  <td><span class="badge ${statusClass}">${m.acerto_status || 'PENDENTE'}</span></td>
+  <td class="mono">${fmtDate(m.data_acerto)}</td>
+  <td>${m.usuario_acerto_nome || '—'}</td>
+</tr>`;
   }).join('')
-  : `<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--dim)">
+  : `<tr><td colspan="13" style="padding:32px;text-align:center;color:var(--dim)">
       Nenhum registro para os filtros selecionados.
      </td></tr>`;
 
