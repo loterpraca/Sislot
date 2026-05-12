@@ -267,16 +267,25 @@ body.modal-open { overflow: hidden; }
 .table-wrap {
   border: 1px solid var(--border);
   border-radius: var(--r);
-  overflow: hidden;
-  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+
+  /* O pulo do gato: rolagem vertical e horizontal dentro da tabela */
+  max-height: calc(100dvh - 230px);
+  overflow: auto;
+
+  /* Melhor no celular */
+  -webkit-overflow-scrolling: touch;
+
+  /* Evita a barra sumir/ficar espremida */
+  scrollbar-gutter: stable both-edges;
 }
 
 .data-table {
-  width: 100%;
-  border-collapse: collapse;
+  width: max-content;
   min-width: 1850px;
+  border-collapse: collapse;
 }
-
 /* Grupo de colunas (cabeçalho superior) */
 .data-table thead tr.grp-row th {
   font-family: var(--mono);
