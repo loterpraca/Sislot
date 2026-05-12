@@ -264,29 +264,62 @@ body.modal-open { overflow: hidden; }
 
 
 /* ── Tabela ────────────────────────────────────────────────── */
+/* ── Tabela com rolagem horizontal real ────────────────────── */
+
+#tableArea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .table-wrap {
   border: 1px solid var(--border);
   border-radius: var(--r);
+
   width: 100%;
   max-width: 100%;
+  min-width: 0;
 
-  /* O pulo do gato: rolagem vertical e horizontal dentro da tabela */
+  display: block;
+
+  /* força rolagem horizontal e vertical dentro da tabela */
+  overflow-x: scroll !important;
+  overflow-y: auto !important;
+
+  /* altura do quadro da tabela */
   max-height: calc(100dvh - 230px);
-  overflow: auto;
 
-  /* Melhor no celular */
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
 
-  /* Evita a barra sumir/ficar espremida */
   scrollbar-gutter: stable both-edges;
 }
 
+/* força a tabela a ser maior que a tela */
 .data-table {
-  width: max-content;
-  min-width: 1850px;
+  display: table;
+  width: auto;
+  min-width: 2400px;
   border-collapse: collapse;
+  table-layout: auto;
 }
-/* Grupo de colunas (cabeçalho superior) */
+
+/* Cabeçalho fixo dentro da rolagem */
+.data-table thead tr.grp-row th {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.data-table thead tr.col-row th {
+  position: sticky;
+  top: 27px;
+  z-index: 31;
+}
+
+/* Grupo de colunas */
 .data-table thead tr.grp-row th {
   font-family: var(--mono);
   font-size: 9px;
@@ -301,7 +334,9 @@ body.modal-open { overflow: hidden; }
   white-space: nowrap;
 }
 
-.data-table thead tr.grp-row th:last-child { border-right: none; }
+.data-table thead tr.grp-row th:last-child {
+  border-right: none;
+}
 
 /* Cabeçalho de colunas */
 .data-table thead tr.col-row th {
@@ -319,8 +354,13 @@ body.modal-open { overflow: hidden; }
   white-space: nowrap;
 }
 
-.data-table thead tr.col-row th.left  { text-align: left; }
-.data-table thead tr.col-row th:last-child { border-right: none; }
+.data-table thead tr.col-row th.left {
+  text-align: left;
+}
+
+.data-table thead tr.col-row th:last-child {
+  border-right: none;
+}
 
 /* Cores dos grupos */
 .grp-bolao { color: var(--text2); }
@@ -336,8 +376,13 @@ body.modal-open { overflow: hidden; }
   transition: background .12s;
 }
 
-.data-table tbody tr:last-child { border-bottom: none; }
-.data-table tbody tr:hover      { background: rgba(0,200,150,.022); }
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(0,200,150,.022);
+}
 
 .data-table td {
   padding: 9px 10px;
@@ -358,8 +403,10 @@ body.modal-open { overflow: hidden; }
 .data-table td.blue   { color: var(--blue);   font-family: var(--mono); font-weight: 600; }
 .data-table td.purple { color: var(--purple); font-family: var(--mono); font-weight: 600; }
 .data-table td.cyan   { color: var(--cyan);   font-family: var(--mono); font-weight: 600; }
-.sep-col { border-right: 1px solid var(--border2) !important; }
 
+.sep-col {
+  border-right: 1px solid var(--border2) !important;
+}
 /* ── Estado vazio / carregando ─────────────────────────────── */
 .state-box {
   display: flex;
@@ -1188,5 +1235,41 @@ body.modal-open { overflow: hidden; }
 
   .sort-btn {
     width: 100%;
+  }
+}
+@media (max-width: 760px) {
+  .main {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  #tableArea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .table-wrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+
+    max-height: calc(100dvh - 280px);
+
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+  }
+
+  .data-table {
+    width: auto;
+    min-width: 2600px;
   }
 }
