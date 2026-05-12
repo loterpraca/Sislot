@@ -26,7 +26,428 @@ let filtroTimer = null;
 let boloesCache = [];
 let bolaoSelecionadoModal = null;
 let modalBusy = false;
+/* ============================================================
+   ORDENAÇÃO RESPONSIVA
+   - Cabeçalho: ordenação simples
+   - Botão Ordenar: múltiplos níveis
+   - Padrão: bolões mais recentes no topo
+============================================================ */
 
+const SORT_OPTIONS = [
+  {
+    key: 'created_at',
+    label: 'Criação',
+    type: 'date',
+    defaultDir: 'desc',
+    fallback: 'bolao_id',
+    ascLabel: 'Mais antiga primeiro',
+    descLabel: 'Mais recente primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  },
+  {
+    key: 'dt_inicial',
+    label: 'Data inicial',
+    type: 'date',
+    defaultDir: 'asc',
+    ascLabel: 'Mais antiga primeiro',
+    descLabel: 'Mais recente primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  },
+  {
+    key: 'dt_concurso',
+    label: 'Data do concurso',
+    type: 'date',
+    defaultDir: 'asc',
+    ascLabel: 'Mais antiga primeiro',
+    descLabel: 'Mais recente primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  },
+  {
+    key: 'concurso',
+    label: 'Concurso',
+    type: 'numberText',
+    defaultDir: 'desc',
+    ascLabel: 'Menor primeiro',
+    descLabel: 'Maior primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  },
+  {
+    key: 'modalidade',
+    label: 'Modalidade',
+    type: 'text',
+    defaultDir: 'asc',
+    ascLabel: 'A → Z',
+    descLabel: 'Z → A',
+    shortAsc: 'A-Z',
+    shortDesc: 'Z-A'
+  },
+  {
+    key: 'origem_nome',
+    label: 'Loja origem',
+    type: 'text',
+    defaultDir: 'asc',
+    ascLabel: 'A → Z',
+    descLabel: 'Z → A',
+    shortAsc: 'A-Z',
+    shortDesc: 'Z-A'
+  },
+  {
+    key: 'valor_cota',
+    label: 'Valor da cota',
+    type: 'number',
+    defaultDir: 'asc',
+    ascLabel: 'Menor primeiro',
+    descLabel: 'Maior primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  },
+  {
+    key: 'qtd_cotas_total',
+    label: 'Qtd. cotas',
+    type: 'number',
+    defaultDir: 'desc',
+    ascLabel: 'Menor primeiro',
+    descLabel: 'Maior primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  },
+  {
+    key: 'qtd_jogos',
+    label: 'Jogos',
+    type: 'number',
+    defaultDir: 'desc',
+    ascLabel: 'Menor primeiro',
+    descLabel: 'Maior primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  },
+  {
+    key: 'qtd_dezenas',
+    label: 'Dezenas',
+    type: 'number',
+    defaultDir: 'desc',
+    ascLabel: 'Menor primeiro',
+    descLabel: 'Maior primeiro',
+    shortAsc: '↑',
+    shortDesc: '↓'
+  }
+];
+
+const SORT_MAP = Object.fromEntries(SORT_OPTIONS.map(o => [o.key, o]));
+
+let ordenacoes = [
+  { key: 'created_at', dir: 'desc' }
+];
+
+let ordenacoesDraft = [];
+
+function getSortDef(key) {
+  return SORT_MAP[key] || SORT_OPTIONS[0];
+}
+
+function getDirLabel(key, dir) {
+  const def = getSortDef(key);
+  return dir === 'asc' ? def.ascLabel : def.descLabel;
+}
+
+function getShortDir(key, dir) {
+  const def = getSortDef(key);
+  return dir === 'asc' ? def.shortAsc : def.shortDesc;
+}
+
+function normalizarTexto(v) {
+  return String(v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function valorOrdenacao(row, key) {
+  const def = getSortDef(key);
+  let v = row?.[key];
+
+  if ((v === null || v === undefined || v === '') && def.fallback) {
+    v = row?.[def.fallback];
+  }
+
+  if (v === null || v === undefined || v === '') return null;
+
+  if (def.type === 'number') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  if (def.type === 'numberText') {
+    const n = Number(String(v).replace(/\D/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  if (def.type === 'date') {
+    const s = String(v).slice(0, 10);
+    const t = new Date(`${s}T00:00:00`).getTime();
+
+    if (Number.isFinite(t)) return t;
+
+    return Number(row?.bolao_id || 0);
+  }
+
+  return normalizarTexto(v);
+}
+
+function compararValores(a, b) {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+
+  if (typeof a === 'number' && typeof b === 'number') {
+    return a - b;
+  }
+
+  return String(a).localeCompare(String(b), 'pt-BR', {
+    numeric: true,
+    sensitivity: 'base'
+  });
+}
+
+function ordenarBoloes(lista) {
+  return [...(lista || [])].sort((a, b) => {
+    for (const ord of ordenacoes) {
+      const va = valorOrdenacao(a, ord.key);
+      const vb = valorOrdenacao(b, ord.key);
+      const cmp = compararValores(va, vb);
+
+      if (cmp !== 0) {
+        return ord.dir === 'asc' ? cmp : -cmp;
+      }
+    }
+
+    return Number(b?.bolao_id || 0) - Number(a?.bolao_id || 0);
+  });
+}
+
+function sortAtivo(key) {
+  return ordenacoes.find(o => o.key === key) || null;
+}
+
+function ordenarPorCabecalho(key) {
+  const def = getSortDef(key);
+  const ativo = ordenacoes.length === 1 && ordenacoes[0].key === key;
+
+  if (ativo) {
+    ordenacoes[0].dir = ordenacoes[0].dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    ordenacoes = [{ key, dir: def.defaultDir || 'asc' }];
+  }
+
+  exibir();
+}
+
+function sortTh(key, label, extraClass = '') {
+  const ativo = sortAtivo(key);
+  const seta = ativo ? getShortDir(key, ativo.dir) : '';
+
+  return `
+    <th
+      class="${extraClass} sortable-th ${ativo ? 'active' : ''}"
+      data-sort="${key}"
+      title="Clique para ordenar por ${label}"
+    >
+      <span class="sort-label">${label}</span>
+      ${ativo ? `<span class="sort-arrow">${seta}</span>` : ''}
+    </th>
+  `;
+}
+
+function bindOrdenacaoCabecalho() {
+  document.querySelectorAll('[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      ordenarPorCabecalho(th.dataset.sort);
+    });
+  });
+}
+
+function renderResumoOrdenacao() {
+  const textoCurto = ordenacoes
+    .map((o, idx) => {
+      const def = getSortDef(o.key);
+      return `${idx + 1}º ${def.label} ${getShortDir(o.key, o.dir)}`;
+    })
+    .join(' · ');
+
+  const btn = $('sortResumoBtn');
+  if (btn) btn.textContent = textoCurto || 'Criação ↓';
+
+  const linha = $('sortResumoLinha');
+  if (!linha) return;
+
+  linha.innerHTML = `
+    <span class="sort-summary-label">Ordenação:</span>
+    ${ordenacoes.map((o, idx) => {
+      const def = getSortDef(o.key);
+      return `
+        <span class="sort-chip">
+          ${idx + 1}º ${def.label} ${getShortDir(o.key, o.dir)}
+        </span>
+      `;
+    }).join('')}
+  `;
+}
+
+function abrirPainelOrdenacao() {
+  ordenacoesDraft = ordenacoes.map(o => ({ ...o }));
+  renderPainelOrdenacao();
+
+  $('sortOverlay')?.classList.add('show');
+  $('sortOverlay')?.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+}
+
+function fecharPainelOrdenacao() {
+  $('sortOverlay')?.classList.remove('show');
+  $('sortOverlay')?.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+}
+
+function optionsCamposSort(selectedKey) {
+  return SORT_OPTIONS.map(opt => {
+    const selected = opt.key === selectedKey ? 'selected' : '';
+    return `<option value="${opt.key}" ${selected}>${opt.label}</option>`;
+  }).join('');
+}
+
+function optionsDirecaoSort(key, selectedDir) {
+  const ascSelected = selectedDir === 'asc' ? 'selected' : '';
+  const descSelected = selectedDir === 'desc' ? 'selected' : '';
+
+  return `
+    <option value="asc" ${ascSelected}>${getDirLabel(key, 'asc')}</option>
+    <option value="desc" ${descSelected}>${getDirLabel(key, 'desc')}</option>
+  `;
+}
+
+function renderPainelOrdenacao() {
+  const box = $('sortNiveis');
+  if (!box) return;
+
+  box.innerHTML = ordenacoesDraft.map((ord, idx) => {
+    return `
+      <div class="sort-level-row" data-idx="${idx}">
+        <div class="sort-level-number">${idx + 1}º</div>
+
+        <div class="sort-level-field">
+          <label>Campo</label>
+          <select class="sort-field" data-idx="${idx}">
+            ${optionsCamposSort(ord.key)}
+          </select>
+        </div>
+
+        <div class="sort-level-dir">
+          <label>Direção</label>
+          <select class="sort-dir" data-idx="${idx}">
+            ${optionsDirecaoSort(ord.key, ord.dir)}
+          </select>
+        </div>
+
+        <button class="sort-remove" data-idx="${idx}" type="button" ${ordenacoesDraft.length === 1 ? 'disabled' : ''}>
+          Remover
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function removerDuplicatasOrdenacaoDraft() {
+  const usados = new Set();
+
+  ordenacoesDraft = ordenacoesDraft.filter(o => {
+    if (usados.has(o.key)) return false;
+    usados.add(o.key);
+    return true;
+  });
+
+  if (!ordenacoesDraft.length) {
+    ordenacoesDraft = [{ key: 'created_at', dir: 'desc' }];
+  }
+}
+
+function adicionarNivelOrdenacao() {
+  const usados = new Set(ordenacoesDraft.map(o => o.key));
+  const proximo = SORT_OPTIONS.find(o => !usados.has(o.key));
+
+  if (!proximo) return;
+
+  ordenacoesDraft.push({
+    key: proximo.key,
+    dir: proximo.defaultDir || 'asc'
+  });
+
+  renderPainelOrdenacao();
+}
+
+function restaurarOrdenacaoPadrao() {
+  ordenacoesDraft = [{ key: 'created_at', dir: 'desc' }];
+  renderPainelOrdenacao();
+}
+
+function aplicarOrdenacaoPainel() {
+  removerDuplicatasOrdenacaoDraft();
+  ordenacoes = ordenacoesDraft.map(o => ({ ...o }));
+  fecharPainelOrdenacao();
+  exibir();
+}
+
+function bindPainelOrdenacao() {
+  $('btnOrdenar')?.addEventListener('click', abrirPainelOrdenacao);
+  $('sortFechar')?.addEventListener('click', fecharPainelOrdenacao);
+  $('sortAdicionar')?.addEventListener('click', adicionarNivelOrdenacao);
+  $('sortPadrao')?.addEventListener('click', restaurarOrdenacaoPadrao);
+  $('sortAplicar')?.addEventListener('click', aplicarOrdenacaoPainel);
+
+  $('sortOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'sortOverlay') fecharPainelOrdenacao();
+  });
+
+  $('sortNiveis')?.addEventListener('change', (e) => {
+    const idx = Number(e.target.dataset.idx);
+    if (!Number.isInteger(idx) || !ordenacoesDraft[idx]) return;
+
+    if (e.target.classList.contains('sort-field')) {
+      const key = e.target.value;
+      const def = getSortDef(key);
+
+      ordenacoesDraft[idx] = {
+        key,
+        dir: def.defaultDir || 'asc'
+      };
+
+      removerDuplicatasOrdenacaoDraft();
+      renderPainelOrdenacao();
+      return;
+    }
+
+    if (e.target.classList.contains('sort-dir')) {
+      ordenacoesDraft[idx].dir = e.target.value;
+      renderPainelOrdenacao();
+    }
+  });
+
+  $('sortNiveis')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sort-remove');
+    if (!btn) return;
+
+    const idx = Number(btn.dataset.idx);
+    if (!Number.isInteger(idx)) return;
+
+    ordenacoesDraft.splice(idx, 1);
+    removerDuplicatasOrdenacaoDraft();
+    renderPainelOrdenacao();
+  });
+}
 function fmtBRL(v) {
   return v == null || v === '' ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
@@ -477,12 +898,11 @@ async function init() {
     sel.appendChild(o);
   });
 
-  $('fDataRef').value = hojeISO();
-  $('fStatus').value = 'ATIVO';
-
-  if (usuario?.loteria_principal_id) {
-    $('fLoja').value = String(usuario.loteria_principal_id);
-  }
+  // Padrão novo: carrega todos os bolões permitidos ao usuário.
+// Os filtros só entram quando forem preenchidos.
+$('fDataRef').value = '';
+$('fStatus').value = '';
+$('fLoja').value = '';
 
   ['fDataRef', 'fDtConcDe', 'fDtConcAte', 'fModal', 'fLoja', 'fStatus'].forEach(id => {
     $(id).addEventListener('change', agendarExibicao);
@@ -499,30 +919,36 @@ async function init() {
     if (e.target.id === 'bolaoModalOverlay') fecharModalBolao();
   });
 
+  bindPainelOrdenacao();
+  renderResumoOrdenacao();
   await exibir();
 }
 
 function limpar() {
-  $('fDataRef').value = hojeISO();
-  ['fDtConcDe', 'fDtConcAte', 'fConc'].forEach(id => $(id).value = '');
+  ['fDataRef', 'fDtConcDe', 'fDtConcAte', 'fConc'].forEach(id => {
+    $(id).value = '';
+  });
+
   $('fModal').selectedIndex = 0;
-  $('fStatus').value = 'ATIVO';
-  $('fLoja').value = usuario?.loteria_principal_id ? String(usuario.loteria_principal_id) : '';
+  $('fStatus').value = '';
+  $('fLoja').value = '';
+
+  ordenacoes = [{ key: 'created_at', dir: 'desc' }];
+
   exibir();
 }
+function montarQueryBoloes() {
+  const dataRef = $('fDataRef').value;
 
-async function exibir() {
-  const dataRef = $('fDataRef').value || hojeISO();
-  $('statsRow').style.display = 'none';
-  $('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Carregando…</div></div>';
+  let q = sb.from(VIEW_BOLAO).select('*');
 
-  let q = sb.from(VIEW_BOLAO)
-    .select('*')
-    .lte('dt_inicial', dataRef)
-    .gte('dt_concurso', dataRef)
-    .order('modalidade')
-    .order('dt_concurso')
-    .order('valor_cota');
+  // Data Referência agora é opcional.
+  // Quando preenchida, mostra bolões vigentes naquela data.
+  if (dataRef) {
+    q = q
+      .lte('dt_inicial', dataRef)
+      .gte('dt_concurso', dataRef);
+  }
 
   if ($('fDtConcDe').value) q = q.gte('dt_concurso', $('fDtConcDe').value);
   if ($('fDtConcAte').value) q = q.lte('dt_concurso', $('fDtConcAte').value);
@@ -531,15 +957,55 @@ async function exibir() {
   if ($('fLoja').value) q = q.eq('origem_loteria_id', parseInt($('fLoja').value, 10));
   if ($('fStatus').value) q = q.eq('status', $('fStatus').value);
 
-  const { data: boloes, error } = await q;
+  return q;
+}
 
-  if (error || !boloes?.length) {
-    boloesCache = [];
-    $('tableArea').innerHTML = '<div class="state-box"><div class="state-title">Nenhum resultado</div><div class="state-sub">Tente ajustar os filtros.</div></div>';
-    return;
+async function carregarBoloesFiltrados() {
+  const pageSize = 1000;
+  let from = 0;
+  let todos = [];
+
+  while (true) {
+    const to = from + pageSize - 1;
+
+    const { data, error } = await montarQueryBoloes().range(from, to);
+
+    if (error) throw error;
+
+    const lote = data || [];
+    todos = todos.concat(lote);
+
+    if (lote.length < pageSize) break;
+
+    from += pageSize;
   }
 
-  boloesCache = boloes || [];
+  return todos;
+}
+async function exibir() {
+$('statsRow').style.display = 'none';
+$('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Carregando…</div></div>';
+
+let boloesRaw = [];
+
+try {
+  boloesRaw = await carregarBoloesFiltrados();
+} catch (error) {
+  console.error('Erro ao carregar bolões:', error);
+  boloesCache = [];
+  $('tableArea').innerHTML = '<div class="state-box"><div class="state-title">Erro ao carregar</div><div class="state-sub">Verifique o console para detalhes.</div></div>';
+  return;
+}
+
+if (!boloesRaw?.length) {
+  boloesCache = [];
+  $('tableArea').innerHTML = '<div class="state-box"><div class="state-title">Nenhum resultado</div><div class="state-sub">Tente ajustar os filtros.</div></div>';
+  return;
+}
+
+const boloes = ordenarBoloes(boloesRaw);
+boloesCache = boloes;
+renderResumoOrdenacao();
 
   const ids = boloes.map(b => b.bolao_id);
 
@@ -617,34 +1083,34 @@ async function exibir() {
   const funcCols = funcIds.map(id => `<th>${funcNomes[id] || 'Func.'}</th>`).join('');
   const lojaCols = slugsLojas.map(s => `<th>${slugLabel[s]}</th>`).join('');
 
-  const colRow = `<tr class="col-row">
-    <th>Sel.</th>
-    <th class="left">Origem</th>
-    <th>Dt Ini</th>
-    <th>Dt Conc</th>
-    <th class="left">Modalidade</th>
-    <th>Conc.</th>
-    <th>Jogos</th>
-    <th>Dez.</th>
-    <th>V.Cota</th>
-    <th class="sep-col">Qtd Cotas</th>
+const colRow = `<tr class="col-row">
+  <th>Sel.</th>
+  ${sortTh('origem_nome', 'Origem', 'left')}
+  ${sortTh('dt_inicial', 'Dt Ini')}
+  ${sortTh('dt_concurso', 'Dt Conc')}
+  ${sortTh('modalidade', 'Modalidade', 'left')}
+  ${sortTh('concurso', 'Conc.')}
+  ${sortTh('qtd_jogos', 'Jogos')}
+  ${sortTh('qtd_dezenas', 'Dez.')}
+  ${sortTh('valor_cota', 'V.Cota')}
+  ${sortTh('qtd_cotas_total', 'Qtd Cotas', 'sep-col')}
 
-    <th>Balcão</th>
-    <th>WPP</th>
-    <th class="sep-col">MKP</th>
+  <th>Balcão</th>
+  <th>WPP</th>
+  <th class="sep-col">MKP</th>
 
-    ${nFunc > 0 ? funcCols : ''}
+  ${nFunc > 0 ? funcCols : ''}
 
-    ${lojaCols}
+  ${lojaCols}
 
-    <th>Enc.Físico</th>
-    <th class="sep-col">Enc.Virtual</th>
+  <th>Enc.Físico</th>
+  <th class="sep-col">Enc.Virtual</th>
 
-    <th>Total Cotas / Venda Real</th>
-    <th>Encalhe Total</th>
-    <th>Est. Líquido</th>
-    <th>V.Contábil</th>
-  </tr>`;
+  <th>Total Cotas / Venda Real</th>
+  <th>Encalhe Total</th>
+  <th>Est. Líquido</th>
+  <th>V.Contábil</th>
+</tr>`;
 
   const rows = boloes.map(b => {
     const cm = canalMap[b.bolao_id] || {};
@@ -749,6 +1215,8 @@ async function exibir() {
   $('tableArea').appendChild(wrap);
 
   bindSelecaoBoloes();
+bindOrdenacaoCabecalho();
+renderResumoOrdenacao();
 }
 
 updateClock();
