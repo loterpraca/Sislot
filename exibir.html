@@ -104,10 +104,15 @@
       </select>
     </div>
 
-    <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
-      <button class="btn-limpar" onclick="limpar()" type="button">Limpar</button>
-    </div>
-  </div>
+    <div class="filter-actions">
+  <button class="btn-ordenar" id="btnOrdenar" type="button">
+    <span class="btn-ordenar-title">Ordenar</span>
+    <span class="btn-ordenar-sub" id="sortResumoBtn">Criação ↓</span>
+  </button>
+
+  <button class="btn-limpar" onclick="limpar()" type="button">Limpar</button>
+</div>
+    <div class="sort-summary-row" id="sortResumoLinha"></div>
 
   <!-- Estatísticas -->
   <div class="stats-row" id="statsRow" style="display:none"></div>
@@ -126,7 +131,44 @@
     </div>
   </div>
 </div>
+<!-- ── Painel de Ordenação ─────────────────────────────────── -->
+<div id="sortOverlay" class="sort-overlay" aria-hidden="true">
+  <div class="sort-panel" role="dialog" aria-modal="true" aria-labelledby="sortTitulo">
 
+    <div class="sort-panel-head">
+      <div>
+        <div class="sort-kicker">Ordenação da tabela</div>
+        <h3 id="sortTitulo">Ordenar bolões</h3>
+      </div>
+
+      <button id="sortFechar" class="sort-close" type="button" aria-label="Fechar painel">×</button>
+    </div>
+
+    <div class="sort-panel-body">
+      <div class="sort-help">
+        Defina uma ou mais regras. A primeira regra manda mais; as próximas resolvem empates.
+      </div>
+
+      <div id="sortNiveis" class="sort-levels"></div>
+
+      <button id="sortAdicionar" class="sort-add" type="button">
+        + Adicionar nível
+      </button>
+    </div>
+
+    <div class="sort-panel-actions">
+      <button id="sortPadrao" class="sort-btn sort-btn-sec" type="button">
+        Restaurar padrão
+      </button>
+
+      <button id="sortAplicar" class="sort-btn sort-btn-main" type="button">
+        Aplicar
+      </button>
+    </div>
+
+  </div>
+</div>
+  
 <!-- ── Modal do bolão ─────────────────────────────────────── -->
 <div id="bolaoModalOverlay" class="bolao-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="bmTitulo">
   <div class="bolao-modal">
