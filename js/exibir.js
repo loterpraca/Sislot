@@ -983,7 +983,7 @@ async function carregarBoloesFiltrados() {
   return todos;
 }
 async function exibir() {
-$('statsRow').style.display = 'none';
+
 $('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Carregando…</div></div>';
 
 let boloesRaw = [];
@@ -1055,16 +1055,7 @@ renderResumoOrdenacao();
   const totEncalhe = boloes.reduce((s, b) => s + Number(b.encalhe_total || 0), 0);
   const totLiquido = boloes.reduce((s, b) => s + Number(b.estoque_liquido_total || 0), 0);
   const totVCont = boloes.reduce((s, b) => s + Number(b.venda_contabil_total || 0), 0);
-
-  $('statsRow').style.display = 'grid';
-  $('statsRow').innerHTML = `
-    <div class="stat-card"><div class="stat-label">Bolões</div><div class="stat-value">${boloes.length}</div></div>
-    <div class="stat-card"><div class="stat-label">Venda Real Total</div><div class="stat-value green">${fmtN(totVendaReal)}</div></div>
-    <div class="stat-card"><div class="stat-label">Encalhe Total</div><div class="stat-value amber">${fmtN(totEncalhe)}</div></div>
-    <div class="stat-card"><div class="stat-label">Estoque Líquido</div><div class="stat-value blue">${fmtN(totLiquido)}</div></div>
-    <div class="stat-card"><div class="stat-label">Venda Contábil</div><div class="stat-value green">${fmtN(totVCont)}</div></div>
-  `;
-
+  
   const wrap = document.createElement('div');
   wrap.className = 'table-wrap fade-in';
 
