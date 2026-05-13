@@ -16,6 +16,28 @@ const state = {
   lancFederalId: null
 };
 
+function hojeSaoPauloISO() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+
+  const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function toISODateLocal(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${y}-${m}-${day}`;
+}
 const QTD_PADRAO = {
   qua: { centro: 80, boulevard: 80, lotobel: 60, santa: 0, via: 0 },
   sab: { centro: 80, boulevard: 70, lotobel: 120, santa: 0, via: 0 }
@@ -129,19 +151,46 @@ function applyFederalType(tipo){
   }
 }
 
-function nextWedOrSat(base=new Date()){
-  const d=new Date(base); d.setHours(12,0,0,0);
-  while(![3,6].includes(d.getDay())) d.setDate(d.getDate()+1);
-  return d.toISOString().slice(0,10);
+function nextWedOrSat(base = null) {
+  let d;
+
+  if (base instanceof Date) {
+    d = new Date(base);
+  } else {
+    const hoje = hojeSaoPauloISO();
+    const [y, m, day] = hoje.split('-').map(Number);
+    d = new Date(y, m - 1, day, 12, 0, 0, 0);
+  }
+
+  d.setHours(12, 0, 0, 0);
+
+  while (![3, 6].includes(d.getDay())) {
+    d.setDate(d.getDate() + 1);
+  }
+
+  return toISODateLocal(d);
 }
 
-function nextQuaSabFrom(baseIso, dir){
-  let d = new Date((baseIso || new Date().toISOString().slice(0,10))+'T12:00:00');
-  d.setDate(d.getDate() + (dir>0 ? 1 : -1));
-  while(![3,6].includes(d.getDay())) d.setDate(d.getDate() + (dir>0 ? 1 : -1));
-  return d.toISOString().slice(0,10);
-}
+function nextQuaSabFrom(baseIso, dir) {
+  let d;
 
+  if (baseIso && /^\d{4}-\d{2}-\d{2}$/.test(baseIso)) {
+    const [y, m, day] = baseIso.split('-').map(Number);
+    d = new Date(y, m - 1, day, 12, 0, 0, 0);
+  } else {
+    const hoje = hojeSaoPauloISO();
+    const [y, m, day] = hoje.split('-').map(Number);
+    d = new Date(y, m - 1, day, 12, 0, 0, 0);
+  }
+
+  d.setDate(d.getDate() + (dir > 0 ? 1 : -1));
+
+  while (![3, 6].includes(d.getDay())) {
+    d.setDate(d.getDate() + (dir > 0 ? 1 : -1));
+  }
+
+  return toISODateLocal(d);
+}
 function suggestNextConcurso(){
   const nums = state.federais.map(f=>parseInt(f.concurso,10)).filter(n=>!isNaN(n));
   return nums.length ? String(Math.max(...nums)+1) : '';
@@ -458,7 +507,7 @@ async function saveMov(){
       valor_fracao_real:valor,
       valor_a_acertar:0,
       status_acerto: state.editingMovId ? ($('mov-status-acerto').value || 'PENDENTE') : 'PENDENTE',
-      data_mov:new Date().toISOString().slice(0,10),
+      data_mov: hojeSaoPauloISO(),
       observacao:$('mov-observacao').value.trim() || null,
       criado_por:state.usuario?.id || null,
       updated_at:new Date().toISOString(),
@@ -645,7 +694,7 @@ async function saveLancamento(){
           qtd_fracoes_premiadas: qtdEnc || 1,
           valor_premio: premio,
           observacao: obs,
-          data_registro: new Date().toISOString().slice(0,10)
+          data_registro: hojeSaoPauloISO()
         }).eq('id', premioExistente[0].id);
         if(e2) throw e2;
       } else {
@@ -654,6 +703,7 @@ async function saveLancamento(){
           qtd_fracoes_premiadas: qtdEnc || 1,
           valor_premio: premio,
           observacao: obs,
+          data_registro: hojeSaoPauloISO(),
           criado_por: state.usuario?.id || null
         });
         if(e3) throw e3;
@@ -752,7 +802,7 @@ function bindEvents(){
   }));
   $('mov-tipo-evento').addEventListener('change', syncMovValorByTipo);
 
-  $('fec-data-ref').value=new Date().toISOString().slice(0,10);
+ $('fec-data-ref').value = hojeSaoPauloISO();
   $('fec-federal').addEventListener('change', ()=>{ const f=lookupFederal($('fec-federal').value); if(f) $('fec-valor-fracao').value=f.valor_fracao; });
   ['fec-qtd-vendida','fec-valor-fracao'].forEach(id=>$(id).addEventListener('input', ()=>{ const q=Number($('fec-qtd-vendida').value||0), v=Number($('fec-valor-fracao').value||0); $('fec-total').value=q&&v?(q*v).toFixed(2):''; }));
   $('btn-salvar-fechamento').addEventListener('click', saveFechamento);
