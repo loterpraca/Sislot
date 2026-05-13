@@ -1,7 +1,7 @@
 const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
 
 let usuario = null;
-let dataAtual = new Date();
+let dataAtual = hojeSaoPauloDate();
 let bolaoSel = null;
 let todosBoloes = [];
 let origemFiltro = '';
@@ -12,7 +12,42 @@ const $ = id => document.getElementById(id);
 function fmtData(dt) {
   return dt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
 }
-function isoDate(dt) { return dt.toISOString().slice(0, 10); }
+
+function hojeSaoPauloDate() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+
+  const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+  const y = Number(get('year'));
+  const m = Number(get('month'));
+  const d = Number(get('day'));
+
+  return new Date(y, m - 1, d);
+}
+
+function isoDate(dt) {
+  if (!dt) return '';
+
+  if (typeof dt === 'string') {
+    const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+
+  const d = dt instanceof Date ? dt : new Date(dt);
+  if (Number.isNaN(d.getTime())) return '';
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${y}-${m}-${day}`;
+}
+
 function fmtBRL(v) {
   return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
@@ -70,7 +105,7 @@ async function init() {
     await buscarBoloes();
   });
 
-  dataAtual = new Date();
+  dataAtual = hojeSaoPauloDate();
   atualizarDateDisplay();
   await carregarOrigens();
   await buscarBoloes();
@@ -264,14 +299,6 @@ async function selecionarBolao(b) {
   $('inputMarketplace').focus();
 }
 
-function fecharPanel() {
-  $('vendaPanel').classList.remove('open');
-  document.body.classList.remove('panel-open');
-  document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
-  bolaoSel = null;
-  clearStatus();
-}
-
 function renderResumoApuracao() {
   if (!bolaoSel) return;
 
@@ -349,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btnDtPrev').addEventListener('click', () => mudarData(-1));
   $('btnDtNext').addEventListener('click', () => mudarData(+1));
   $('btnHoje').addEventListener('click', async () => {
-    dataAtual = new Date();
+    dataAtual = hojeSaoPauloDate();
     atualizarDateDisplay();
     fecharPanel();
     await carregarOrigens();
