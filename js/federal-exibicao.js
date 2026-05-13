@@ -213,12 +213,13 @@ function aplicarFiltroLojaPrincipal() {
           if (r.error) throw r.error;
         } else {
           r = await sb.from('federal_encalhe_premio').insert({
-            federal_id: state.lancFederalId,
-            qtd_fracoes_premiadas: qtdEnc || 1,
-            valor_premio: premio,
-            observacao: obs,
-            criado_por: state.usuario?.id || null
-          });
+  federal_id: state.lancFederalId,
+  qtd_fracoes_premiadas: qtdEnc || 1,
+  valor_premio: premio,
+  observacao: obs,
+  data_registro: hojeSaoPauloISO(),
+  criado_por: state.usuario?.id || null
+});
 
           if (r.error) throw r.error;
         }
