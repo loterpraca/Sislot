@@ -77,27 +77,7 @@ setInterval(updateClock, 1000);
 /************************************************************
  * INICIALIZAÇÃO
  ************************************************************/
-function hojeSaoPauloISO() {
-    const partes = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).formatToParts(new Date());
 
-    const get = tipo => partes.find(p => p.type === tipo)?.value;
-
-    return `${get('year')}-${get('month')}-${get('day')}`;
-}
-function garantirDataInicialHoje() {
-    const el = $('dataInicial');
-    if (!el) return;
-
-    if (!el.value) {
-        el.value = hojeSaoPauloISO();
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-}
 async function init() {
     const ctx = await window.SISLOT_SECURITY.protegerPagina('cadastro');
     if (!ctx) return;
@@ -131,8 +111,7 @@ async function init() {
     applyFederalUI();
     bind();
 
-   garantirDataInicialHoje();
-}
+   }
 
 async function buscarUltimoConcurso(modalidade) {
     if (!modalidade || !loteriaAtiva?.loteria_id) return null;
@@ -535,9 +514,19 @@ function limparFormSemLoja() {
         const el = $(id);
         if (el) el.value = '';
     });
-    saveDraft();
-}
 
+    CAMPOS_MOV.forEach(id => {
+        const el = $(id);
+        if (el) el.value = '';
+    });
+
+    localStorage.removeItem('sl_draft');
+    localStorage.removeItem('sl_active_mod');
+
+    setActiveModBtn('');
+    renderChips('');
+    applyFederalUI();
+}
 function limparMov() {
     CAMPOS_MOV.forEach(id => {
         const el = $(id);
@@ -1066,12 +1055,16 @@ function bind() {
     if (movOrigemChip) movOrigemChip.addEventListener('click', () => trocarLojaPorOffset(1));
 
     if (btnInicio) btnInicio.addEventListener('click', () => {
-        window.SISLOT_SECURITY.irParaInicio();
-    });
+    localStorage.removeItem('sl_draft');
+    localStorage.removeItem('sl_active_mod');
+    window.SISLOT_SECURITY.irParaInicio();
+});
 
-    if (btnSair) btnSair.addEventListener('click', async () => {
-        await window.SISLOT_SECURITY.sair();
-    });
+if (btnSair) btnSair.addEventListener('click', async () => {
+    localStorage.removeItem('sl_draft');
+    localStorage.removeItem('sl_active_mod');
+    await window.SISLOT_SECURITY.sair();
+});
 }
 
 // Inicialização
