@@ -341,13 +341,48 @@ const CANAL            = 'MARKETPLACE';
 const ORIGEM_LANCAMENTO = 'LANCAMENTO_MANUAL';
 
 let usuario   = null;
-let dataAtual = new Date();
+let dataAtual = hojeSaoPauloDate();
 let bolaoSel  = null;
 
 const $ = id => document.getElementById(id);
+function hojeSaoPauloDate() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
 
+  const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+  return new Date(
+    Number(get('year')),
+    Number(get('month')) - 1,
+    Number(get('day')),
+    12,
+    0,
+    0,
+    0
+  );
+}
 function fmtData(dt) { return dt.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' }); }
-function isoDate(dt) { return dt.toISOString().slice(0, 10); }
+function isoDate(dt) {
+  if (!dt) return '';
+
+  if (typeof dt === 'string') {
+    const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+
+  const d = dt instanceof Date ? dt : new Date(dt);
+  if (Number.isNaN(d.getTime())) return '';
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${y}-${m}-${day}`;
+}
 function fmtBRL(v)   { return 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 
 function setStatus(msg, tipo='info') { const el=$('statusBar'); el.textContent=msg; el.className='status-bar show '+tipo; }
@@ -372,7 +407,7 @@ async function init() {
   usuario = usr;
 
   $('btnLogout').onclick = async () => { await sb.auth.signOut(); location.href = './login.html'; };
-  dataAtual = new Date();
+  dataAtual = hojeSaoPauloDate();
   atualizarDateDisplay();
   await buscarBoloes();
 }
@@ -559,7 +594,12 @@ async function registrar() {
 document.addEventListener('DOMContentLoaded', () => {
   $('btnDtPrev').addEventListener('click', () => mudarData(-1));
   $('btnDtNext').addEventListener('click', () => mudarData(+1));
-  $('btnHoje').addEventListener('click', async () => { dataAtual = new Date(); atualizarDateDisplay(); fecharPanel(); await buscarBoloes(); });
+  $('btnHoje').addEventListener('click', async () => {
+  dataAtual = hojeSaoPauloDate();
+  atualizarDateDisplay();
+  fecharPanel();
+  await buscarBoloes();
+});
   $('btnFecharPanel').addEventListener('click', fecharPanel);
   $('inputQtd').addEventListener('keydown', e => { if (e.key === 'Enter') registrar(); });
   init();
