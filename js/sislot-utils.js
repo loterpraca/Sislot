@@ -121,16 +121,44 @@
     }
 
     function isoDate(date) {
-        if (!date) return '';
-        const d = date instanceof Date ? date : new Date(date);
-        if (isNaN(d.getTime())) return '';
-        return d.toISOString().slice(0, 10);
+    if (!date) return '';
+
+    // Se já vier no formato YYYY-MM-DD, mantém exatamente como está.
+    // Isso evita deslocamento de fuso em datas vindas do banco.
+    if (typeof date === 'string') {
+        const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            return `${match[1]}-${match[2]}-${match[3]}`;
+        }
     }
 
-    function getDataAtual() {
-        return isoDate(new Date());
-    }
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
 
+    // Usa a data LOCAL do navegador, não UTC.
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+
+    return `${y}-${m}-${dia}`;
+}
+
+function getDataAtual() {
+    return hojeSaoPauloISO();
+}
+
+function hojeSaoPauloISO() {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(new Date());
+
+    const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+    return `${get('year')}-${get('month')}-${get('day')}`;
+}
     function addDias(inputId, delta) {
         const el = $(inputId);
         if (!el) return;
