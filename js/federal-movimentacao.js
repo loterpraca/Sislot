@@ -27,13 +27,18 @@
     return null;
   }
 
-  function hojeISO() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
+ function hojeISO() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+
+  const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
 
   function parseISODate(value) {
     if (!value) return null;
