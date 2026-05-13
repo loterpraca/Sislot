@@ -16,6 +16,37 @@
 let _supabase = null;
 let _ctx      = null;
 
+function hojeSaoPauloDate() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+
+  const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+  return new Date(
+    Number(get('year')),
+    Number(get('month')) - 1,
+    Number(get('day')),
+    12,
+    0,
+    0,
+    0
+  );
+}
+
+function isoDateLocal(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${y}-${m}-${day}`;
+}
+
 async function _bootstrap() {
   if (!window.SISLOT_CONFIG) {
     document.body.innerHTML = '<p style="color:#ff4f4f;padding:32px;font-family:monospace">Erro: sislot-config.js ausente.</p>';
@@ -97,9 +128,10 @@ function _derivarOrigem(b) {
 /* ════════════════════════════════════════════════════════════
    3. ESTADO GLOBAL
 ════════════════════════════════════════════════════════════ */
+const HOJE_SP = hojeSaoPauloDate();
 const ESTADO = {
-  mes:              new Date().getMonth() + 1,
-  ano:              new Date().getFullYear(),
+  mes:              HOJE_SP.getMonth() + 1,
+  ano:              HOJE_SP.getFullYear(),
   diaAtivo:         null,
   lojaFiltro:       '',
   funcFiltro:       '',
@@ -150,7 +182,7 @@ const API = {
   async qResumoEsquerda(mes, ano, lojaId, usuarioId) {
     const mesStr  = String(mes).padStart(2, '0');
     const dataIni = `${ano}-${mesStr}-01`;
-    const dataFim = new Date(ano, mes, 0).toISOString().split('T')[0];
+    const dataFim = isoDateLocal(new Date(ano, mes, 0));
 
     let q = _supabase
       .from('vw_fechamentos_html')
@@ -468,7 +500,7 @@ const VIEWER = {
       selMes.appendChild(op);
     });
     const selAno = document.getElementById('sel-ano');
-    const anoAtual = new Date().getFullYear();
+    const anoAtual = hojeSaoPauloDate().getFullYear();
     for (let a = anoAtual - 3; a <= anoAtual + 1; a++) {
       const op = document.createElement('option');
       op.value = a; op.textContent = a;
@@ -574,7 +606,7 @@ const VIEWER = {
     const DIAS_SEMANA = ['D','S','T','Q','Q','S','S'];
     const DIAS_FULL   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     const totalDias   = new Date(ESTADO.ano, ESTADO.mes, 0).getDate();
-    const hoje        = new Date();
+    const hoje = hojeSaoPauloDate();
     const ehMesAtual  = hoje.getMonth() + 1 === ESTADO.mes && hoje.getFullYear() === ESTADO.ano;
 
     const diasComDados = {};
@@ -991,7 +1023,9 @@ const VIEWER = {
   },
 
   _htmlLancamentoCard(l) {
-    const data = l.data_movimento ? new Date(l.data_movimento).toLocaleDateString('pt-BR') : '—';
+    const data = l.data_movimento
+  ? String(l.data_movimento).slice(0, 10).split('-').reverse().join('/')
+  : '—';
     return `
       <div class="lancamento-card" data-extrato-id="${l.id}">
         <div class="lancamento-header">
@@ -1191,7 +1225,8 @@ const VIEWER = {
   },
 
   iniciarNovo() {
-    const d = String(ESTADO.diaAtivo || new Date().getDate()).padStart(2,'0');
+    const hoje = hojeSaoPauloDate();
+    const d = String(ESTADO.diaAtivo || hoje.getDate()).padStart(2,'0');
     const m = String(ESTADO.mes).padStart(2,'0');
     window.location.href = `./fechamento-caixa.html?data=${ESTADO.ano}-${m}-${d}${ESTADO.lojaFiltro ? '&loja=' + ESTADO.lojaFiltro : ''}`;
   },
