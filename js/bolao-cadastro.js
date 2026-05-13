@@ -345,11 +345,19 @@ function renderQuickbar() {
 }
 
 function selecionarMod(modKey) {
-    const prev = localStorage.getItem('sl_active_mod') || '';
-    if (prev !== modKey) limparFormSemLoja();
-
     const modalidadeEl = $('modalidade');
+    const modAtual = modalidadeEl?.value || '';
+
+    const mudouModalidade = modAtual && modAtual !== modKey;
+
+    if (mudouModalidade) {
+        limparFormCompletoMantendoModalidade(modKey);
+        setStatus('status', 'Modalidade alterada. Dados anteriores foram limpos.', 'muted', 'broom');
+        return;
+    }
+
     if (modalidadeEl) modalidadeEl.value = modKey;
+
     localStorage.setItem('sl_active_mod', modKey);
     setActiveModBtn(modKey);
     renderChips(modKey);
@@ -484,6 +492,40 @@ function loadDraft() {
     } catch {}
 }
 
+function limparFormCompletoMantendoModalidade(modKey) {
+    // Limpa formulário principal
+    CAMPOS_FORM.forEach(id => {
+        const el = $(id);
+        if (el) el.value = '';
+    });
+
+    // Limpa movimentação também
+    CAMPOS_MOV.forEach(id => {
+        const el = $(id);
+        if (el) el.value = '';
+    });
+
+    // Mantém a modalidade nova selecionada
+    const modalidadeEl = $('modalidade');
+    if (modalidadeEl) modalidadeEl.value = modKey;
+
+    // Data inicial volta para hoje em São Paulo
+    const dataInicialEl = $('dataInicial');
+    if (dataInicialEl) dataInicialEl.value = hojeSaoPauloISO();
+
+    // Data do concurso fica vazia
+    const dataConcursoEl = $('dataConcurso');
+    if (dataConcursoEl) dataConcursoEl.value = '';
+
+    // Atualiza estado visual e storage
+    localStorage.removeItem('sl_draft');
+    localStorage.setItem('sl_active_mod', modKey);
+
+    setActiveModBtn(modKey);
+    renderChips(modKey);
+    applyFederalUI();
+    saveDraft();
+}
 function limparFormSemLoja() {
     CAMPOS_FORM.forEach(id => {
         const el = $(id);
@@ -995,13 +1037,13 @@ function bind() {
     });
 
     if (modalidade) modalidade.addEventListener('change', () => {
-        const m = modalidade.value;
-        localStorage.setItem('sl_active_mod', m);
-        setActiveModBtn(m);
-        renderChips(m);
-        applyFederalUI();
-        saveDraft();
-    });
+    const m = modalidade.value;
+    limparFormCompletoMantendoModalidade(m);
+
+    if (m) {
+        setStatus('status', 'Modalidade alterada. Dados anteriores foram limpos.', 'muted', 'broom');
+    }
+});
 
     [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
         const el = $(id);
