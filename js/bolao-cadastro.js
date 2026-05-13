@@ -509,17 +509,21 @@ function limparFormCompletoMantendoModalidade(modKey) {
     const modalidadeEl = $('modalidade');
     if (modalidadeEl) modalidadeEl.value = modKey;
 
-    // Data inicial volta para hoje em São Paulo
+    // Datas ficam vazias
     const dataInicialEl = $('dataInicial');
-    if (dataInicialEl) dataInicialEl.value = hojeSaoPauloISO();
+    if (dataInicialEl) dataInicialEl.value = '';
 
-    // Data do concurso fica vazia
     const dataConcursoEl = $('dataConcurso');
     if (dataConcursoEl) dataConcursoEl.value = '';
 
     // Atualiza estado visual e storage
     localStorage.removeItem('sl_draft');
-    localStorage.setItem('sl_active_mod', modKey);
+
+    if (modKey) {
+        localStorage.setItem('sl_active_mod', modKey);
+    } else {
+        localStorage.removeItem('sl_active_mod');
+    }
 
     setActiveModBtn(modKey);
     renderChips(modKey);
