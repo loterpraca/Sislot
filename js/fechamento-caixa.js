@@ -14,7 +14,23 @@ const utils = window.SISLOT_UTILS || {};
 const $ = utils.$ || (id => document.getElementById(id));
 const fmtBRL = utils.fmtBRL || (v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','));
 const fmtData = utils.fmtData || (s => { if (!s) return '—'; const [y, m, d] = String(s).split('-'); return `${d}/${m}/${y}`; });
-const isoDate = utils.isoDate || (date => date ? date.toISOString().slice(0, 10) : '');
+const isoDate = utils.isoDate || (date => {
+    if (!date) return '';
+
+    if (typeof date === 'string') {
+        const m = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+
+    const d = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(d.getTime())) return '';
+
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+
+    return `${y}-${m}-${dia}`;
+});
 const setStatus = utils.setStatus || ((id, msg, tipo) => { const el = $(id); if (el) { el.textContent = msg; el.className = `status-chip show ${tipo}`; } });
 const hideStatus = utils.hideStatus || (id => { const el = $(id); if (el) el.className = 'status-chip'; });
 const updateClock = utils.updateClock || (() => {
@@ -61,6 +77,18 @@ let mostrarProdutosSemEstoque = false;
 
 const n = id => parseFloat($(id)?.value) || 0;
 
+function hojeSaoPauloISO() {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(new Date());
+
+    const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+    return `${get('year')}-${get('month')}-${get('day')}`;
+}
 function getCFOrThrow() {
     const cf = window.CF;
     if (!cf) {
@@ -175,7 +203,7 @@ async function init() {
 
         await definirLoteriaAtiva(inicial);
 
-        $('data-ref').value = new Date().toISOString().slice(0, 10);
+       $('data-ref').value = hojeSaoPauloISO();
 
         await carregarProdutos();
         buildRaspadinha();
@@ -2043,8 +2071,8 @@ function resetEstado() {
 
     const dataRef = $('data-ref');
     if (dataRef) {
-        dataRef.value = new Date().toISOString().slice(0, 10);
-        dataRef.classList.add('filled');
+        dataRef.value = hojeSaoPauloISO();
+dataRef.classList.add('filled');
     }
 
     // ── Reset do módulo CF (substitui o bloco antigo de dívidas) ──────────
