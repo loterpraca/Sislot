@@ -14,6 +14,19 @@ const state = {
   lancFederalId: null,
   filtroInicializado: false
 };
+
+  function hojeSaoPauloISO() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+
+  const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
 function getUserPrincipalLoteriaId() {
   return String(
     state.usuario?.loteria_id ??
@@ -194,7 +207,7 @@ function aplicarFiltroLojaPrincipal() {
             qtd_fracoes_premiadas: qtdEnc || 1,
             valor_premio: premio,
             observacao: obs,
-            data_registro: new Date().toISOString().slice(0, 10)
+            data_registro: hojeSaoPauloISO()
           }).eq('id', busca.data[0].id);
 
           if (r.error) throw r.error;
