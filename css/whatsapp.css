@@ -1161,3 +1161,61 @@ body.wpp-sale-open{
     gap:5px;
   }
 }
+/* REFINO DOS CARDS — cores limpas */
+.bsc-tag{
+  background:rgba(255,255,255,.045);
+  border-color:var(--border);
+  color:var(--text2);
+}
+
+.tag-concurso{
+  color:#7dd3fc!important;
+  background:rgba(56,189,248,.08)!important;
+  border-color:rgba(56,189,248,.22)!important;
+}
+
+.tag-canal-venda{
+  color:var(--t1)!important;
+  background:var(--t3)!important;
+  border-color:var(--t4)!important;
+}
+
+.tag-origem-cotas{
+  color:#f5a623!important;
+  background:rgba(245,166,35,.08)!important;
+  border-color:rgba(245,166,35,.24)!important;
+}
+
+.saldo-pill{
+  background:rgba(255,255,255,.04);
+  border-color:var(--border);
+  color:var(--text3);
+}
+
+.saldo-pill .sp-loja{
+  color:var(--text2);
+}
+
+.saldo-pill .sp-val{
+  color:var(--text);
+}
+
+.saldo-pill.contexto{
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.saldo-pill.contexto .sp-loja,
+.saldo-pill.contexto .sp-val{
+  color:var(--t1);
+}
+
+.saldo-pill.origem{
+  border-color:rgba(245,166,35,.26);
+  background:rgba(245,166,35,.08);
+}
+
+.saldo-pill.origem .sp-loja,
+.saldo-pill.origem .sp-val{
+  color:#f5a623;
+}
