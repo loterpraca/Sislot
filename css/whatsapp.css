@@ -1181,9 +1181,9 @@ body.wpp-sale-open{
 }
 
 .tag-origem-cotas{
-  color:#f5a623!important;
-  background:rgba(245,166,35,.08)!important;
-  border-color:rgba(245,166,35,.24)!important;
+  color:var(--text2)!important;
+  background:rgba(255,255,255,.045)!important;
+  border-color:var(--border)!important;
 }
 
 .saldo-pill{
