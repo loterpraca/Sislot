@@ -236,6 +236,9 @@ async function init(){
   const btnLimparBolaoWpp = $('btnLimparBolaoWpp');
   if (btnLimparBolaoWpp) btnLimparBolaoWpp.onclick = limparBolaoSelecionadoWpp;
 
+  const btnFecharVendaWpp = $('btnFecharVendaWpp');
+  if (btnFecharVendaWpp) btnFecharVendaWpp.onclick = fecharPainelVendaWpp;
+  
   dataAtual=hojeLocal();dataAtualReg=hojeLocal();
   atualizarDates();
   await carregarVendas();
@@ -461,6 +464,31 @@ function toggleGroup(header){
 }
 
 // ── BOLÕES para registrar ─────────────────────────────────────────
+
+function abrirPainelVendaWpp(b){
+  const panel = $('wppSalePanel');
+  if (!panel || !b) return;
+
+  const saldo = getSaldoContextoBolao(b);
+  const title = $('wppSaleTitle');
+
+  if (title) {
+    title.textContent = `${b.modalidade} #${b.concurso} · ${lojaWhatsappAtiva?.loteria_nome || '—'} · ${saldo} saldo`;
+  }
+
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('wpp-sale-open');
+}
+
+function fecharPainelVendaWpp(){
+  const panel = $('wppSalePanel');
+  if (!panel) return;
+
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('wpp-sale-open');
+}
 function limparBolaoSelecionadoWpp(){
   bolaoSelReg = null;
 
@@ -471,6 +499,8 @@ function limparBolaoSelecionadoWpp(){
 
   const panel = $('wppSelectedPanel');
   if (panel) panel.style.display = 'none';
+
+  fecharPainelVendaWpp();
 
   calcTotal();
   clearStatusReg();
@@ -658,7 +688,7 @@ function renderBoloesReg(boloes){
             <div class="bsc-header">
               <span class="bsc-modal">${b.modalidade}</span>
               <span class="bsc-tag" style="color:var(--t1);background:var(--t3);border-color:var(--t4)">#${b.concurso}</span>
-              <span class="bsc-tag" style="color:#f5a623;background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2)">Origem: ${b.loteria_origem_nome || '—'}</span>
+              <span class="bsc-tag" style="color:#f5a623;background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2)">${b.loteria_origem_nome || '—'}</span>
               <span class="bsc-tag bsc-saldo">${saldoContexto} saldo aqui</span>
             </div>
 
@@ -688,6 +718,7 @@ function renderBoloesReg(boloes){
           $('inputQtd').value = '1';
 
           renderResumoBolaoSelecionado(b);
+          abrirPainelVendaWpp(b);
           calcTotal();
           clearStatusReg();
         };
@@ -770,7 +801,7 @@ async function registrarVenda(){
   clienteSel = null;
   $('inputQtd').value = '1';
   $('chkPago').checked = false;
-
+  fecharPainelVendaWpp();
   calcTotal();
 
   await buscarBoloesReg();
