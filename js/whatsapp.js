@@ -670,10 +670,10 @@ function renderBoloesReg(boloes){
         const saldoPills = (b.saldos_lojas || []).map(s => {
           const saldo = Number(s.saldo_real || 0);
           const ehContexto = Number(s.loteria_id) === Number(lojaWhatsappAtiva?.loteria_id);
-          const ehOrigem = Number(s.loteria_id) === Number(b.loteria_origem_id);
+          
 
           return `
-            <span class="saldo-pill ${ehContexto ? 'contexto' : ''} ${ehOrigem ? 'origem' : ''} ${saldo <= 0 ? 'zero' : ''}">
+            <span class="saldo-pill ${ehContexto ? 'contexto' : ''} ${saldo <= 0 ? 'zero' : ''}">
               <span class="sp-loja">${s.loteria_nome}</span>
               <span class="sp-val">${saldo}</span>
             </span>`;
