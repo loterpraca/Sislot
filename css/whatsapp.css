@@ -1,42 +1,239 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:#070d1a;--bg2:#0c1528;--panel:#101f38;--panel2:#132240;
-      --border:#1a3060;--border2:#243d70;
-      --text:#dde8f8;--text2:#7a95c4;--text3:#3d5a8a;
-      --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
-      --input-bg:#0a1628;--error:#ff4f4f;--green:#25d366;
-      --tr:0.2s ease;
-    }
-    body{font-family:var(--sans);color:var(--text);background:var(--bg);min-height:100vh;
-      display:flex;flex-direction:column;
-      background-image:radial-gradient(ellipse 80% 40% at 50% 0%,rgba(37,211,102,0.05) 0%,transparent 60%),
-        repeating-linear-gradient(0deg,transparent,transparent 47px,rgba(26,48,96,0.18) 47px,rgba(26,48,96,0.18) 48px),
-        repeating-linear-gradient(90deg,transparent,transparent 47px,rgba(26,48,96,0.1) 47px,rgba(26,48,96,0.1) 48px)}
+  --bg:#070d1a;
+  --bg2:#0c1528;
+  --panel:#101f38;
+  --panel2:#132240;
+  --border:#1a3060;
+  --border2:#243d70;
+  --text:#dde8f8;
+  --text2:#7a95c4;
+  --text3:#3d5a8a;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+  --input-bg:#0a1628;
+  --error:#ff4f4f;
 
-    /* TOPBAR */
-    .topbar{display:flex;align-items:center;justify-content:space-between;
-      padding:0 24px;height:56px;background:rgba(7,13,26,0.95);
-      border-bottom:1px solid var(--border);backdrop-filter:blur(12px);
-      position:sticky;top:0;z-index:100}
-    .topbar-brand{display:flex;align-items:center;gap:10px}
-    .brand-icon{width:30px;height:30px;background:var(--green);border-radius:7px;
-      display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .brand-icon svg{width:16px;height:16px;fill:white}
-    .brand-name{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
-    .brand-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase}
-    .topbar-right{display:flex;align-items:center;gap:10px}
-    .clock{font-family:var(--mono);font-size:11px;color:var(--text2)}
-    .btn-top{display:flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--border);
-      border-radius:7px;padding:6px 11px;cursor:pointer;font-family:var(--sans);font-size:11px;
-      font-weight:500;color:var(--text2);transition:var(--tr);white-space:nowrap}
-    .btn-top:hover{color:var(--green);border-color:rgba(37,211,102,0.3);background:rgba(37,211,102,0.04)}
-    .btn-top-sair:hover{color:var(--error);border-color:rgba(255,79,79,0.3);background:rgba(255,79,79,0.04)}
-    .btn-top svg{width:12px;height:12px}
+  --t1:#25d366;
+  --t2:#16a34a;
+  --t3:rgba(37,211,102,0.12);
+  --t4:rgba(37,211,102,0.28);
+  --t5:rgba(37,211,102,0.05);
+
+  --green:var(--t1);
+  --tr:0.25s cubic-bezier(.4,0,.2,1);
+}
+
+[data-loja="boulevard"]{
+  --t1:#3b82f6;
+  --t2:#1d4ed8;
+  --t3:rgba(59,130,246,0.12);
+  --t4:rgba(59,130,246,0.28);
+  --t5:rgba(59,130,246,0.05);
+  --green:var(--t1);
+}
+
+[data-loja="centro"]{
+  --t1:#25d366;
+  --t2:#16a34a;
+  --t3:rgba(37,211,102,0.12);
+  --t4:rgba(37,211,102,0.28);
+  --t5:rgba(37,211,102,0.05);
+  --green:var(--t1);
+}
+
+[data-loja="lotobel"]{
+  --t1:#ef4444;
+  --t2:#b91c1c;
+  --t3:rgba(239,68,68,0.12);
+  --t4:rgba(239,68,68,0.28);
+  --t5:rgba(239,68,68,0.05);
+  --green:var(--t1);
+}
+
+[data-loja="santa-tereza"]{
+  --t1:#a855f7;
+  --t2:#7e22ce;
+  --t3:rgba(168,85,247,0.12);
+  --t4:rgba(168,85,247,0.28);
+  --t5:rgba(168,85,247,0.05);
+  --green:var(--t1);
+}
+
+[data-loja="via-brasil"]{
+  --t1:#eab308;
+  --t2:#a16207;
+  --t3:rgba(234,179,8,0.12);
+  --t4:rgba(234,179,8,0.28);
+  --t5:rgba(234,179,8,0.05);
+  --green:var(--t1);
+}
+    body{
+  font-family:var(--sans);
+  color:var(--text);
+  background:var(--bg);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  background-image:
+    radial-gradient(ellipse 100% 48% at 50% -10%,var(--t3) 0%,transparent 65%),
+    repeating-linear-gradient(0deg,transparent,transparent 47px,rgba(26,48,96,0.18) 47px,rgba(26,48,96,0.18) 48px),
+    repeating-linear-gradient(90deg,transparent,transparent 47px,rgba(26,48,96,0.1) 47px,rgba(26,48,96,0.1) 48px);
+  transition:background-image var(--tr);
+}
+    /* TOPBAR — padrão loja */
+.topbar{
+  height:62px;
+  padding:0 18px;
+  background:rgba(7,13,26,.94);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(14px);
+  position:sticky;
+  top:0;
+  z-index:120;
+  display:flex;
+  align-items:center;
+}
+
+.topbar::after{
+  content:'';
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent 0%,var(--t1) 50%,transparent 100%);
+  opacity:.42;
+}
+
+.topbar-inner{
+  max-width:1200px;
+  width:100%;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.loja-tree{
+  width:48px;
+  height:48px;
+  flex:0 0 48px;
+  border-radius:50%;
+  border:1px solid var(--t4);
+  background:rgba(255,255,255,.08);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  cursor:pointer;
+  padding:0;
+  box-shadow:0 0 14px var(--t3);
+  transition:var(--tr);
+}
+
+.loja-tree:hover{
+  transform:translateY(-1px) scale(1.035);
+  border-color:var(--t1);
+  box-shadow:0 0 20px var(--t4);
+}
+
+.loja-tree img{
+  width:112%;
+  height:112%;
+  object-fit:cover;
+  object-position:center;
+  display:block;
+  transition:var(--tr);
+}
+
+.topbar-brand{
+  flex:1;
+  min-width:0;
+}
+
+.brand-name{
+  font-family:var(--mono);
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text);
+  line-height:1;
+  margin-bottom:4px;
+}
+
+.brand-sub{
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text3);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+
+.topbar-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-shrink:0;
+}
+
+.clock{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--text2);
+  white-space:nowrap;
+}
+
+.btn-top{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-height:34px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:7px 12px;
+  cursor:pointer;
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text2);
+  transition:var(--tr);
+  white-space:nowrap;
+}
+
+.btn-top:hover{
+  color:var(--t1);
+  border-color:var(--t4);
+  background:var(--t5);
+}
+
+.btn-top-sair:hover{
+  color:var(--error);
+  border-color:rgba(255,79,79,.32);
+  background:rgba(255,79,79,.06);
+}
+
+.btn-top i{
+  font-size:11px;
+}
 
     /* TABS */
-    .tabs-bar{background:rgba(7,13,26,0.9);border-bottom:1px solid var(--border);
-      padding:0 24px;display:flex;gap:2px;backdrop-filter:blur(8px);
-      position:sticky;top:56px;z-index:99}
+    .tabs-bar{
+  background:rgba(7,13,26,0.9);
+  border-bottom:1px solid var(--border);
+  padding:0 24px;
+  display:flex;
+  gap:2px;
+  backdrop-filter:blur(8px);
+  position:sticky;
+  top:62px;
+  z-index:99;
+}
     .tab-btn{display:flex;align-items:center;gap:7px;padding:12px 16px;
       background:transparent;border:none;cursor:pointer;
       font-family:var(--sans);font-size:13px;font-weight:500;
@@ -185,15 +382,94 @@
     .cli-group-sub{font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono)}
 
     /* REGISTRO PANEL */
+    /* Cabeçalho da área de registro */
+.reg-headline{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(26,48,96,.7);
+}
+
+.reg-headline .reg-section-title{
+  margin-bottom:0;
+}
+
+.origem-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:30px;
+  padding:5px 11px;
+  border-radius:999px;
+  border:1px solid var(--t4);
+  background:var(--t3);
+  color:var(--t1);
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  cursor:default;
+  transition:var(--tr);
+  white-space:nowrap;
+}
+
+.origem-chip strong{
+  font-weight:700;
+  color:var(--text);
+  text-transform:none;
+  letter-spacing:0;
+  font-size:11px;
+}
+
+.origem-chip i{
+  font-size:10px;
+}
+
+.origem-chip-clickable{
+  cursor:pointer;
+}
+
+.origem-chip-clickable:hover{
+  border-color:var(--t1);
+  background:var(--t5);
+  transform:translateY(-1px);
+  box-shadow:0 0 14px var(--t3);
+}
     .reg-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px}
     .reg-section-title{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
       color:var(--text3);margin-bottom:14px}
     .bolao-cards-grid{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
-    .bolao-sel-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;
-      padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
-      cursor:pointer;transition:var(--tr);border-left:3px solid transparent}
-    .bolao-sel-card:hover{border-color:rgba(37,211,102,0.3);background:rgba(37,211,102,0.02)}
-    .bolao-sel-card.selected{border-color:var(--green)!important;background:rgba(37,211,102,0.04)!important}
+    .bolao-sel-card{
+  background:linear-gradient(180deg,rgba(19,34,64,.98),rgba(14,27,50,.98));
+  border:1px solid var(--border);
+  border-left:3px solid transparent;
+  border-radius:10px;
+  padding:11px 14px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  align-items:center;
+  cursor:pointer;
+  transition:var(--tr);
+}
+
+.bolao-sel-card:hover{
+  border-color:var(--t4);
+  border-left-color:var(--t1);
+  background:linear-gradient(180deg,var(--t5),rgba(14,27,50,.98));
+  transform:translateY(-1px);
+}
+
+.bolao-sel-card.selected{
+  border-color:var(--t1)!important;
+  border-left-color:var(--t1)!important;
+  background:linear-gradient(180deg,var(--t3),rgba(14,27,50,.98))!important;
+  box-shadow:0 0 0 2px var(--t4),0 8px 24px rgba(0,0,0,.22);
+}
     .bsc-main{display:flex;flex-direction:column;gap:4px}
     .bsc-header{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
     .bsc-modal{font-size:13px;font-weight:600;color:var(--text)}
@@ -205,7 +481,26 @@
     .bolao-sel-card.selected .bsc-ind{background:var(--green);border-color:var(--green)}
     .bsc-ind svg{display:none;width:9px;height:9px;stroke:#0a1628}
     .bolao-sel-card.selected .bsc-ind svg{display:block}
+.bsc-origin{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex-wrap:wrap;
+}
 
+.bsc-origin strong{
+  color:var(--text2);
+  font-weight:600;
+}
+
+.bsc-saldo{
+  color:var(--t1)!important;
+  border-color:var(--t4)!important;
+  background:var(--t3)!important;
+}
     /* FORM REGISTRO */
     .form-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:12px}
     .field{display:flex;flex-direction:column;gap:5px}
@@ -370,3 +665,114 @@
       .form-grid .btn-registrar{grid-column:span 2;justify-content:center}
       .tabs-bar{padding:0 14px;overflow-x:auto}
     }
+    @media(max-width:600px){
+  .topbar{
+    height:58px;
+    padding:0 12px;
+  }
+
+  .topbar-inner{
+    gap:9px;
+  }
+
+  .loja-tree{
+    width:44px;
+    height:44px;
+    flex-basis:44px;
+  }
+
+  .brand-name{
+    font-size:13px;
+  }
+
+  .brand-sub{
+    font-size:8px;
+    letter-spacing:.14em;
+  }
+
+  .clock{
+    display:none;
+  }
+
+  .btn-top{
+    min-height:32px;
+    padding:7px 9px;
+  }
+
+  .btn-top span{
+    display:none;
+  }
+
+  .tabs-bar{
+    top:58px;
+    padding:0 10px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+
+  .tabs-bar::-webkit-scrollbar{
+    display:none;
+  }
+
+  .tab-btn{
+    padding:11px 12px;
+    font-size:12px;
+  }
+
+  .main{
+    padding:14px 12px 42px;
+  }
+
+  .reg-panel{
+    padding:14px;
+    border-radius:14px;
+  }
+
+  .reg-headline{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .origem-chip{
+    width:100%;
+    justify-content:center;
+    min-height:34px;
+  }
+
+  .date-bar{
+    gap:8px;
+  }
+
+  .date-stepper{
+    flex:1;
+  }
+
+  .date-display{
+    flex:1;
+    min-width:0;
+    font-size:11px;
+    padding:0 8px;
+  }
+
+  .form-grid{
+    grid-template-columns:1fr;
+  }
+
+  .btn-registrar{
+    width:100%;
+    justify-content:center;
+  }
+
+  .bolao-sel-card{
+    padding:12px;
+  }
+
+  .bsc-header{
+    gap:6px;
+  }
+
+  .bsc-tags{
+    gap:5px;
+  }
+}
