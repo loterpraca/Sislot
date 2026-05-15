@@ -689,7 +689,7 @@ function renderBoloesReg(boloes){
               <span class="bsc-modal">${b.modalidade}</span>
               <span class="bsc-tag" style="color:var(--t1);background:var(--t3);border-color:var(--t4)">#${b.concurso}</span>
               <span class="bsc-tag" style="color:#f5a623;background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2)">${b.loteria_origem_nome || '—'}</span>
-              <span class="bsc-tag bsc-saldo">${saldoContexto} saldo aqui</span>
+              
             </div>
 
             <div class="bsc-tags">
