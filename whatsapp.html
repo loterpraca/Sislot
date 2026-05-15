@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>SISLOT — Vendas WhatsApp</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
   <link rel="stylesheet" href="./css/whatsapp.css"/>
 </head>
-<body>
+<body data-loja="centro">
 
 <!-- WPP ICON SPRITE -->
 <svg style="display:none">
@@ -18,25 +19,29 @@
 
 <!-- TOPBAR -->
 <header class="topbar">
-  <div class="topbar-brand">
-    <div class="brand-icon">
-      <svg viewBox="0 0 24 24"><use href="#wpp-icon"/></svg>
-    </div>
-    <div>
-      <div class="brand-name">SISLOT</div>
-      <div class="brand-sub">Vendas WhatsApp</div>
-    </div>
-  </div>
-  <div class="topbar-right">
-    <div class="clock" id="relogio">--:--:--</div>
-    <button class="btn-top" onclick="location.href='./menu.html'">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Menu
+  <div class="topbar-inner">
+    <button type="button" class="loja-tree" id="lojaTreeWrap" title="Trocar loja WhatsApp">
+      <img src="./icons/loterpraca.png" alt="Logo da loja" id="logoImg"/>
     </button>
-    <button class="btn-top btn-top-sair" id="btnLogout">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Sair
-    </button>
+
+    <div class="topbar-brand">
+      <div class="brand-name" id="headerTitle">Centro</div>
+      <div class="brand-sub" id="headerSub">Vendas WhatsApp</div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="clock" id="relogio">--:--:--</div>
+
+      <button class="btn-top" onclick="location.href='./menu.html'">
+        <i class="fas fa-home"></i>
+        <span>Menu</span>
+      </button>
+
+      <button class="btn-top btn-top-sair" id="btnLogout">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Sair</span>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -103,7 +108,15 @@
   <!-- ===== TAB REGISTRAR ===== -->
   <div class="tab-pane" id="tab-registrar">
     <div class="reg-panel">
-      <div class="reg-section-title">Selecione o bolão</div>
+      <div class="reg-headline">
+  <div class="reg-section-title">Selecione o bolão</div>
+
+  <button type="button" class="origem-chip origem-chip-clickable" id="wppLojaChip" title="Trocar loja WhatsApp">
+    <i class="fas fa-store"></i>
+    <span>WhatsApp</span>
+    <strong id="wppLojaNome">Centro</strong>
+  </button>
+</div>
 
       <!-- date bar para registrar -->
       <div class="date-bar" style="margin-bottom:14px">
