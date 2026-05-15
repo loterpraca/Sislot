@@ -92,7 +92,12 @@ function atualizarLojaWhatsappUI(){
   const slug = lojaWhatsappAtiva?.loteria_slug || lojaWhatsappAtiva?.slug || 'centro';
   aplicarTemaWhatsapp(slug);
 }
+function sincronizarFiltroHistoricoComLojaAtiva(){
+  const sel = $('filtLoja');
+  if (!sel || !lojaWhatsappAtiva?.loteria_id) return;
 
+  sel.value = String(lojaWhatsappAtiva.loteria_id);
+}
 function getIndiceLojaWhatsappAtual(){
   if (!lojasPermitidas.length || !lojaWhatsappAtiva) return -1;
   return lojasPermitidas.findIndex(l => Number(l.loteria_id) === Number(lojaWhatsappAtiva.loteria_id));
@@ -181,6 +186,7 @@ async function carregarContextoLojas(){
       selHist.appendChild(o);
     });
   }
+  sincronizarFiltroHistoricoComLojaAtiva();
 }
 // ── Relógio ───────────────────────────────────────────────────────
 function updateClock(){
