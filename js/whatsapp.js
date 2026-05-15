@@ -1071,28 +1071,29 @@ async function toggleSepHist(id,atual,btn){
 }
 
 function limparFiltros(){
-  ['filtDataVendaDe','filtDataVendaAte','filtDataConc','filtDataConcAte','filtModalidade','filtConcurso']
-    .forEach(id => {
-      const el = $(id);
-      if (el) el.value = '';
-    });
+  [
+    'filtDataVendaDe',
+    'filtDataVendaAte',
+    'filtDataConc',
+    'filtDataConcAte',
+    'filtModalidade',
+    'filtConcurso'
+  ].forEach(id => {
+    const el = $(id);
+    if (el) el.value = '';
+  });
 
-  ['filtPago','filtConf','filtSep']
-    .forEach(id => {
-      const el = $(id);
-      if (el) el.selectedIndex = 0;
-    });
+  [
+    'filtPago',
+    'filtConf',
+    'filtSep'
+  ].forEach(id => {
+    const el = $(id);
+    if (el) el.selectedIndex = 0;
+  });
 
   sincronizarFiltroHistoricoComLojaAtiva();
-
-  $('histContent').innerHTML = `
-    <div class="state-box">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;opacity:.25">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-      </svg>
-      <div class="state-title">Filtros limpos</div>
-      <div class="state-sub">Histórico pronto para o WhatsApp ${lojaWhatsappAtiva?.loteria_nome || 'da loja'}.</div>
-    </div>`;
+  carregarHistorico();
 }
 
 // ── CONFIRMAR ─────────────────────────────────────────────────────
