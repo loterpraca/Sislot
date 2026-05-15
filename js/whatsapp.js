@@ -122,13 +122,17 @@ async function trocarLojaWhatsapp(loja){
   lojaWhatsappAtiva = loja;
 
   atualizarLojaWhatsappUI();
+  sincronizarFiltroHistoricoComLojaAtiva();
 
   limparBolaoSelecionadoWpp();
 
   await buscarBoloesReg();
   await carregarVendas();
-}
 
+  if ($('tab-historico')?.classList.contains('active')) {
+    await carregarHistorico();
+  }
+}
 async function carregarContextoLojas(){
   const { data: todas } = await sb
     .from('loterias')
@@ -206,9 +210,18 @@ function switchTab(id){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
     b.classList.toggle('active',['vendas','registrar','clientes','historico'][i]===id);
   });
+
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   $('tab-'+id).classList.add('active');
-  if(id==='clientes')renderClientes();
+
+  if (id === 'clientes') {
+    renderClientes();
+  }
+
+  if (id === 'historico') {
+    sincronizarFiltroHistoricoComLojaAtiva();
+    carregarHistorico();
+  }
 }
 
 // ── VIEW MODE ─────────────────────────────────────────────────────
@@ -949,19 +962,52 @@ function enviarWpp(tel,nome,modal,concurso,qtd,val){
 // ── HISTÓRICO ─────────────────────────────────────────────────────
 async function carregarHistorico(){
   $('histContent').innerHTML='<div class="state-box"><div class="spinner"></div><div class="state-title">Buscando…</div></div>';
-  let q=sb.from('view_vendas_whatsapp').select('*').order('created_at',{ascending:false}).limit(300);
-  const de=$('filtDataVendaDe').value;const ate=$('filtDataVendaAte').value;
-  const cDe=$('filtDataConc').value;const cAte=$('filtDataConcAte').value;
-  const modal=$('filtModalidade').value.trim();const conc=$('filtConcurso').value.trim();
-  const pago=$('filtPago').value;const conf=$('filtConf').value;
-  const sep=$('filtSep').value;const loja=$('filtLoja').value;
-  if(de)q=q.gte('created_at',de);if(ate)q=q.lte('created_at',ate+'T23:59:59');
-  if(cDe)q=q.gte('dt_concurso',cDe);if(cAte)q=q.lte('dt_concurso',cAte);
-  if(modal)q=q.ilike('modalidade','%'+modal+'%');if(conc)q=q.ilike('concurso','%'+conc+'%');
-  if(pago!=='')q=q.eq('pago',pago==='true');if(conf!=='')q=q.eq('conferencia_enviada',conf==='true');
-  if(sep!=='')q=q.eq('cota_separada',sep==='true');if(loja)q=q.eq('loteria_id',parseInt(loja));
-  const{data}=await q;
-  renderHistorico(data||[]);
+
+  let q = sb
+    .from('view_vendas_whatsapp')
+    .select('*')
+    .order('created_at', { ascending:false })
+    .limit(300);
+
+  const de    = $('filtDataVendaDe').value;
+  const ate   = $('filtDataVendaAte').value;
+  const cDe   = $('filtDataConc').value;
+  const cAte  = $('filtDataConcAte').value;
+  const modal = $('filtModalidade').value.trim();
+  const conc  = $('filtConcurso').value.trim();
+  const pago  = $('filtPago').value;
+  const conf  = $('filtConf').value;
+  const sep   = $('filtSep').value;
+
+  const lojaFiltro =
+    $('filtLoja').value ||
+    (lojaWhatsappAtiva?.loteria_id ? String(lojaWhatsappAtiva.loteria_id) : '');
+
+  if (de)    q = q.gte('created_at', de);
+  if (ate)   q = q.lte('created_at', ate + 'T23:59:59');
+  if (cDe)   q = q.gte('dt_concurso', cDe);
+  if (cAte)  q = q.lte('dt_concurso', cAte);
+  if (modal) q = q.ilike('modalidade', '%' + modal + '%');
+  if (conc)  q = q.ilike('concurso', '%' + conc + '%');
+
+  if (pago !== '') q = q.eq('pago', pago === 'true');
+  if (conf !== '') q = q.eq('conferencia_enviada', conf === 'true');
+  if (sep !== '')  q = q.eq('cota_separada', sep === 'true');
+
+  if (lojaFiltro) q = q.eq('loteria_id', parseInt(lojaFiltro));
+
+  const { data, error } = await q;
+
+  if (error) {
+    $('histContent').innerHTML = `
+      <div class="state-box">
+        <div class="state-title">Erro ao buscar histórico</div>
+        <div class="state-sub">${error.message}</div>
+      </div>`;
+    return;
+  }
+
+  renderHistorico(data || []);
 }
 
 function renderHistorico(rows){
@@ -1015,9 +1061,28 @@ async function toggleSepHist(id,atual,btn){
 }
 
 function limparFiltros(){
-  ['filtDataVendaDe','filtDataVendaAte','filtDataConc','filtDataConcAte','filtModalidade','filtConcurso'].forEach(id=>$(id).value='');
-  ['filtPago','filtConf','filtSep','filtLoja'].forEach(id=>$(id).selectedIndex=0);
-  $('histContent').innerHTML=`<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;opacity:.25"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div class="state-title">Use os filtros acima</div><div class="state-sub">Selecione um período para ver o histórico.</div></div>`;
+  ['filtDataVendaDe','filtDataVendaAte','filtDataConc','filtDataConcAte','filtModalidade','filtConcurso']
+    .forEach(id => {
+      const el = $(id);
+      if (el) el.value = '';
+    });
+
+  ['filtPago','filtConf','filtSep']
+    .forEach(id => {
+      const el = $(id);
+      if (el) el.selectedIndex = 0;
+    });
+
+  sincronizarFiltroHistoricoComLojaAtiva();
+
+  $('histContent').innerHTML = `
+    <div class="state-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;opacity:.25">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <div class="state-title">Filtros limpos</div>
+      <div class="state-sub">Histórico pronto para o WhatsApp ${lojaWhatsappAtiva?.loteria_nome || 'da loja'}.</div>
+    </div>`;
 }
 
 // ── CONFIRMAR ─────────────────────────────────────────────────────
