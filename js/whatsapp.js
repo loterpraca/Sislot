@@ -281,17 +281,32 @@ async function carregarVendas(){
   const iso=isoDate(dataAtual);
 
   // Busca vendas da data (bolões vigentes com ao menos 1 venda)
-  const{data:vendas}=await sb.from('view_vendas_whatsapp')
-    .select('*')
-    .lte('data_referencia', iso)  // bolão começou antes ou na data
-    .gte('dt_concurso', iso)      // bolão ainda não venceu
-    .order('modalidade').order('created_at');
+ let query = sb.from('view_vendas_whatsapp')
+  .select('*')
+  .lte('data_referencia', iso)
+  .gte('dt_concurso', iso);
 
+if (lojaWhatsappAtiva?.loteria_id) {
+  query = query.eq('loteria_id', lojaWhatsappAtiva.loteria_id);
+}
+
+const { data:vendas, error } = await query
+  .order('modalidade')
+  .order('created_at');
+
+if (error) {
+  $('vendasContent').innerHTML = `
+    <div class="state-box">
+      <div class="state-title">Erro ao buscar vendas</div>
+      <div class="state-sub">${error.message}</div>
+    </div>`;
+  return;
+}
   if(!vendas?.length){
     $('vendasContent').innerHTML=`<div class="state-box">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
       <div class="state-title">Nenhuma venda</div>
-      <div class="state-sub">Não há vendas registradas para bolões vigentes em ${fmtData(dataAtual)}.</div></div>`;
+     <div class="state-sub">Não há vendas registradas no WhatsApp ${lojaWhatsappAtiva?.loteria_nome || 'da loja'} em ${fmtData(dataAtual)}.</div></div>`;
     return;
   }
 
