@@ -656,7 +656,246 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     .fade-in{animation:fadeIn .25s ease both}
+/* RESUMO DO BOLÃO SELECIONADO — WhatsApp */
+.wpp-selected-panel{
+  margin:12px 0 14px;
+  padding:14px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(19,34,64,.96),rgba(13,26,48,.96));
+  position:relative;
+  overflow:hidden;
+}
 
+.wpp-selected-panel::before{
+  content:'';
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:2px;
+  background:linear-gradient(90deg,var(--t1),var(--t2));
+  opacity:.52;
+}
+
+.wpp-selected-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.wpp-selected-label{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text3);
+  margin-bottom:4px;
+}
+
+.wpp-selected-title{
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+}
+
+.wpp-clear-selected{
+  width:28px;
+  height:28px;
+  min-width:28px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--panel2);
+  color:var(--text3);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:var(--tr);
+}
+
+.wpp-clear-selected:hover{
+  color:var(--error);
+  border-color:rgba(255,79,79,.3);
+  background:rgba(255,79,79,.06);
+}
+
+.wpp-selected-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-bottom:12px;
+}
+
+.wpp-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-family:var(--mono);
+  font-size:10px;
+  padding:3px 8px;
+  border-radius:5px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.04);
+  color:var(--text2);
+  white-space:nowrap;
+}
+
+.wpp-tag.accent{
+  color:var(--t1);
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.wpp-tag.amber{
+  color:#f5a623;
+  border-color:rgba(245,166,35,.25);
+  background:rgba(245,166,35,.08);
+}
+
+.wpp-saldo-box{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:12px;
+  border:1px solid rgba(26,48,96,.75);
+  border-radius:10px;
+  background:rgba(10,22,40,.72);
+}
+
+.wpp-saldo-label{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text3);
+}
+
+.wpp-saldo-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+}
+
+.wpp-saldo-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  min-height:58px;
+  padding:8px 6px;
+  border-radius:9px;
+  border:1px solid var(--border);
+  background:var(--panel);
+}
+
+.wpp-saldo-item.contexto{
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.wpp-saldo-item.origem{
+  border-color:rgba(245,166,35,.32);
+  background:rgba(245,166,35,.07);
+}
+
+.wpp-saldo-item.zero{
+  opacity:.42;
+}
+
+.wpp-saldo-loja{
+  font-size:10px;
+  color:var(--text2);
+  text-align:center;
+  line-height:1.2;
+}
+
+.wpp-saldo-item.contexto .wpp-saldo-loja{
+  color:var(--t1);
+}
+
+.wpp-saldo-item.origem .wpp-saldo-loja{
+  color:#f5a623;
+}
+
+.wpp-saldo-val{
+  font-family:var(--mono);
+  font-size:16px;
+  font-weight:700;
+  color:var(--text);
+}
+
+.bsc-saldos{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:3px;
+}
+
+.saldo-pill{
+  font-family:var(--mono);
+  font-size:9px;
+  padding:3px 7px;
+  border-radius:5px;
+  background:rgba(30,58,110,.52);
+  border:1px solid var(--border);
+  color:var(--text3);
+  white-space:nowrap;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+
+.saldo-pill .sp-loja{
+  color:var(--text2);
+}
+
+.saldo-pill .sp-val{
+  color:var(--text);
+  font-weight:700;
+}
+
+.saldo-pill.contexto{
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.saldo-pill.contexto .sp-loja,
+.saldo-pill.contexto .sp-val{
+  color:var(--t1);
+}
+
+.saldo-pill.origem{
+  border-color:rgba(245,166,35,.25);
+  background:rgba(245,166,35,.08);
+}
+
+.saldo-pill.origem .sp-loja,
+.saldo-pill.origem .sp-val{
+  color:#f5a623;
+}
+
+.saldo-pill.zero{
+  opacity:.45;
+}
+
+@media(max-width:600px){
+  .wpp-saldo-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .wpp-saldo-item{
+    min-height:54px;
+  }
+
+  .saldo-pill{
+    font-size:8.5px;
+    padding:3px 6px;
+  }
+}
     @media(max-width:700px){
       .main{padding:16px 14px 48px}
       .topbar{padding:0 14px}
