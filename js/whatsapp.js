@@ -1148,6 +1148,23 @@ document.addEventListener('DOMContentLoaded',()=>{
     atualizarDates();
     await buscarBoloesReg();
   };
+  [
+  'filtDataVendaDe',
+  'filtDataVendaAte',
+  'filtDataConc',
+  'filtDataConcAte',
+  'filtModalidade',
+  'filtConcurso',
+  'filtPago',
+  'filtConf',
+  'filtSep',
+  'filtLoja'
+].forEach(id => {
+  const el = $(id);
+  if (!el) return;
 
+  const evento = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
+  el.addEventListener(evento, agendarCarregarHistorico);
+});
   init();
 });
