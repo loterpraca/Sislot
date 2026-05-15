@@ -12,12 +12,14 @@ let usuario        = null;
 let dataAtual      = new Date();
 let dataAtualReg   = new Date();
 let clientes       = [];
+let lojasAtivas    = [];
+let lojasPermitidas = [];
+let lojaWhatsappAtiva = null;
 let clienteSel     = null;
 let clienteEditId  = null;
 let bolaoSelReg    = null;
-let viewMode       = 'bolao';    // 'bolao' | 'cliente'
-let coresBolao     = {};         // { bolao_id: '#hex' } — carregado do localStorage
-
+let viewMode       = 'bolao';
+let coresBolao     = {};
 const $ = id => document.getElementById(id);
 
 function normalizaDataLocal(dt){
@@ -50,9 +52,140 @@ function parseBRL(v){return parseFloat(String(v).replace(/[R$\s]/g,'').replace(/
 function iniciais(n){return(n||'?').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()}
 function tel2wpp(t){return String(t).replace(/\D/g,'')}
 
+// ── Configuração visual das lojas ────────────────────────────────
+const LOJA_CONFIG = {
+  'boulevard':    { nome:'Boulevard',    logo:'./icons/boulevard.png',    theme:'boulevard',    logoPos:'50% 50%' },
+  'centro':       { nome:'Centro',       logo:'./icons/loterpraca.png',   theme:'centro',       logoPos:'50% 42%' },
+  'lotobel':      { nome:'Lotobel',      logo:'./icons/lotobel.png',      theme:'lotobel',      logoPos:'50% 50%' },
+  'santa-tereza': { nome:'Santa Tereza', logo:'./icons/santa-tereza.png', theme:'santa-tereza', logoPos:'50% 50%' },
+  'via-brasil':   { nome:'Via Brasil',   logo:'./icons/via-brasil.png',   theme:'via-brasil',   logoPos:'50% 50%' },
+};
+
+function slugSeguro(slug){
+  return String(slug || 'centro').trim().toLowerCase();
+}
 function setStatusReg(msg,tipo='info'){const e=$('statusBarReg');e.textContent=msg;e.className='status-bar show '+tipo}
 function clearStatusReg(){$('statusBarReg').className='status-bar'}
+function aplicarTemaWhatsapp(slug){
+  const key = slugSeguro(slug);
+  const cfg = LOJA_CONFIG[key] || LOJA_CONFIG.centro;
 
+  document.body.setAttribute('data-loja', key);
+
+  const img = $('logoImg');
+  if (img) {
+    img.src = cfg.logo;
+    img.style.objectPosition = cfg.logoPos || '50% 50%';
+  }
+
+  const title = $('headerTitle');
+  if (title) title.textContent = cfg.nome;
+
+  const sub = $('headerSub');
+  if (sub) sub.textContent = 'Vendas WhatsApp';
+
+  const nomeChip = $('wppLojaNome');
+  if (nomeChip) nomeChip.textContent = cfg.nome;
+}
+
+function atualizarLojaWhatsappUI(){
+  const slug = lojaWhatsappAtiva?.loteria_slug || lojaWhatsappAtiva?.slug || 'centro';
+  aplicarTemaWhatsapp(slug);
+}
+
+function getIndiceLojaWhatsappAtual(){
+  if (!lojasPermitidas.length || !lojaWhatsappAtiva) return -1;
+  return lojasPermitidas.findIndex(l => Number(l.loteria_id) === Number(lojaWhatsappAtiva.loteria_id));
+}
+
+async function trocarLojaWhatsappPorOffset(offset){
+  if (!lojasPermitidas.length) return;
+
+  let idx = getIndiceLojaWhatsappAtual();
+  if (idx < 0) idx = 0;
+
+  let prox = idx + offset;
+  if (prox < 0) prox = lojasPermitidas.length - 1;
+  if (prox >= lojasPermitidas.length) prox = 0;
+
+  await trocarLojaWhatsapp(lojasPermitidas[prox]);
+}
+
+async function trocarLojaWhatsapp(loja){
+  if (!loja) return;
+
+  lojaWhatsappAtiva = loja;
+  bolaoSelReg = null;
+
+  atualizarLojaWhatsappUI();
+  clearStatusReg();
+
+  if ($('inputValor')) $('inputValor').value = '';
+  if ($('inputQtd')) $('inputQtd').value = '1';
+  calcTotal();
+
+  await buscarBoloesReg();
+  await carregarVendas();
+}
+
+async function carregarContextoLojas(){
+  const { data: todas } = await sb
+    .from('loterias')
+    .select('id,nome,slug')
+    .eq('ativo', true)
+    .order('id');
+
+  lojasAtivas = todas || [];
+
+  const { data: vinculos } = await sb
+    .from('usuarios_loterias')
+    .select('loteria_id,principal,ativo')
+    .eq('usuario_id', usuario.id)
+    .eq('ativo', true);
+
+  const idsPermitidos = new Set((vinculos || []).map(v => Number(v.loteria_id)));
+
+  lojasPermitidas = lojasAtivas
+    .filter(l => idsPermitidos.has(Number(l.id)))
+    .map(l => ({
+      loteria_id: l.id,
+      loteria_nome: l.nome,
+      loteria_slug: l.slug,
+      principal: !!(vinculos || []).find(v => Number(v.loteria_id) === Number(l.id) && v.principal)
+    }));
+
+  // Fallback para ADMIN/SOCIO se por algum motivo não vier vínculo.
+  if (!lojasPermitidas.length && ['ADMIN','SOCIO'].includes(String(usuario.perfil || '').toUpperCase())) {
+    lojasPermitidas = lojasAtivas.map(l => ({
+      loteria_id: l.id,
+      loteria_nome: l.nome,
+      loteria_slug: l.slug,
+      principal: l.slug === 'centro'
+    }));
+  }
+
+  lojaWhatsappAtiva =
+    lojasPermitidas.find(l => l.principal) ||
+    lojasPermitidas[0] ||
+    null;
+
+  if (!lojaWhatsappAtiva) {
+    throw new Error('Nenhuma loja disponível para este usuário.');
+  }
+
+  atualizarLojaWhatsappUI();
+
+  const selHist = $('filtLoja');
+  if (selHist) {
+    selHist.innerHTML = '<option value="">Todas as lojas</option>';
+    lojasAtivas.forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.id;
+      o.textContent = l.nome;
+      selHist.appendChild(o);
+    });
+  }
+}
 // ── Relógio ───────────────────────────────────────────────────────
 function updateClock(){
   const now=new Date();
@@ -94,14 +227,17 @@ async function init(){
   usuario=usr;
   loadCoresBolao();
 
-  const{data:lojas}=await sb.from('loterias').select('id,nome,slug').eq('ativo',true);
-  if(lojas){
-    const sel=$('filtLoja');
-    lojas.forEach(l=>{const o=document.createElement('option');o.value=l.id;o.textContent=l.nome;sel.appendChild(o)});
-  }
+  await carregarContextoLojas();
 
   await carregarClientes();
   $('btnLogout').onclick=async()=>{await sb.auth.signOut();location.href='./login.html'};
+  
+  const lojaTree = $('lojaTreeWrap');
+  if (lojaTree) lojaTree.onclick = () => trocarLojaWhatsappPorOffset(1);
+
+  const lojaChip = $('wppLojaChip');
+  if (lojaChip) lojaChip.onclick = () => trocarLojaWhatsappPorOffset(1);
+  
   document.addEventListener('click',e=>{if(!e.target.closest('#cliComboWrap'))$('cliDropdown').classList.remove('show')});
 
   dataAtual=hojeLocal();dataAtualReg=hojeLocal();
