@@ -132,17 +132,30 @@
           </button>
         </div>
         <button class="btn-hoje" id="btnHojeReg">Hoje</button>
-
-<div class="field wpp-loja-field">
-  <label>WhatsApp da loja</label>
-  <select id="inputLoteriaWhatsapp" onchange="trocarLojaWhatsapp()"></select>
-</div>
-      </div>
+       </div>
 
       <div id="boloesRegLista">
         <div class="state-box"><div class="spinner"></div><div class="state-title">Buscando bolões…</div></div>
       </div>
+      <div class="wpp-selected-panel" id="wppSelectedPanel" style="display:none;">
+  <div class="wpp-selected-header">
+    <div>
+      <div class="wpp-selected-label">Bolão selecionado</div>
+      <div class="wpp-selected-title" id="wppSelectedTitle">—</div>
+    </div>
 
+    <button type="button" class="wpp-clear-selected" id="btnLimparBolaoWpp" title="Limpar seleção">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <div class="wpp-selected-tags" id="wppSelectedTags"></div>
+
+  <div class="wpp-saldo-box">
+    <div class="wpp-saldo-label">Saldo real por loja</div>
+    <div class="wpp-saldo-grid" id="wppSaldoGrid"></div>
+  </div>
+</div>
       <div class="status-bar" id="statusBarReg"></div>
 
       <div class="reg-section-title" style="margin-top:18px">Dados da venda</div>
