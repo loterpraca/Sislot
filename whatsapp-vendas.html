@@ -68,8 +68,13 @@
     .btn-date:hover{background:rgba(37,211,102,0.07);color:var(--green)}
     .btn-date svg{width:13px;height:13px}
     .date-display{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);
-      padding:0 14px;border-left:1px solid var(--border);border-right:1px solid var(--border);
-      height:34px;display:flex;align-items:center;white-space:nowrap;min-width:128px;justify-content:center}
+      padding:0 14px;border:0;border-left:1px solid var(--border);border-right:1px solid var(--border);
+      height:34px;display:flex;align-items:center;white-space:nowrap;min-width:128px;justify-content:center;
+      background:transparent;cursor:pointer;-webkit-appearance:none;appearance:none}
+    .date-display:hover{background:rgba(37,211,102,0.07);color:var(--green)}
+    .date-picker-hidden{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;
+      border:0;padding:0;margin:0;background:transparent;color:transparent;-webkit-appearance:none;appearance:none}
+    .date-picker-hidden::-webkit-calendar-picker-indicator{opacity:0}
     .btn-hoje{background:transparent;border:1px solid rgba(37,211,102,0.2);border-radius:6px;
       padding:5px 11px;cursor:pointer;font-family:var(--mono);font-size:9px;font-weight:500;
       letter-spacing:.1em;text-transform:uppercase;color:var(--green);transition:var(--tr)}
@@ -439,7 +444,8 @@
         <button class="btn-date" id="btnDtPrev">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <div class="date-display" id="dateDisplay">—</div>
+        <button type="button" class="date-display" id="dateDisplay">—</button>
+        <input type="date" id="datePicker" class="date-picker-hidden"/>
         <button class="btn-date" id="btnDtNext">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
@@ -479,7 +485,8 @@
           <button class="btn-date" id="btnDtPrevReg">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <div class="date-display" id="dateDisplayReg">—</div>
+          <button type="button" class="date-display" id="dateDisplayReg">—</button>
+          <input type="date" id="datePickerReg" class="date-picker-hidden"/>
           <button class="btn-date" id="btnDtNextReg">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
@@ -647,8 +654,31 @@ let coresBolao     = {};         // { bolao_id: '#hex' } — carregado do localS
 
 const $ = id => document.getElementById(id);
 
-function fmtData(dt){return dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})}
-function isoDate(dt){return dt.toISOString().slice(0,10)}
+function normalizaDataLocal(dt){
+  const d = dt instanceof Date ? dt : new Date(dt);
+  if (Number.isNaN(d.getTime())) return new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function hojeLocal(){
+  const h = new Date();
+  return new Date(h.getFullYear(), h.getMonth(), h.getDate());
+}
+function isoDate(dt){
+  const d = normalizaDataLocal(dt);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+}
+function dataFromISO(iso){
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return hojeLocal();
+  return new Date(y, m - 1, d);
+}
+function fmtData(dt){
+  const d = normalizaDataLocal(dt);
+  return d.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
+}
 function fmtBRL(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function parseBRL(v){return parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'))||0}
 function iniciais(n){return(n||'?').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()}
@@ -708,15 +738,40 @@ async function init(){
   $('btnLogout').onclick=async()=>{await sb.auth.signOut();location.href='./login.html'};
   document.addEventListener('click',e=>{if(!e.target.closest('#cliComboWrap'))$('cliDropdown').classList.remove('show')});
 
-  dataAtual=new Date();dataAtualReg=new Date();
+  dataAtual=hojeLocal();dataAtualReg=hojeLocal();
   atualizarDates();
   await carregarVendas();
   await buscarBoloesReg();
 }
 
 function atualizarDates(){
-  $('dateDisplay').textContent=fmtData(dataAtual);
-  $('dateDisplayReg').textContent=fmtData(dataAtualReg);
+  dataAtual = normalizaDataLocal(dataAtual);
+  dataAtualReg = normalizaDataLocal(dataAtualReg);
+
+  const isoVendas = isoDate(dataAtual);
+  const isoReg = isoDate(dataAtualReg);
+
+  if ($('dateDisplay')) $('dateDisplay').textContent = fmtData(dataAtual);
+  if ($('datePicker')) $('datePicker').value = isoVendas;
+
+  if ($('dateDisplayReg')) $('dateDisplayReg').textContent = fmtData(dataAtualReg);
+  if ($('datePickerReg')) $('datePickerReg').value = isoReg;
+}
+
+function alterarDataVendas(deltaDias){
+  const d = normalizaDataLocal(dataAtual);
+  d.setDate(d.getDate() + deltaDias);
+  dataAtual = d;
+  atualizarDates();
+  return carregarVendas();
+}
+
+function alterarDataRegistro(deltaDias){
+  const d = normalizaDataLocal(dataAtualReg);
+  d.setDate(d.getDate() + deltaDias);
+  dataAtualReg = d;
+  atualizarDates();
+  return buscarBoloesReg();
 }
 
 // ── VENDAS (aba principal) ────────────────────────────────────────
@@ -1174,12 +1229,48 @@ function confirmar(titulo,corpo){
 
 // ── BINDINGS ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',()=>{
-  $('btnDtPrev').onclick=async()=>{dataAtual.setDate(dataAtual.getDate()-1);atualizarDates();await carregarVendas()};
-  $('btnDtNext').onclick=async()=>{dataAtual.setDate(dataAtual.getDate()+1);atualizarDates();await carregarVendas()};
-  $('btnHoje').onclick=async()=>{dataAtual=new Date();atualizarDates();await carregarVendas()};
-  $('btnDtPrevReg').onclick=async()=>{dataAtualReg.setDate(dataAtualReg.getDate()-1);atualizarDates();await buscarBoloesReg()};
-  $('btnDtNextReg').onclick=async()=>{dataAtualReg.setDate(dataAtualReg.getDate()+1);atualizarDates();await buscarBoloesReg()};
-  $('btnHojeReg').onclick=async()=>{dataAtualReg=new Date();atualizarDates();await buscarBoloesReg()};
+  $('btnDtPrev').onclick = async () => { await alterarDataVendas(-1); };
+  $('btnDtNext').onclick = async () => { await alterarDataVendas(1); };
+  $('btnHoje').onclick = async () => {
+    dataAtual = hojeLocal();
+    atualizarDates();
+    await carregarVendas();
+  };
+
+  $('btnDtPrevReg').onclick = async () => { await alterarDataRegistro(-1); };
+  $('btnDtNextReg').onclick = async () => { await alterarDataRegistro(1); };
+  $('btnHojeReg').onclick = async () => {
+    dataAtualReg = hojeLocal();
+    atualizarDates();
+    await buscarBoloesReg();
+  };
+
+  $('dateDisplay').onclick = () => {
+    atualizarDates();
+    const picker = $('datePicker');
+    if (picker?.showPicker) picker.showPicker();
+    else picker?.click();
+  };
+  $('datePicker').onchange = async () => {
+    if (!$('datePicker').value) return;
+    dataAtual = dataFromISO($('datePicker').value);
+    atualizarDates();
+    await carregarVendas();
+  };
+
+  $('dateDisplayReg').onclick = () => {
+    atualizarDates();
+    const picker = $('datePickerReg');
+    if (picker?.showPicker) picker.showPicker();
+    else picker?.click();
+  };
+  $('datePickerReg').onchange = async () => {
+    if (!$('datePickerReg').value) return;
+    dataAtualReg = dataFromISO($('datePickerReg').value);
+    atualizarDates();
+    await buscarBoloesReg();
+  };
+
   init();
 });
 </script>
