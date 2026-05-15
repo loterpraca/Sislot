@@ -12,7 +12,7 @@ let usuario        = null;
 let dataAtual      = new Date();
 let dataAtualReg   = new Date();
 let clientes       = [];
-let lojasAtivas    = [];
+let lojasAtivas    = [];S
 let lojasPermitidas = [];
 let lojaWhatsappAtiva = null;
 let clienteSel     = null;
@@ -1009,7 +1009,17 @@ async function carregarHistorico(){
 
   renderHistorico(data || []);
 }
+let historicoTimer = null;
 
+function agendarCarregarHistorico(){
+  if (!$('tab-historico')?.classList.contains('active')) return;
+
+  clearTimeout(historicoTimer);
+
+  historicoTimer = setTimeout(() => {
+    carregarHistorico();
+  }, 300);
+}
 function renderHistorico(rows){
   if(!rows.length){
     $('histContent').innerHTML='<div class="state-box"><div class="state-title">Nenhum resultado</div><div class="state-sub">Ajuste os filtros acima.</div></div>';return;
