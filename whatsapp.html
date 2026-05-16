@@ -241,115 +241,83 @@
     <div id="clientesGrid" class="clientes-grid"></div>
   </div>
 
-  <!-- ===== TAB HISTÓRICO ===== -->
+   <!-- ===== TAB HISTÓRICO ===== -->
   <div class="tab-pane" id="tab-historico">
-<div class="hist-filters hist-filters-compact">
 
-  <div class="hist-filter-field hist-date-field">
-    <label>Data</label>
-    <input type="date" id="filtDataVenda" class="hist-filter-input"/>
-  </div>
+    <div class="hist-filters hist-filters-compact">
 
-  <div class="hist-filter-field hist-modalidade-field">
-    <label>Modalidade</label>
-    <select id="filtModalidade" class="hist-filter-input">
-      <option value="">Todas</option>
-    </select>
-  </div>
+      <div class="hist-filter-field hist-date-field">
+        <label>Data</label>
+        <input type="date" id="filtDataVenda" class="hist-filter-input"/>
+      </div>
 
-  <div class="hist-filter-field hist-concurso-field">
-    <label>Conc.</label>
-    <input
-      type="text"
-      id="filtConcurso"
-      class="hist-filter-input hist-concurso-input"
-      placeholder="Nº"
-      inputmode="numeric"
-      maxlength="5"
-      autocomplete="off"
-    />
-  </div>
+      <div class="hist-filter-field hist-modalidade-field">
+        <label>Modalidade</label>
+        <select id="filtModalidade" class="hist-filter-input">
+          <option value="">Todas</option>
+        </select>
+      </div>
 
-  <div class="hist-status-selects">
+      <div class="hist-filter-field hist-concurso-field">
+        <label>Conc.</label>
+        <input
+          type="text"
+          id="filtConcurso"
+          class="hist-filter-input hist-concurso-input"
+          placeholder="Nº"
+          inputmode="numeric"
+          maxlength="5"
+          autocomplete="off"
+        />
+      </div>
 
-    <div class="hist-filter-field hist-status-field">
-      <label>Pag.</label>
-      <select id="filtPagamento" class="hist-filter-input hist-status-input">
-        <option value="">Todos</option>
-        <option value="pendente">Pend.</option>
-        <option value="ok">OK</option>
-      </select>
+      <div class="hist-status-selects">
+
+        <div class="hist-filter-field hist-status-field">
+          <label>Pag.</label>
+          <select id="filtPagamento" class="hist-filter-input hist-status-input">
+            <option value="">Todos</option>
+            <option value="pendente">Pend.</option>
+            <option value="ok">OK</option>
+          </select>
+        </div>
+
+        <div class="hist-filter-field hist-status-field">
+          <label>Conf.</label>
+          <select id="filtConferencia" class="hist-filter-input hist-status-input">
+            <option value="">Todos</option>
+            <option value="pendente">Pend.</option>
+            <option value="ok">OK</option>
+          </select>
+        </div>
+
+      </div>
+
+      <input type="hidden" id="filtLoja"/>
+
+      <div class="hist-filter-actions">
+        <button class="btn-hist-buscar" onclick="carregarHistorico()">
+          <i class="fas fa-search"></i>
+          Buscar
+        </button>
+
+        <button class="btn-hist-limpar" onclick="limparFiltros()">
+          <i class="fas fa-eraser"></i>
+          Limpar
+        </button>
+      </div>
+
     </div>
 
-    <div class="hist-filter-field hist-status-field">
-      <label>Conf.</label>
-      <select id="filtConferencia" class="hist-filter-input hist-status-input">
-        <option value="">Todos</option>
-        <option value="pendente">Pend.</option>
-        <option value="ok">OK</option>
-      </select>
-    </div>
-
-  </div>
-
-  <input type="hidden" id="filtLoja"/>
-
-  <div class="hist-filter-actions">
-    <button class="btn-hist-buscar" onclick="carregarHistorico()">
-      <i class="fas fa-search"></i>
-      Buscar
-    </button>
-
-    <button class="btn-hist-limpar" onclick="limparFiltros()">
-      <i class="fas fa-eraser"></i>
-      Limpar
-    </button>
-  </div>
-
-</div>
-
-</div>
-  <input type="hidden" id="filtLoja"/>
-
-  <div class="hist-filter-actions">
-    <button class="btn-hist-buscar" onclick="carregarHistorico()">
-      <i class="fas fa-search"></i>
-      Buscar
-    </button>
-
-    <button class="btn-hist-limpar" onclick="limparFiltros()">
-      <i class="fas fa-eraser"></i>
-      Limpar
-    </button>
-  </div>
-
-</div>
     <div id="histContent">
       <div class="state-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         <div class="state-title">Histórico de vendas</div>
-        <div class="state-sub">Ao abrir esta aba, as vendas da loja ativa serão carregadas automaticamente.</div>
+        <div class="state-sub">Abra esta aba para carregar as vendas da loja ativa.</div>
       </div>
     </div>
+
   </div>
 
-</div>
-
-<!-- MODAL CLIENTE -->
-<div class="modal-overlay" id="modalCliente">
-  <div class="modal-box">
-    <div class="modal-title" id="modalCliTitulo">Novo Cliente</div>
-    <div class="modal-fields">
-      <div class="field"><label>Nome completo *</label><input type="text" id="cliNome" placeholder="Ex: João da Silva"/></div>
-      <div class="field"><label>Apelido</label><input type="text" id="cliApelido" placeholder="Ex: João do Mercado"/></div>
-      <div class="field"><label>Telefone WhatsApp * (com DDI)</label><input type="text" id="cliTelefone" placeholder="5531999990000"/></div>
-      <div class="field"><label>Observações</label><input type="text" id="cliObs" placeholder="Opcional…"/></div>
-    </div>
-    <div class="modal-btns">
-      <button class="btn-modal-cancel" onclick="fecharModalCliente()">Cancelar</button>
-      <button class="btn-modal-save" onclick="salvarCliente()">Salvar</button>
-    </div>
-  </div>
 </div>
 <!-- APP PICKER GLOBAL -->
 <div class="app-picker" id="appPicker" aria-hidden="true">
