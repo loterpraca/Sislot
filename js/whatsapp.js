@@ -541,41 +541,28 @@ function abrirPainelVendaWpp(b){
   const panel = $('wppSalePanel');
   if (!panel || !b) return;
 
-  const saldo = getSaldoContextoBolao(b);
   const title = $('wppSaleTitle');
 
   if (title) {
-    title.textContent = `${b.modalidade} #${b.concurso} · ${lojaWhatsappAtiva?.loteria_nome || '—'} · ${saldo} saldo`;
+    title.innerHTML = `
+      <div class="wpp-sale-card-title">
+        <span class="wpp-sale-main">${b.modalidade}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-concurso">#${b.concurso}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-origem">${b.loteria_origem_nome || '—'}</span>
+      </div>
+
+      <div class="wpp-sale-card-meta">
+        <span class="wpp-sale-chip">${b.qtd_jogos} jogos</span>
+        <span class="wpp-sale-chip">${b.qtd_dezenas} dez.</span>
+        <span class="wpp-sale-chip">${b.qtd_cotas_total} cotas</span>
+        <span class="wpp-sale-chip wpp-sale-chip-valor">${fmtBRL(b.valor_cota)}/cota</span>
+      </div>
+    `;
   }
 
   panel.classList.add('open');
   panel.setAttribute('aria-hidden', 'false');
   document.body.classList.add('wpp-sale-open');
-}
-
-function fecharPainelVendaWpp(){
-  const panel = $('wppSalePanel');
-  if (!panel) return;
-
-  panel.classList.remove('open');
-  panel.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('wpp-sale-open');
-}
-function limparBolaoSelecionadoWpp(){
-  bolaoSelReg = null;
-
-  document.querySelectorAll('.bolao-sel-card').forEach(c => c.classList.remove('selected'));
-
-  if ($('inputValor')) $('inputValor').value = '';
-  if ($('inputQtd')) $('inputQtd').value = '1';
-
-  const panel = $('wppSelectedPanel');
-  if (panel) panel.style.display = 'none';
-
-  fecharPainelVendaWpp();
-
-  calcTotal();
-  clearStatusReg();
 }
 
 function getSaldoContextoBolao(b){
@@ -597,7 +584,7 @@ function renderResumoBolaoSelecionado(b){
     <span class="wpp-tag accent">WhatsApp: ${lojaWhatsappAtiva?.loteria_nome || '—'}</span>
     <span class="wpp-tag">${b.qtd_jogos} jogos</span>
     <span class="wpp-tag">${b.qtd_dezenas} dezenas</span>
-    <span class="wpp-tag">${fmtBRL(b.valor_cota)}/cota</span>
+    <span class="wpp-tag">${fmtBRL(b.valor_cota)}</span>
     <span class="wpp-tag accent">Saldo aqui: ${saldoContexto}</span>
   `;
 
