@@ -243,45 +243,55 @@
 
   <!-- ===== TAB HISTÓRICO ===== -->
   <div class="tab-pane" id="tab-historico">
-    <div class="hist-filters">
-      <!-- Data da venda -->
-      <div class="field" style="flex-direction:row;align-items:center;gap:6px">
-        <label style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);white-space:nowrap">Venda de</label>
-        <input type="date" id="filtDataVendaDe" class="hist-filter-input" style="width:130px"/>
-        <label style="font-family:var(--mono);font-size:9px;color:var(--text3)">até</label>
-        <input type="date" id="filtDataVendaAte" class="hist-filter-input" style="width:130px"/>
-      </div>
-      <!-- Data concurso -->
-      <div class="field" style="flex-direction:row;align-items:center;gap:6px">
-        <label style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);white-space:nowrap">Concurso de</label>
-        <input type="date" id="filtDataConc" class="hist-filter-input" style="width:130px"/>
-        <label style="font-family:var(--mono);font-size:9px;color:var(--text3)">até</label>
-        <input type="date" id="filtDataConcAte" class="hist-filter-input" style="width:130px"/>
-      </div>
-      <!-- Linha 2 -->
-      <input type="text" id="filtModalidade" class="hist-filter-input" placeholder="Modalidade…" style="width:120px"/>
-      <input type="text" id="filtConcurso" class="hist-filter-input" placeholder="Concurso…" style="width:100px"/>
-      <select id="filtPago" class="hist-filter-select">
-        <option value="">Pagamento</option>
-        <option value="true">Pago</option>
-        <option value="false">Pendente</option>
-      </select>
-      <select id="filtConf" class="hist-filter-select">
-        <option value="">Conferência</option>
-        <option value="true">Enviada</option>
-        <option value="false">Pendente</option>
-      </select>
-      <select id="filtSep" class="hist-filter-select">
-        <option value="">Separação</option>
-        <option value="true">Separada</option>
-        <option value="false">Pendente</option>
-      </select>
-      <select id="filtLoja" class="hist-filter-select" style="width:130px">
-        <option value="">Todas as lojas</option>
-      </select>
-      <button class="btn-filtrar" onclick="carregarHistorico()">Buscar</button>
-      <button class="btn-limpar-filtro" onclick="limparFiltros()">Limpar</button>
-    </div>
+<div class="hist-filters hist-filters-compact">
+
+  <div class="hist-filter-field hist-date-field">
+    <label>Data da venda</label>
+    <input type="date" id="filtDataVenda" class="hist-filter-input"/>
+  </div>
+
+  <div class="hist-filter-field">
+    <label>Modalidade</label>
+    <input type="text" id="filtModalidade" class="hist-filter-input" placeholder="Ex: Lotofácil"/>
+  </div>
+
+  <div class="hist-filter-field hist-concurso-field">
+    <label>Concurso</label>
+    <input type="text" id="filtConcurso" class="hist-filter-input" placeholder="Nº"/>
+  </div>
+
+  <div class="hist-checks">
+    <label class="hist-check">
+      <input type="checkbox" id="filtPago"/>
+      <span>Pago</span>
+    </label>
+
+    <label class="hist-check">
+      <input type="checkbox" id="filtConf"/>
+      <span>Conf.</span>
+    </label>
+
+    <label class="hist-check">
+      <input type="checkbox" id="filtSep"/>
+      <span>Sep.</span>
+    </label>
+  </div>
+
+  <input type="hidden" id="filtLoja"/>
+
+  <div class="hist-filter-actions">
+    <button class="btn-hist-buscar" onclick="carregarHistorico()">
+      <i class="fas fa-search"></i>
+      Buscar
+    </button>
+
+    <button class="btn-hist-limpar" onclick="limparFiltros()">
+      <i class="fas fa-eraser"></i>
+      Limpar
+    </button>
+  </div>
+
+</div>
     <div id="histContent">
       <div class="state-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
