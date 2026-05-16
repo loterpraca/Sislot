@@ -1370,42 +1370,107 @@ function agendarCarregarHistorico(){
   }, 300);
 }
 function renderHistorico(rows){
-  if(!rows.length){
-    $('histContent').innerHTML='<div class="state-box"><div class="state-title">Nenhum resultado</div><div class="state-sub">Ajuste os filtros acima.</div></div>';return;
+  if (!rows.length) {
+    $('histContent').innerHTML = `
+      <div class="state-box">
+        <div class="state-title">Nenhum resultado</div>
+        <div class="state-sub">Não há vendas para os filtros selecionados.</div>
+      </div>`;
+    return;
   }
-  const wrap=document.createElement('div');wrap.className='hist-table-wrap fade-in';
-  wrap.innerHTML=`<table class="hist-table">
-    <thead><tr>
-      <th>Data venda</th><th>Cliente</th><th>Bolão</th><th>Conc.</th><th>Loja</th>
-      <th>Qtd</th><th>Valor</th><th>Pagamento</th><th>Conferência</th><th>Separação</th><th>WPP</th>
-    </tr></thead>
-    <tbody id="histTbody"></tbody>
-  </table>`;
-  $('histContent').innerHTML='';$('histContent').appendChild(wrap);
-  const tb=$('histTbody');
-  rows.forEach(v=>{
-    const tr=document.createElement('tr');
-    const dt=new Date(v.created_at).toLocaleDateString('pt-BR');
-    const nomeCli=v.cliente_apelido?`${v.cliente_nome}<br><span style="font-size:10px;color:var(--text3)">${v.cliente_apelido}</span>`:v.cliente_nome;
-    const vt=fmtBRL((v.qtd_vendida||0)*(v.valor_cota||0));
-    const dtConc=v.dt_concurso?new Date(v.dt_concurso+'T12:00:00').toLocaleDateString('pt-BR'):'—';
-    const cor=getCorBolao(v.bolao_id);
-    tr.innerHTML=`
-      <td class="td-mono">${dt}</td>
-      <td class="td-nome">${nomeCli}</td>
-      <td><div style="display:flex;align-items:center;gap:6px"><div style="width:9px;height:9px;border-radius:50%;background:${cor};flex-shrink:0"></div>${v.modalidade}</div></td>
-      <td class="td-mono">${dtConc}</td>
-      <td>${v.loteria_nome}</td>
-      <td class="td-mono">${v.qtd_vendida}</td>
-      <td class="td-green">${vt}</td>
-      <td><button class="btn-toggle-sm ${v.pago?'badge-pago':'badge-pendente'}" onclick="togglePagoHist(${v.id},${v.pago},this)">${v.pago?'✓ Pago':'$ Pend.'}</button></td>
-      <td><button class="btn-toggle-sm ${v.conferencia_enviada?'badge-conf-ok':'badge-conf-no'}" onclick="toggleConfHist(${v.id},${v.conferencia_enviada},this)">${v.conferencia_enviada?'✓ Env.':'⏳ Pend.'}</button></td>
-      <td><button class="btn-toggle-sm ${v.cota_separada?'badge-sep-ok':'badge-sep-no'}" onclick="toggleSepHist(${v.id},${v.cota_separada},this)">${v.cota_separada?'✓ Sep.':'◻ Pend.'}</button></td>
-      <td><button class="btn-wpp" onclick="enviarWpp('${v.cliente_telefone}','${v.cliente_nome}','${v.modalidade}','${v.concurso}',${v.qtd_vendida},${(v.qtd_vendida||0)*(v.valor_cota||0)})"><svg style="width:11px;height:11px"><use href="#wpp-icon"/></svg> WPP</button></td>`;
-    tb.appendChild(tr);
-  });
-}
 
+  const wrap = document.createElement('div');
+  wrap.className = 'hist-card-list fade-in';
+
+  rows.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'hist-card';
+
+    const dt = new Date(v.created_at).toLocaleDateString('pt-BR');
+    const hora = new Date(v.created_at).toLocaleTimeString('pt-BR', {
+      hour:'2-digit',
+      minute:'2-digit'
+    });
+
+    const nomeCli = v.cliente_apelido
+      ? `${v.cliente_nome} <span>${v.cliente_apelido}</span>`
+      : v.cliente_nome;
+
+    const valorTotal = fmtBRL((v.qtd_vendida || 0) * (v.valor_cota || 0));
+    const cor = getCorBolao(v.bolao_id);
+
+    const origem = v.origem_bolao_nome || '—';
+    const qtdJogos = Number(v.qtd_jogos || 0);
+    const qtdDezenas = Number(v.qtd_dezenas || 0);
+    const qtdCotasTotal = Number(v.qtd_cotas_total || 0);
+
+    card.innerHTML = `
+      <div class="hist-card-main">
+
+        <div class="hist-card-top">
+          <div class="hist-bolao-title">
+            <span class="hist-dot" style="background:${cor}"></span>
+            <strong>${v.modalidade}</strong>
+            <em>#${v.concurso}</em>
+          </div>
+
+          <div class="hist-date">
+            ${dt}
+            <span>${hora}</span>
+          </div>
+        </div>
+
+        <div class="hist-cliente-row">
+          <div class="hist-cliente">
+            ${nomeCli}
+          </div>
+
+          <div class="hist-total">
+            ${valorTotal}
+          </div>
+        </div>
+
+        <div class="hist-meta-row">
+          <span class="hist-meta-chip hist-origem">Origem: ${origem}</span>
+          <span class="hist-meta-chip">${qtdJogos} jogos</span>
+          <span class="hist-meta-chip">${qtdDezenas} dez.</span>
+          <span class="hist-meta-chip">${qtdCotasTotal} cotas</span>
+          <span class="hist-meta-chip hist-valor">${fmtBRL(v.valor_cota)}</span>
+          <span class="hist-meta-chip hist-qtd">Venda: ${v.qtd_vendida} cota${v.qtd_vendida > 1 ? 's' : ''}</span>
+        </div>
+
+        <div class="hist-status-row">
+          <button class="btn-toggle-sm ${v.pago ? 'badge-pago' : 'badge-pendente'}"
+            onclick="togglePagoHist(${v.id},${v.pago},this)">
+            ${v.pago ? '✓ Pago' : '$ Pend.'}
+          </button>
+
+          <button class="btn-toggle-sm ${v.conferencia_enviada ? 'badge-conf-ok' : 'badge-conf-no'}"
+            onclick="toggleConfHist(${v.id},${v.conferencia_enviada},this)">
+            ${v.conferencia_enviada ? '✓ Conf.' : '⏳ Conf.'}
+          </button>
+
+          <button class="btn-toggle-sm ${v.cota_separada ? 'badge-sep-ok' : 'badge-sep-no'}"
+            onclick="toggleSepHist(${v.id},${v.cota_separada},this)">
+            ${v.cota_separada ? '✓ Sep.' : '◻ Sep.'}
+          </button>
+
+          <button class="btn-wpp"
+            onclick="enviarWpp('${v.cliente_telefone}','${v.cliente_nome}','${v.modalidade}','${v.concurso}',${v.qtd_vendida},${(v.qtd_vendida || 0) * (v.valor_cota || 0)})">
+            <svg style="width:11px;height:11px"><use href="#wpp-icon"/></svg>
+            WPP
+          </button>
+        </div>
+
+      </div>
+    `;
+
+    wrap.appendChild(card);
+  });
+
+  $('histContent').innerHTML = '';
+  $('histContent').appendChild(wrap);
+}
 async function togglePagoHist(id,atual,btn){
   await sb.from('vendas_whatsapp').update({pago:!atual,dt_pagamento:!atual?isoDate(new Date()):null}).eq('id',id);
   const n=!atual;btn.textContent=n?'✓ Pago':'$ Pend.';btn.className=`btn-toggle-sm ${n?'badge-pago':'badge-pendente'}`;
