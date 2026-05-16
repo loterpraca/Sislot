@@ -20,7 +20,26 @@ let clienteEditId  = null;
 let bolaoSelReg    = null;
 let viewMode       = 'bolao';
 let coresBolao     = {};
-const $ = id => document.getElementById(id);
+let selecionarClienteAposSalvar = false;
+
+const pickerState = {
+  items: [],
+  filtered: [],
+  title: '',
+  kicker: '',
+  placeholder: '',
+  createText: '',
+  getLabel: null,
+  getSub: null,
+  getMeta: null,
+  getAvatar: null,
+  filter: null,
+  onSelect: null,
+  onCreate: null
+};
+function $(id){
+  return document.getElementById(id);
+}
 
 function normalizaDataLocal(dt){
   const d = dt instanceof Date ? dt : new Date(dt);
@@ -257,7 +276,26 @@ async function init(){
 
   const btnFecharVendaWpp = $('btnFecharVendaWpp');
   if (btnFecharVendaWpp) btnFecharVendaWpp.onclick = fecharPainelVendaWpp;
-  
+  const btnSelecionarCliente = $('btnSelecionarCliente');
+if (btnSelecionarCliente) btnSelecionarCliente.onclick = abrirPickerClientes;
+
+const appPickerClose = $('appPickerClose');
+if (appPickerClose) appPickerClose.onclick = fecharPicker;
+
+const appPickerBackdrop = $('appPickerBackdrop');
+if (appPickerBackdrop) appPickerBackdrop.onclick = fecharPicker;
+
+const appPickerSearch = $('appPickerSearch');
+if (appPickerSearch) appPickerSearch.oninput = filtrarPicker;
+
+const appPickerCreate = $('appPickerCreate');
+if (appPickerCreate) {
+  appPickerCreate.onclick = () => {
+    if (typeof pickerState.onCreate === 'function') {
+      pickerState.onCreate();
+    }
+  };
+}
   dataAtual=hojeLocal();dataAtualReg=hojeLocal();
   atualizarDates();
   await carregarVendas();
@@ -831,8 +869,7 @@ async function registrarVenda(){
     'ok'
   );
 
-  $('inputCliente').value = '';
-  clienteSel = null;
+ limparClienteVenda();
   $('inputQtd').value = '1';
   $('chkPago').checked = false;
   fecharPainelVendaWpp();
@@ -863,7 +900,214 @@ async function deletarVenda(id){
   await buscarBoloesReg();
 }
 
+// ── APP PICKER GLOBAL ─────────────────────────────────────────────
+function normalizarBusca(txt){
+  return String(txt || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
 
+function abrirPicker(config){
+  Object.assign(pickerState, {
+    items: [],
+    filtered: [],
+    title: '',
+    kicker: '',
+    placeholder: '',
+    createText: '',
+    getLabel: null,
+    getSub: null,
+    getMeta: null,
+    getAvatar: null,
+    filter: null,
+    onSelect: null,
+    onCreate: null
+  }, config || {});
+
+  pickerState.filtered = [...(pickerState.items || [])];
+
+  const picker = $('appPicker');
+  if (!picker) return;
+
+  $('appPickerKicker').textContent = pickerState.kicker || 'Selecionar';
+  $('appPickerTitle').textContent = pickerState.title || 'Escolha uma opção';
+  $('appPickerSearch').placeholder = pickerState.placeholder || 'Buscar…';
+  $('appPickerSearch').value = '';
+
+  const btnCreate = $('appPickerCreate');
+  if (pickerState.onCreate) {
+    btnCreate.style.display = '';
+    $('appPickerCreateText').textContent = pickerState.createText || 'Cadastrar novo';
+  } else {
+    btnCreate.style.display = 'none';
+  }
+
+  picker.classList.add('open');
+  picker.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('app-picker-open');
+
+  renderPicker();
+
+  setTimeout(() => {
+    $('appPickerSearch')?.focus();
+  }, 80);
+}
+
+function fecharPicker(){
+  const picker = $('appPicker');
+  if (!picker) return;
+
+  picker.classList.remove('open');
+  picker.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('app-picker-open');
+}
+
+function filtrarPicker(){
+  const q = normalizarBusca($('appPickerSearch')?.value || '');
+
+  if (!q) {
+    pickerState.filtered = [...(pickerState.items || [])];
+  } else {
+    pickerState.filtered = (pickerState.items || []).filter(item => {
+      if (typeof pickerState.filter === 'function') {
+        return pickerState.filter(item, q);
+      }
+
+      const texto = [
+        pickerState.getLabel?.(item),
+        pickerState.getSub?.(item),
+        pickerState.getMeta?.(item)
+      ].join(' ');
+
+      return normalizarBusca(texto).includes(q);
+    });
+  }
+
+  renderPicker();
+}
+
+function renderPicker(){
+  const list = $('appPickerList');
+  if (!list) return;
+
+  list.innerHTML = '';
+
+  const items = pickerState.filtered || [];
+
+  if (!items.length) {
+    list.innerHTML = `
+      <div class="app-picker-empty">
+        Nenhum resultado encontrado.
+      </div>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const label = pickerState.getLabel?.(item) || '—';
+    const sub = pickerState.getSub?.(item) || '';
+    const meta = pickerState.getMeta?.(item) || '';
+    const avatar = pickerState.getAvatar?.(item) || iniciais(label);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'app-picker-item';
+
+    btn.innerHTML = `
+      <div class="app-picker-avatar">${avatar}</div>
+      <div class="app-picker-info">
+        <div class="app-picker-label">${label}</div>
+        ${sub ? `<div class="app-picker-sub">${sub}</div>` : ''}
+      </div>
+      ${meta ? `<div class="app-picker-meta">${meta}</div>` : ''}
+    `;
+
+    btn.onclick = () => {
+      if (typeof pickerState.onSelect === 'function') {
+        pickerState.onSelect(item);
+      }
+      fecharPicker();
+    };
+
+    list.appendChild(btn);
+  });
+}
+
+async function abrirPickerClientes(){
+  if (!clientes.length) {
+    await carregarClientes();
+  }
+
+  abrirPicker({
+    kicker: 'Cliente',
+    title: 'Selecionar cliente',
+    placeholder: 'Buscar por nome, apelido ou telefone',
+    createText: 'Cadastrar novo cliente',
+    items: clientes,
+    getLabel: c => c.nome || '—',
+    getSub: c => {
+      const partes = [];
+      if (c.apelido) partes.push(c.apelido);
+      if (c.telefone) partes.push(c.telefone);
+      return partes.join(' • ');
+    },
+    getMeta: c => '',
+    getAvatar: c => iniciais(c.nome),
+    filter: (c, q) => normalizarBusca([
+      c.nome,
+      c.apelido,
+      c.telefone
+    ].join(' ')).includes(q),
+    onSelect: selecionarClienteVenda,
+    onCreate: () => {
+      selecionarClienteAposSalvar = true;
+      fecharPicker();
+      abrirModalCliente();
+    }
+  });
+}
+
+function selecionarClienteVenda(c){
+  clienteSel = c;
+
+  if ($('inputCliente')) {
+    $('inputCliente').value = c?.id || '';
+  }
+
+  const btn = $('btnSelecionarCliente');
+  if (btn) btn.classList.remove('empty');
+
+  const nome = $('clienteSelecionadoNome');
+  if (nome) nome.textContent = c?.nome || 'Selecionar cliente';
+
+  const sub = $('clienteSelecionadoSub');
+  if (sub) {
+    const partes = [];
+    if (c?.apelido) partes.push(c.apelido);
+    if (c?.telefone) partes.push(c.telefone);
+    sub.textContent = partes.join(' • ') || 'Cliente selecionado';
+  }
+
+  clearStatusReg();
+}
+
+function limparClienteVenda(){
+  clienteSel = null;
+
+  if ($('inputCliente')) {
+    $('inputCliente').value = '';
+  }
+
+  const btn = $('btnSelecionarCliente');
+  if (btn) btn.classList.add('empty');
+
+  const nome = $('clienteSelecionadoNome');
+  if (nome) nome.textContent = 'Selecionar cliente';
+
+  const sub = $('clienteSelecionadoSub');
+  if (sub) sub.textContent = 'Buscar por nome, apelido ou telefone';
+}
 // ── CLIENTES ──────────────────────────────────────────────────────
 async function carregarClientes(){
   const{data}=await sb.from('clientes_whatsapp').select('*').eq('ativo',true).order('nome');
@@ -897,20 +1141,7 @@ function renderClientes(){
 function filtrarClientes(){renderClientes()}
 
 function buscarClienteInput(){
-  const q=$('inputCliente').value.toLowerCase();const dd=$('cliDropdown');clienteSel=null;
-  if(!q||q.length<2){dd.classList.remove('show');return}
-  const res=clientes.filter(c=>c.nome.toLowerCase().includes(q)||(c.apelido||'').toLowerCase().includes(q)||(c.telefone||'').includes(q)).slice(0,8);
-  dd.innerHTML='';
-  res.forEach(c=>{
-    const it=document.createElement('div');it.className='cli-opt';
-    it.innerHTML=`<span>${c.nome}${c.apelido?` <span style="color:var(--text3);font-size:11px">(${c.apelido})</span>`:''}</span><span class="cli-opt-tel">${c.telefone}</span>`;
-    it.onclick=()=>{clienteSel=c;$('inputCliente').value=c.apelido?`${c.nome} (${c.apelido})`:c.nome;dd.classList.remove('show')};
-    dd.appendChild(it);
-  });
-  const add=document.createElement('div');add.className='cli-add';
-  add.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Cadastrar novo`;
-  add.onclick=()=>{dd.classList.remove('show');abrirModalCliente()};
-  dd.appendChild(add);dd.classList.add('show');
+  abrirPickerClientes();
 }
 
 function abrirModalCliente(id=null){
@@ -921,14 +1152,69 @@ function abrirModalCliente(id=null){
 }
 function fecharModalCliente(){$('modalCliente').classList.remove('show')}
 async function salvarCliente(){
-  const nome=$('cliNome').value.trim();const tel=$('cliTelefone').value.replace(/\D/g,'');
-  if(!nome){alert('Nome é obrigatório.');return}if(!tel){alert('Telefone é obrigatório.');return}
-  const payload={nome,telefone:tel,apelido:$('cliApelido').value.trim()||null,observacoes:$('cliObs').value.trim()||null,criado_por:usuario.id};
-  let error;
-  if(clienteEditId)({error}=await sb.from('clientes_whatsapp').update(payload).eq('id',clienteEditId));
-  else({error}=await sb.from('clientes_whatsapp').insert(payload));
-  if(error){alert('Erro: '+error.message);return}
-  fecharModalCliente();await carregarClientes();renderClientes();
+  const nome = $('cliNome').value.trim();
+  const tel = $('cliTelefone').value.replace(/\D/g,'');
+
+  if (!nome) {
+    alert('Nome é obrigatório.');
+    return;
+  }
+
+  if (!tel) {
+    alert('Telefone é obrigatório.');
+    return;
+  }
+
+  const payload = {
+    nome,
+    telefone: tel,
+    apelido: $('cliApelido').value.trim() || null,
+    observacoes: $('cliObs').value.trim() || null,
+    criado_por: usuario.id
+  };
+
+  let salvo = null;
+  let error = null;
+
+  if (clienteEditId) {
+    const resp = await sb
+      .from('clientes_whatsapp')
+      .update(payload)
+      .eq('id', clienteEditId)
+      .select('*')
+      .single();
+
+    salvo = resp.data;
+    error = resp.error;
+  } else {
+    const resp = await sb
+      .from('clientes_whatsapp')
+      .insert(payload)
+      .select('*')
+      .single();
+
+    salvo = resp.data;
+    error = resp.error;
+  }
+
+  if (error) {
+    alert('Erro: ' + error.message);
+    return;
+  }
+
+  fecharModalCliente();
+
+  await carregarClientes();
+
+  if (selecionarClienteAposSalvar && salvo) {
+    selecionarClienteVenda(salvo);
+  }
+
+  selecionarClienteAposSalvar = false;
+
+  if ($('tab-clientes')?.classList.contains('active')) {
+    renderClientes();
+  }
 }
 
 // ── CALCULAR TOTAL ────────────────────────────────────────────────
@@ -1130,6 +1416,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     if (picker?.showPicker) picker.showPicker();
     else picker?.click();
   };
+
   $('datePicker').onchange = async () => {
     if (!$('datePicker').value) return;
     dataAtual = dataFromISO($('datePicker').value);
@@ -1143,29 +1430,38 @@ document.addEventListener('DOMContentLoaded',()=>{
     if (picker?.showPicker) picker.showPicker();
     else picker?.click();
   };
+
   $('datePickerReg').onchange = async () => {
     if (!$('datePickerReg').value) return;
     dataAtualReg = dataFromISO($('datePickerReg').value);
     atualizarDates();
     await buscarBoloesReg();
   };
-  [
-  'filtDataVendaDe',
-  'filtDataVendaAte',
-  'filtDataConc',
-  'filtDataConcAte',
-  'filtModalidade',
-  'filtConcurso',
-  'filtPago',
-  'filtConf',
-  'filtSep',
-  'filtLoja'
-].forEach(id => {
-  const el = $(id);
-  if (!el) return;
 
-  const evento = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
-  el.addEventListener(evento, agendarCarregarHistorico);
-});
+  [
+    'filtDataVendaDe',
+    'filtDataVendaAte',
+    'filtDataConc',
+    'filtDataConcAte',
+    'filtModalidade',
+    'filtConcurso',
+    'filtPago',
+    'filtConf',
+    'filtSep',
+    'filtLoja'
+  ].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+
+    const evento = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
+    el.addEventListener(evento, agendarCarregarHistorico);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      fecharPicker();
+    }
+  });
+
   init();
 });
