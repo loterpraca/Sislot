@@ -468,9 +468,9 @@ function renderVendasPorBolao(boloes,vendas){
                   <td><div class="td-nome">${nome}</div></td>
                   <td class="td-mono">${v.qtd_vendida}</td>
                   <td class="td-green">${vt}</td>
-                  <td><button class="badge ${v.pago?'badge-pago':'badge-pendente'}" onclick="togglePago(${v.id},${v.pago})">${v.pago?'✓ Pago':'$ Pendente'}</button></td>
-                  <td><button class="badge ${v.conferencia_enviada?'badge-conf-ok':'badge-conf-no'}" onclick="toggleConf(${v.id},${v.conferencia_enviada})">${v.conferencia_enviada?'✓ Enviada':'⏳ Pendente'}</button></td>
-                  <td><button class="badge ${v.cota_separada?'badge-sep-ok':'badge-sep-no'}" onclick="toggleSep(${v.id},${v.cota_separada})">${v.cota_separada?'✓ Separada':'◻ Pendente'}</button></td>
+                  <td><button class="badge ${v.pago?'badge-pago':'badge-pendente'}" onclick="togglePago(${v.id},${v.pago},this)">${v.pago?'✓ Pago':'$ Pendente'}</button></td>
+                  <td><button class="badge ${v.conferencia_enviada?'badge-conf-ok':'badge-conf-no'}" onclick="toggleConf(${v.id},${v.conferencia_enviada},this)">${v.conferencia_enviada?'✓ Enviada':'⏳ Pendente'}</button></td>
+                  <td><button class="badge ${v.cota_separada?'badge-sep-ok':'badge-sep-no'}" onclick="toggleSep(${v.id},${v.cota_separada},this)">${v.cota_separada?'✓ Separada':'◻ Pendente'}</button></td>
                   <td style="display:flex;gap:6px;align-items:center">
                     <button class="btn-wpp" onclick="enviarWpp('${v.cliente_telefone}','${v.cliente_nome}','${v.modalidade}','${v.concurso}',${v.qtd_vendida},${(v.qtd_vendida||0)*(v.valor_cota||0)})"><svg><use href="#wpp-icon"/></svg> WPP</button>
                     <button class="btn-del" onclick="deletarVenda(${v.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
@@ -1285,39 +1285,102 @@ async function carregarVendasMantendoAbertos(){
   restaurarGruposAbertosVendas(abertos);
 }
 // ── TOGGLES ───────────────────────────────────────────────────────
-async function togglePago(id, atual){
-  await sb
+async function togglePago(id, atual, btn){
+  const novo = !atual;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '.65';
+  }
+
+  const { error } = await sb
     .from('vendas_whatsapp')
     .update({
-      pago: !atual,
-      dt_pagamento: !atual ? isoDate(new Date()) : null
+      pago: novo,
+      dt_pagamento: novo ? isoDate(new Date()) : null
     })
     .eq('id', id);
 
-  await carregarVendasMantendoAbertos();
+  if (btn) {
+    btn.disabled = false;
+    btn.style.opacity = '';
+  }
+
+  if (error) {
+    alert('Erro ao atualizar pagamento: ' + error.message);
+    return;
+  }
+
+  if (btn) {
+    btn.className = `badge ${novo ? 'badge-pago' : 'badge-pendente'}`;
+    btn.textContent = novo ? '✓ Pago' : '$ Pendente';
+    btn.setAttribute('onclick', `togglePago(${id},${novo},this)`);
+  }
 }
 
-async function toggleConf(id, atual){
-  await sb
+async function toggleConf(id, atual, btn){
+  const novo = !atual;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '.65';
+  }
+
+  const { error } = await sb
     .from('vendas_whatsapp')
     .update({
-      conferencia_enviada: !atual,
-      dt_conferencia: !atual ? new Date().toISOString() : null
+      conferencia_enviada: novo,
+      dt_conferencia: novo ? new Date().toISOString() : null
     })
     .eq('id', id);
 
-  await carregarVendasMantendoAbertos();
+  if (btn) {
+    btn.disabled = false;
+    btn.style.opacity = '';
+  }
+
+  if (error) {
+    alert('Erro ao atualizar conferência: ' + error.message);
+    return;
+  }
+
+  if (btn) {
+    btn.className = `badge ${novo ? 'badge-conf-ok' : 'badge-conf-no'}`;
+    btn.textContent = novo ? '✓ Enviada' : '⏳ Pendente';
+    btn.setAttribute('onclick', `toggleConf(${id},${novo},this)`);
+  }
 }
 
-async function toggleSep(id, atual){
-  await sb
+async function toggleSep(id, atual, btn){
+  const novo = !atual;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '.65';
+  }
+
+  const { error } = await sb
     .from('vendas_whatsapp')
     .update({
-      cota_separada: !atual
+      cota_separada: novo
     })
     .eq('id', id);
 
-  await carregarVendasMantendoAbertos();
+  if (btn) {
+    btn.disabled = false;
+    btn.style.opacity = '';
+  }
+
+  if (error) {
+    alert('Erro ao atualizar separação: ' + error.message);
+    return;
+  }
+
+  if (btn) {
+    btn.className = `badge ${novo ? 'badge-sep-ok' : 'badge-sep-no'}`;
+    btn.textContent = novo ? '✓ Separada' : '◻ Pendente';
+    btn.setAttribute('onclick', `toggleSep(${id},${novo},this)`);
+  }
 }
 // ── WHATSAPP ──────────────────────────────────────────────────────
 function abrirWpp(tel,msg){window.open(`https://wa.me/${tel2wpp(tel)}${msg?'?text='+encodeURIComponent(msg):''}`, '_blank')}
