@@ -555,7 +555,7 @@ function abrirPainelVendaWpp(b){
         <span class="wpp-sale-chip">${b.qtd_jogos} jogos</span>
         <span class="wpp-sale-chip">${b.qtd_dezenas} dez.</span>
         <span class="wpp-sale-chip">${b.qtd_cotas_total} cotas</span>
-        <span class="wpp-sale-chip wpp-sale-chip-valor">${fmtBRL(b.valor_cota)}/cota</span>
+        <span class="wpp-sale-chip wpp-sale-chip-valor">${fmtBRL(b.valor_cota)}</span>
       </div>
     `;
   }
@@ -787,7 +787,7 @@ function renderBoloesReg(boloes){
               <span class="bsc-tag">${b.qtd_jogos} jogos</span>
               <span class="bsc-tag">${b.qtd_dezenas} dez.</span>
               <span class="bsc-tag">${b.qtd_cotas_total} cotas</span>
-              <span class="bsc-tag" style="color:#f5a623">${fmtBRL(b.valor_cota)}/cota</span>
+              <span class="bsc-tag" style="color:#f5a623">${fmtBRL(b.valor_cota)}</span>
             </div>
 
             <div class="bsc-saldos">${saldoPills}</div>
