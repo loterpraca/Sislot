@@ -548,40 +548,7 @@
     .status-bar.err{background:rgba(255,79,79,0.07);border:1px solid rgba(255,79,79,0.2);color:#fca5a5}
     .status-bar.info{background:rgba(26,48,96,0.5);border:1px solid var(--border);color:var(--text2)}
 
-    /* HISTORICO FILTROS */
-    .hist-filters{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
-    .hist-filter-select,.hist-filter-input{background:var(--input-bg);border:1px solid var(--border);
-      border-radius:7px;padding:7px 11px;font-size:12px;color:var(--text2);cursor:pointer;
-      outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;font-family:var(--sans)}
-    .hist-filter-select:focus,.hist-filter-input:focus{border-color:var(--green)}
-    .hist-filter-input{color:var(--text)}
-    .hist-filter-input::placeholder{color:var(--text3)}
-    .btn-filtrar{background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.25);
-      border-radius:7px;padding:7px 14px;cursor:pointer;font-family:var(--mono);
-      font-size:9px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
-      color:var(--green);transition:var(--tr)}
-    .btn-filtrar:hover{background:rgba(37,211,102,0.18)}
-    .btn-limpar-filtro{background:transparent;border:1px solid var(--border);
-      border-radius:7px;padding:7px 12px;cursor:pointer;font-family:var(--mono);
-      font-size:9px;color:var(--text3);transition:var(--tr)}
-    .btn-limpar-filtro:hover{color:var(--text);border-color:var(--border2)}
-
-    /* HIST TABLE */
-    .hist-table-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;overflow-x:auto}
-    .hist-table{width:100%;border-collapse:collapse;min-width:800px}
-    .hist-table th{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
-      color:var(--text3);padding:9px 13px;text-align:left;background:var(--panel);
-      border-bottom:1px solid var(--border);white-space:nowrap}
-    .hist-table td{padding:9px 13px;font-size:12px;color:var(--text2);
-      border-bottom:1px solid rgba(26,48,96,0.35);vertical-align:middle;white-space:nowrap}
-    .hist-table tr:last-child td{border-bottom:none}
-    .hist-table tr:hover td{background:rgba(255,255,255,0.015)}
-    .hist-table .td-nome{color:var(--text);font-weight:500;max-width:140px;overflow:hidden;text-overflow:ellipsis}
-    .hist-table .td-mono{font-family:var(--mono);font-size:11px}
-    .hist-table .td-green{font-family:var(--mono);font-size:11px;color:var(--green);font-weight:600}
-    .btn-toggle-sm{border:none;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;
-      cursor:pointer;transition:var(--tr);font-family:var(--mono)}
-
+    
     /* CLIENTES TAB */
     .cli-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
     .search-box{display:flex;align-items:center;gap:8px;background:var(--input-bg);
@@ -1684,45 +1651,45 @@ body.app-picker-open{
   }
 }
 /* =========================================================
-   HISTÓRICO — filtros compactos
+   HISTÓRICO — FILTROS E CARDS COMPACTOS FINAL
 ========================================================= */
 
 .hist-filters-compact{
   display:grid;
-  grid-template-columns:150px minmax(160px,1fr) 110px auto auto;
-  gap:10px;
+  grid-template-columns:130px minmax(150px,1fr) 78px 140px auto;
+  gap:7px;
   align-items:end;
-  margin-bottom:16px;
-  padding:12px;
+  margin-bottom:10px;
+  padding:8px;
   border:1px solid var(--border);
-  border-radius:12px;
-  background:rgba(16,31,56,.72);
+  border-radius:11px;
+  background:rgba(16,31,56,.68);
 }
 
 .hist-filter-field{
   display:flex;
   flex-direction:column;
-  gap:5px;
+  gap:3px;
   min-width:0;
 }
 
 .hist-filter-field label{
   font-family:var(--mono);
-  font-size:9px;
-  letter-spacing:.12em;
+  font-size:7.5px;
+  letter-spacing:.11em;
   text-transform:uppercase;
   color:var(--text3);
 }
 
 .hist-filter-input{
   width:100%;
-  min-height:36px;
+  min-height:30px;
   border:1px solid var(--border);
-  border-radius:8px;
+  border-radius:7px;
   background:var(--input-bg);
   color:var(--text);
-  padding:8px 10px;
-  font-size:12px;
+  padding:4px 7px;
+  font-size:10px;
   outline:none;
 }
 
@@ -1731,62 +1698,45 @@ body.app-picker-open{
   box-shadow:0 0 0 2px var(--t3);
 }
 
-.hist-checks{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  flex-wrap:wrap;
-}
-
-.hist-check{
-  min-height:36px;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:0 10px;
-  border:1px solid var(--border);
-  border-radius:999px;
-  background:rgba(255,255,255,.035);
-  cursor:pointer;
+.hist-concurso-input{
+  text-align:center;
   font-family:var(--mono);
-  font-size:10px;
-  color:var(--text2);
-  white-space:nowrap;
-  transition:var(--tr);
+  letter-spacing:.06em;
 }
 
-.hist-check input{
-  width:13px;
-  height:13px;
-  accent-color:var(--t1);
+.hist-status-selects{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  align-items:end;
 }
 
-.hist-check:has(input:checked){
-  color:var(--t1);
-  border-color:var(--t4);
-  background:var(--t3);
+.hist-status-input{
+  font-family:var(--mono);
+  font-size:9.5px;
 }
 
 .hist-filter-actions{
   display:flex;
-  gap:7px;
+  gap:5px;
   justify-content:flex-end;
 }
 
 .btn-hist-buscar,
 .btn-hist-limpar{
-  min-height:36px;
-  border-radius:8px;
-  padding:0 12px;
+  min-height:30px;
+  border-radius:7px;
+  padding:0 8px;
   cursor:pointer;
   font-family:var(--mono);
-  font-size:10px;
+  font-size:8px;
   font-weight:700;
-  letter-spacing:.06em;
+  letter-spacing:.05em;
   text-transform:uppercase;
   display:flex;
   align-items:center;
-  gap:7px;
+  justify-content:center;
+  gap:5px;
   transition:var(--tr);
   white-space:nowrap;
 }
@@ -1803,16 +1753,241 @@ body.app-picker-open{
   color:var(--text2);
 }
 
-.btn-hist-buscar:hover{
-  border-color:var(--t1);
-  background:var(--t5);
+.hist-card-list{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
 }
 
-.btn-hist-limpar:hover{
+.hist-card{
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:linear-gradient(180deg,rgba(19,34,64,.92),rgba(11,23,43,.92));
+  overflow:hidden;
+}
+
+.hist-card-main{
+  padding:8px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+
+.hist-card-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+}
+
+.hist-bolao-title{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+
+.hist-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  flex:0 0 auto;
+}
+
+.hist-bolao-title strong{
   color:var(--text);
-  border-color:var(--border2);
+  font-size:12px;
+  font-weight:700;
 }
 
+.hist-bolao-title em{
+  font-family:var(--mono);
+  font-size:9px;
+  font-style:normal;
+  color:var(--t1);
+  border:1px solid var(--t4);
+  background:var(--t3);
+  border-radius:4px;
+  padding:1px 5px;
+}
+
+.hist-date{
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text2);
+  text-align:right;
+  white-space:nowrap;
+}
+
+.hist-date span{
+  display:block;
+  color:var(--text3);
+  margin-top:1px;
+}
+
+.hist-cliente-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:8px;
+}
+
+.hist-cliente{
+  font-size:12px;
+  line-height:1.15;
+  color:var(--text);
+  font-weight:600;
+  min-width:0;
+}
+
+.hist-cliente span{
+  color:var(--text3);
+  font-size:10px;
+  font-weight:400;
+}
+
+.hist-total{
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--t1);
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.hist-meta-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+}
+
+.hist-meta-chip{
+  font-family:var(--mono);
+  font-size:8px;
+  color:var(--text2);
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.04);
+  border-radius:4px;
+  padding:2px 5px;
+  white-space:nowrap;
+}
+
+.hist-meta-chip.hist-origem{
+  color:var(--text);
+  border-color:rgba(122,149,196,.28);
+}
+
+.hist-meta-chip.hist-valor{
+  color:#f5a623;
+  border-color:rgba(245,166,35,.24);
+  background:rgba(245,166,35,.08);
+}
+
+.hist-meta-chip.hist-qtd{
+  color:var(--t1);
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.hist-status-row{
+  display:flex;
+  gap:4px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.hist-status-row .btn-toggle-sm,
+.hist-status-row .btn-wpp{
+  min-height:24px;
+  padding:3px 6px;
+  font-size:8px;
+  border-radius:5px;
+}
+
+@media(max-width:760px){
+  .hist-filters-compact{
+    grid-template-columns:1fr 1fr 64px;
+    gap:6px;
+    padding:7px;
+  }
+
+  .hist-date-field{
+    grid-column:1 / 2;
+  }
+
+  .hist-modalidade-field{
+    grid-column:2 / 3;
+  }
+
+  .hist-concurso-field{
+    grid-column:3 / 4;
+  }
+
+  .hist-status-selects{
+    grid-column:1 / 3;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+
+  .hist-filter-actions{
+    grid-column:3 / 4;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+  }
+
+  .hist-filter-field label{
+    font-size:7px;
+  }
+
+  .hist-filter-input{
+    min-height:29px;
+    font-size:9px;
+    padding:4px 5px;
+  }
+
+  .btn-hist-buscar,
+  .btn-hist-limpar{
+    min-height:29px;
+    font-size:7px;
+    padding:0 5px;
+  }
+
+  .btn-hist-buscar i,
+  .btn-hist-limpar i{
+    display:none;
+  }
+
+  .hist-card-main{
+    padding:7px 8px;
+    gap:5px;
+  }
+
+  .hist-bolao-title strong{
+    font-size:11px;
+  }
+
+  .hist-date{
+    font-size:8px;
+  }
+
+  .hist-cliente{
+    font-size:11px;
+  }
+
+  .hist-total{
+    font-size:11px;
+  }
+
+  .hist-meta-chip{
+    font-size:7.5px;
+    padding:2px 4px;
+  }
+
+  .hist-status-row .btn-wpp{
+    margin-left:auto;
+  }
+}
 /* =========================================================
    HISTÓRICO — cards
 ========================================================= */
