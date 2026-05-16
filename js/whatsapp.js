@@ -152,10 +152,30 @@ async function trocarLojaWhatsapp(loja){
     await carregarHistorico();
   }
 }
+function siglaLoja(loja){
+  const id = Number(loja?.loteria_id || loja?.id || 0);
+
+  const lojaBase = lojasAtivas.find(l => Number(l.id) === id);
+
+  const codigo = String(
+    loja?.loteria_codigo ||
+    loja?.codigo ||
+    lojaBase?.codigo ||
+    ''
+  ).trim();
+
+  if (codigo) {
+    return codigo.toUpperCase();
+  }
+
+  const nome = String(loja?.loteria_nome || loja?.nome || lojaBase?.nome || '').trim();
+
+  return nome.slice(0, 3).toUpperCase() || '—';
+}
 async function carregarContextoLojas(){
   const { data: todas } = await sb
     .from('loterias')
-    .select('id,nome,slug')
+    .select('id,nome,slug,codigo')
     .eq('ativo', true)
     .order('id');
 
@@ -172,20 +192,21 @@ async function carregarContextoLojas(){
   lojasPermitidas = lojasAtivas
     .filter(l => idsPermitidos.has(Number(l.id)))
     .map(l => ({
-      loteria_id: l.id,
-      loteria_nome: l.nome,
-      loteria_slug: l.slug,
-      principal: !!(vinculos || []).find(v => Number(v.loteria_id) === Number(l.id) && v.principal)
-    }));
+  loteria_id: l.id,
+  loteria_nome: l.nome,
+  loteria_slug: l.slug,
+  loteria_codigo: l.codigo,
+  principal: !!(vinculos || []).find(v => Number(v.loteria_id) === Number(l.id) && v.principal)
+}));
 
   // Fallback para ADMIN/SOCIO se por algum motivo não vier vínculo.
   if (!lojasPermitidas.length && ['ADMIN','SOCIO'].includes(String(usuario.perfil || '').toUpperCase())) {
     lojasPermitidas = lojasAtivas.map(l => ({
-      loteria_id: l.id,
-      loteria_nome: l.nome,
-      loteria_slug: l.slug,
-      principal: l.slug === 'centro'
-    }));
+    loteria_id: l.id,
+    loteria_nome: l.nome,
+    loteria_slug: l.slug,
+    principal: l.slug === 'centro'
+  }));
   }
 
   lojaWhatsappAtiva =
@@ -636,7 +657,7 @@ function renderResumoBolaoSelecionado(b){
       (saldo <= 0 ? ' zero' : '');
 
     item.innerHTML = `
-      <div class="wpp-saldo-loja">${s.loteria_nome}</div>
+      <div class="wpp-saldo-loja" title="${s.loteria_nome}">${siglaLoja(s)}</div>
       <div class="wpp-saldo-val">${saldo}</div>
     `;
 
@@ -765,7 +786,7 @@ function renderBoloesReg(boloes){
 
           return `
             <span class="saldo-pill ${ehContexto ? 'contexto' : ''} ${saldo <= 0 ? 'zero' : ''}">
-              <span class="sp-loja">${s.loteria_nome}</span>
+              <span class="sp-loja">${siglaLoja(s)}</span>
               <span class="sp-val">${saldo}</span>
             </span>`;
         }).join('');
