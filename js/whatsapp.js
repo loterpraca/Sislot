@@ -1262,21 +1262,63 @@ function calcTotal(){
   $('totalVenda').textContent=fmtBRL(qtd*val);
 }
 
+function getGruposAbertosVendas(){
+  return Array.from(document.querySelectorAll('.bolao-group.open'))
+    .map(g => String(g.dataset.id || ''))
+    .filter(Boolean);
+}
 
+function restaurarGruposAbertosVendas(idsAbertos){
+  if (!Array.isArray(idsAbertos) || !idsAbertos.length) return;
+
+  idsAbertos.forEach(id => {
+    const grupo = document.querySelector(`.bolao-group[data-id="${id}"]`);
+    if (grupo) {
+      grupo.classList.add('open');
+    }
+  });
+}
+
+async function carregarVendasMantendoAbertos(){
+  const abertos = getGruposAbertosVendas();
+  await carregarVendas();
+  restaurarGruposAbertosVendas(abertos);
+}
 // ── TOGGLES ───────────────────────────────────────────────────────
-async function togglePago(id,atual){
-  await sb.from('vendas_whatsapp').update({pago:!atual,dt_pagamento:!atual?isoDate(new Date()):null}).eq('id',id);
-  await carregarVendas();
-}
-async function toggleConf(id,atual){
-  await sb.from('vendas_whatsapp').update({conferencia_enviada:!atual,dt_conferencia:!atual?new Date().toISOString():null}).eq('id',id);
-  await carregarVendas();
-}
-async function toggleSep(id,atual){
-  await sb.from('vendas_whatsapp').update({cota_separada:!atual}).eq('id',id);
-  await carregarVendas();
+async function togglePago(id, atual){
+  await sb
+    .from('vendas_whatsapp')
+    .update({
+      pago: !atual,
+      dt_pagamento: !atual ? isoDate(new Date()) : null
+    })
+    .eq('id', id);
+
+  await carregarVendasMantendoAbertos();
 }
 
+async function toggleConf(id, atual){
+  await sb
+    .from('vendas_whatsapp')
+    .update({
+      conferencia_enviada: !atual,
+      dt_conferencia: !atual ? new Date().toISOString() : null
+    })
+    .eq('id', id);
+
+  await carregarVendasMantendoAbertos();
+}
+
+async function toggleSep(id, atual){
+  await sb
+    .from('vendas_whatsapp')
+    .update({
+      cota_separada: !atual
+    })
+    .eq('id', id);
+
+  await carregarVendasMantendoAbertos();
+}
 // ── WHATSAPP ──────────────────────────────────────────────────────
 function abrirWpp(tel,msg){window.open(`https://wa.me/${tel2wpp(tel)}${msg?'?text='+encodeURIComponent(msg):''}`, '_blank')}
 function enviarWpp(tel,nome,modal,concurso,qtd,val){
