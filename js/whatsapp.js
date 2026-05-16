@@ -260,10 +260,14 @@ function switchTab(id){
 
   if (id === 'historico') {
     sincronizarFiltroHistoricoComLojaAtiva();
+
+    if ($('filtDataVenda') && !$('filtDataVenda').value) {
+      $('filtDataVenda').value = isoDate(dataAtual || hojeLocal());
+    }
+
     carregarHistorico();
   }
 }
-
 // ── VIEW MODE ─────────────────────────────────────────────────────
 function setViewMode(mode){
   viewMode=mode;
