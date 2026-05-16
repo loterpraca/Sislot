@@ -1291,7 +1291,11 @@ function enviarWpp(tel,nome,modal,concurso,qtd,val){
 
 // ── HISTÓRICO ─────────────────────────────────────────────────────
 async function carregarHistorico(){
-  $('histContent').innerHTML='<div class="state-box"><div class="spinner"></div><div class="state-title">Buscando…</div></div>';
+  $('histContent').innerHTML = `
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="state-title">Buscando…</div>
+    </div>`;
 
   let q = sb
     .from('view_vendas_whatsapp')
@@ -1299,32 +1303,47 @@ async function carregarHistorico(){
     .order('created_at', { ascending:false })
     .limit(300);
 
-  const de    = $('filtDataVendaDe').value;
-  const ate   = $('filtDataVendaAte').value;
-  const cDe   = $('filtDataConc').value;
-  const cAte  = $('filtDataConcAte').value;
-  const modal = $('filtModalidade').value.trim();
-  const conc  = $('filtConcurso').value.trim();
-  const pago  = $('filtPago').value;
-  const conf  = $('filtConf').value;
-  const sep   = $('filtSep').value;
+  const dataVenda = $('filtDataVenda')?.value || '';
+  const modal = $('filtModalidade')?.value?.trim() || '';
+  const conc = $('filtConcurso')?.value?.trim() || '';
+
+  const somentePago = !!$('filtPago')?.checked;
+  const somenteConf = !!$('filtConf')?.checked;
+  const somenteSep = !!$('filtSep')?.checked;
 
   const lojaFiltro =
-    $('filtLoja').value ||
+    $('filtLoja')?.value ||
     (lojaWhatsappAtiva?.loteria_id ? String(lojaWhatsappAtiva.loteria_id) : '');
 
-  if (de)    q = q.gte('created_at', de);
-  if (ate)   q = q.lte('created_at', ate + 'T23:59:59');
-  if (cDe)   q = q.gte('dt_concurso', cDe);
-  if (cAte)  q = q.lte('dt_concurso', cAte);
-  if (modal) q = q.ilike('modalidade', '%' + modal + '%');
-  if (conc)  q = q.ilike('concurso', '%' + conc + '%');
+  if (dataVenda) {
+    q = q
+      .gte('created_at', dataVenda)
+      .lte('created_at', dataVenda + 'T23:59:59');
+  }
 
-  if (pago !== '') q = q.eq('pago', pago === 'true');
-  if (conf !== '') q = q.eq('conferencia_enviada', conf === 'true');
-  if (sep !== '')  q = q.eq('cota_separada', sep === 'true');
+  if (modal) {
+    q = q.ilike('modalidade', '%' + modal + '%');
+  }
 
-  if (lojaFiltro) q = q.eq('loteria_id', parseInt(lojaFiltro));
+  if (conc) {
+    q = q.ilike('concurso', '%' + conc + '%');
+  }
+
+  if (somentePago) {
+    q = q.eq('pago', true);
+  }
+
+  if (somenteConf) {
+    q = q.eq('conferencia_enviada', true);
+  }
+
+  if (somenteSep) {
+    q = q.eq('cota_separada', true);
+  }
+
+  if (lojaFiltro) {
+    q = q.eq('loteria_id', parseInt(lojaFiltro));
+  }
 
   const { data, error } = await q;
 
