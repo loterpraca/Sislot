@@ -1485,25 +1485,18 @@ async function toggleSepHist(id,atual,btn){
 }
 
 function limparFiltros(){
-  [
-    'filtDataVendaDe',
-    'filtDataVendaAte',
-    'filtDataConc',
-    'filtDataConcAte',
-    'filtModalidade',
-    'filtConcurso'
-  ].forEach(id => {
+  if ($('filtDataVenda')) {
+    $('filtDataVenda').value = isoDate(dataAtual || hojeLocal());
+  }
+
+  ['filtModalidade','filtConcurso'].forEach(id => {
     const el = $(id);
     if (el) el.value = '';
   });
 
-  [
-    'filtPago',
-    'filtConf',
-    'filtSep'
-  ].forEach(id => {
+  ['filtPago','filtConf','filtSep'].forEach(id => {
     const el = $(id);
-    if (el) el.selectedIndex = 0;
+    if (el) el.checked = false;
   });
 
   sincronizarFiltroHistoricoComLojaAtiva();
@@ -1567,23 +1560,23 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
 
   [
-    'filtDataVendaDe',
-    'filtDataVendaAte',
-    'filtDataConc',
-    'filtDataConcAte',
-    'filtModalidade',
-    'filtConcurso',
-    'filtPago',
-    'filtConf',
-    'filtSep',
-    'filtLoja'
-  ].forEach(id => {
-    const el = $(id);
-    if (!el) return;
+  'filtDataVenda',
+  'filtModalidade',
+  'filtConcurso',
+  'filtPago',
+  'filtConf',
+  'filtSep'
+].forEach(id => {
+  const el = $(id);
+  if (!el) return;
 
-    const evento = el.tagName === 'SELECT' || el.type === 'date' ? 'change' : 'input';
-    el.addEventListener(evento, agendarCarregarHistorico);
-  });
+  const evento =
+    el.type === 'checkbox' || el.type === 'date'
+      ? 'change'
+      : 'input';
+
+  el.addEventListener(evento, agendarCarregarHistorico);
+});
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
