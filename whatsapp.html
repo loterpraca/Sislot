@@ -173,11 +173,26 @@
     </div>
 
     <div class="form-grid">
-      <div class="field cliente-combo" id="cliComboWrap">
-        <label>Cliente</label>
-        <input type="text" id="inputCliente" placeholder="Buscar cliente…" autocomplete="off" oninput="buscarClienteInput()"/>
-        <div class="cli-dropdown" id="cliDropdown"></div>
-      </div>
+      <div class="field cliente-picker-field" id="cliComboWrap">
+  <label>Cliente</label>
+
+  <input type="hidden" id="inputCliente"/>
+
+  <button type="button" class="picker-trigger empty" id="btnSelecionarCliente">
+    <span class="picker-trigger-icon">
+      <i class="fas fa-user"></i>
+    </span>
+
+    <span class="picker-trigger-text">
+      <strong id="clienteSelecionadoNome">Selecionar cliente</strong>
+      <small id="clienteSelecionadoSub">Buscar por nome, apelido ou telefone</small>
+    </span>
+
+    <span class="picker-trigger-chevron">
+      <i class="fas fa-chevron-up"></i>
+    </span>
+  </button>
+</div>
 
       <div class="field">
         <label>Qtd cotas</label>
@@ -295,7 +310,38 @@
     </div>
   </div>
 </div>
+<!-- APP PICKER GLOBAL -->
+<div class="app-picker" id="appPicker" aria-hidden="true">
+  <div class="app-picker-backdrop" id="appPickerBackdrop"></div>
 
+  <div class="app-picker-sheet" role="dialog" aria-modal="true">
+    <div class="app-picker-handle"></div>
+
+    <div class="app-picker-head">
+      <div>
+        <div class="app-picker-kicker" id="appPickerKicker">Selecionar</div>
+        <div class="app-picker-title" id="appPickerTitle">Escolha uma opção</div>
+      </div>
+
+      <button type="button" class="app-picker-close" id="appPickerClose" title="Fechar">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="app-picker-search-wrap">
+      <i class="fas fa-search"></i>
+      <input type="text" id="appPickerSearch" placeholder="Buscar…"/>
+    </div>
+
+    <div class="app-picker-list" id="appPickerList"></div>
+
+    <button type="button" class="app-picker-create" id="appPickerCreate" style="display:none;">
+      <i class="fas fa-plus"></i>
+      <span id="appPickerCreateText">Cadastrar novo</span>
+    </button>
+  </div>
+</div>
+  
 <!-- CONFIRM DELETE -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
