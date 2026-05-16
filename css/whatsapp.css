@@ -1683,3 +1683,355 @@ body.app-picker-open{
     min-width:0;
   }
 }
+/* =========================================================
+   HISTÓRICO — filtros compactos
+========================================================= */
+
+.hist-filters-compact{
+  display:grid;
+  grid-template-columns:150px minmax(160px,1fr) 110px auto auto;
+  gap:10px;
+  align-items:end;
+  margin-bottom:16px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:rgba(16,31,56,.72);
+}
+
+.hist-filter-field{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  min-width:0;
+}
+
+.hist-filter-field label{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--text3);
+}
+
+.hist-filter-input{
+  width:100%;
+  min-height:36px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--input-bg);
+  color:var(--text);
+  padding:8px 10px;
+  font-size:12px;
+  outline:none;
+}
+
+.hist-filter-input:focus{
+  border-color:var(--t1);
+  box-shadow:0 0 0 2px var(--t3);
+}
+
+.hist-checks{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.hist-check{
+  min-height:36px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:0 10px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:rgba(255,255,255,.035);
+  cursor:pointer;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text2);
+  white-space:nowrap;
+  transition:var(--tr);
+}
+
+.hist-check input{
+  width:13px;
+  height:13px;
+  accent-color:var(--t1);
+}
+
+.hist-check:has(input:checked){
+  color:var(--t1);
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.hist-filter-actions{
+  display:flex;
+  gap:7px;
+  justify-content:flex-end;
+}
+
+.btn-hist-buscar,
+.btn-hist-limpar{
+  min-height:36px;
+  border-radius:8px;
+  padding:0 12px;
+  cursor:pointer;
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  transition:var(--tr);
+  white-space:nowrap;
+}
+
+.btn-hist-buscar{
+  border:1px solid var(--t4);
+  background:var(--t3);
+  color:var(--t1);
+}
+
+.btn-hist-limpar{
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--text2);
+}
+
+.btn-hist-buscar:hover{
+  border-color:var(--t1);
+  background:var(--t5);
+}
+
+.btn-hist-limpar:hover{
+  color:var(--text);
+  border-color:var(--border2);
+}
+
+/* =========================================================
+   HISTÓRICO — cards
+========================================================= */
+
+.hist-card-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.hist-card{
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:linear-gradient(180deg,rgba(19,34,64,.94),rgba(11,23,43,.94));
+  overflow:hidden;
+}
+
+.hist-card-main{
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.hist-card-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.hist-bolao-title{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+
+.hist-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  flex:0 0 auto;
+}
+
+.hist-bolao-title strong{
+  color:var(--text);
+  font-size:13px;
+  font-weight:700;
+}
+
+.hist-bolao-title em{
+  font-family:var(--mono);
+  font-size:10px;
+  font-style:normal;
+  color:var(--t1);
+  border:1px solid var(--t4);
+  background:var(--t3);
+  border-radius:5px;
+  padding:2px 7px;
+}
+
+.hist-date{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text2);
+  text-align:right;
+  white-space:nowrap;
+}
+
+.hist-date span{
+  display:block;
+  color:var(--text3);
+  margin-top:1px;
+}
+
+.hist-cliente-row{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+}
+
+.hist-cliente{
+  font-size:13px;
+  color:var(--text);
+  font-weight:600;
+  min-width:0;
+}
+
+.hist-cliente span{
+  color:var(--text3);
+  font-size:11px;
+  font-weight:400;
+}
+
+.hist-total{
+  font-family:var(--mono);
+  font-size:13px;
+  color:var(--t1);
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.hist-meta-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.hist-meta-chip{
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text2);
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.04);
+  border-radius:5px;
+  padding:3px 7px;
+  white-space:nowrap;
+}
+
+.hist-meta-chip.hist-origem{
+  color:var(--text);
+  border-color:rgba(122,149,196,.28);
+}
+
+.hist-meta-chip.hist-valor{
+  color:#f5a623;
+  border-color:rgba(245,166,35,.24);
+  background:rgba(245,166,35,.08);
+}
+
+.hist-meta-chip.hist-qtd{
+  color:var(--t1);
+  border-color:var(--t4);
+  background:var(--t3);
+}
+
+.hist-status-row{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* Mobile */
+@media(max-width:760px){
+  .hist-filters-compact{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:10px;
+  }
+
+  .hist-date-field{
+    grid-column:1 / 2;
+  }
+
+  .hist-concurso-field{
+    grid-column:2 / 3;
+  }
+
+  .hist-checks{
+    grid-column:1 / -1;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+  }
+
+  .hist-check{
+    justify-content:center;
+    padding:0 6px;
+    min-height:34px;
+    font-size:9px;
+  }
+
+  .hist-filter-actions{
+    grid-column:1 / -1;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+
+  .btn-hist-buscar,
+  .btn-hist-limpar{
+    justify-content:center;
+    min-height:36px;
+    padding:0 8px;
+  }
+
+  .hist-card-main{
+    padding:11px 12px;
+  }
+
+  .hist-card-top{
+    gap:8px;
+  }
+
+  .hist-bolao-title strong{
+    font-size:12px;
+  }
+
+  .hist-cliente-row{
+    align-items:flex-start;
+  }
+
+  .hist-cliente{
+    font-size:12px;
+  }
+
+  .hist-total{
+    font-size:12px;
+  }
+
+  .hist-meta-chip{
+    font-size:8.5px;
+    padding:3px 6px;
+  }
+
+  .hist-status-row .btn-wpp{
+    margin-left:auto;
+  }
+}
