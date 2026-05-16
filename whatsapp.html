@@ -246,37 +246,69 @@
 <div class="hist-filters hist-filters-compact">
 
   <div class="hist-filter-field hist-date-field">
-    <label>Data da venda</label>
+    <label>Data</label>
     <input type="date" id="filtDataVenda" class="hist-filter-input"/>
   </div>
 
-  <div class="hist-filter-field">
+  <div class="hist-filter-field hist-modalidade-field">
     <label>Modalidade</label>
-    <input type="text" id="filtModalidade" class="hist-filter-input" placeholder="Ex: Lotofácil"/>
+    <select id="filtModalidade" class="hist-filter-input">
+      <option value="">Todas</option>
+    </select>
   </div>
 
   <div class="hist-filter-field hist-concurso-field">
-    <label>Concurso</label>
-    <input type="text" id="filtConcurso" class="hist-filter-input" placeholder="Nº"/>
+    <label>Conc.</label>
+    <input
+      type="text"
+      id="filtConcurso"
+      class="hist-filter-input hist-concurso-input"
+      placeholder="Nº"
+      inputmode="numeric"
+      maxlength="5"
+      autocomplete="off"
+    />
   </div>
 
-  <div class="hist-checks">
-    <label class="hist-check">
-      <input type="checkbox" id="filtPago"/>
-      <span>Pago</span>
-    </label>
+  <div class="hist-status-selects">
 
-    <label class="hist-check">
-      <input type="checkbox" id="filtConf"/>
-      <span>Conf.</span>
-    </label>
+    <div class="hist-filter-field hist-status-field">
+      <label>Pag.</label>
+      <select id="filtPagamento" class="hist-filter-input hist-status-input">
+        <option value="">Todos</option>
+        <option value="pendente">Pend.</option>
+        <option value="ok">OK</option>
+      </select>
+    </div>
 
-    <label class="hist-check">
-      <input type="checkbox" id="filtSep"/>
-      <span>Sep.</span>
-    </label>
+    <div class="hist-filter-field hist-status-field">
+      <label>Conf.</label>
+      <select id="filtConferencia" class="hist-filter-input hist-status-input">
+        <option value="">Todos</option>
+        <option value="pendente">Pend.</option>
+        <option value="ok">OK</option>
+      </select>
+    </div>
+
   </div>
 
+  <input type="hidden" id="filtLoja"/>
+
+  <div class="hist-filter-actions">
+    <button class="btn-hist-buscar" onclick="carregarHistorico()">
+      <i class="fas fa-search"></i>
+      Buscar
+    </button>
+
+    <button class="btn-hist-limpar" onclick="limparFiltros()">
+      <i class="fas fa-eraser"></i>
+      Limpar
+    </button>
+  </div>
+
+</div>
+
+</div>
   <input type="hidden" id="filtLoja"/>
 
   <div class="hist-filter-actions">
