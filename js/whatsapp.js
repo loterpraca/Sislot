@@ -149,6 +149,7 @@ async function trocarLojaWhatsapp(loja){
   await carregarVendas();
 
   if ($('tab-historico')?.classList.contains('active')) {
+    await carregarModalidadesHistorico();
     await carregarHistorico();
   }
 }
@@ -189,14 +190,12 @@ async function carregarContextoLojas(){
 
   const idsPermitidos = new Set((vinculos || []).map(v => Number(v.loteria_id)));
 
-  lojasPermitidas = lojasAtivas
-    .filter(l => idsPermitidos.has(Number(l.id)))
-    .map(l => ({
+  lojasPermitidas = lojasAtivas.map(l => ({
   loteria_id: l.id,
   loteria_nome: l.nome,
   loteria_slug: l.slug,
   loteria_codigo: l.codigo,
-  principal: !!(vinculos || []).find(v => Number(v.loteria_id) === Number(l.id) && v.principal)
+  principal: l.slug === 'centro'
 }));
 
   // Fallback para ADMIN/SOCIO se por algum motivo não vier vínculo.
@@ -246,7 +245,7 @@ function getCorBolao(id){return coresBolao[id]||'#3d5a8a'}
 function setCorBolao(id,cor){coresBolao[id]=cor;saveCoresBolao()}
 
 // ── TABS ──────────────────────────────────────────────────────────
-function switchTab(id){
+async function switchTab(id){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
     b.classList.toggle('active',['vendas','registrar','clientes','historico'][i]===id);
   });
@@ -260,12 +259,8 @@ function switchTab(id){
 
   if (id === 'historico') {
     sincronizarFiltroHistoricoComLojaAtiva();
-
-    if ($('filtDataVenda') && !$('filtDataVenda').value) {
-      $('filtDataVenda').value = isoDate(dataAtual || hojeLocal());
-    }
-
-    carregarHistorico();
+    await carregarModalidadesHistorico();
+    await carregarHistorico();
   }
 }
 // ── VIEW MODE ─────────────────────────────────────────────────────
@@ -1290,6 +1285,50 @@ function enviarWpp(tel,nome,modal,concurso,qtd,val){
 }
 
 // ── HISTÓRICO ─────────────────────────────────────────────────────
+async function carregarModalidadesHistorico(){
+  const sel = $('filtModalidade');
+  if (!sel) return;
+
+  const valorAtual = sel.value || '';
+
+  let q = sb
+    .from('view_vendas_whatsapp')
+    .select('modalidade')
+    .not('modalidade', 'is', null)
+    .order('modalidade');
+
+  const lojaFiltro =
+    $('filtLoja')?.value ||
+    (lojaWhatsappAtiva?.loteria_id ? String(lojaWhatsappAtiva.loteria_id) : '');
+
+  if (lojaFiltro) {
+    q = q.eq('loteria_id', parseInt(lojaFiltro));
+  }
+
+  const { data, error } = await q;
+
+  if (error) {
+    console.warn('Erro ao carregar modalidades do histórico:', error.message);
+    return;
+  }
+
+  const modalidades = [...new Set((data || []).map(r => r.modalidade).filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b, 'pt-BR'));
+
+  sel.innerHTML = '<option value="">Todas</option>';
+
+  modalidades.forEach(mod => {
+    const opt = document.createElement('option');
+    opt.value = mod;
+    opt.textContent = mod;
+    sel.appendChild(opt);
+  });
+
+  if (valorAtual && modalidades.includes(valorAtual)) {
+    sel.value = valorAtual;
+  }
+}
+
 async function carregarHistorico(){
   $('histContent').innerHTML = `
     <div class="state-box">
@@ -1304,12 +1343,11 @@ async function carregarHistorico(){
     .limit(300);
 
   const dataVenda = $('filtDataVenda')?.value || '';
-  const modal = $('filtModalidade')?.value?.trim() || '';
-  const conc = $('filtConcurso')?.value?.trim() || '';
+  const modal = $('filtModalidade')?.value || '';
+  const conc = ($('filtConcurso')?.value || '').replace(/\D/g, '').slice(0, 5);
 
-  const somentePago = !!$('filtPago')?.checked;
-  const somenteConf = !!$('filtConf')?.checked;
-  const somenteSep = !!$('filtSep')?.checked;
+  const filtroPagamento = $('filtPagamento')?.value || '';
+  const filtroConferencia = $('filtConferencia')?.value || '';
 
   const lojaFiltro =
     $('filtLoja')?.value ||
@@ -1322,23 +1360,27 @@ async function carregarHistorico(){
   }
 
   if (modal) {
-    q = q.ilike('modalidade', '%' + modal + '%');
+    q = q.eq('modalidade', modal);
   }
 
   if (conc) {
     q = q.ilike('concurso', '%' + conc + '%');
   }
 
-  if (somentePago) {
+  if (filtroPagamento === 'pendente') {
+    q = q.eq('pago', false);
+  }
+
+  if (filtroPagamento === 'ok') {
     q = q.eq('pago', true);
   }
 
-  if (somenteConf) {
-    q = q.eq('conferencia_enviada', true);
+  if (filtroConferencia === 'pendente') {
+    q = q.eq('conferencia_enviada', false);
   }
 
-  if (somenteSep) {
-    q = q.eq('cota_separada', true);
+  if (filtroConferencia === 'ok') {
+    q = q.eq('conferencia_enviada', true);
   }
 
   if (lojaFiltro) {
@@ -1386,8 +1428,10 @@ function renderHistorico(rows){
     const card = document.createElement('div');
     card.className = 'hist-card';
 
-    const dt = new Date(v.created_at).toLocaleDateString('pt-BR');
-    const hora = new Date(v.created_at).toLocaleTimeString('pt-BR', {
+    const dtObj = new Date(v.created_at);
+
+    const dt = dtObj.toLocaleDateString('pt-BR');
+    const hora = dtObj.toLocaleTimeString('pt-BR', {
       hour:'2-digit',
       minute:'2-digit'
     });
@@ -1486,17 +1530,18 @@ async function toggleSepHist(id,atual,btn){
 
 function limparFiltros(){
   if ($('filtDataVenda')) {
-    $('filtDataVenda').value = isoDate(dataAtual || hojeLocal());
+    $('filtDataVenda').value = '';
   }
 
   ['filtModalidade','filtConcurso'].forEach(id => {
     const el = $(id);
-    if (el) el.value = '';
+    if (!el) return;
+    el.value = '';
   });
 
-  ['filtPago','filtConf','filtSep'].forEach(id => {
+  ['filtPagamento','filtConferencia'].forEach(id => {
     const el = $(id);
-    if (el) el.checked = false;
+    if (el) el.value = '';
   });
 
   sincronizarFiltroHistoricoComLojaAtiva();
@@ -1563,20 +1608,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   'filtDataVenda',
   'filtModalidade',
   'filtConcurso',
-  'filtPago',
-  'filtConf',
-  'filtSep'
+  'filtPagamento',
+  'filtConferencia'
 ].forEach(id => {
   const el = $(id);
   if (!el) return;
 
   const evento =
-    el.type === 'checkbox' || el.type === 'date'
+    el.type === 'date' || el.tagName === 'SELECT'
       ? 'change'
       : 'input';
 
   el.addEventListener(evento, agendarCarregarHistorico);
 });
+
+const filtConcurso = $('filtConcurso');
+if (filtConcurso) {
+  filtConcurso.addEventListener('input', () => {
+    filtConcurso.value = filtConcurso.value.replace(/\D/g, '').slice(0, 5);
+  });
+}
+  
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
