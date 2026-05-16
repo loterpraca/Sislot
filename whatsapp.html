@@ -319,6 +319,39 @@
   </div>
 
 </div>
+  <!-- MODAL CLIENTE -->
+<div class="modal-overlay" id="modalCliente">
+  <div class="modal-box">
+    <div class="modal-title" id="modalCliTitulo">Novo Cliente</div>
+
+    <div class="modal-fields">
+      <div class="field">
+        <label>Nome completo *</label>
+        <input type="text" id="cliNome" placeholder="Ex: João da Silva"/>
+      </div>
+
+      <div class="field">
+        <label>Apelido</label>
+        <input type="text" id="cliApelido" placeholder="Ex: João do Mercado"/>
+      </div>
+
+      <div class="field">
+        <label>Telefone WhatsApp * (com DDI)</label>
+        <input type="text" id="cliTelefone" placeholder="5531999990000"/>
+      </div>
+
+      <div class="field">
+        <label>Observações</label>
+        <input type="text" id="cliObs" placeholder="Opcional…"/>
+      </div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-modal-cancel" onclick="fecharModalCliente()">Cancelar</button>
+      <button class="btn-modal-save" onclick="salvarCliente()">Salvar</button>
+    </div>
+  </div>
+</div>
 <!-- APP PICKER GLOBAL -->
 <div class="app-picker" id="appPicker" aria-hidden="true">
   <div class="app-picker-backdrop" id="appPickerBackdrop"></div>
