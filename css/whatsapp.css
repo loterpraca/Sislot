@@ -1597,3 +1597,89 @@ body.app-picker-open{
     min-height:44px;
   }
 }
+/* Cabeçalho do painel de venda no padrão dos cards */
+.wpp-sale-title{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  line-height:1.2;
+}
+
+.wpp-sale-card-title{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+}
+
+.wpp-sale-main{
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+}
+
+.wpp-sale-card-meta{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex-wrap:wrap;
+}
+
+.wpp-sale-chip{
+  font-family:var(--mono);
+  font-size:9px;
+  padding:2px 6px;
+  border-radius:4px;
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--border);
+  color:var(--text2);
+  white-space:nowrap;
+}
+
+.wpp-sale-chip-concurso{
+  color:var(--t1);
+  background:var(--t3);
+  border-color:var(--t4);
+}
+
+.wpp-sale-chip-origem{
+  color:var(--text2);
+  background:rgba(255,255,255,.045);
+  border-color:var(--border);
+}
+
+.wpp-sale-chip-valor{
+  color:#f5a623;
+  background:rgba(245,166,35,.08);
+  border-color:rgba(245,166,35,.22);
+}
+
+/* Mobile: força a segunda linha a caber melhor */
+@media(max-width:760px){
+  .wpp-sale-card-title{
+    gap:5px;
+  }
+
+  .wpp-sale-main{
+    font-size:13px;
+  }
+
+  .wpp-sale-card-meta{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:5px;
+    width:100%;
+  }
+
+  .wpp-sale-chip{
+    font-size:8px;
+    padding:3px 4px;
+    text-align:center;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .wpp-sale-chip-valor{
+    min-width:0;
+  }
+}
