@@ -564,7 +564,39 @@ function abrirPainelVendaWpp(b){
   panel.setAttribute('aria-hidden', 'false');
   document.body.classList.add('wpp-sale-open');
 }
+function fecharPainelVendaWpp(){
+  const panel = $('wppSalePanel');
+  if (!panel) return;
 
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('wpp-sale-open');
+}
+
+function limparBolaoSelecionadoWpp(){
+  bolaoSelReg = null;
+
+  document.querySelectorAll('.bolao-sel-card').forEach(c => {
+    c.classList.remove('selected');
+  });
+
+  if ($('inputValor')) {
+    $('inputValor').value = '';
+  }
+
+  if ($('inputQtd')) {
+    $('inputQtd').value = '1';
+  }
+
+  const panel = $('wppSelectedPanel');
+  if (panel) {
+    panel.style.display = 'none';
+  }
+
+  fecharPainelVendaWpp();
+  calcTotal();
+  clearStatusReg();
+}
 function getSaldoContextoBolao(b){
   const lojaId = Number(lojaWhatsappAtiva?.loteria_id || 0);
   const saldo = (b.saldos_lojas || []).find(s => Number(s.loteria_id) === lojaId);
