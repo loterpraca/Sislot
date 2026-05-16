@@ -420,7 +420,7 @@ function renderVendasPorBolao(boloes,vendas){
               ${b.modalidade}
               <span class="bolao-tag">#${b.concurso}</span>
               <span class="bolao-tag bolao-tag-loja">${b.loterias?.nome||'—'}</span>
-              <span class="bolao-tag bolao-tag-val">${fmtBRL(b.valor_cota)}/cota</span>
+              <span class="bolao-tag bolao-tag-val">${fmtBRL(b.valor_cota)}</span>
             </div>
             <div class="bolao-stats">
               <span class="bolao-stat"><span>${totalCotas}</span> cotas vendidas</span>
