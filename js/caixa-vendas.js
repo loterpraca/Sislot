@@ -1623,17 +1623,18 @@ function bindEventos(){
   }
 
 // Federal
-  const federalChip = $('federalLojaChip');
+// Federal
+const federalChip = $('federalLojaChip');
 if (federalChip) federalChip.onclick = () => trocarLojaCaixaPorOffset(1);
 
 const prevFederal = $('btnDtPrevFederal');
 const nextFederal = $('btnDtNextFederal');
 const hojeFederal = $('btnHojeFederal');
 const displayFederal = $('dateDisplayFederal');
-if (displayFederal && pickerFederal) {
-displayFederal.onclick = () => pickerFederal.showPicker ? pickerFederal.showPicker() : pickerFederal.click();
-}
 const pickerFederal = $('datePickerFederal');
+const btnRegistrarFederal = $('btnRegistrarFederal');
+const inputQtdFederal = $('inputQtdFederal');
+const btnFecharFederal = $('btnFecharVendaFederal');
 
 if (prevFederal) {
   prevFederal.onclick = async () => {
@@ -1660,6 +1661,12 @@ if (hojeFederal) {
   };
 }
 
+if (displayFederal && pickerFederal) {
+  displayFederal.onclick = () => pickerFederal.showPicker
+    ? pickerFederal.showPicker()
+    : pickerFederal.click();
+}
+
 if (pickerFederal) {
   pickerFederal.onchange = async () => {
     await setDataOperacionalCaixa(dataFromISO(pickerFederal.value));
@@ -1667,15 +1674,17 @@ if (pickerFederal) {
   };
 }
 
-const btnRegistrarFederal = $('btnRegistrarFederal');
-if (btnRegistrarFederal) btnRegistrarFederal.onclick = registrarVendaFederalCaixa;
+if (btnRegistrarFederal) {
+  btnRegistrarFederal.onclick = registrarVendaFederalCaixa;
+}
 
-const inputQtdFederal = $('inputQtdFederal');
-if (inputQtdFederal) inputQtdFederal.oninput = calcTotalFederalCaixa;
+if (inputQtdFederal) {
+  inputQtdFederal.oninput = calcTotalFederalCaixa;
+}
 
-const btnFecharFederal = $('btnFecharVendaFederal');
-if (btnFecharFederal) btnFecharFederal.onclick = fecharPainelVendaFederal;
-  
+if (btnFecharFederal) {
+  btnFecharFederal.onclick = fecharPainelVendaFederal;
+}
   // Consolidado mensal
   const btnMesPrevCons = $('btnMesPrevCons');
   if (btnMesPrevCons) {
