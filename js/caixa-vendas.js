@@ -634,32 +634,43 @@ async function carregarConsolidadoCaixa(){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  box.innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Buscando consolidado…</div></div>';
+  box.innerHTML = `
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="state-title">Buscando consolidado…</div>
+    </div>
+  `;
 
   if (!lojaCaixaAtiva?.loteria_id) {
-    box.innerHTML = '<div class="state-box"><div class="state-title">Nenhuma loja selecionada.</div></div>';
+    box.innerHTML = `
+      <div class="state-box">
+        <div class="state-title">Nenhuma loja selecionada.</div>
+        <div class="state-sub">Selecione a loja do caixa para carregar o consolidado.</div>
+      </div>
+    `;
     return;
   }
 
   const { data, error } = await sb
-    .from('view_vendas_balcao_boloes')
+    .from('view_caixa_consolidado_boloes_dia')
     .select('*')
-    .eq('loteria_id', lojaCaixaAtiva.loteria_id)
+    .eq('loteria_vendedora_id', lojaCaixaAtiva.loteria_id)
     .eq('data_referencia', isoDate(dataCaixa))
-    .order('created_at', { ascending:false });
+    .order('modalidade')
+    .order('concurso');
 
   if (error) {
     box.innerHTML = `
       <div class="state-box">
         <div class="state-title">Erro ao buscar consolidado</div>
         <div class="state-sub">${error.message}</div>
-      </div>`;
+      </div>
+    `;
     return;
   }
 
   renderConsolidadoCaixa(data || []);
 }
-
 function renderConsolidadoCaixa(rows){
   const box = $('consolidadoContent');
   if (!box) return;
@@ -669,72 +680,78 @@ function renderConsolidadoCaixa(rows){
       <div class="state-box">
         <div class="state-title">Nenhuma venda no balcão</div>
         <div class="state-sub">Não há vendas BALCÃO para ${lojaCaixaAtiva?.loteria_nome || 'esta loja'} em ${fmtData(dataCaixa)}.</div>
-      </div>`;
+      </div>
+    `;
     return;
   }
 
-  const totalCotas = rows.reduce((s,r) => s + Number(r.qtd_vendida || 0), 0);
+  const totalCotas = rows.reduce((s,r) => s + Number(r.cotas_vendidas || 0), 0);
   const totalValor = rows.reduce((s,r) => s + Number(r.valor_total || 0), 0);
-  const totalVendas = rows.length;
+  const totalLancamentos = rows.reduce((s,r) => s + Number(r.qtd_lancamentos || 0), 0);
 
-  const porModalidade = {};
-  rows.forEach(r => {
-    const k = r.modalidade || '—';
-    if (!porModalidade[k]) porModalidade[k] = { qtd:0, valor:0 };
-    porModalidade[k].qtd += Number(r.qtd_vendida || 0);
-    porModalidade[k].valor += Number(r.valor_total || 0);
-  });
+  const linhas = rows.map(r => `
+    <div class="cx-cons-row">
+      <div class="cx-cons-main">
+        <strong>${r.modalidade}</strong>
+        <span>#${r.concurso}</span>
+        <em>${r.loja_codigo || r.loja_vendedora || ''}</em>
+      </div>
 
-  const resumoModalidades = Object.entries(porModalidade)
-    .sort((a,b) => a[0].localeCompare(b[0], 'pt-BR'))
-    .map(([mod, r]) => `
-      <div class="caixa-mini-row">
-        <span>${mod}</span>
-        <strong>${r.qtd} cotas · ${fmtBRL(r.valor)}</strong>
-      </div>`).join('');
+      <div class="cx-cons-meta">
+        <span>${Number(r.cotas_vendidas || 0)} cota${Number(r.cotas_vendidas || 0) > 1 ? 's' : ''}</span>
+        <span>${Number(r.qtd_lancamentos || 0)} lançamento${Number(r.qtd_lancamentos || 0) > 1 ? 's' : ''}</span>
+        <span>${fmtBRL(r.valor_cota)}</span>
+      </div>
 
-  const lista = rows.map(r => `
-    <div class="caixa-venda-row">
-      <div>
-        <div class="caixa-venda-title">${r.modalidade} <span>#${r.concurso}</span></div>
-        <div class="caixa-venda-sub">${fmtHora(r.created_at)} · Origem: ${r.origem_bolao_nome || '—'} · ${r.qtd_jogos || 0} jogos · ${r.qtd_dezenas || 0} dez.</div>
-      </div>
-      <div class="caixa-venda-values">
-        <strong>${fmtBRL(r.valor_total)}</strong>
-        <small>${r.qtd_vendida} cota${Number(r.qtd_vendida) > 1 ? 's' : ''}</small>
-      </div>
-      <button class="btn-del" title="Excluir venda" onclick="deletarVendaBalcaoBolao(${r.bolao_venda_id})">
-        <i class="fas fa-trash"></i>
-      </button>
-    </div>`).join('');
-
-  box.innerHTML = `
-    <div class="caixa-kpi-grid">
-      <div class="caixa-kpi-card">
-        <span>Vendas</span>
-        <strong>${totalVendas}</strong>
-      </div>
-      <div class="caixa-kpi-card">
-        <span>Cotas</span>
-        <strong>${totalCotas}</strong>
-      </div>
-      <div class="caixa-kpi-card destaque">
-        <span>Total Bolões</span>
-        <strong>${fmtBRL(totalValor)}</strong>
+      <div class="cx-cons-total">
+        ${fmtBRL(r.valor_total)}
       </div>
     </div>
+  `).join('');
 
-    <div class="caixa-consolidado-grid">
-      <div class="caixa-resumo-card">
-        <div class="reg-section-title">Por modalidade</div>
-        ${resumoModalidades}
+  box.innerHTML = `
+    <div class="cx-cons-wrap fade-in">
+
+      <div class="cx-cons-head">
+        <div>
+          <div class="cx-cons-kicker">Consolidado do dia</div>
+          <div class="cx-cons-title">${lojaCaixaAtiva?.loteria_nome || 'Loja'} · ${fmtData(dataCaixa)}</div>
+        </div>
+
+        <button class="btn-hist-buscar" onclick="carregarConsolidadoCaixa()">
+          Atualizar
+        </button>
       </div>
 
-      <div class="caixa-resumo-card">
-        <div class="reg-section-title">Vendas lançadas</div>
-        <div class="caixa-vendas-lista">${lista}</div>
+      <div class="cx-kpi-grid">
+        <div class="cx-kpi-card">
+          <span>Vendas</span>
+          <strong>${totalLancamentos}</strong>
+        </div>
+
+        <div class="cx-kpi-card">
+          <span>Cotas</span>
+          <strong>${totalCotas}</strong>
+        </div>
+
+        <div class="cx-kpi-card destaque">
+          <span>Total bolões</span>
+          <strong>${fmtBRL(totalValor)}</strong>
+        </div>
       </div>
-    </div>`;
+
+      <div class="sec-sep">
+        <div class="sec-sep-label">Bolões vendidos no balcão</div>
+        <div class="sec-sep-line"></div>
+        <div class="sec-sep-count">${rows.length}</div>
+      </div>
+
+      <div class="cx-cons-list">
+        ${linhas}
+      </div>
+
+    </div>
+  `;
 }
 
 // ── Confirmação ──────────────────────────────────────────────────
