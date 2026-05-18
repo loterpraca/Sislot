@@ -1057,18 +1057,20 @@ function renderConsolidadoCaixa(rows, dataRef){
           <small>${Number(r.qtd_dezenas || 0)} dez.</small>
         </div>
 
-        <div class="cx-det-meta">
-          <span>Qtd vendida</span>
-          <input
-            class="cx-qtd-edit"
-            id="qtdGrupo-${r.bolao_id}"
-            type="number"
-            min="1"
-            value="${Number(r.qtd_vendida || 0)}"
-          />
-          <span>${fmtBRL(r.valor_cota || 0)} un.</span>
-        </div>
-
+       <div class="cx-det-meta">
+        <span>Qtd</span>
+        <input
+          class="cx-qtd-edit"
+          id="qtdGrupo-${r.bolao_id}"
+          type="number"
+          min="1"
+          max="999"
+          maxlength="3"
+          inputmode="numeric"
+          value="${Number(r.qtd_vendida || 0)}"
+        />
+  <span>${fmtBRL(r.valor_cota || 0)}</span>
+</div>
         <div class="cx-det-total">
           ${fmtBRL(r.valor_total || 0)}
         </div>
