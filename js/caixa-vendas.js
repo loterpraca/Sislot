@@ -1052,13 +1052,34 @@ function renderConsolidadoCaixa(rows, dataRef){
   const linhasBoloes = rows.length
     ? rows.map(r => `
       <div class="cx-det-row cx-det-row-editavel">
-    <div class="cx-det-main">
-  <strong>${r.modalidade || '—'}</strong>
-  <span>#${r.concurso || '—'}</span>
-  <small>${Number(r.qtd_jogos || 0)} jogos</small>
-  <small>${Number(r.qtd_dezenas || 0)} dez.</small>
+    <div class="cx-det-row cx-det-row-editavel">
+  <div class="cx-det-main">
+    <strong>${r.modalidade || '—'}</strong>
+    <span>#${r.concurso || '—'}</span>
+    <small>${Number(r.qtd_jogos || 0)} jogos</small>
+    <small>${Number(r.qtd_dezenas || 0)} dez.</small>
+  </div>
 
-  <div class="cx-det-actions cx-det-actions-inline">
+  <div class="cx-det-meta">
+    <span>Qtd</span>
+    <input
+      class="cx-qtd-edit"
+      id="qtdGrupo-${r.bolao_id}"
+      type="number"
+      min="1"
+      max="999"
+      maxlength="3"
+      inputmode="numeric"
+      value="${Number(r.qtd_vendida || 0)}"
+    />
+    <span>${fmtBRL(r.valor_cota || 0)}</span>
+  </div>
+
+  <div class="cx-det-total">
+    ${fmtBRL(r.valor_total || 0)}
+  </div>
+
+  <div class="cx-det-actions">
     <button
       type="button"
       class="cx-action-btn cx-action-save"
@@ -1075,25 +1096,6 @@ function renderConsolidadoCaixa(rows, dataRef){
       <i class="fas fa-trash"></i>
     </button>
   </div>
-</div>
-
-<div class="cx-det-meta">
-  <span>Qtd</span>
-  <input
-    class="cx-qtd-edit"
-    id="qtdGrupo-${r.bolao_id}"
-    type="number"
-    min="1"
-    max="999"
-    maxlength="3"
-    inputmode="numeric"
-    value="${Number(r.qtd_vendida || 0)}"
-  />
-  <span>${fmtBRL(r.valor_cota || 0)}</span>
-</div>
-
-<div class="cx-det-total">
-  ${fmtBRL(r.valor_total || 0)}
 </div>
       </div>
     `).join('')
