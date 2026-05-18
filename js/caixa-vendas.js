@@ -366,7 +366,7 @@ async function carregarResumoMensalCaixa(){
   const dataFim = isoDate(new Date(ano, mes + 1, 0));
 
   const { data, error } = await sb
-    .from('view_caixa_consolidado_boloes_dia')
+    .from('view_caixa_vendas_boloes_grupo')
     .select('*')
     .eq('loteria_vendedora_id', lojaCaixaAtiva.loteria_id)
     .gte('data_referencia', dataIni)
@@ -918,6 +918,70 @@ async function deletarVendaBalcaoBolao(id){
 
 window.deletarVendaBalcaoBolao = deletarVendaBalcaoBolao;
 
+async function salvarQtdGrupoBalcaoBolao(bolaoId){
+  const input = $('qtdGrupo-' + bolaoId);
+  if (!input) return;
+
+  const novaQtd = parseInt(input.value || '0', 10) || 0;
+
+  if (novaQtd <= 0) {
+    alert('A quantidade deve ser maior que zero.');
+    return;
+  }
+
+  const { error } = await sb.rpc('rpc_editar_qtd_venda_balcao_bolao_grupo', {
+    p_bolao_id: bolaoId,
+    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
+    p_data_referencia: isoDate(dataConsolidadoCaixa),
+    p_nova_qtd: novaQtd
+  });
+
+  if (error) {
+    alert(error.message);
+    await carregarConsolidadoCaixa();
+    return;
+  }
+
+  await buscarBoloesCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
+
+window.salvarQtdGrupoBalcaoBolao = salvarQtdGrupoBalcaoBolao;
+
+async function excluirGrupoBalcaoBolao(bolaoId){
+  const ok = await confirmar(
+    'Excluir bolão do consolidado',
+    'Tem certeza que deseja excluir todas as vendas deste bolão neste dia?'
+  );
+
+  if (!ok) return;
+
+  const { error } = await sb.rpc('rpc_excluir_venda_balcao_bolao_grupo', {
+    p_bolao_id: bolaoId,
+    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
+    p_data_referencia: isoDate(dataConsolidadoCaixa)
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await buscarBoloesCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
+
+window.excluirGrupoBalcaoBolao = excluirGrupoBalcaoBolao;
+
+
 // ── Consolidado: renderização por setor ───────────────────────────
 async function carregarConsolidadoCaixa(){
   const box = $('consolidadoContent');
@@ -943,7 +1007,7 @@ async function carregarConsolidadoCaixa(){
   }
 
   const { data, error } = await sb
-    .from('view_caixa_consolidado_boloes_dia')
+    .from('view_caixa_vendas_boloes_grupo')
     .select('*')
     .eq('loteria_vendedora_id', lojaCaixaAtiva.loteria_id)
     .eq('data_referencia', dataRef)
@@ -967,10 +1031,10 @@ function renderConsolidadoCaixa(rows, dataRef){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const totalBoloesCotas = rows.reduce((s, r) => s + Number(r.cotas_vendidas || 0), 0);
+  const totalBoloesQtd = rows.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
   const totalBoloesValor = rows.reduce((s, r) => s + Number(r.valor_total || 0), 0);
+  const totalGrupos = rows.length;
 
-  // Ainda não integrados
   const totalFederalQtd = 0;
   const totalFederalValor = 0;
   const totalProdutosQtd = 0;
@@ -980,18 +1044,47 @@ function renderConsolidadoCaixa(rows, dataRef){
 
   const linhasBoloes = rows.length
     ? rows.map(r => `
-      <div class="cx-det-row">
+      <div class="cx-det-row cx-det-row-editavel">
         <div class="cx-det-main">
           <strong>${r.modalidade || '—'}</strong>
           <span>#${r.concurso || '—'}</span>
+          <small>${Number(r.qtd_jogos || 0)} jogos</small>
+          <small>${Number(r.qtd_dezenas || 0)} dez.</small>
         </div>
 
         <div class="cx-det-meta">
-          <span>${Number(r.cotas_vendidas || 0)} cota${Number(r.cotas_vendidas || 0) !== 1 ? 's' : ''}</span>
-          <span>${fmtBRL(r.valor_cota || 0)}</span>
+          <span>Qtd vendida</span>
+          <input
+            class="cx-qtd-edit"
+            id="qtdGrupo-${r.bolao_id}"
+            type="number"
+            min="1"
+            value="${Number(r.qtd_vendida || 0)}"
+          />
+          <span>${fmtBRL(r.valor_cota || 0)} un.</span>
         </div>
 
-        <div class="cx-det-total">${fmtBRL(r.valor_total || 0)}</div>
+        <div class="cx-det-total">
+          ${fmtBRL(r.valor_total || 0)}
+        </div>
+
+        <div class="cx-det-actions">
+          <button
+            type="button"
+            class="cx-action-btn cx-action-save"
+            onclick="salvarQtdGrupoBalcaoBolao(${r.bolao_id})"
+            title="Salvar nova quantidade">
+            <i class="fas fa-check"></i>
+          </button>
+
+          <button
+            type="button"
+            class="cx-action-btn cx-action-del"
+            onclick="excluirGrupoBalcaoBolao(${r.bolao_id})"
+            title="Excluir este bolão do dia">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
     `).join('')
     : `<div class="cx-det-empty">Sem vendas de bolões no balcão nesta data.</div>`;
@@ -1004,11 +1097,6 @@ function renderConsolidadoCaixa(rows, dataRef){
           <div class="cx-fech-kicker">Consolidado do Caixa</div>
           <div class="cx-fech-title">${lojaCaixaAtiva?.loteria_nome || 'Loja'} · ${fmtData(dataFromISO(dataRef))}</div>
         </div>
-
-        <button type="button" class="cx-fech-refresh" onclick="carregarConsolidadoCaixa()">
-          <i class="fas fa-sync-alt"></i>
-          Atualizar
-        </button>
       </div>
 
       <div class="cx-bloco">
@@ -1018,7 +1106,7 @@ function renderConsolidadoCaixa(rows, dataRef){
           <div class="cx-rg-card">
             <div class="cx-rg-label">Bolões</div>
             <div class="cx-rg-val cx-rg-green">${fmtBRL(totalBoloesValor)}</div>
-            <div class="cx-rg-sub">${totalBoloesCotas} cota${totalBoloesCotas !== 1 ? 's' : ''}</div>
+            <div class="cx-rg-sub">${totalBoloesQtd} cota${totalBoloesQtd !== 1 ? 's' : ''}</div>
           </div>
 
           <div class="cx-rg-card">
@@ -1049,7 +1137,7 @@ function renderConsolidadoCaixa(rows, dataRef){
               <span>Setor</span>
               <strong>Bolões</strong>
             </div>
-            <em>Bolões vendidos</em>
+            <em>${totalGrupos} bolão${totalGrupos !== 1 ? 'ões' : ''}</em>
           </div>
 
           <div class="cx-det-list">
