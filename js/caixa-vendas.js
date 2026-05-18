@@ -207,6 +207,8 @@ async function trocarLojaCaixa(loja){
   lojaCaixaAtiva = loja;
   atualizarLojaCaixaUI();
   limparBolaoSelecionadoCaixa();
+  federalSelecionadaCaixa = null;
+  fecharPainelVendaFederal();
 
   await buscarBoloesCaixa();
   if ($('tab-federal')?.classList.contains('active')) {
@@ -383,8 +385,7 @@ async function buscarFederaisCaixa(){
 
   federalSelecionadaCaixa = null;
 
-  const panel = $('federalVendaPanel');
-  if (panel) panel.style.display = 'none';
+fecharPainelVendaFederal();
 
   lista.innerHTML = `
     <div class="state-box" style="padding:24px">
@@ -515,6 +516,7 @@ function abrirPainelVendaFederal(){
   const panel = $('federalVendaPanel');
   if (!panel) return;
 
+  panel.style.display = '';
   panel.classList.add('open');
   panel.setAttribute('aria-hidden', 'false');
   document.body.classList.add('wpp-sale-open');
@@ -1628,6 +1630,9 @@ const prevFederal = $('btnDtPrevFederal');
 const nextFederal = $('btnDtNextFederal');
 const hojeFederal = $('btnHojeFederal');
 const displayFederal = $('dateDisplayFederal');
+if (displayFederal && pickerFederal) {
+displayFederal.onclick = () => pickerFederal.showPicker ? pickerFederal.showPicker() : pickerFederal.click();
+}
 const pickerFederal = $('datePickerFederal');
 
 if (prevFederal) {
