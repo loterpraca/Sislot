@@ -2,18 +2,12 @@ const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.
 
 /* =========================================================
    SISLOT — Vendas no Caixa
-   V2: Bolões com data simples + Consolidado com abas mensais
+   Arquivo limpo: Bolões + Consolidado mensal por setor
 ========================================================= */
 
 // ── Estado ────────────────────────────────────────────────────────
 let usuario = null;
-
-// Data da ABA BOLÕES: usada para buscar saldo e registrar venda.
 let dataCaixa = hojeLocal();
-
-// Data da ABA CONSOLIDADO: usada só para as abas 1..30/31 e resumo do dia.
-let dataConsolidadoCaixa = hojeLocal();
-
 let resumoDiasCaixa = {};
 let lojasAtivas = [];
 let lojasPermitidas = [];
@@ -35,38 +29,6 @@ const LOJA_CONFIG = {
 };
 
 // ── Helpers básicos ───────────────────────────────────────────────
-async function salvarQtdVendaBalcaoBolao(id){
-  const input = $('qtdVenda-' + id);
-  if (!input) return;
-
-  const novaQtd = parseInt(input.value || '0', 10) || 0;
-
-  if (novaQtd <= 0) {
-    alert('A quantidade deve ser maior que zero.');
-    return;
-  }
-
-  const { error } = await sb.rpc('rpc_editar_qtd_venda_balcao_bolao', {
-    p_bolao_venda_id: id,
-    p_nova_qtd: novaQtd
-  });
-
-  if (error) {
-    alert(error.message);
-    await carregarConsolidadoCaixa();
-    return;
-  }
-
-  await buscarBoloesCaixa();
-
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
-}
-
-window.salvarQtdVendaBalcaoBolao = salvarQtdVendaBalcaoBolao;
-
 function $(id){
   return document.getElementById(id);
 }
@@ -104,6 +66,12 @@ function fmtData(dt){
     month:'2-digit',
     year:'numeric'
   });
+}
+
+function fmtHora(dt){
+  const d = new Date(dt);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
 function fmtBRL(v){
@@ -241,6 +209,7 @@ async function carregarContextoLojas(){
       principal: !!(vinculos || []).find(v => Number(v.loteria_id) === Number(l.id) && v.principal)
     }));
 
+  // Fallback para ADMIN/SOCIO quando não houver vínculo explícito.
   if (!lojasPermitidas.length && ['ADMIN','SOCIO'].includes(String(usuario.perfil || '').toUpperCase())) {
     lojasPermitidas = lojasAtivas.map(l => ({
       loteria_id: l.id,
@@ -295,7 +264,7 @@ function clearStatusCaixa(){
   e.className = 'status-bar';
 }
 
-// ── Tabs principais ───────────────────────────────────────────────
+// ── Tabs ──────────────────────────────────────────────────────────
 async function switchTab(id){
   const abas = ['boloes', 'federal', 'produtos', 'consolidado'];
 
@@ -320,17 +289,29 @@ async function switchTab(id){
   }
 }
 
+// Deixa as funções acessíveis para onclick no HTML
 window.switchTab = switchTab;
 
-// ── Data da ABA BOLÕES ────────────────────────────────────────────
-function atualizarDataBolaoUI(){
+// ── Datas ─────────────────────────────────────────────────────────
+function atualizarDatasCaixa(){
   dataCaixa = normalizaDataLocal(dataCaixa);
+  const iso = isoDate(dataCaixa);
 
+  // Data da aba Bolões
   const displayCaixa = $('dateDisplayCaixa');
   const pickerCaixa = $('datePickerCaixa');
 
   if (displayCaixa) displayCaixa.textContent = fmtData(dataCaixa);
-  if (pickerCaixa) pickerCaixa.value = isoDate(dataCaixa);
+  if (pickerCaixa) pickerCaixa.value = iso;
+
+  // Compatibilidade caso ainda existam campos antigos no Consolidado
+  const displayCons = $('dateDisplayCons');
+  const pickerCons = $('datePickerCons');
+
+  if (displayCons) displayCons.textContent = fmtData(dataCaixa);
+  if (pickerCons) pickerCons.value = iso;
+
+  atualizarTituloMesCaixa();
 }
 
 async function alterarDataCaixa(deltaDias){
@@ -338,22 +319,34 @@ async function alterarDataCaixa(deltaDias){
   d.setDate(d.getDate() + deltaDias);
   dataCaixa = d;
 
-  atualizarDataBolaoUI();
+  atualizarDatasCaixa();
+
   await buscarBoloesCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
 }
 
 async function setDataCaixaPorISO(iso){
   dataCaixa = dataFromISO(iso);
-  atualizarDataBolaoUI();
+  atualizarDatasCaixa();
+
   await buscarBoloesCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
 }
 
-// ── Consolidado mensal: mês + abas 1..30/31 ───────────────────────
+// ── Consolidado mensal: mês + dias ────────────────────────────────
 function atualizarTituloMesCaixa(){
   const el = $('cxMesTitle');
   if (!el) return;
 
-  const d = normalizaDataLocal(dataConsolidadoCaixa);
+  const d = normalizaDataLocal(dataCaixa);
   el.textContent = `${MESES_PT[d.getMonth()]} / ${d.getFullYear()}`;
 }
 
@@ -365,7 +358,7 @@ async function carregarResumoMensalCaixa(){
     return;
   }
 
-  const base = normalizaDataLocal(dataConsolidadoCaixa);
+  const base = normalizaDataLocal(dataCaixa);
   const ano = base.getFullYear();
   const mes = base.getMonth();
 
@@ -413,7 +406,7 @@ function gerarAbasDiasCaixa(){
 
   const DIAS_SEMANA = ['D','S','T','Q','Q','S','S'];
 
-  const base = normalizaDataLocal(dataConsolidadoCaixa);
+  const base = normalizaDataLocal(dataCaixa);
   const ano = base.getFullYear();
   const mes = base.getMonth();
 
@@ -466,9 +459,11 @@ function gerarAbasDiasCaixa(){
     `;
 
     btn.onclick = async () => {
-      dataConsolidadoCaixa = new Date(ano, mes, d);
+      dataCaixa = new Date(ano, mes, d);
 
+      atualizarDatasCaixa();
       gerarAbasDiasCaixa();
+
       await carregarConsolidadoCaixa();
 
       btn.scrollIntoView({
@@ -496,22 +491,22 @@ function gerarAbasDiasCaixa(){
 }
 
 async function alterarMesConsolidadoCaixa(delta){
-  const d = normalizaDataLocal(dataConsolidadoCaixa);
+  const d = normalizaDataLocal(dataCaixa);
   d.setMonth(d.getMonth() + delta);
   d.setDate(1);
 
-  dataConsolidadoCaixa = d;
+  dataCaixa = d;
 
-  atualizarTituloMesCaixa();
+  atualizarDatasCaixa();
 
   await carregarResumoMensalCaixa();
   await carregarConsolidadoCaixa();
 }
 
 async function irHojeConsolidadoCaixa(){
-  dataConsolidadoCaixa = hojeLocal();
+  dataCaixa = hojeLocal();
 
-  atualizarTituloMesCaixa();
+  atualizarDatasCaixa();
 
   await carregarResumoMensalCaixa();
   await carregarConsolidadoCaixa();
@@ -648,7 +643,6 @@ function renderBoloesCaixa(boloes){
         return (a.valor_cota || 0) - (b.valor_cota || 0);
       })
       .forEach(b => {
-        const saldoContexto = getSaldoContextoBolao(b);
 
         const saldoPills = (b.saldos_lojas || []).map(s => {
           const saldo = Number(s.saldo_real || 0);
@@ -672,7 +666,6 @@ function renderBoloesCaixa(boloes){
               <span class="bsc-modal">${b.modalidade}</span>
               <span class="bsc-tag tag-concurso">#${b.concurso}</span>
               <span class="bsc-tag tag-origem-cotas">${b.loteria_origem_nome || '—'}</span>
-              <span class="bsc-tag tag-canal-venda">Saldo ${siglaLoja({ loteria_id: lojaCaixaAtiva.loteria_id })}: ${saldoContexto}</span>
             </div>
 
             <div class="bsc-tags">
@@ -885,7 +878,6 @@ async function registrarVendaBolaoCaixa(){
 
   await buscarBoloesCaixa();
 
-  // Só mexe no consolidado se o consolidado estiver aberto.
   if ($('tab-consolidado')?.classList.contains('active')) {
     await carregarResumoMensalCaixa();
     await carregarConsolidadoCaixa();
@@ -926,75 +918,12 @@ async function deletarVendaBalcaoBolao(id){
 
 window.deletarVendaBalcaoBolao = deletarVendaBalcaoBolao;
 
-async function salvarQtdGrupoBalcaoBolao(bolaoId){
-  const input = $('qtdGrupo-' + bolaoId);
-  if (!input) return;
-
-  const novaQtd = parseInt(input.value || '0', 10) || 0;
-
-  if (novaQtd <= 0) {
-    alert('A quantidade deve ser maior que zero.');
-    return;
-  }
-
-  const { error } = await sb.rpc('rpc_editar_qtd_venda_balcao_bolao_grupo', {
-    p_bolao_id: bolaoId,
-    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
-    p_data_referencia: isoDate(dataConsolidadoCaixa),
-    p_nova_qtd: novaQtd
-  });
-
-  if (error) {
-    alert(error.message);
-    await carregarConsolidadoCaixa();
-    return;
-  }
-
-  await buscarBoloesCaixa();
-
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
-}
-
-window.salvarQtdGrupoBalcaoBolao = salvarQtdGrupoBalcaoBolao;
-
-async function excluirGrupoBalcaoBolao(bolaoId){
-  const ok = await confirmar(
-    'Excluir bolão do consolidado',
-    'Tem certeza que deseja excluir todas as vendas deste bolão neste dia?'
-  );
-
-  if (!ok) return;
-
-  const { error } = await sb.rpc('rpc_excluir_venda_balcao_bolao_grupo', {
-    p_bolao_id: bolaoId,
-    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
-    p_data_referencia: isoDate(dataConsolidadoCaixa)
-  });
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  await buscarBoloesCaixa();
-
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
-}
-
-window.excluirGrupoBalcaoBolao = excluirGrupoBalcaoBolao;
-
 // ── Consolidado: renderização por setor ───────────────────────────
 async function carregarConsolidadoCaixa(){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const dataRef = isoDate(dataConsolidadoCaixa);
+  const dataRef = isoDate(dataCaixa);
 
   box.innerHTML = `
     <div class="state-box">
@@ -1014,7 +943,7 @@ async function carregarConsolidadoCaixa(){
   }
 
   const { data, error } = await sb
-    .from('view_caixa_vendas_boloes_grupo')
+    .from('view_caixa_consolidado_boloes_dia')
     .select('*')
     .eq('loteria_vendedora_id', lojaCaixaAtiva.loteria_id)
     .eq('data_referencia', dataRef)
@@ -1038,11 +967,10 @@ function renderConsolidadoCaixa(rows, dataRef){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const totalBoloesQtd = rows.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
-   const totalBoloesValor = rows.reduce((s, r) => s + Number(r.valor_total || 0), 0);
-   const totalLanc = rows.reduce((s, r) => s + Number(r.qtd_lancamentos || 0), 0);
-   const totalGrupos = rows.length;
-   
+  const totalBoloesCotas = rows.reduce((s, r) => s + Number(r.cotas_vendidas || 0), 0);
+  const totalBoloesValor = rows.reduce((s, r) => s + Number(r.valor_total || 0), 0);
+
+  // Ainda não integrados
   const totalFederalQtd = 0;
   const totalFederalValor = 0;
   const totalProdutosQtd = 0;
@@ -1050,54 +978,24 @@ function renderConsolidadoCaixa(rows, dataRef){
 
   const totalGeral = totalBoloesValor + totalFederalValor + totalProdutosValor;
 
- const linhasBoloes = rows.length
-  ? rows.map(r => `
-    <div class="cx-det-row cx-det-row-editavel">
-      <div class="cx-det-main">
-        <strong>${r.modalidade || '—'}</strong>
-        <span>#${r.concurso || '—'}</span>
-        <small>${Number(r.qtd_jogos || 0)} jogos</small>
-        <small>${Number(r.qtd_dezenas || 0)} dez.</small>
-        <small>${Number(r.qtd_lancamentos || 0)} lanç.</small>
-      </div>
+  const linhasBoloes = rows.length
+    ? rows.map(r => `
+      <div class="cx-det-row">
+        <div class="cx-det-main">
+          <strong>${r.modalidade || '—'}</strong>
+          <span>#${r.concurso || '—'}</span>
+        </div>
 
-      <div class="cx-det-meta">
-        <span>Qtd vendida</span>
-        <input
-          class="cx-qtd-edit"
-          id="qtdGrupo-${r.bolao_id}"
-          type="number"
-          min="1"
-          value="${Number(r.qtd_vendida || 0)}"
-        />
-        <span>${fmtBRL(r.valor_cota || 0)} un.</span>
-      </div>
+        <div class="cx-det-meta">
+          <span>${Number(r.cotas_vendidas || 0)} cota${Number(r.cotas_vendidas || 0) !== 1 ? 's' : ''}</span>
+          <span>${fmtBRL(r.valor_cota || 0)}</span>
+        </div>
 
-      <div class="cx-det-total">
-        ${fmtBRL(r.valor_total || 0)}
+        <div class="cx-det-total">${fmtBRL(r.valor_total || 0)}</div>
       </div>
+    `).join('')
+    : `<div class="cx-det-empty">Sem vendas de bolões no balcão nesta data.</div>`;
 
-      <div class="cx-det-actions">
-        <button
-          type="button"
-          class="cx-action-btn cx-action-save"
-          onclick="salvarQtdGrupoBalcaoBolao(${r.bolao_id})"
-          title="Salvar nova quantidade">
-          <i class="fas fa-check"></i>
-        </button>
-
-        <button
-          type="button"
-          class="cx-action-btn cx-action-del"
-          onclick="excluirGrupoBalcaoBolao(${r.bolao_id})"
-          title="Excluir todas as vendas deste bolão no dia">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-    </div>
-  `).join('')
-  : `<div class="cx-det-empty">Sem vendas de bolões no balcão nesta data.</div>`;
-   
   box.innerHTML = `
     <div class="cx-fechamento-box fade-in">
 
@@ -1120,7 +1018,7 @@ function renderConsolidadoCaixa(rows, dataRef){
           <div class="cx-rg-card">
             <div class="cx-rg-label">Bolões</div>
             <div class="cx-rg-val cx-rg-green">${fmtBRL(totalBoloesValor)}</div>
-            <div class="cx-rg-sub">${totalBoloesQtd} cota${totalBoloesQtd !== 1 ? 's' : ''}</div>
+            <div class="cx-rg-sub">${totalBoloesCotas} cota${totalBoloesCotas !== 1 ? 's' : ''}</div>
           </div>
 
           <div class="cx-rg-card">
@@ -1151,7 +1049,7 @@ function renderConsolidadoCaixa(rows, dataRef){
               <span>Setor</span>
               <strong>Bolões</strong>
             </div>
-            <em>${totalLanc} lançamento${totalLanc !== 1 ? 's' : ''}</em>
+            <em>Bolões vendidos</em>
           </div>
 
           <div class="cx-det-list">
@@ -1191,6 +1089,8 @@ function renderConsolidadoCaixa(rows, dataRef){
     </div>
   `;
 }
+
+window.carregarConsolidadoCaixa = carregarConsolidadoCaixa;
 
 // ── Confirmação ──────────────────────────────────────────────────
 function confirmar(titulo, corpo){
@@ -1243,7 +1143,7 @@ function bindEventos(){
   const btnFechar = $('btnFecharVendaCaixa');
   if (btnFechar) btnFechar.onclick = fecharPainelVendaCaixa;
 
-  // Eventos da data simples da aba Bolões
+  // Data da aba Bolões
   const prevCaixa = $('btnDtPrevCaixa');
   const nextCaixa = $('btnDtNextCaixa');
   const hojeCaixa = $('btnHojeCaixa');
@@ -1262,7 +1162,7 @@ function bindEventos(){
     pickerCaixa.onchange = () => setDataCaixaPorISO(pickerCaixa.value);
   }
 
-  // Eventos do consolidado mensal
+  // Consolidado mensal
   const btnMesPrevCons = $('btnMesPrevCons');
   if (btnMesPrevCons) {
     btnMesPrevCons.onclick = () => alterarMesConsolidadoCaixa(-1);
@@ -1284,6 +1184,23 @@ function bindEventos(){
       await carregarResumoMensalCaixa();
       await carregarConsolidadoCaixa();
     };
+  }
+
+  // Fallback para IDs antigos do consolidado, caso ainda existam no HTML
+  const prevCons = $('btnDtPrevCons');
+  const nextCons = $('btnDtNextCons');
+  const displayCons = $('dateDisplayCons');
+  const pickerCons = $('datePickerCons');
+
+  if (prevCons) prevCons.onclick = () => alterarDataCaixa(-1);
+  if (nextCons) nextCons.onclick = () => alterarDataCaixa(1);
+
+  if (displayCons && pickerCons) {
+    displayCons.onclick = () => pickerCons.showPicker ? pickerCons.showPicker() : pickerCons.click();
+  }
+
+  if (pickerCons) {
+    pickerCons.onchange = () => setDataCaixaPorISO(pickerCons.value);
   }
 }
 
@@ -1316,10 +1233,7 @@ async function init(){
     await carregarContextoLojas();
 
     dataCaixa = hojeLocal();
-    dataConsolidadoCaixa = hojeLocal();
-
-    atualizarDataBolaoUI();
-    atualizarTituloMesCaixa();
+    atualizarDatasCaixa();
     gerarAbasDiasCaixa();
 
     await buscarBoloesCaixa();
