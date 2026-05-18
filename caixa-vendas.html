@@ -4,10 +4,12 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>SISLOT — Vendas no Caixa</title>
+
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
   <link rel="stylesheet" href="./css/caixa-vendas.css"/>
 </head>
+
 <body data-loja="centro">
 
 <!-- TOPBAR -->
@@ -79,24 +81,30 @@
         </button>
       </div>
 
-      <!-- DATA SIMPLES DA VENDA — somente aba Bolões -->
       <div class="date-bar">
         <div class="date-label">Data da venda</div>
+
         <div class="date-stepper">
           <button class="btn-date" id="btnDtPrevCaixa" type="button">
             <i class="fas fa-chevron-left"></i>
           </button>
+
           <button type="button" class="date-display" id="dateDisplayCaixa">—</button>
           <input type="date" id="datePickerCaixa" class="date-picker-hidden"/>
+
           <button class="btn-date" id="btnDtNextCaixa" type="button">
             <i class="fas fa-chevron-right"></i>
           </button>
         </div>
+
         <button class="btn-hoje" id="btnHojeCaixa" type="button">Hoje</button>
       </div>
 
-<div id="boloesCaixaLista">
-        <div class="state-box"><div class="spinner"></div><div class="state-title">Buscando bolões…</div></div>
+      <div id="boloesCaixaLista">
+        <div class="state-box">
+          <div class="spinner"></div>
+          <div class="state-title">Buscando bolões…</div>
+        </div>
       </div>
 
       <div class="wpp-selected-panel" id="caixaSelectedPanel" style="display:none;">
@@ -124,78 +132,50 @@
   </div>
 
   <!-- ===== ABA FEDERAL ===== -->
-  <!-- ===== ABA FEDERAL ===== -->
-<div class="tab-pane" id="tab-federal">
-  <div class="reg-panel">
-    <div class="reg-headline">
-      <div>
-        <div class="reg-section-title">Venda Federal no caixa</div>
-        <div class="caixa-subline">Venda direta da Federal com baixa do saldo da loja ativa.</div>
-      </div>
+  <div class="tab-pane" id="tab-federal">
+    <div class="reg-panel">
+      <div class="reg-headline">
+        <div>
+          <div class="reg-section-title">Venda Federal no caixa</div>
+          <div class="caixa-subline">Venda direta da Federal com baixa do saldo da loja ativa.</div>
+        </div>
 
-      <button class="origem-chip origem-chip-clickable" id="federalLojaChip" type="button">
-        <i class="fas fa-store"></i>
-        Loja: <strong id="federalLojaNome">—</strong>
-      </button>
-    </div>
-
-    <div class="date-bar">
-      <div class="date-label">Data da venda</div>
-
-      <div class="date-stepper">
-        <button class="btn-date" id="btnDtPrevFederal" type="button">
-          <i class="fas fa-chevron-left"></i>
-        </button>
-
-        <button type="button" class="date-display" id="dateDisplayFederal">—</button>
-        <input type="date" id="datePickerFederal" class="date-picker-hidden"/>
-
-        <button class="btn-date" id="btnDtNextFederal" type="button">
-          <i class="fas fa-chevron-right"></i>
+        <button class="origem-chip origem-chip-clickable" id="federalLojaChip" type="button" title="Trocar loja do caixa">
+          <i class="fas fa-store"></i>
+          <span>Loja</span>
+          <strong id="federalLojaNome">Centro</strong>
         </button>
       </div>
 
-      <button class="btn-hoje" id="btnHojeFederal" type="button">Hoje</button>
-    </div>
+      <div class="date-bar">
+        <div class="date-label">Data da venda</div>
 
-    <div id="federaisCaixaLista">
-      <div class="state-box">
-        <div class="state-title">Federal no caixa</div>
-        <div class="state-sub">Clique na aba Federal para carregar os concursos disponíveis.</div>
-      </div>
-    </div>
-  </div>
+        <div class="date-stepper">
+          <button class="btn-date" id="btnDtPrevFederal" type="button">
+            <i class="fas fa-chevron-left"></i>
+          </button>
 
-  <div class="reg-panel" id="federalVendaPanel" style="display:none">
-    <div class="reg-section-title">Registrar venda</div>
+          <button type="button" class="date-display" id="dateDisplayFederal">—</button>
+          <input type="date" id="datePickerFederal" class="date-picker-hidden"/>
 
-    <div class="form-grid" style="grid-template-columns:1fr 110px 120px auto">
-      <div class="field">
-        <label>Federal selecionada</label>
-        <input id="inputFederalInfo" type="text" readonly>
-      </div>
+          <button class="btn-date" id="btnDtNextFederal" type="button">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
 
-      <div class="field">
-        <label>Qtd</label>
-        <input id="inputQtdFederal" type="number" min="1" max="999" value="1">
+        <button class="btn-hoje" id="btnHojeFederal" type="button">Hoje</button>
       </div>
 
-      <div class="field">
-        <label>Valor</label>
-        <input id="inputValorFederal" type="text" readonly>
+      <div id="federaisCaixaLista">
+        <div class="state-box">
+          <div class="state-title">Federal no caixa</div>
+          <div class="state-sub">Clique na aba Federal para carregar os concursos disponíveis.</div>
+        </div>
       </div>
 
-      <button class="btn-registrar" id="btnRegistrarFederal" type="button">
-        <i class="fas fa-check"></i>
-        Registrar
-      </button>
-    </div>
-
-    <div class="wpp-sale-total">
-      Total Federal: <span id="totalVendaFederal">R$ 0,00</span>
+      <div class="status-bar" id="statusBarFederal"></div>
     </div>
   </div>
-</div>
 
   <!-- ===== ABA PRODUTOS ===== -->
   <div class="tab-pane" id="tab-produtos">
@@ -216,7 +196,6 @@
         </div>
       </div>
 
-      <!-- ABAS MENSAIS — somente aba Consolidado -->
       <div class="cx-mes-bar">
         <button class="cx-mes-btn" id="btnMesPrevCons" type="button">
           <i class="fas fa-chevron-left"></i>
@@ -287,11 +266,49 @@
   </div>
 </div>
 
+<!-- PAINEL INFERIOR — VENDA DE FEDERAL -->
+<div class="wpp-sale-panel" id="federalVendaPanel" aria-hidden="true">
+  <div class="wpp-sale-panel-inner">
+    <div class="wpp-sale-panel-head">
+      <div>
+        <div class="wpp-sale-kicker">Dados da venda</div>
+        <div class="wpp-sale-title" id="federalSaleTitle">Selecione uma Federal</div>
+      </div>
+
+      <button type="button" class="wpp-sale-close" id="btnFecharVendaFederal" title="Fechar painel">
+        <i class="fas fa-chevron-down"></i>
+      </button>
+    </div>
+
+    <div class="form-grid caixa-form-grid">
+      <div class="field">
+        <label>Qtd frações</label>
+        <input type="number" id="inputQtdFederal" min="1" max="999" value="1" oninput="calcTotalFederalCaixa()"/>
+      </div>
+
+      <div class="field">
+        <label>Valor/fração</label>
+        <input type="text" id="inputValorFederal" readonly/>
+      </div>
+
+      <button class="btn-registrar" id="btnRegistrarFederal" type="button">
+        <i class="fas fa-check"></i>
+        Registrar
+      </button>
+    </div>
+
+    <div class="wpp-sale-total">
+      Total Federal: <span id="totalVendaFederal">R$ 0,00</span>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DELETE -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
     <div class="confirm-title" id="confirmTitle">Confirmar</div>
     <div class="confirm-body" id="confirmBody"></div>
+
     <div class="confirm-btns">
       <button class="btn-conf-no" id="confirmNo">Cancelar</button>
       <button class="btn-conf-yes" id="confirmYes">Confirmar</button>
