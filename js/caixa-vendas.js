@@ -31,6 +31,7 @@ function partesDataSaoPaulo(dt = new Date()){
 ========================================================= */
 
 // ── Estado ────────────────────────────────────────────────────────
+// ── Estado ────────────────────────────────────────────────────────
 let usuario = null;
 let dataCaixa = hojeLocal();
 let dataConsolidadoCaixa = hojeLocal();
@@ -40,8 +41,7 @@ let lojasPermitidas = [];
 let lojaCaixaAtiva = null;
 let bolaoSelecionadoCaixa = null;
 let federalSelecionadaCaixa = null;
-let bolaoSelecionadoCaixa = null;
-let federalSelecionadaCaixa = null;
+let produtoSelecionadoCaixa = null;
 
 const MESES_PT = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
