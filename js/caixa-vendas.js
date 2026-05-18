@@ -589,7 +589,7 @@ async function registrarVendaFederalCaixa(){
 
   federalSelecionadaCaixa = null;
 
-  if ($('federalVendaPanel')) $('federalVendaPanel').style.display = 'none';
+  fecharPainelVendaFederal();
 
   await buscarFederaisCaixa();
 
