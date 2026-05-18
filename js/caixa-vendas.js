@@ -1638,6 +1638,9 @@ if (btnRegistrarFederal) btnRegistrarFederal.onclick = registrarVendaFederalCaix
 
 const inputQtdFederal = $('inputQtdFederal');
 if (inputQtdFederal) inputQtdFederal.oninput = calcTotalFederalCaixa;
+
+const btnFecharFederal = $('btnFecharVendaFederal');
+if (btnFecharFederal) btnFecharFederal.onclick = fecharPainelVendaFederal;
   
   // Consolidado mensal
   const btnMesPrevCons = $('btnMesPrevCons');
