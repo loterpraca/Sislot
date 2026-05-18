@@ -1,24 +1,5 @@
 const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
 
-/* =========================================================
-   SISLOT — Vendas no Caixa
-   Arquivo limpo: Bolões + Consolidado mensal por setor
-========================================================= */
-
-// ── Estado ────────────────────────────────────────────────────────
-let usuario = null;
-let dataCaixa = hojeLocal();
-let dataConsolidadoCaixa = hojeLocal();
-let resumoDiasCaixa = {};
-let lojasAtivas = [];
-let lojasPermitidas = [];
-let lojaCaixaAtiva = null;
-let bolaoSelecionadoCaixa = null;
-
-const MESES_PT = [
-  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
-];
 const TZ_SISLOT = 'America/Sao_Paulo';
 
 function partesDataSaoPaulo(dt = new Date()){
@@ -43,6 +24,27 @@ function partesDataSaoPaulo(dt = new Date()){
     dia: Number(obj.day)
   };
 }
+
+/* =========================================================
+   SISLOT — Vendas no Caixa
+   Arquivo limpo: Bolões + Consolidado mensal por setor
+========================================================= */
+
+// ── Estado ────────────────────────────────────────────────────────
+let usuario = null;
+let dataCaixa = hojeLocal();
+let dataConsolidadoCaixa = hojeLocal();
+let resumoDiasCaixa = {};
+let lojasAtivas = [];
+let lojasPermitidas = [];
+let lojaCaixaAtiva = null;
+let bolaoSelecionadoCaixa = null;
+
+const MESES_PT = [
+  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
+];
+
 const LOJA_CONFIG = {
   'boulevard':    { nome:'Boulevard',    logo:'./icons/boulevard.png',    theme:'boulevard',    logoPos:'50% 50%' },
   'centro':       { nome:'Centro',       logo:'./icons/loterpraca.png',   theme:'centro',       logoPos:'50% 42%' },
