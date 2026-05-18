@@ -40,6 +40,8 @@ let lojasPermitidas = [];
 let lojaCaixaAtiva = null;
 let bolaoSelecionadoCaixa = null;
 let federalSelecionadaCaixa = null;
+let bolaoSelecionadoCaixa = null;
+let federalSelecionadaCaixa = null;
 
 const MESES_PT = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -151,6 +153,9 @@ if (nomeChip) nomeChip.textContent = cfg.nome;
 const nomeFederal = $('federalLojaNome');
 if (nomeFederal) nomeFederal.textContent = cfg.nome;
 }
+const nomeProdutos = $('produtosLojaNome');
+if (nomeProdutos) nomeProdutos.textContent = cfg.nome;
+
 async function setDataOperacionalCaixa(novaData){
   dataCaixa = normalizaDataLocal(novaData);
   atualizarDatasCaixa();
@@ -214,7 +219,12 @@ async function trocarLojaCaixa(loja){
   if ($('tab-federal')?.classList.contains('active')) {
   await buscarFederaisCaixa();
 }
+produtoSelecionadoCaixa = null;
+fecharPainelVendaProduto();
 
+if ($('tab-produtos')?.classList.contains('active')) {
+  await buscarProdutosCaixa();
+}
   if ($('tab-consolidado')?.classList.contains('active')) {
     await carregarResumoMensalCaixa();
     await carregarConsolidadoCaixa();
@@ -334,6 +344,9 @@ async function switchTab(id){
   if (id === 'federal') {
   await buscarFederaisCaixa();
 }
+  if (id === 'produtos') {
+  await buscarProdutosCaixa();
+}
   if (id === 'consolidado') {
     await carregarResumoMensalCaixa();
     await carregarConsolidadoCaixa();
@@ -352,10 +365,15 @@ function atualizarDatasCaixa(){
   const pickerCaixa = $('datePickerCaixa');
   const displayFederal = $('dateDisplayFederal');
   const pickerFederal = $('datePickerFederal');
+  const displayProdutos = $('dateDisplayProdutos');
+  const pickerProdutos = $('datePickerProdutos');
 
 if (displayFederal) displayFederal.textContent = fmtData(dataCaixa);
 if (pickerFederal) pickerFederal.value = iso;
-
+  
+if (displayProdutos) displayProdutos.textContent = fmtData(dataCaixa);
+if (pickerProdutos) pickerProdutos.value = iso;
+  
   if (displayCaixa) displayCaixa.textContent = fmtData(dataCaixa);
   if (pickerCaixa) pickerCaixa.value = iso;
 }
@@ -602,6 +620,281 @@ async function registrarVendaFederalCaixa(){
 }
 
 window.registrarVendaFederalCaixa = registrarVendaFederalCaixa;
+
+// ── Produtos: busca, seleção e registro ───────────────────────────
+function getSaldoProduto(p){
+  return Number(p?.saldo_atual || 0);
+}
+
+function setStatusProduto(msg, tipo='info'){
+  const e = $('statusBarProdutos') || $('statusBarCaixa');
+  if (!e) return;
+
+  e.textContent = msg;
+  e.className = 'status-bar show ' + tipo;
+}
+
+function clearStatusProduto(){
+  const e = $('statusBarProdutos');
+  if (!e) return;
+
+  e.textContent = '';
+  e.className = 'status-bar';
+}
+
+async function buscarProdutosCaixa(){
+  const lista = $('produtosCaixaLista');
+  if (!lista) return;
+
+  produtoSelecionadoCaixa = null;
+  fecharPainelVendaProduto();
+
+  lista.innerHTML = `
+    <div class="state-box" style="padding:24px">
+      <div class="spinner"></div>
+      <div class="state-title">Buscando produtos…</div>
+    </div>
+  `;
+
+  if (!lojaCaixaAtiva?.loteria_id) {
+    lista.innerHTML = `
+      <div class="state-box" style="padding:24px">
+        <div class="state-title">Nenhuma loja selecionada</div>
+        <div class="state-sub">Selecione a loja do caixa para carregar os produtos.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await sb
+    .from('view_produtos_saldo_loja')
+    .select('*')
+    .eq('loteria_id', lojaCaixaAtiva.loteria_id)
+    .gt('saldo_atual', 0)
+    .order('produto')
+    .order('item_nome');
+
+  if (error) {
+    lista.innerHTML = `
+      <div class="state-box" style="padding:24px">
+        <div class="state-title">Erro ao buscar produtos</div>
+        <div class="state-sub">${error.message}</div>
+      </div>
+    `;
+    return;
+  }
+
+  renderProdutosCaixa(data || []);
+}
+
+function renderProdutosCaixa(rows){
+  const lista = $('produtosCaixaLista');
+  if (!lista) return;
+
+  if (!rows.length) {
+    lista.innerHTML = `
+      <div class="state-box" style="padding:24px">
+        <div class="state-title">Nenhum produto com saldo</div>
+        <div class="state-sub">Não há Raspadinha ou Telesena com saldo para ${lojaCaixaAtiva?.loteria_nome || 'esta loja'}.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const grupos = {};
+
+  rows.forEach(p => {
+    const k = p.produto || 'Produto';
+    if (!grupos[k]) grupos[k] = [];
+    grupos[k].push(p);
+  });
+
+  let html = '';
+
+  Object.keys(grupos).sort().forEach(tipo => {
+    html += `
+      <div class="sec-sep" style="margin:8px 0 6px">
+        <div class="sec-sep-label">${tipo}</div>
+        <div class="sec-sep-line"></div>
+      </div>
+    `;
+
+    html += grupos[tipo].map((p, idx) => {
+      const key = `${tipo}-${idx}-${p.raspadinha_id || p.telesena_item_id || 0}`;
+
+      return `
+        <div class="bolao-sel-card produto-sel-card" data-key="${key}">
+          <div class="bsc-main">
+            <div class="bsc-header">
+              <span class="bsc-modal">${p.item_nome || p.produto || 'Produto'}</span>
+              <span class="bsc-tag tag-concurso">${p.produto || '—'}</span>
+              <span class="bsc-tag tag-origem-cotas">${p.campanha_nome || '—'}</span>
+            </div>
+
+            <div class="bsc-tags">
+              <span class="bsc-tag">${fmtBRL(p.valor_venda || 0)}</span>
+              <span class="bsc-tag tag-canal-venda">Saldo ${getSaldoProduto(p)}</span>
+            </div>
+          </div>
+
+          <div class="bsc-ind">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="2 6 5 9 10 3"/>
+            </svg>
+          </div>
+        </div>
+      `;
+    }).join('');
+  });
+
+  lista.innerHTML = `<div class="bolao-cards-grid">${html}</div>`;
+
+  const flatRows = [];
+  Object.keys(grupos).sort().forEach(tipo => {
+    grupos[tipo].forEach((p, idx) => {
+      flatRows.push({
+        key: `${tipo}-${idx}-${p.raspadinha_id || p.telesena_item_id || 0}`,
+        data: p
+      });
+    });
+  });
+
+  lista.querySelectorAll('.produto-sel-card').forEach(card => {
+    card.onclick = () => {
+      const item = flatRows.find(x => x.key === card.dataset.key);
+      selecionarProdutoCaixa(item?.data, card);
+    };
+  });
+}
+
+function selecionarProdutoCaixa(p, card){
+  if (!p) return;
+
+  document.querySelectorAll('.produto-sel-card').forEach(c => c.classList.remove('selected'));
+  if (card) card.classList.add('selected');
+
+  produtoSelecionadoCaixa = p;
+
+  const title = $('produtoSaleTitle');
+  if (title) {
+    title.innerHTML = `
+      <div class="wpp-sale-card-title">
+        <span class="wpp-sale-main">${p.item_nome || p.produto || 'Produto'}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-concurso">${p.produto || '—'}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-origem">${p.campanha_nome || '—'}</span>
+      </div>
+
+      <div class="wpp-sale-card-meta">
+        <span class="wpp-sale-chip">Saldo ${getSaldoProduto(p)}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-valor">${fmtBRL(p.valor_venda || 0)}</span>
+      </div>
+    `;
+  }
+
+  if ($('inputQtdProduto')) $('inputQtdProduto').value = '1';
+
+  if ($('inputValorProduto')) {
+    $('inputValorProduto').value = Number(p.valor_venda || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  abrirPainelVendaProduto();
+  calcTotalProdutoCaixa();
+  clearStatusProduto();
+}
+
+function abrirPainelVendaProduto(){
+  const panel = $('produtoVendaPanel');
+  if (!panel) return;
+
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('wpp-sale-open');
+}
+
+function fecharPainelVendaProduto(){
+  const panel = $('produtoVendaPanel');
+  if (!panel) return;
+
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('wpp-sale-open');
+}
+
+function calcTotalProdutoCaixa(){
+  const qtd = parseInt($('inputQtdProduto')?.value || '0', 10) || 0;
+  const val = parseBRL($('inputValorProduto')?.value || '0');
+  const total = qtd * val;
+
+  const el = $('totalVendaProduto');
+  if (el) el.textContent = fmtBRL(total);
+}
+
+window.calcTotalProdutoCaixa = calcTotalProdutoCaixa;
+
+async function registrarVendaProdutoCaixa(){
+  if (!produtoSelecionadoCaixa) {
+    setStatusProduto('Selecione um produto.', 'err');
+    return;
+  }
+
+  if (!lojaCaixaAtiva?.loteria_id) {
+    setStatusProduto('Nenhuma loja de caixa selecionada.', 'err');
+    return;
+  }
+
+  const qtd = parseInt($('inputQtdProduto')?.value || '0', 10) || 0;
+
+  if (qtd < 1) {
+    setStatusProduto('Qtd deve ser maior ou igual a 1.', 'err');
+    return;
+  }
+
+  if (qtd > getSaldoProduto(produtoSelecionadoCaixa)) {
+    setStatusProduto(
+      `Saldo insuficiente. Disponível: ${getSaldoProduto(produtoSelecionadoCaixa)}.`,
+      'err'
+    );
+    return;
+  }
+
+  const btn = $('btnRegistrarProduto');
+  if (btn) btn.disabled = true;
+
+  setStatusProduto(`Registrando produto no caixa ${lojaCaixaAtiva.loteria_nome}…`, 'info');
+
+  const { error } = await sb.rpc('rpc_registrar_venda_balcao_produto', {
+    p_produto: produtoSelecionadoCaixa.produto,
+    p_raspadinha_id: produtoSelecionadoCaixa.raspadinha_id,
+    p_telesena_item_id: produtoSelecionadoCaixa.telesena_item_id,
+    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
+    p_qtd_vendida: qtd,
+    p_data_referencia: isoDate(dataCaixa)
+  });
+
+  if (btn) btn.disabled = false;
+
+  if (error) {
+    setStatusProduto(error.message, 'err');
+    return;
+  }
+
+  setStatusProduto(`✓ Produto registrado no caixa ${lojaCaixaAtiva.loteria_nome}.`, 'ok');
+
+  produtoSelecionadoCaixa = null;
+  fecharPainelVendaProduto();
+
+  await buscarProdutosCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
+
+window.registrarVendaProdutoCaixa = registrarVendaProdutoCaixa;
 
 // ── Consolidado mensal: mês + dias ────────────────────────────────
 function atualizarTituloMesCaixa(){
@@ -1781,6 +2074,69 @@ if (inputQtdFederal) {
 if (btnFecharFederal) {
   btnFecharFederal.onclick = fecharPainelVendaFederal;
 }
+// Produtos
+const produtosChip = $('produtosLojaChip');
+if (produtosChip) produtosChip.onclick = () => trocarLojaCaixaPorOffset(1);
+
+const prevProdutos = $('btnDtPrevProdutos');
+const nextProdutos = $('btnDtNextProdutos');
+const hojeProdutos = $('btnHojeProdutos');
+const displayProdutos = $('dateDisplayProdutos');
+const pickerProdutos = $('datePickerProdutos');
+const btnRegistrarProduto = $('btnRegistrarProduto');
+const inputQtdProduto = $('inputQtdProduto');
+const btnFecharProduto = $('btnFecharVendaProduto');
+
+if (prevProdutos) {
+  prevProdutos.onclick = async () => {
+    const d = normalizaDataLocal(dataCaixa);
+    d.setDate(d.getDate() - 1);
+    await setDataOperacionalCaixa(d);
+    await buscarProdutosCaixa();
+  };
+}
+
+if (nextProdutos) {
+  nextProdutos.onclick = async () => {
+    const d = normalizaDataLocal(dataCaixa);
+    d.setDate(d.getDate() + 1);
+    await setDataOperacionalCaixa(d);
+    await buscarProdutosCaixa();
+  };
+}
+
+if (hojeProdutos) {
+  hojeProdutos.onclick = async () => {
+    await setDataOperacionalCaixa(hojeLocal());
+    await buscarProdutosCaixa();
+  };
+}
+
+if (displayProdutos && pickerProdutos) {
+  displayProdutos.onclick = () => pickerProdutos.showPicker
+    ? pickerProdutos.showPicker()
+    : pickerProdutos.click();
+}
+
+if (pickerProdutos) {
+  pickerProdutos.onchange = async () => {
+    await setDataOperacionalCaixa(dataFromISO(pickerProdutos.value));
+    await buscarProdutosCaixa();
+  };
+}
+
+if (btnRegistrarProduto) {
+  btnRegistrarProduto.onclick = registrarVendaProdutoCaixa;
+}
+
+if (inputQtdProduto) {
+  inputQtdProduto.oninput = calcTotalProdutoCaixa;
+}
+
+if (btnFecharProduto) {
+  btnFecharProduto.onclick = fecharPainelVendaProduto;
+}
+  
   // Consolidado mensal
   const btnMesPrevCons = $('btnMesPrevCons');
   if (btnMesPrevCons) {
