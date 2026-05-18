@@ -2725,24 +2725,30 @@ body.app-picker-open{
 }
 
 .cx-qtd-edit{
-  width:58px;
-  height:26px;
+  width:42px;
+  max-width:42px;
+  height:24px;
   border-radius:6px;
   border:1px solid var(--border);
   background:var(--input-bg);
   color:var(--text);
   font-family:var(--mono);
-  font-size:11px;
+  font-size:10px;
   font-weight:700;
   text-align:center;
   outline:none;
+  padding:0 3px;
 }
 
-.cx-qtd-edit:focus{
-  border-color:var(--t1);
-  box-shadow:0 0 0 2px var(--t3);
+.cx-qtd-edit::-webkit-outer-spin-button,
+.cx-qtd-edit::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
 }
 
+.cx-qtd-edit{
+  -moz-appearance:textfield;
+}
 .cx-det-actions{
   display:flex;
   align-items:center;
