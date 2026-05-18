@@ -148,14 +148,14 @@ function aplicarTemaCaixa(slug){
   if (sub) sub.textContent = 'Vendas no Caixa';
 
   const nomeChip = $('caixaLojaNome');
-if (nomeChip) nomeChip.textContent = cfg.nome;
+  if (nomeChip) nomeChip.textContent = cfg.nome;
 
-const nomeFederal = $('federalLojaNome');
-if (nomeFederal) nomeFederal.textContent = cfg.nome;
+  const nomeFederal = $('federalLojaNome');
+  if (nomeFederal) nomeFederal.textContent = cfg.nome;
+
+  const nomeProdutos = $('produtosLojaNome');
+  if (nomeProdutos) nomeProdutos.textContent = cfg.nome;
 }
-const nomeProdutos = $('produtosLojaNome');
-if (nomeProdutos) nomeProdutos.textContent = cfg.nome;
-
 async function setDataOperacionalCaixa(novaData){
   dataCaixa = normalizaDataLocal(novaData);
   atualizarDatasCaixa();
