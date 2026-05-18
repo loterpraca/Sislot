@@ -4,68 +4,42 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>SISLOT — Vendas no Caixa</title>
-
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
   <link rel="stylesheet" href="./css/caixa-vendas.css"/>
 </head>
-
 <body data-loja="centro">
 
-<!-- TOPBAR -->
 <header class="topbar">
   <div class="topbar-inner">
     <button type="button" class="loja-tree" id="lojaTreeWrap" title="Trocar loja do caixa">
       <img src="./icons/loterpraca.png" alt="Logo da loja" id="logoImg"/>
     </button>
-
     <div class="topbar-brand">
       <div class="brand-name" id="headerTitle">Centro</div>
       <div class="brand-sub" id="headerSub">Vendas no Caixa</div>
     </div>
-
     <div class="topbar-right">
       <div class="clock" id="relogio">--:--:--</div>
-
       <button class="btn-top" onclick="location.href='./menu.html'">
-        <i class="fas fa-home"></i>
-        <span>Menu</span>
+        <i class="fas fa-home"></i><span>Menu</span>
       </button>
-
       <button class="btn-top btn-top-sair" id="btnLogout">
-        <i class="fas fa-sign-out-alt"></i>
-        <span>Sair</span>
+        <i class="fas fa-sign-out-alt"></i><span>Sair</span>
       </button>
     </div>
   </div>
 </header>
 
-<!-- TABS -->
 <nav class="tabs-bar caixa-tabs">
-  <button class="tab-btn active" onclick="switchTab('boloes')">
-    <i class="fas fa-ticket-alt"></i>
-    Bolões
-  </button>
-
-  <button class="tab-btn" onclick="switchTab('federal')">
-    <i class="fas fa-receipt"></i>
-    Federal
-  </button>
-
-  <button class="tab-btn" onclick="switchTab('produtos')">
-    <i class="fas fa-box"></i>
-    Produtos
-  </button>
-
-  <button class="tab-btn" onclick="switchTab('consolidado')">
-    <i class="fas fa-chart-line"></i>
-    Consolidado
-  </button>
+  <button class="tab-btn active" onclick="switchTab('boloes')"><i class="fas fa-ticket-alt"></i>Bolões</button>
+  <button class="tab-btn" onclick="switchTab('federal')"><i class="fas fa-receipt"></i>Federal</button>
+  <button class="tab-btn" onclick="switchTab('produtos')"><i class="fas fa-box"></i>Produtos</button>
+  <button class="tab-btn" onclick="switchTab('consolidado')"><i class="fas fa-chart-line"></i>Consolidado</button>
 </nav>
 
 <div class="main">
 
-  <!-- ===== ABA BOLÕES ===== -->
   <div class="tab-pane active" id="tab-boloes">
     <div class="reg-panel caixa-boloes-panel">
       <div class="reg-headline">
@@ -73,38 +47,24 @@
           <div class="reg-section-title">Venda de bolões no balcão</div>
           <div class="caixa-subline">A baixa do estoque usa sempre a loja ativa do caixa.</div>
         </div>
-
         <button type="button" class="origem-chip origem-chip-clickable" id="caixaLojaChip" title="Trocar loja do caixa">
-          <i class="fas fa-store"></i>
-          <span>Caixa</span>
-          <strong id="caixaLojaNome">Centro</strong>
+          <i class="fas fa-store"></i><span>Caixa</span><strong id="caixaLojaNome">Centro</strong>
         </button>
       </div>
 
       <div class="date-bar">
         <div class="date-label">Data da venda</div>
-
         <div class="date-stepper">
-          <button class="btn-date" id="btnDtPrevCaixa" type="button">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-
+          <button class="btn-date" id="btnDtPrevCaixa" type="button"><i class="fas fa-chevron-left"></i></button>
           <button type="button" class="date-display" id="dateDisplayCaixa">—</button>
           <input type="date" id="datePickerCaixa" class="date-picker-hidden"/>
-
-          <button class="btn-date" id="btnDtNextCaixa" type="button">
-            <i class="fas fa-chevron-right"></i>
-          </button>
+          <button class="btn-date" id="btnDtNextCaixa" type="button"><i class="fas fa-chevron-right"></i></button>
         </div>
-
         <button class="btn-hoje" id="btnHojeCaixa" type="button">Hoje</button>
       </div>
 
       <div id="boloesCaixaLista">
-        <div class="state-box">
-          <div class="spinner"></div>
-          <div class="state-title">Buscando bolões…</div>
-        </div>
+        <div class="state-box"><div class="spinner"></div><div class="state-title">Buscando bolões…</div></div>
       </div>
 
       <div class="wpp-selected-panel" id="caixaSelectedPanel" style="display:none;">
@@ -113,14 +73,11 @@
             <div class="wpp-selected-label">Bolão selecionado</div>
             <div class="wpp-selected-title" id="caixaSelectedTitle">—</div>
           </div>
-
           <button type="button" class="wpp-clear-selected" id="btnLimparBolaoCaixa" title="Limpar seleção">
             <i class="fas fa-times"></i>
           </button>
         </div>
-
         <div class="wpp-selected-tags" id="caixaSelectedTags"></div>
-
         <div class="wpp-saldo-box">
           <div class="wpp-saldo-label">Saldo real por loja</div>
           <div class="wpp-saldo-grid" id="caixaSaldoGrid"></div>
@@ -131,7 +88,6 @@
     </div>
   </div>
 
-  <!-- ===== ABA FEDERAL ===== -->
   <div class="tab-pane" id="tab-federal">
     <div class="reg-panel">
       <div class="reg-headline">
@@ -139,54 +95,61 @@
           <div class="reg-section-title">Venda Federal no caixa</div>
           <div class="caixa-subline">Venda direta da Federal com baixa do saldo da loja ativa.</div>
         </div>
-
         <button class="origem-chip origem-chip-clickable" id="federalLojaChip" type="button" title="Trocar loja do caixa">
-          <i class="fas fa-store"></i>
-          <span>Loja</span>
-          <strong id="federalLojaNome">Centro</strong>
+          <i class="fas fa-store"></i><span>Loja</span><strong id="federalLojaNome">Centro</strong>
         </button>
       </div>
-
       <div class="date-bar">
         <div class="date-label">Data da venda</div>
-
         <div class="date-stepper">
-          <button class="btn-date" id="btnDtPrevFederal" type="button">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-
+          <button class="btn-date" id="btnDtPrevFederal" type="button"><i class="fas fa-chevron-left"></i></button>
           <button type="button" class="date-display" id="dateDisplayFederal">—</button>
           <input type="date" id="datePickerFederal" class="date-picker-hidden"/>
-
-          <button class="btn-date" id="btnDtNextFederal" type="button">
-            <i class="fas fa-chevron-right"></i>
-          </button>
+          <button class="btn-date" id="btnDtNextFederal" type="button"><i class="fas fa-chevron-right"></i></button>
         </div>
-
         <button class="btn-hoje" id="btnHojeFederal" type="button">Hoje</button>
       </div>
-
       <div id="federaisCaixaLista">
         <div class="state-box">
           <div class="state-title">Federal no caixa</div>
           <div class="state-sub">Clique na aba Federal para carregar os concursos disponíveis.</div>
         </div>
       </div>
-
       <div class="status-bar" id="statusBarFederal"></div>
     </div>
   </div>
 
-  <!-- ===== ABA PRODUTOS ===== -->
   <div class="tab-pane" id="tab-produtos">
-    <div class="state-box caixa-placeholder">
-      <i class="fas fa-barcode"></i>
-      <div class="state-title">Produtos no caixa</div>
-      <div class="state-sub">A próxima etapa é transformar esta aba em carrinho com leitura de QR Code/código de barras.</div>
+    <div class="reg-panel">
+      <div class="reg-headline">
+        <div>
+          <div class="reg-section-title">Venda de Produtos no caixa</div>
+          <div class="caixa-subline">Venda direta de Raspadinha e Telesena com baixa do saldo da loja ativa.</div>
+        </div>
+        <button class="origem-chip origem-chip-clickable" id="produtosLojaChip" type="button" title="Trocar loja do caixa">
+          <i class="fas fa-store"></i><span>Loja</span><strong id="produtosLojaNome">Centro</strong>
+        </button>
+      </div>
+      <div class="date-bar">
+        <div class="date-label">Data da venda</div>
+        <div class="date-stepper">
+          <button class="btn-date" id="btnDtPrevProdutos" type="button"><i class="fas fa-chevron-left"></i></button>
+          <button type="button" class="date-display" id="dateDisplayProdutos">—</button>
+          <input type="date" id="datePickerProdutos" class="date-picker-hidden"/>
+          <button class="btn-date" id="btnDtNextProdutos" type="button"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <button class="btn-hoje" id="btnHojeProdutos" type="button">Hoje</button>
+      </div>
+      <div id="produtosCaixaLista">
+        <div class="state-box">
+          <div class="state-title">Produtos no caixa</div>
+          <div class="state-sub">Clique na aba Produtos para carregar os itens com saldo.</div>
+        </div>
+      </div>
+      <div class="status-bar" id="statusBarProdutos"></div>
     </div>
   </div>
 
-  <!-- ===== ABA CONSOLIDADO ===== -->
   <div class="tab-pane" id="tab-consolidado">
     <div class="reg-panel">
       <div class="reg-headline">
@@ -195,29 +158,17 @@
           <div class="caixa-subline">Resumo mensal e diário das vendas BALCÃO da loja ativa.</div>
         </div>
       </div>
-
       <div class="cx-mes-bar">
-        <button class="cx-mes-btn" id="btnMesPrevCons" type="button">
-          <i class="fas fa-chevron-left"></i>
-        </button>
-
+        <button class="cx-mes-btn" id="btnMesPrevCons" type="button"><i class="fas fa-chevron-left"></i></button>
         <div class="cx-mes-info">
           <div class="cx-mes-label">Período</div>
           <div class="cx-mes-title" id="cxMesTitle">—</div>
         </div>
-
-        <button class="cx-mes-btn" id="btnMesNextCons" type="button">
-          <i class="fas fa-chevron-right"></i>
-        </button>
-
+        <button class="cx-mes-btn" id="btnMesNextCons" type="button"><i class="fas fa-chevron-right"></i></button>
         <button class="cx-mes-hoje" id="btnHojeCons" type="button">Hoje</button>
         <button class="cx-mes-hoje" id="btnAtualizarCons" type="button">Atualizar</button>
       </div>
-
-      <div class="cx-dias-wrap">
-        <div class="cx-dias-scroll" id="cxDiasScroll"></div>
-      </div>
-
+      <div class="cx-dias-wrap"><div class="cx-dias-scroll" id="cxDiasScroll"></div></div>
       <div id="consolidadoContent">
         <div class="state-box">
           <div class="state-title">Consolidado do dia</div>
@@ -229,86 +180,55 @@
 
 </div>
 
-<!-- PAINEL INFERIOR — VENDA DE BOLÃO -->
 <div class="wpp-sale-panel" id="caixaSalePanel" aria-hidden="true">
   <div class="wpp-sale-panel-inner">
     <div class="wpp-sale-panel-head">
-      <div>
-        <div class="wpp-sale-kicker">Dados da venda</div>
-        <div class="wpp-sale-title" id="caixaSaleTitle">Selecione um bolão</div>
-      </div>
-
-      <button type="button" class="wpp-sale-close" id="btnFecharVendaCaixa" title="Fechar painel">
-        <i class="fas fa-chevron-down"></i>
-      </button>
+      <div><div class="wpp-sale-kicker">Dados da venda</div><div class="wpp-sale-title" id="caixaSaleTitle">Selecione um bolão</div></div>
+      <button type="button" class="wpp-sale-close" id="btnFecharVendaCaixa" title="Fechar painel"><i class="fas fa-chevron-down"></i></button>
     </div>
-
     <div class="form-grid caixa-form-grid">
-      <div class="field">
-        <label>Qtd cotas</label>
-        <input type="number" id="inputQtdCaixa" min="1" value="1" style="-moz-appearance:textfield" oninput="calcTotalCaixa()"/>
-      </div>
-
-      <div class="field">
-        <label>Valor/cota</label>
-        <input type="text" id="inputValorCaixa" placeholder="0,00" oninput="calcTotalCaixa()"/>
-      </div>
-
-      <button class="btn-registrar" id="btnRegistrarCaixa" onclick="registrarVendaBolaoCaixa()">
-        <i class="fas fa-check"></i>
-        Registrar
-      </button>
+      <div class="field"><label>Qtd cotas</label><input type="number" id="inputQtdCaixa" min="1" value="1" style="-moz-appearance:textfield" oninput="calcTotalCaixa()"/></div>
+      <div class="field"><label>Valor/cota</label><input type="text" id="inputValorCaixa" placeholder="0,00" oninput="calcTotalCaixa()"/></div>
+      <button class="btn-registrar" id="btnRegistrarCaixa" onclick="registrarVendaBolaoCaixa()"><i class="fas fa-check"></i>Registrar</button>
     </div>
-
-    <div class="wpp-sale-total">
-      Total: <span id="totalVendaCaixa">R$ 0,00</span>
-    </div>
+    <div class="wpp-sale-total">Total: <span id="totalVendaCaixa">R$ 0,00</span></div>
   </div>
 </div>
 
-<!-- PAINEL INFERIOR — VENDA DE FEDERAL -->
 <div class="wpp-sale-panel" id="federalVendaPanel" aria-hidden="true">
   <div class="wpp-sale-panel-inner">
     <div class="wpp-sale-panel-head">
-      <div>
-        <div class="wpp-sale-kicker">Dados da venda</div>
-        <div class="wpp-sale-title" id="federalSaleTitle">Selecione uma Federal</div>
-      </div>
-
-      <button type="button" class="wpp-sale-close" id="btnFecharVendaFederal" title="Fechar painel">
-        <i class="fas fa-chevron-down"></i>
-      </button>
+      <div><div class="wpp-sale-kicker">Dados da venda</div><div class="wpp-sale-title" id="federalSaleTitle">Selecione uma Federal</div></div>
+      <button type="button" class="wpp-sale-close" id="btnFecharVendaFederal" title="Fechar painel"><i class="fas fa-chevron-down"></i></button>
     </div>
-
     <div class="form-grid caixa-form-grid">
-      <div class="field">
-        <label>Qtd frações</label>
-        <input type="number" id="inputQtdFederal" min="1" max="999" value="1" oninput="calcTotalFederalCaixa()"/>
-      </div>
-
-      <div class="field">
-        <label>Valor/fração</label>
-        <input type="text" id="inputValorFederal" readonly/>
-      </div>
-
-      <button class="btn-registrar" id="btnRegistrarFederal" type="button">
-        <i class="fas fa-check"></i>
-        Registrar
-      </button>
+      <div class="field"><label>Qtd frações</label><input type="number" id="inputQtdFederal" min="1" max="999" value="1" oninput="calcTotalFederalCaixa()"/></div>
+      <div class="field"><label>Valor/fração</label><input type="text" id="inputValorFederal" readonly/></div>
+      <button class="btn-registrar" id="btnRegistrarFederal" type="button"><i class="fas fa-check"></i>Registrar</button>
     </div>
-
-    <div class="wpp-sale-total">
-      Total Federal: <span id="totalVendaFederal">R$ 0,00</span>
-    </div>
+    <div class="wpp-sale-total">Total Federal: <span id="totalVendaFederal">R$ 0,00</span></div>
   </div>
 </div>
 
-<!-- CONFIRM DELETE -->
+<div class="wpp-sale-panel" id="produtoVendaPanel" aria-hidden="true">
+  <div class="wpp-sale-panel-inner">
+    <div class="wpp-sale-panel-head">
+      <div><div class="wpp-sale-kicker">Dados da venda</div><div class="wpp-sale-title" id="produtoSaleTitle">Selecione um produto</div></div>
+      <button type="button" class="wpp-sale-close" id="btnFecharVendaProduto" title="Fechar painel"><i class="fas fa-chevron-down"></i></button>
+    </div>
+    <div class="form-grid caixa-form-grid">
+      <div class="field"><label>Qtd</label><input type="number" id="inputQtdProduto" min="1" max="999" value="1" oninput="calcTotalProdutoCaixa()"/></div>
+      <div class="field"><label>Valor/unid.</label><input type="text" id="inputValorProduto" readonly/></div>
+      <button class="btn-registrar" id="btnRegistrarProduto" type="button"><i class="fas fa-check"></i>Registrar</button>
+    </div>
+    <div class="wpp-sale-total">Total Produto: <span id="totalVendaProduto">R$ 0,00</span></div>
+  </div>
+</div>
+
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
     <div class="confirm-title" id="confirmTitle">Confirmar</div>
     <div class="confirm-body" id="confirmBody"></div>
-
     <div class="confirm-btns">
       <button class="btn-conf-no" id="confirmNo">Cancelar</button>
       <button class="btn-conf-yes" id="confirmYes">Confirmar</button>
