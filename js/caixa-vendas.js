@@ -8,6 +8,7 @@ const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.
 // ── Estado ────────────────────────────────────────────────────────
 let usuario = null;
 let dataCaixa = hojeLocal();
+let dataConsolidadoCaixa = hojeLocal();
 let resumoDiasCaixa = {};
 let lojasAtivas = [];
 let lojasPermitidas = [];
@@ -297,21 +298,11 @@ function atualizarDatasCaixa(){
   dataCaixa = normalizaDataLocal(dataCaixa);
   const iso = isoDate(dataCaixa);
 
-  // Data da aba Bolões
   const displayCaixa = $('dateDisplayCaixa');
   const pickerCaixa = $('datePickerCaixa');
 
   if (displayCaixa) displayCaixa.textContent = fmtData(dataCaixa);
   if (pickerCaixa) pickerCaixa.value = iso;
-
-  // Compatibilidade caso ainda existam campos antigos no Consolidado
-  const displayCons = $('dateDisplayCons');
-  const pickerCons = $('datePickerCons');
-
-  if (displayCons) displayCons.textContent = fmtData(dataCaixa);
-  if (pickerCons) pickerCons.value = iso;
-
-  atualizarTituloMesCaixa();
 }
 
 async function alterarDataCaixa(deltaDias){
@@ -320,25 +311,13 @@ async function alterarDataCaixa(deltaDias){
   dataCaixa = d;
 
   atualizarDatasCaixa();
-
   await buscarBoloesCaixa();
-
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
 }
 
 async function setDataCaixaPorISO(iso){
   dataCaixa = dataFromISO(iso);
   atualizarDatasCaixa();
-
   await buscarBoloesCaixa();
-
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
 }
 
 // ── Consolidado mensal: mês + dias ────────────────────────────────
@@ -346,7 +325,7 @@ function atualizarTituloMesCaixa(){
   const el = $('cxMesTitle');
   if (!el) return;
 
-  const d = normalizaDataLocal(dataCaixa);
+  const d = normalizaDataLocal(dataConsolidadoCaixa);
   el.textContent = `${MESES_PT[d.getMonth()]} / ${d.getFullYear()}`;
 }
 
@@ -358,7 +337,7 @@ async function carregarResumoMensalCaixa(){
     return;
   }
 
-  const base = normalizaDataLocal(dataCaixa);
+  const base = normalizaDataLocal(dataConsolidadoCaixa);
   const ano = base.getFullYear();
   const mes = base.getMonth();
 
@@ -393,7 +372,7 @@ async function carregarResumoMensalCaixa(){
     }
 
     resumoDiasCaixa[dia].total_boloes += Number(r.valor_total || 0);
-    resumoDiasCaixa[dia].cotas_boloes += Number(r.cotas_vendidas || 0);
+    resumoDiasCaixa[dia].cotas_boloes += Number(r.qtd_vendida || r.cotas_vendidas || 0);
     resumoDiasCaixa[dia].lancamentos_boloes += Number(r.qtd_lancamentos || 0);
   });
 
@@ -406,7 +385,7 @@ function gerarAbasDiasCaixa(){
 
   const DIAS_SEMANA = ['D','S','T','Q','Q','S','S'];
 
-  const base = normalizaDataLocal(dataCaixa);
+  const base = normalizaDataLocal(dataConsolidadoCaixa);
   const ano = base.getFullYear();
   const mes = base.getMonth();
 
@@ -459,11 +438,9 @@ function gerarAbasDiasCaixa(){
     `;
 
     btn.onclick = async () => {
-      dataCaixa = new Date(ano, mes, d);
+      dataConsolidadoCaixa = new Date(ano, mes, d);
 
-      atualizarDatasCaixa();
       gerarAbasDiasCaixa();
-
       await carregarConsolidadoCaixa();
 
       btn.scrollIntoView({
@@ -491,23 +468,21 @@ function gerarAbasDiasCaixa(){
 }
 
 async function alterarMesConsolidadoCaixa(delta){
-  const d = normalizaDataLocal(dataCaixa);
+  const d = normalizaDataLocal(dataConsolidadoCaixa);
   d.setMonth(d.getMonth() + delta);
   d.setDate(1);
 
-  dataCaixa = d;
+  dataConsolidadoCaixa = d;
 
-  atualizarDatasCaixa();
-
+  atualizarTituloMesCaixa();
   await carregarResumoMensalCaixa();
   await carregarConsolidadoCaixa();
 }
 
 async function irHojeConsolidadoCaixa(){
-  dataCaixa = hojeLocal();
+  dataConsolidadoCaixa = hojeLocal();
 
-  atualizarDatasCaixa();
-
+  atualizarTituloMesCaixa();
   await carregarResumoMensalCaixa();
   await carregarConsolidadoCaixa();
 }
@@ -932,7 +907,7 @@ async function salvarQtdGrupoBalcaoBolao(bolaoId){
   const { error } = await sb.rpc('rpc_editar_qtd_venda_balcao_bolao_grupo', {
     p_bolao_id: bolaoId,
     p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
-    p_data_referencia: isoDate(dataConsolidadoCaixa),
+    p_data_referencia: isoDate(typeof dataConsolidadoCaixa !== 'undefined' ? dataConsolidadoCaixa : dataCaixa),
     p_nova_qtd: novaQtd
   });
 
@@ -987,7 +962,7 @@ async function carregarConsolidadoCaixa(){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const dataRef = isoDate(dataCaixa);
+  const dataRef = isoDate(dataConsolidadoCaixa);
 
   box.innerHTML = `
     <div class="state-box">
@@ -1273,23 +1248,6 @@ function bindEventos(){
       await carregarConsolidadoCaixa();
     };
   }
-
-  // Fallback para IDs antigos do consolidado, caso ainda existam no HTML
-  const prevCons = $('btnDtPrevCons');
-  const nextCons = $('btnDtNextCons');
-  const displayCons = $('dateDisplayCons');
-  const pickerCons = $('datePickerCons');
-
-  if (prevCons) prevCons.onclick = () => alterarDataCaixa(-1);
-  if (nextCons) nextCons.onclick = () => alterarDataCaixa(1);
-
-  if (displayCons && pickerCons) {
-    displayCons.onclick = () => pickerCons.showPicker ? pickerCons.showPicker() : pickerCons.click();
-  }
-
-  if (pickerCons) {
-    pickerCons.onchange = () => setDataCaixaPorISO(pickerCons.value);
-  }
 }
 
 async function init(){
@@ -1321,7 +1279,10 @@ async function init(){
     await carregarContextoLojas();
 
     dataCaixa = hojeLocal();
+    dataConsolidadoCaixa = hojeLocal();
+
     atualizarDatasCaixa();
+    atualizarTituloMesCaixa();
     gerarAbasDiasCaixa();
 
     await buscarBoloesCaixa();
