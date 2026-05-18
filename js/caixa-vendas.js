@@ -35,6 +35,38 @@ const LOJA_CONFIG = {
 };
 
 // ── Helpers básicos ───────────────────────────────────────────────
+async function salvarQtdVendaBalcaoBolao(id){
+  const input = $('qtdVenda-' + id);
+  if (!input) return;
+
+  const novaQtd = parseInt(input.value || '0', 10) || 0;
+
+  if (novaQtd <= 0) {
+    alert('A quantidade deve ser maior que zero.');
+    return;
+  }
+
+  const { error } = await sb.rpc('rpc_editar_qtd_venda_balcao_bolao', {
+    p_bolao_venda_id: id,
+    p_nova_qtd: novaQtd
+  });
+
+  if (error) {
+    alert(error.message);
+    await carregarConsolidadoCaixa();
+    return;
+  }
+
+  await buscarBoloesCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
+
+window.salvarQtdVendaBalcaoBolao = salvarQtdVendaBalcaoBolao;
+
 function $(id){
   return document.getElementById(id);
 }
