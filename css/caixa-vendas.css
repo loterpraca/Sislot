@@ -2806,3 +2806,95 @@ body.app-picker-open{
     width:64px;
   }
 }
+/* =========================================================
+   CONSOLIDADO — ações compactas no smartphone
+========================================================= */
+
+.cx-det-actions-inline{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-left:2px;
+}
+
+.cx-det-actions-inline .cx-action-btn{
+  width:26px;
+  height:26px;
+  border-radius:6px;
+}
+
+.cx-qtd-edit{
+  width:42px;
+  max-width:42px;
+  height:24px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  background:var(--input-bg);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:700;
+  text-align:center;
+  outline:none;
+  padding:0 3px;
+}
+
+.cx-qtd-edit::-webkit-outer-spin-button,
+.cx-qtd-edit::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+
+.cx-qtd-edit{
+  -moz-appearance:textfield;
+}
+
+@media(max-width:760px){
+  .cx-det-row-editavel{
+    grid-template-columns:1fr auto;
+    gap:6px 8px;
+    padding:8px 9px;
+  }
+
+  .cx-det-row-editavel .cx-det-main{
+    grid-column:1 / -1;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:5px;
+  }
+
+  .cx-det-row-editavel .cx-det-meta{
+    grid-column:1 / 2;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:5px;
+    flex-wrap:wrap;
+  }
+
+  .cx-det-row-editavel .cx-det-total{
+    grid-column:2 / 3;
+    align-self:center;
+    justify-self:end;
+    font-size:11px;
+  }
+
+  .cx-det-actions-inline{
+    margin-left:2px;
+  }
+
+  .cx-det-actions-inline .cx-action-btn{
+    width:24px;
+    height:24px;
+  }
+
+  .cx-det-actions-inline .cx-action-btn i{
+    font-size:10px;
+  }
+
+  .cx-det-main small{
+    font-size:7.5px;
+    padding:2px 5px;
+  }
+}
