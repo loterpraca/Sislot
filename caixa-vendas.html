@@ -125,11 +125,77 @@
 
   <!-- ===== ABA FEDERAL ===== -->
   <div class="tab-pane" id="tab-federal">
-    <div class="state-box caixa-placeholder">
-      <i class="fas fa-receipt"></i>
-      <div class="state-title">Federal no caixa</div>
-      <div class="state-sub">A próxima etapa é ligar esta aba aos saldos de Federal por loja e registrar Venda Caixa/Federal.</div>
+    <div class="tab-pane" id="tab-federal">
+  <div class="reg-panel">
+    <div class="reg-headline">
+      <div>
+        <div class="reg-section-title">Venda Federal no caixa</div>
+        <div class="caixa-subline">Venda direta da Federal com baixa do saldo da loja ativa.</div>
+      </div>
+
+      <button class="origem-chip origem-chip-clickable" id="federalLojaChip" type="button">
+        <i class="fas fa-store"></i>
+        Loja: <strong id="federalLojaNome">—</strong>
+      </button>
     </div>
+
+    <div class="date-bar">
+      <div class="date-label">Data da venda</div>
+
+      <div class="date-stepper">
+        <button class="btn-date" id="btnDtPrevFederal" type="button">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <button type="button" class="date-display" id="dateDisplayFederal">—</button>
+        <input type="date" id="datePickerFederal" class="date-picker-hidden"/>
+
+        <button class="btn-date" id="btnDtNextFederal" type="button">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <button class="btn-hoje" id="btnHojeFederal" type="button">Hoje</button>
+    </div>
+
+    <div id="federaisCaixaLista">
+      <div class="state-box">
+        <div class="state-title">Federal no caixa</div>
+        <div class="state-sub">Clique na aba Federal para carregar os concursos disponíveis.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reg-panel" id="federalVendaPanel" style="display:none">
+    <div class="reg-section-title">Registrar venda</div>
+
+    <div class="form-grid" style="grid-template-columns:1fr 110px 120px auto">
+      <div class="field">
+        <label>Federal selecionada</label>
+        <input id="inputFederalInfo" type="text" readonly>
+      </div>
+
+      <div class="field">
+        <label>Qtd</label>
+        <input id="inputQtdFederal" type="number" min="1" max="999" value="1">
+      </div>
+
+      <div class="field">
+        <label>Valor</label>
+        <input id="inputValorFederal" type="text" readonly>
+      </div>
+
+      <button class="btn-registrar" id="btnRegistrarFederal" type="button">
+        <i class="fas fa-check"></i>
+        Registrar
+      </button>
+    </div>
+
+    <div class="wpp-sale-total">
+      Total Federal: <span id="totalVendaFederal">R$ 0,00</span>
+    </div>
+  </div>
+</div>
   </div>
 
   <!-- ===== ABA PRODUTOS ===== -->
