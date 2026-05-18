@@ -1018,7 +1018,9 @@ async function carregarConsolidadoCaixa(){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const dataRef = isoDate(typeof dataConsolidadoCaixa !== 'undefined' ? dataConsolidadoCaixa : dataCaixa);
+  const dataRef = isoDate(
+    typeof dataConsolidadoCaixa !== 'undefined' ? dataConsolidadoCaixa : dataCaixa
+  );
 
   box.innerHTML = `
     <div class="state-box">
