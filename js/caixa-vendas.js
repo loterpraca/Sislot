@@ -39,6 +39,7 @@ let lojasAtivas = [];
 let lojasPermitidas = [];
 let lojaCaixaAtiva = null;
 let bolaoSelecionadoCaixa = null;
+let federalSelecionadaCaixa = null;
 
 const MESES_PT = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -202,6 +203,9 @@ async function trocarLojaCaixa(loja){
   limparBolaoSelecionadoCaixa();
 
   await buscarBoloesCaixa();
+  if ($('tab-federal')?.classList.contains('active')) {
+  await buscarFederaisCaixa();
+}
 
   if ($('tab-consolidado')?.classList.contains('active')) {
     await carregarResumoMensalCaixa();
@@ -316,6 +320,9 @@ async function switchTab(id){
     await buscarBoloesCaixa();
   }
 
+  if (id === 'federal') {
+  await buscarFederaisCaixa();
+}
   if (id === 'consolidado') {
     await carregarResumoMensalCaixa();
     await carregarConsolidadoCaixa();
@@ -332,6 +339,11 @@ function atualizarDatasCaixa(){
 
   const displayCaixa = $('dateDisplayCaixa');
   const pickerCaixa = $('datePickerCaixa');
+  const displayFederal = $('dateDisplayFederal');
+  const pickerFederal = $('datePickerFederal');
+
+if (displayFederal) displayFederal.textContent = fmtData(dataCaixa);
+if (pickerFederal) pickerFederal.value = iso;
 
   if (displayCaixa) displayCaixa.textContent = fmtData(dataCaixa);
   if (pickerCaixa) pickerCaixa.value = iso;
@@ -351,6 +363,205 @@ async function setDataCaixaPorISO(iso){
   atualizarDatasCaixa();
   await buscarBoloesCaixa();
 }
+
+function getSaldoFederal(f){
+  return Number(f?.estoque_atual || 0);
+}
+
+async function buscarFederaisCaixa(){
+  const lista = $('federaisCaixaLista');
+  if (!lista) return;
+
+  federalSelecionadaCaixa = null;
+
+  const panel = $('federalVendaPanel');
+  if (panel) panel.style.display = 'none';
+
+  lista.innerHTML = `
+    <div class="state-box" style="padding:24px">
+      <div class="spinner"></div>
+      <div class="state-title">Buscando Federais…</div>
+    </div>
+  `;
+
+  if (!lojaCaixaAtiva?.loteria_id) {
+    lista.innerHTML = `
+      <div class="state-box" style="padding:24px">
+        <div class="state-title">Nenhuma loja selecionada</div>
+        <div class="state-sub">Selecione a loja do caixa para carregar Federal.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await sb
+    .from('view_posicao_federal_loja')
+    .select('*')
+    .eq('loteria_id', lojaCaixaAtiva.loteria_id)
+    .gte('dt_sorteio', isoDate(dataCaixa))
+    .gt('estoque_atual', 0)
+    .order('dt_sorteio')
+    .order('concurso');
+
+  if (error) {
+    lista.innerHTML = `
+      <div class="state-box" style="padding:24px">
+        <div class="state-title">Erro ao buscar Federal</div>
+        <div class="state-sub">${error.message}</div>
+      </div>
+    `;
+    return;
+  }
+
+  renderFederaisCaixa(data || []);
+}
+
+function renderFederaisCaixa(rows){
+  const lista = $('federaisCaixaLista');
+  if (!lista) return;
+
+  if (!rows.length) {
+    lista.innerHTML = `
+      <div class="state-box" style="padding:24px">
+        <div class="state-title">Nenhuma Federal disponível</div>
+        <div class="state-sub">Não há saldo de Federal para ${lojaCaixaAtiva?.loteria_nome || 'esta loja'}.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const html = rows.map(f => `
+    <div class="bolao-sel-card federal-sel-card" data-id="${f.federal_id}">
+      <div class="bsc-main">
+        <div class="bsc-header">
+          <span class="bsc-modal">${f.modalidade || 'Federal'}</span>
+          <span class="bsc-tag tag-concurso">#${f.concurso || '—'}</span>
+          <span class="bsc-tag tag-origem-cotas">${f.loja_nome || lojaCaixaAtiva?.loteria_nome || '—'}</span>
+        </div>
+
+        <div class="bsc-tags">
+          <span class="bsc-tag">${f.dt_sorteio ? fmtData(dataFromISO(f.dt_sorteio)) : 'sem data'}</span>
+          <span class="bsc-tag">${fmtBRL(f.valor_fracao || 0)}</span>
+          <span class="bsc-tag tag-canal-venda">Saldo ${getSaldoFederal(f)}</span>
+        </div>
+      </div>
+
+      <div class="bsc-ind">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="2 6 5 9 10 3"/>
+        </svg>
+      </div>
+    </div>
+  `).join('');
+
+  lista.innerHTML = `<div class="bolao-cards-grid">${html}</div>`;
+
+  lista.querySelectorAll('.federal-sel-card').forEach(card => {
+    card.onclick = () => {
+      const fed = rows.find(x => String(x.federal_id) === String(card.dataset.id));
+      selecionarFederalCaixa(fed, card);
+    };
+  });
+}
+
+function selecionarFederalCaixa(f, card){
+  if (!f) return;
+
+  document.querySelectorAll('.federal-sel-card').forEach(c => c.classList.remove('selected'));
+  if (card) card.classList.add('selected');
+
+  federalSelecionadaCaixa = f;
+
+  const panel = $('federalVendaPanel');
+  if (panel) panel.style.display = 'block';
+
+  if ($('inputFederalInfo')) {
+    $('inputFederalInfo').value = `${f.modalidade || 'Federal'} #${f.concurso || '—'} · Saldo ${getSaldoFederal(f)}`;
+  }
+
+  if ($('inputQtdFederal')) $('inputQtdFederal').value = '1';
+
+  if ($('inputValorFederal')) {
+    $('inputValorFederal').value = Number(f.valor_fracao || 0).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  calcTotalFederalCaixa();
+}
+
+function calcTotalFederalCaixa(){
+  const qtd = parseInt($('inputQtdFederal')?.value || '0', 10) || 0;
+  const val = parseBRL($('inputValorFederal')?.value || '0');
+  const total = qtd * val;
+
+  const el = $('totalVendaFederal');
+  if (el) el.textContent = fmtBRL(total);
+}
+
+window.calcTotalFederalCaixa = calcTotalFederalCaixa;
+
+async function registrarVendaFederalCaixa(){
+  if (!federalSelecionadaCaixa) {
+    setStatusCaixa('Selecione uma Federal.', 'err');
+    return;
+  }
+
+  if (!lojaCaixaAtiva?.loteria_id) {
+    setStatusCaixa('Nenhuma loja de caixa selecionada.', 'err');
+    return;
+  }
+
+  const qtd = parseInt($('inputQtdFederal')?.value || '0', 10) || 0;
+
+  if (qtd < 1) {
+    setStatusCaixa('Qtd deve ser maior ou igual a 1.', 'err');
+    return;
+  }
+
+  if (qtd > getSaldoFederal(federalSelecionadaCaixa)) {
+    setStatusCaixa(
+      `Saldo insuficiente. Disponível: ${getSaldoFederal(federalSelecionadaCaixa)}.`,
+      'err'
+    );
+    return;
+  }
+
+  const btn = $('btnRegistrarFederal');
+  if (btn) btn.disabled = true;
+
+  setStatusCaixa(`Registrando Federal no caixa ${lojaCaixaAtiva.loteria_nome}…`, 'info');
+
+  const { error } = await sb.rpc('rpc_registrar_venda_balcao_federal', {
+    p_federal_id: federalSelecionadaCaixa.federal_id,
+    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
+    p_qtd_vendida: qtd,
+    p_data_referencia: isoDate(dataCaixa)
+  });
+
+  if (btn) btn.disabled = false;
+
+  if (error) {
+    setStatusCaixa(error.message, 'err');
+    return;
+  }
+
+  setStatusCaixa(`✓ Federal registrada no caixa ${lojaCaixaAtiva.loteria_nome}.`, 'ok');
+
+  federalSelecionadaCaixa = null;
+
+  if ($('federalVendaPanel')) $('federalVendaPanel').style.display = 'none';
+
+  await buscarFederaisCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
+
+window.registrarVendaFederalCaixa = registrarVendaFederalCaixa;
 
 // ── Consolidado mensal: mês + dias ────────────────────────────────
 function atualizarTituloMesCaixa(){
@@ -1371,6 +1582,54 @@ function bindEventos(){
     pickerCaixa.onchange = () => setDataCaixaPorISO(pickerCaixa.value);
   }
 
+// Federal
+  const federalChip = $('federalLojaChip');
+if (federalChip) federalChip.onclick = () => trocarLojaCaixaPorOffset(1);
+
+const prevFederal = $('btnDtPrevFederal');
+const nextFederal = $('btnDtNextFederal');
+const hojeFederal = $('btnHojeFederal');
+const displayFederal = $('dateDisplayFederal');
+const pickerFederal = $('datePickerFederal');
+
+if (prevFederal) {
+  prevFederal.onclick = async () => {
+    await alterarDataCaixa(-1);
+    await buscarFederaisCaixa();
+  };
+}
+
+if (nextFederal) {
+  nextFederal.onclick = async () => {
+    await alterarDataCaixa(1);
+    await buscarFederaisCaixa();
+  };
+}
+
+if (hojeFederal) {
+  hojeFederal.onclick = async () => {
+    await setDataCaixaPorISO(isoDate(hojeLocal()));
+    await buscarFederaisCaixa();
+  };
+}
+
+if (displayFederal && pickerFederal) {
+  displayFederal.onclick = () => pickerFederal.showPicker ? pickerFederal.showPicker() : pickerFederal.click();
+}
+
+if (pickerFederal) {
+  pickerFederal.onchange = async () => {
+    await setDataCaixaPorISO(pickerFederal.value);
+    await buscarFederaisCaixa();
+  };
+}
+
+const btnRegistrarFederal = $('btnRegistrarFederal');
+if (btnRegistrarFederal) btnRegistrarFederal.onclick = registrarVendaFederalCaixa;
+
+const inputQtdFederal = $('inputQtdFederal');
+if (inputQtdFederal) inputQtdFederal.oninput = calcTotalFederalCaixa;
+  
   // Consolidado mensal
   const btnMesPrevCons = $('btnMesPrevCons');
   if (btnMesPrevCons) {
