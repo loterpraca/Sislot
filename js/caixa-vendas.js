@@ -19,7 +19,30 @@ const MESES_PT = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
 ];
+const TZ_SISLOT = 'America/Sao_Paulo';
 
+function partesDataSaoPaulo(dt = new Date()){
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_SISLOT,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(dt);
+
+  const obj = {};
+
+  parts.forEach(p => {
+    if (p.type !== 'literal') {
+      obj[p.type] = p.value;
+    }
+  });
+
+  return {
+    ano: Number(obj.year),
+    mes: Number(obj.month),
+    dia: Number(obj.day)
+  };
+}
 const LOJA_CONFIG = {
   'boulevard':    { nome:'Boulevard',    logo:'./icons/boulevard.png',    theme:'boulevard',    logoPos:'50% 50%' },
   'centro':       { nome:'Centro',       logo:'./icons/loterpraca.png',   theme:'centro',       logoPos:'50% 42%' },
@@ -41,8 +64,8 @@ function normalizaDataLocal(dt){
 }
 
 function hojeLocal(){
-  const h = new Date();
-  return new Date(h.getFullYear(), h.getMonth(), h.getDate());
+  const p = partesDataSaoPaulo();
+  return new Date(p.ano, p.mes - 1, p.dia);
 }
 
 function isoDate(dt){
@@ -72,7 +95,12 @@ function fmtData(dt){
 function fmtHora(dt){
   const d = new Date(dt);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+  return d.toLocaleTimeString('pt-BR', {
+    timeZone: TZ_SISLOT,
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 function fmtBRL(v){
@@ -236,18 +264,20 @@ function updateClock(){
   const el = $('relogio');
 
   if (el) {
-    el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR', {
-      weekday:'short',
-      day:'2-digit',
-      month:'2-digit',
-      year:'numeric'
-    });
+    el.textContent =
+      now.toLocaleTimeString('pt-BR', {
+        timeZone: TZ_SISLOT
+      }) +
+      ' — ' +
+      now.toLocaleDateString('pt-BR', {
+        timeZone: TZ_SISLOT,
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
   }
 }
-
-updateClock();
-setInterval(updateClock, 1000);
-
 // ── Status ────────────────────────────────────────────────────────
 function setStatusCaixa(msg, tipo='info'){
   const e = $('statusBarCaixa');
