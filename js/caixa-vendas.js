@@ -369,19 +369,41 @@ async function carregarResumoMensalCaixa(){
     return;
   }
 
-  const base = normalizaDataLocal(dataConsolidadoCaixa);
+  const base = normalizaDataLocal(
+    typeof dataConsolidadoCaixa !== 'undefined' ? dataConsolidadoCaixa : dataCaixa
+  );
+
   const ano = base.getFullYear();
   const mes = base.getMonth();
 
   const dataIni = isoDate(new Date(ano, mes, 1));
   const dataFim = isoDate(new Date(ano, mes + 1, 0));
+  const lojaId = lojaCaixaAtiva.loteria_id;
 
-  const { data, error } = await sb
-    .from('view_caixa_vendas_boloes_grupo')
-    .select('*')
-    .eq('loteria_vendedora_id', lojaCaixaAtiva.loteria_id)
-    .gte('data_referencia', dataIni)
-    .lte('data_referencia', dataFim);
+  const [boloesRes, federalRes, produtosRes] = await Promise.all([
+    sb
+      .from('view_caixa_vendas_boloes_grupo')
+      .select('data_referencia,qtd_vendida,valor_total')
+      .eq('loteria_vendedora_id', lojaId)
+      .gte('data_referencia', dataIni)
+      .lte('data_referencia', dataFim),
+
+    sb
+      .from('view_caixa_vendas_federal_grupo')
+      .select('data_referencia,qtd_vendida,valor_total')
+      .eq('loteria_vendedora_id', lojaId)
+      .gte('data_referencia', dataIni)
+      .lte('data_referencia', dataFim),
+
+    sb
+      .from('view_caixa_vendas_produtos_grupo')
+      .select('data_referencia,qtd_vendida,valor_total')
+      .eq('loteria_vendedora_id', lojaId)
+      .gte('data_referencia', dataIni)
+      .lte('data_referencia', dataFim)
+  ]);
+
+  const error = boloesRes.error || federalRes.error || produtosRes.error;
 
   if (error) {
     console.warn('Erro ao carregar resumo mensal do caixa:', error.message);
@@ -389,24 +411,26 @@ async function carregarResumoMensalCaixa(){
     return;
   }
 
-  (data || []).forEach(r => {
-    const dia = parseInt(String(r.data_referencia).split('-')[2], 10);
-    if (!dia) return;
+  function addResumo(rows, campoValor){
+    (rows || []).forEach(r => {
+      const dia = parseInt(String(r.data_referencia).split('-')[2], 10);
+      if (!dia) return;
 
-    if (!resumoDiasCaixa[dia]) {
-      resumoDiasCaixa[dia] = {
-        total_boloes: 0,
-        cotas_boloes: 0,
-        lancamentos_boloes: 0,
-        total_federal: 0,
-        total_produtos: 0
-      };
-    }
+      if (!resumoDiasCaixa[dia]) {
+        resumoDiasCaixa[dia] = {
+          total_boloes: 0,
+          total_federal: 0,
+          total_produtos: 0
+        };
+      }
 
-    resumoDiasCaixa[dia].total_boloes += Number(r.valor_total || 0);
-    resumoDiasCaixa[dia].cotas_boloes += Number(r.qtd_vendida || r.cotas_vendidas || 0);
-    resumoDiasCaixa[dia].lancamentos_boloes += Number(r.qtd_lancamentos || 0);
-  });
+      resumoDiasCaixa[dia][campoValor] += Number(r.valor_total || 0);
+    });
+  }
+
+  addResumo(boloesRes.data, 'total_boloes');
+  addResumo(federalRes.data, 'total_federal');
+  addResumo(produtosRes.data, 'total_produtos');
 
   gerarAbasDiasCaixa();
 }
