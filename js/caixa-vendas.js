@@ -481,11 +481,21 @@ function selecionarFederalCaixa(f, card){
 
   federalSelecionadaCaixa = f;
 
-  const panel = $('federalVendaPanel');
-  if (panel) panel.style.display = 'block';
+  const title = $('federalSaleTitle');
+  if (title) {
+    title.innerHTML = `
+      <div class="wpp-sale-card-title">
+        <span class="wpp-sale-main">${f.modalidade || 'Federal'}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-concurso">#${f.concurso || '—'}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-origem">${f.loja_nome || lojaCaixaAtiva?.loteria_nome || '—'}</span>
+      </div>
 
-  if ($('inputFederalInfo')) {
-    $('inputFederalInfo').value = `${f.modalidade || 'Federal'} #${f.concurso || '—'} · Saldo ${getSaldoFederal(f)}`;
+      <div class="wpp-sale-card-meta">
+        <span class="wpp-sale-chip">Saldo ${getSaldoFederal(f)}</span>
+        <span class="wpp-sale-chip">${f.dt_sorteio ? fmtData(dataFromISO(f.dt_sorteio)) : 'sem data'}</span>
+        <span class="wpp-sale-chip wpp-sale-chip-valor">${fmtBRL(f.valor_fracao || 0)}</span>
+      </div>
+    `;
   }
 
   if ($('inputQtdFederal')) $('inputQtdFederal').value = '1';
@@ -497,7 +507,26 @@ function selecionarFederalCaixa(f, card){
     });
   }
 
+  abrirPainelVendaFederal();
   calcTotalFederalCaixa();
+}
+
+function abrirPainelVendaFederal(){
+  const panel = $('federalVendaPanel');
+  if (!panel) return;
+
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('wpp-sale-open');
+}
+
+function fecharPainelVendaFederal(){
+  const panel = $('federalVendaPanel');
+  if (!panel) return;
+
+  panel.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('wpp-sale-open');
 }
 
 function calcTotalFederalCaixa(){
