@@ -237,7 +237,7 @@ async function switchTab(id){
   if (pane) pane.classList.add('active');
 
   if (id === 'boloes') {
-    await buscarBoloesReg();
+    await buscarBoloesCaixa();
   }
 
   if (id === 'consolidado') {
