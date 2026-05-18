@@ -994,7 +994,7 @@ async function carregarConsolidadoCaixa(){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const dataRef = isoDate(dataConsolidadoCaixa);
+  const dataRef = isoDate(typeof dataConsolidadoCaixa !== 'undefined' ? dataConsolidadoCaixa : dataCaixa);
 
   box.innerHTML = `
     <div class="state-box">
@@ -1013,13 +1013,33 @@ async function carregarConsolidadoCaixa(){
     return;
   }
 
-  const { data, error } = await sb
-    .from('view_caixa_vendas_boloes_grupo')
-    .select('*')
-    .eq('loteria_vendedora_id', lojaCaixaAtiva.loteria_id)
-    .eq('data_referencia', dataRef)
-    .order('modalidade')
-    .order('concurso');
+  const lojaId = lojaCaixaAtiva.loteria_id;
+
+  const [boloesRes, federalRes, produtosRes] = await Promise.all([
+    sb
+      .from('view_caixa_vendas_boloes_grupo')
+      .select('*')
+      .eq('loteria_vendedora_id', lojaId)
+      .eq('data_referencia', dataRef)
+      .order('modalidade')
+      .order('concurso'),
+
+    sb
+      .from('view_caixa_vendas_federal_grupo')
+      .select('*')
+      .eq('loteria_vendedora_id', lojaId)
+      .eq('data_referencia', dataRef)
+      .order('concurso'),
+
+    sb
+      .from('view_caixa_vendas_produtos_grupo')
+      .select('*')
+      .eq('loteria_vendedora_id', lojaId)
+      .eq('data_referencia', dataRef)
+      .order('produto')
+  ]);
+
+  const error = boloesRes.error || federalRes.error || produtosRes.error;
 
   if (error) {
     box.innerHTML = `
@@ -1031,75 +1051,126 @@ async function carregarConsolidadoCaixa(){
     return;
   }
 
-  renderConsolidadoCaixa(data || [], dataRef);
+  renderConsolidadoCaixa({
+    boloes: boloesRes.data || [],
+    federais: federalRes.data || [],
+    produtos: produtosRes.data || []
+  }, dataRef);
 }
-
-function renderConsolidadoCaixa(rows, dataRef){
+function renderConsolidadoCaixa(payload, dataRef){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const totalBoloesQtd = rows.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
-  const totalBoloesValor = rows.reduce((s, r) => s + Number(r.valor_total || 0), 0);
-  const totalGrupos = rows.length;
+  const boloes = payload?.boloes || [];
+  const federais = payload?.federais || [];
+  const produtos = payload?.produtos || [];
 
-  const totalFederalQtd = 0;
-  const totalFederalValor = 0;
-  const totalProdutosQtd = 0;
-  const totalProdutosValor = 0;
+  const totalBoloesQtd = boloes.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
+  const totalBoloesValor = boloes.reduce((s, r) => s + Number(r.valor_total || 0), 0);
+
+  const totalFederalQtd = federais.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
+  const totalFederalValor = federais.reduce((s, r) => s + Number(r.valor_total || 0), 0);
+
+  const totalProdutosQtd = produtos.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
+  const totalProdutosValor = produtos.reduce((s, r) => s + Number(r.valor_total || 0), 0);
 
   const totalGeral = totalBoloesValor + totalFederalValor + totalProdutosValor;
 
-  const linhasBoloes = rows.length
-    ? rows.map(r => `
+  const totalGruposBoloes = boloes.length;
+  const totalGruposFederal = federais.length;
+  const totalGruposProdutos = produtos.length;
+
+  const linhasBoloes = boloes.length
+    ? boloes.map(r => `
       <div class="cx-det-row cx-det-row-editavel">
-    <div class="cx-det-row cx-det-row-editavel">
-  <div class="cx-det-main">
-    <strong>${r.modalidade || '—'}</strong>
-    <span>#${r.concurso || '—'}</span>
-    <small>${Number(r.qtd_jogos || 0)} jogos</small>
-    <small>${Number(r.qtd_dezenas || 0)} dez.</small>
-  </div>
+        <div class="cx-det-main">
+          <strong>${r.modalidade || '—'}</strong>
+          <span>#${r.concurso || '—'}</span>
+          <small>${Number(r.qtd_jogos || 0)} jogos</small>
+          <small>${Number(r.qtd_dezenas || 0)} dez.</small>
+        </div>
 
-  <div class="cx-det-meta">
-    <span>Qtd</span>
-    <input
-      class="cx-qtd-edit"
-      id="qtdGrupo-${r.bolao_id}"
-      type="number"
-      min="1"
-      max="999"
-      maxlength="3"
-      inputmode="numeric"
-      value="${Number(r.qtd_vendida || 0)}"
-    />
-    <span>${fmtBRL(r.valor_cota || 0)}</span>
-  </div>
+        <div class="cx-det-meta">
+          <span>Qtd</span>
+          <input
+            class="cx-qtd-edit"
+            id="qtdGrupo-${r.bolao_id}"
+            type="number"
+            min="1"
+            max="999"
+            maxlength="3"
+            inputmode="numeric"
+            value="${Number(r.qtd_vendida || 0)}"
+          />
+          <span>${fmtBRL(r.valor_cota || 0)}</span>
+        </div>
 
-  <div class="cx-det-total">
-    ${fmtBRL(r.valor_total || 0)}
-  </div>
+        <div class="cx-det-total">
+          ${fmtBRL(r.valor_total || 0)}
+        </div>
 
-  <div class="cx-det-actions">
-    <button
-      type="button"
-      class="cx-action-btn cx-action-save"
-      onclick="salvarQtdGrupoBalcaoBolao(${r.bolao_id})"
-      title="Salvar nova quantidade">
-      <i class="fas fa-check"></i>
-    </button>
+        <div class="cx-det-actions">
+          <button
+            type="button"
+            class="cx-action-btn cx-action-save"
+            onclick="salvarQtdGrupoBalcaoBolao(${r.bolao_id})"
+            title="Salvar nova quantidade">
+            <i class="fas fa-check"></i>
+          </button>
 
-    <button
-      type="button"
-      class="cx-action-btn cx-action-del"
-      onclick="excluirGrupoBalcaoBolao(${r.bolao_id})"
-      title="Excluir este bolão do dia">
-      <i class="fas fa-trash"></i>
-    </button>
-  </div>
-</div>
+          <button
+            type="button"
+            class="cx-action-btn cx-action-del"
+            onclick="excluirGrupoBalcaoBolao(${r.bolao_id})"
+            title="Excluir este bolão do dia">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
     `).join('')
     : `<div class="cx-det-empty">Sem vendas de bolões no balcão nesta data.</div>`;
+
+  const linhasFederal = federais.length
+    ? federais.map(r => `
+      <div class="cx-det-row">
+        <div class="cx-det-main">
+          <strong>${r.modalidade || 'Federal'}</strong>
+          <span>#${r.concurso || '—'}</span>
+          <small>${r.dt_sorteio ? fmtData(dataFromISO(r.dt_sorteio)) : '—'}</small>
+        </div>
+
+        <div class="cx-det-meta">
+          <span>Qtd ${Number(r.qtd_vendida || 0)}</span>
+          <span>${fmtBRL(r.valor_unitario || r.valor_fracao || 0)}</span>
+        </div>
+
+        <div class="cx-det-total">
+          ${fmtBRL(r.valor_total || 0)}
+        </div>
+      </div>
+    `).join('')
+    : `<div class="cx-det-empty">Sem vendas de Federal no balcão nesta data.</div>`;
+
+  const linhasProdutos = produtos.length
+    ? produtos.map(r => `
+      <div class="cx-det-row">
+        <div class="cx-det-main">
+          <strong>${r.produto || 'Produto'}</strong>
+          ${r.raspadinha_id ? `<span>Rasp. #${r.raspadinha_id}</span>` : ''}
+          ${r.telesena_item_id ? `<span>Tele. #${r.telesena_item_id}</span>` : ''}
+        </div>
+
+        <div class="cx-det-meta">
+          <span>Qtd ${Number(r.qtd_vendida || 0)}</span>
+          <span>${fmtBRL(r.valor_unitario || 0)}</span>
+        </div>
+
+        <div class="cx-det-total">
+          ${fmtBRL(r.valor_total || 0)}
+        </div>
+      </div>
+    `).join('')
+    : `<div class="cx-det-empty">Sem vendas de produtos no balcão nesta data.</div>`;
 
   box.innerHTML = `
     <div class="cx-fechamento-box fade-in">
@@ -1124,13 +1195,13 @@ function renderConsolidadoCaixa(rows, dataRef){
           <div class="cx-rg-card">
             <div class="cx-rg-label">Federal</div>
             <div class="cx-rg-val cx-rg-purple">${fmtBRL(totalFederalValor)}</div>
-            <div class="cx-rg-sub">${totalFederalQtd} frações</div>
+            <div class="cx-rg-sub">${totalFederalQtd} fração${totalFederalQtd !== 1 ? 'ões' : ''}</div>
           </div>
 
           <div class="cx-rg-card">
             <div class="cx-rg-label">Produtos</div>
             <div class="cx-rg-val cx-rg-blue">${fmtBRL(totalProdutosValor)}</div>
-            <div class="cx-rg-sub">${totalProdutosQtd} itens</div>
+            <div class="cx-rg-sub">${totalProdutosQtd} item${totalProdutosQtd !== 1 ? 's' : ''}</div>
           </div>
 
           <div class="cx-rg-card cx-rg-card-full cx-rg-total">
@@ -1149,7 +1220,7 @@ function renderConsolidadoCaixa(rows, dataRef){
               <span>Setor</span>
               <strong>Bolões</strong>
             </div>
-            <em>${totalGrupos} bolão${totalGrupos !== 1 ? 'ões' : ''}</em>
+            <em>${totalGruposBoloes} bolão${totalGruposBoloes !== 1 ? 'ões' : ''}</em>
           </div>
 
           <div class="cx-det-list">
@@ -1162,26 +1233,42 @@ function renderConsolidadoCaixa(rows, dataRef){
           </div>
         </div>
 
-        <div class="cx-setor-fech muted">
+        <div class="cx-setor-fech">
           <div class="cx-setor-head">
             <div>
               <span>Setor</span>
               <strong>Federal</strong>
             </div>
-            <em>Em breve</em>
+            <em>${totalGruposFederal} concurso${totalGruposFederal !== 1 ? 's' : ''}</em>
           </div>
-          <div class="cx-det-empty">As vendas de Federal serão somadas aqui quando ligarmos a aba Federal.</div>
+
+          <div class="cx-det-list">
+            ${linhasFederal}
+          </div>
+
+          <div class="cx-setor-total">
+            <span>Total Federal</span>
+            <strong>${fmtBRL(totalFederalValor)}</strong>
+          </div>
         </div>
 
-        <div class="cx-setor-fech muted">
+        <div class="cx-setor-fech">
           <div class="cx-setor-head">
             <div>
               <span>Setor</span>
               <strong>Produtos</strong>
             </div>
-            <em>Em breve</em>
+            <em>${totalGruposProdutos} produto${totalGruposProdutos !== 1 ? 's' : ''}</em>
           </div>
-          <div class="cx-det-empty">As vendas de produtos serão somadas aqui quando ligarmos o carrinho de produtos.</div>
+
+          <div class="cx-det-list">
+            ${linhasProdutos}
+          </div>
+
+          <div class="cx-setor-total">
+            <span>Total Produtos</span>
+            <strong>${fmtBRL(totalProdutosValor)}</strong>
+          </div>
         </div>
 
       </div>
