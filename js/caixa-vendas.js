@@ -223,26 +223,27 @@ function clearStatusCaixa(){
 
 // ── Tabs ──────────────────────────────────────────────────────────
 async function switchTab(id){
-  const ordem = ['boloes','federal','produtos','consolidado'];
+  const abas = ['boloes', 'federal', 'produtos', 'consolidado'];
 
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ordem[i] === id);
+    b.classList.toggle('active', abas[i] === id);
   });
 
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => {
+    p.classList.remove('active');
+  });
 
   const pane = $('tab-' + id);
   if (pane) pane.classList.add('active');
 
   if (id === 'boloes') {
-    await buscarBoloesCaixa();
+    await buscarBoloesReg();
   }
 
   if (id === 'consolidado') {
     await carregarConsolidadoCaixa();
   }
 }
-
 // ── Data ──────────────────────────────────────────────────────────
 function atualizarDatasCaixa(){
   dataCaixa = normalizaDataLocal(dataCaixa);
@@ -757,6 +758,134 @@ function confirmar(titulo, corpo){
     no.onclick = () => cleanup(false);
     yes.onclick = () => cleanup(true);
   });
+}
+
+async function carregarConsolidadoCaixa(){
+  const box = $('consolidadoContent');
+  if (!box) return;
+
+  const lojaId = lojaWhatsappAtiva?.loteria_id;
+  const dataRef = isoDate(dataAtualReg || dataAtual || hojeLocal());
+
+  box.innerHTML = `
+    <div class="state-box">
+      <div class="spinner"></div>
+      <div class="state-title">Carregando consolidado…</div>
+    </div>
+  `;
+
+  if (!lojaId) {
+    box.innerHTML = `
+      <div class="state-box">
+        <div class="state-title">Nenhuma loja selecionada</div>
+        <div class="state-sub">Selecione uma loja para carregar o consolidado.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await sb
+    .from('view_caixa_consolidado_boloes_dia')
+    .select('*')
+    .eq('data_referencia', dataRef)
+    .eq('loteria_vendedora_id', lojaId)
+    .order('modalidade')
+    .order('concurso');
+
+  if (error) {
+    box.innerHTML = `
+      <div class="state-box">
+        <div class="state-title">Erro ao carregar consolidado</div>
+        <div class="state-sub">${error.message}</div>
+      </div>
+    `;
+    return;
+  }
+
+  renderConsolidadoCaixa(data || [], dataRef);
+}
+
+function renderConsolidadoCaixa(rows, dataRef){
+  const box = $('consolidadoContent');
+  if (!box) return;
+
+  const totalCotas = rows.reduce((s, r) => s + Number(r.cotas_vendidas || 0), 0);
+  const totalValor = rows.reduce((s, r) => s + Number(r.valor_total || 0), 0);
+  const totalLancamentos = rows.reduce((s, r) => s + Number(r.qtd_lancamentos || 0), 0);
+
+  if (!rows.length) {
+    box.innerHTML = `
+      <div class="state-box">
+        <div class="state-title">Nenhuma venda no caixa</div>
+        <div class="state-sub">Não há vendas de bolões no balcão para ${fmtData(dataFromISO(dataRef))}.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const linhas = rows.map(r => `
+    <div class="cx-cons-row">
+      <div class="cx-cons-main">
+        <strong>${r.modalidade}</strong>
+        <span>#${r.concurso}</span>
+        <em>${r.loja_codigo || r.loja_vendedora || ''}</em>
+      </div>
+
+      <div class="cx-cons-meta">
+        <span>${Number(r.cotas_vendidas || 0)} cota${Number(r.cotas_vendidas || 0) > 1 ? 's' : ''}</span>
+        <span>${Number(r.qtd_lancamentos || 0)} lançamento${Number(r.qtd_lancamentos || 0) > 1 ? 's' : ''}</span>
+        <span>${fmtBRL(r.valor_cota)}</span>
+      </div>
+
+      <div class="cx-cons-total">
+        ${fmtBRL(r.valor_total)}
+      </div>
+    </div>
+  `).join('');
+
+  box.innerHTML = `
+    <div class="cx-cons-wrap fade-in">
+
+      <div class="cx-cons-head">
+        <div>
+          <div class="cx-cons-kicker">Consolidado do dia</div>
+          <div class="cx-cons-title">${lojaWhatsappAtiva?.loteria_nome || 'Loja'} · ${fmtData(dataFromISO(dataRef))}</div>
+        </div>
+
+        <button class="btn-hist-buscar" onclick="carregarConsolidadoCaixa()">
+          Atualizar
+        </button>
+      </div>
+
+      <div class="cx-kpi-grid">
+        <div class="cx-kpi-card">
+          <span>Vendas</span>
+          <strong>${totalLancamentos}</strong>
+        </div>
+
+        <div class="cx-kpi-card">
+          <span>Cotas</span>
+          <strong>${totalCotas}</strong>
+        </div>
+
+        <div class="cx-kpi-card destaque">
+          <span>Total bolões</span>
+          <strong>${fmtBRL(totalValor)}</strong>
+        </div>
+      </div>
+
+      <div class="sec-sep">
+        <div class="sec-sep-label">Bolões vendidos no balcão</div>
+        <div class="sec-sep-line"></div>
+        <div class="sec-sep-count">${rows.length}</div>
+      </div>
+
+      <div class="cx-cons-list">
+        ${linhas}
+      </div>
+
+    </div>
+  `;
 }
 
 // ── Init ──────────────────────────────────────────────────────────
