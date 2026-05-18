@@ -1263,6 +1263,74 @@ async function excluirGrupoBalcaoBolao(bolaoId){
 
 window.excluirGrupoBalcaoBolao = excluirGrupoBalcaoBolao;
 
+async function salvarQtdGrupoBalcaoFederal(federalId){
+  const input = $('qtdFederal-' + federalId);
+  if (!input) return;
+
+  const novaQtd = parseInt(input.value || '0', 10) || 0;
+
+  if (novaQtd <= 0) {
+    alert('A quantidade deve ser maior que zero.');
+    return;
+  }
+
+  if (novaQtd > 999) {
+    alert('A quantidade máxima permitida é 999.');
+    input.value = '999';
+    return;
+  }
+
+  const { error } = await sb.rpc('rpc_editar_qtd_venda_balcao_federal_grupo', {
+    p_federal_id: federalId,
+    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
+    p_data_referencia: isoDate(typeof dataConsolidadoCaixa !== 'undefined' ? dataConsolidadoCaixa : dataCaixa),
+    p_nova_qtd: novaQtd
+  });
+
+  if (error) {
+    alert(error.message);
+    await carregarConsolidadoCaixa();
+    return;
+  }
+
+  await buscarFederaisCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
+
+window.salvarQtdGrupoBalcaoFederal = salvarQtdGrupoBalcaoFederal;
+
+async function excluirGrupoBalcaoFederal(federalId){
+  const ok = await confirmar(
+    'Excluir Federal do consolidado',
+    'Tem certeza que deseja excluir todas as vendas desta Federal neste dia?'
+  );
+
+  if (!ok) return;
+
+  const { error } = await sb.rpc('rpc_excluir_venda_balcao_federal_grupo', {
+    p_federal_id: federalId,
+    p_loteria_vendedora_id: lojaCaixaAtiva.loteria_id,
+    p_data_referencia: isoDate(typeof dataConsolidadoCaixa !== 'undefined' ? dataConsolidadoCaixa : dataCaixa)
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await buscarFederaisCaixa();
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
+
+window.excluirGrupoBalcaoFederal = excluirGrupoBalcaoFederal;
 
 // ── Consolidado: renderização por setor ───────────────────────────
 async function carregarConsolidadoCaixa(){
@@ -1403,26 +1471,54 @@ function renderConsolidadoCaixa(payload, dataRef){
     `).join('')
     : `<div class="cx-det-empty">Sem vendas de bolões no balcão nesta data.</div>`;
 
-  const linhasFederal = federais.length
-    ? federais.map(r => `
-      <div class="cx-det-row">
-        <div class="cx-det-main">
-          <strong>${r.modalidade || 'Federal'}</strong>
-          <span>#${r.concurso || '—'}</span>
-          <small>${r.dt_sorteio ? fmtData(dataFromISO(r.dt_sorteio)) : '—'}</small>
-        </div>
-
-        <div class="cx-det-meta">
-          <span>Qtd ${Number(r.qtd_vendida || 0)}</span>
-          <span>${fmtBRL(r.valor_unitario || r.valor_fracao || 0)}</span>
-        </div>
-
-        <div class="cx-det-total">
-          ${fmtBRL(r.valor_total || 0)}
-        </div>
+ const linhasFederal = federais.length
+  ? federais.map(r => `
+    <div class="cx-det-row cx-det-row-editavel">
+      <div class="cx-det-main">
+        <strong>${r.modalidade || 'Federal'}</strong>
+        <span>#${r.concurso || '—'}</span>
+        <small>${r.dt_sorteio ? fmtData(dataFromISO(r.dt_sorteio)) : '—'}</small>
       </div>
-    `).join('')
-    : `<div class="cx-det-empty">Sem vendas de Federal no balcão nesta data.</div>`;
+
+      <div class="cx-det-meta">
+        <span>Qtd</span>
+        <input
+          class="cx-qtd-edit"
+          id="qtdFederal-${r.federal_id}"
+          type="number"
+          min="1"
+          max="999"
+          maxlength="3"
+          inputmode="numeric"
+          value="${Number(r.qtd_vendida || 0)}"
+        />
+        <span>${fmtBRL(r.valor_unitario || r.valor_fracao || 0)}</span>
+      </div>
+
+      <div class="cx-det-total">
+        ${fmtBRL(r.valor_total || 0)}
+      </div>
+
+      <div class="cx-det-actions">
+        <button
+          type="button"
+          class="cx-action-btn cx-action-save"
+          onclick="salvarQtdGrupoBalcaoFederal('${r.federal_id}')"
+          title="Salvar nova quantidade">
+          <i class="fas fa-check"></i>
+        </button>
+
+        <button
+          type="button"
+          class="cx-action-btn cx-action-del"
+          onclick="excluirGrupoBalcaoFederal('${r.federal_id}')"
+          title="Excluir esta Federal do dia">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  `).join('')
+  : `<div class="cx-det-empty">Sem vendas de Federal no balcão nesta data.</div>`;
 
   const linhasProdutos = produtos.length
     ? produtos.map(r => `
