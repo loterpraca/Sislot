@@ -146,9 +146,15 @@ function aplicarTemaCaixa(slug){
   if (sub) sub.textContent = 'Vendas no Caixa';
 
   const nomeChip = $('caixaLojaNome');
-  if (nomeChip) nomeChip.textContent = cfg.nome;
-}
+if (nomeChip) nomeChip.textContent = cfg.nome;
 
+const nomeFederal = $('federalLojaNome');
+if (nomeFederal) nomeFederal.textContent = cfg.nome;
+}
+async function setDataOperacionalCaixa(novaData){
+  dataCaixa = normalizaDataLocal(novaData);
+  atualizarDatasCaixa();
+}
 function atualizarLojaCaixaUI(){
   const slug = lojaCaixaAtiva?.loteria_slug || lojaCaixaAtiva?.slug || 'centro';
   aplicarTemaCaixa(slug);
@@ -284,6 +290,9 @@ function updateClock(){
       });
   }
 }
+
+updateClock();
+setInterval(updateClock, 1000);
 // ── Status ────────────────────────────────────────────────────────
 function setStatusCaixa(msg, tipo='info'){
   const e = $('statusBarCaixa');
@@ -1594,32 +1603,32 @@ const pickerFederal = $('datePickerFederal');
 
 if (prevFederal) {
   prevFederal.onclick = async () => {
-    await alterarDataCaixa(-1);
+    const d = normalizaDataLocal(dataCaixa);
+    d.setDate(d.getDate() - 1);
+    await setDataOperacionalCaixa(d);
     await buscarFederaisCaixa();
   };
 }
 
 if (nextFederal) {
   nextFederal.onclick = async () => {
-    await alterarDataCaixa(1);
+    const d = normalizaDataLocal(dataCaixa);
+    d.setDate(d.getDate() + 1);
+    await setDataOperacionalCaixa(d);
     await buscarFederaisCaixa();
   };
 }
 
 if (hojeFederal) {
   hojeFederal.onclick = async () => {
-    await setDataCaixaPorISO(isoDate(hojeLocal()));
+    await setDataOperacionalCaixa(hojeLocal());
     await buscarFederaisCaixa();
   };
 }
 
-if (displayFederal && pickerFederal) {
-  displayFederal.onclick = () => pickerFederal.showPicker ? pickerFederal.showPicker() : pickerFederal.click();
-}
-
 if (pickerFederal) {
   pickerFederal.onchange = async () => {
-    await setDataCaixaPorISO(pickerFederal.value);
+    await setDataOperacionalCaixa(dataFromISO(pickerFederal.value));
     await buscarFederaisCaixa();
   };
 }
