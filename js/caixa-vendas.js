@@ -919,12 +919,13 @@ async function carregarConsolidadoCaixa(){
   }
 
   const { data, error } = await sb
-    .from('view_caixa_consolidado_boloes_dia')
+    .from('view_caixa_vendas_boloes_detalhe')
     .select('*')
     .eq('loteria_vendedora_id', lojaCaixaAtiva.loteria_id)
     .eq('data_referencia', dataRef)
     .order('modalidade')
-    .order('concurso');
+    .order('concurso')
+    .order('created_at');
 
   if (error) {
     box.innerHTML = `
@@ -943,11 +944,10 @@ function renderConsolidadoCaixa(rows, dataRef){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const totalBoloesCotas = rows.reduce((s, r) => s + Number(r.cotas_vendidas || 0), 0);
+  const totalBoloesQtd = rows.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
   const totalBoloesValor = rows.reduce((s, r) => s + Number(r.valor_total || 0), 0);
-  const totalBoloesLanc = rows.reduce((s, r) => s + Number(r.qtd_lancamentos || 0), 0);
+  const totalLanc = rows.length;
 
-  // Ainda não integrados
   const totalFederalQtd = 0;
   const totalFederalValor = 0;
   const totalProdutosQtd = 0;
@@ -957,19 +957,47 @@ function renderConsolidadoCaixa(rows, dataRef){
 
   const linhasBoloes = rows.length
     ? rows.map(r => `
-      <div class="cx-det-row">
+      <div class="cx-det-row cx-det-row-editavel">
         <div class="cx-det-main">
           <strong>${r.modalidade || '—'}</strong>
           <span>#${r.concurso || '—'}</span>
+          <small>${Number(r.qtd_jogos || 0)} jogos</small>
+          <small>${Number(r.qtd_dezenas || 0)} dez.</small>
         </div>
 
         <div class="cx-det-meta">
-          <span>${Number(r.cotas_vendidas || 0)} cota${Number(r.cotas_vendidas || 0) !== 1 ? 's' : ''}</span>
-          <span>${Number(r.qtd_lancamentos || 0)} lançamento${Number(r.qtd_lancamentos || 0) !== 1 ? 's' : ''}</span>
-          <span>${fmtBRL(r.valor_cota || 0)}</span>
+          <span>Qtd vendida</span>
+          <input
+            class="cx-qtd-edit"
+            id="qtdVenda-${r.bolao_venda_id}"
+            type="number"
+            min="1"
+            value="${Number(r.qtd_vendida || 0)}"
+          />
+          <span>${fmtBRL(r.valor_cota || 0)} un.</span>
         </div>
 
-        <div class="cx-det-total">${fmtBRL(r.valor_total || 0)}</div>
+        <div class="cx-det-total">
+          ${fmtBRL(r.valor_total || 0)}
+        </div>
+
+        <div class="cx-det-actions">
+          <button
+            type="button"
+            class="cx-action-btn cx-action-save"
+            onclick="salvarQtdVendaBalcaoBolao(${r.bolao_venda_id})"
+            title="Salvar nova quantidade">
+            <i class="fas fa-check"></i>
+          </button>
+
+          <button
+            type="button"
+            class="cx-action-btn cx-action-del"
+            onclick="deletarVendaBalcaoBolao(${r.bolao_venda_id})"
+            title="Excluir venda">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </div>
     `).join('')
     : `<div class="cx-det-empty">Sem vendas de bolões no balcão nesta data.</div>`;
@@ -996,7 +1024,7 @@ function renderConsolidadoCaixa(rows, dataRef){
           <div class="cx-rg-card">
             <div class="cx-rg-label">Bolões</div>
             <div class="cx-rg-val cx-rg-green">${fmtBRL(totalBoloesValor)}</div>
-            <div class="cx-rg-sub">${totalBoloesCotas} cota${totalBoloesCotas !== 1 ? 's' : ''}</div>
+            <div class="cx-rg-sub">${totalBoloesQtd} cota${totalBoloesQtd !== 1 ? 's' : ''}</div>
           </div>
 
           <div class="cx-rg-card">
@@ -1027,7 +1055,7 @@ function renderConsolidadoCaixa(rows, dataRef){
               <span>Setor</span>
               <strong>Bolões</strong>
             </div>
-            <em>${totalBoloesLanc} lançamento${totalBoloesLanc !== 1 ? 's' : ''}</em>
+            <em>${totalLanc} lançamento${totalLanc !== 1 ? 's' : ''}</em>
           </div>
 
           <div class="cx-det-list">
@@ -1067,8 +1095,6 @@ function renderConsolidadoCaixa(rows, dataRef){
     </div>
   `;
 }
-
-window.carregarConsolidadoCaixa = carregarConsolidadoCaixa;
 
 // ── Confirmação ──────────────────────────────────────────────────
 function confirmar(titulo, corpo){
