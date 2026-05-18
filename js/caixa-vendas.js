@@ -2,12 +2,18 @@ const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.
 
 /* =========================================================
    SISLOT — Vendas no Caixa
-   Arquivo limpo: Bolões + Consolidado mensal por setor
+   V2: Bolões com data simples + Consolidado com abas mensais
 ========================================================= */
 
 // ── Estado ────────────────────────────────────────────────────────
 let usuario = null;
+
+// Data da ABA BOLÕES: usada para buscar saldo e registrar venda.
 let dataCaixa = hojeLocal();
+
+// Data da ABA CONSOLIDADO: usada só para as abas 1..30/31 e resumo do dia.
+let dataConsolidadoCaixa = hojeLocal();
+
 let resumoDiasCaixa = {};
 let lojasAtivas = [];
 let lojasPermitidas = [];
@@ -66,12 +72,6 @@ function fmtData(dt){
     month:'2-digit',
     year:'numeric'
   });
-}
-
-function fmtHora(dt){
-  const d = new Date(dt);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
 function fmtBRL(v){
@@ -209,7 +209,6 @@ async function carregarContextoLojas(){
       principal: !!(vinculos || []).find(v => Number(v.loteria_id) === Number(l.id) && v.principal)
     }));
 
-  // Fallback para ADMIN/SOCIO quando não houver vínculo explícito.
   if (!lojasPermitidas.length && ['ADMIN','SOCIO'].includes(String(usuario.perfil || '').toUpperCase())) {
     lojasPermitidas = lojasAtivas.map(l => ({
       loteria_id: l.id,
@@ -264,7 +263,7 @@ function clearStatusCaixa(){
   e.className = 'status-bar';
 }
 
-// ── Tabs ──────────────────────────────────────────────────────────
+// ── Tabs principais ───────────────────────────────────────────────
 async function switchTab(id){
   const abas = ['boloes', 'federal', 'produtos', 'consolidado'];
 
@@ -289,29 +288,17 @@ async function switchTab(id){
   }
 }
 
-// Deixa as funções acessíveis para onclick no HTML
 window.switchTab = switchTab;
 
-// ── Datas ─────────────────────────────────────────────────────────
-function atualizarDatasCaixa(){
+// ── Data da ABA BOLÕES ────────────────────────────────────────────
+function atualizarDataBolaoUI(){
   dataCaixa = normalizaDataLocal(dataCaixa);
-  const iso = isoDate(dataCaixa);
 
-  // Data da aba Bolões
   const displayCaixa = $('dateDisplayCaixa');
   const pickerCaixa = $('datePickerCaixa');
 
   if (displayCaixa) displayCaixa.textContent = fmtData(dataCaixa);
-  if (pickerCaixa) pickerCaixa.value = iso;
-
-  // Compatibilidade caso ainda existam campos antigos no Consolidado
-  const displayCons = $('dateDisplayCons');
-  const pickerCons = $('datePickerCons');
-
-  if (displayCons) displayCons.textContent = fmtData(dataCaixa);
-  if (pickerCons) pickerCons.value = iso;
-
-  atualizarTituloMesCaixa();
+  if (pickerCaixa) pickerCaixa.value = isoDate(dataCaixa);
 }
 
 async function alterarDataCaixa(deltaDias){
@@ -319,34 +306,22 @@ async function alterarDataCaixa(deltaDias){
   d.setDate(d.getDate() + deltaDias);
   dataCaixa = d;
 
-  atualizarDatasCaixa();
-
+  atualizarDataBolaoUI();
   await buscarBoloesCaixa();
-
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
 }
 
 async function setDataCaixaPorISO(iso){
   dataCaixa = dataFromISO(iso);
-  atualizarDatasCaixa();
-
+  atualizarDataBolaoUI();
   await buscarBoloesCaixa();
-
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
 }
 
-// ── Consolidado mensal: mês + dias ────────────────────────────────
+// ── Consolidado mensal: mês + abas 1..30/31 ───────────────────────
 function atualizarTituloMesCaixa(){
   const el = $('cxMesTitle');
   if (!el) return;
 
-  const d = normalizaDataLocal(dataCaixa);
+  const d = normalizaDataLocal(dataConsolidadoCaixa);
   el.textContent = `${MESES_PT[d.getMonth()]} / ${d.getFullYear()}`;
 }
 
@@ -358,7 +333,7 @@ async function carregarResumoMensalCaixa(){
     return;
   }
 
-  const base = normalizaDataLocal(dataCaixa);
+  const base = normalizaDataLocal(dataConsolidadoCaixa);
   const ano = base.getFullYear();
   const mes = base.getMonth();
 
@@ -406,7 +381,7 @@ function gerarAbasDiasCaixa(){
 
   const DIAS_SEMANA = ['D','S','T','Q','Q','S','S'];
 
-  const base = normalizaDataLocal(dataCaixa);
+  const base = normalizaDataLocal(dataConsolidadoCaixa);
   const ano = base.getFullYear();
   const mes = base.getMonth();
 
@@ -459,11 +434,9 @@ function gerarAbasDiasCaixa(){
     `;
 
     btn.onclick = async () => {
-      dataCaixa = new Date(ano, mes, d);
+      dataConsolidadoCaixa = new Date(ano, mes, d);
 
-      atualizarDatasCaixa();
       gerarAbasDiasCaixa();
-
       await carregarConsolidadoCaixa();
 
       btn.scrollIntoView({
@@ -491,22 +464,22 @@ function gerarAbasDiasCaixa(){
 }
 
 async function alterarMesConsolidadoCaixa(delta){
-  const d = normalizaDataLocal(dataCaixa);
+  const d = normalizaDataLocal(dataConsolidadoCaixa);
   d.setMonth(d.getMonth() + delta);
   d.setDate(1);
 
-  dataCaixa = d;
+  dataConsolidadoCaixa = d;
 
-  atualizarDatasCaixa();
+  atualizarTituloMesCaixa();
 
   await carregarResumoMensalCaixa();
   await carregarConsolidadoCaixa();
 }
 
 async function irHojeConsolidadoCaixa(){
-  dataCaixa = hojeLocal();
+  dataConsolidadoCaixa = hojeLocal();
 
-  atualizarDatasCaixa();
+  atualizarTituloMesCaixa();
 
   await carregarResumoMensalCaixa();
   await carregarConsolidadoCaixa();
@@ -880,6 +853,7 @@ async function registrarVendaBolaoCaixa(){
 
   await buscarBoloesCaixa();
 
+  // Só mexe no consolidado se o consolidado estiver aberto.
   if ($('tab-consolidado')?.classList.contains('active')) {
     await carregarResumoMensalCaixa();
     await carregarConsolidadoCaixa();
@@ -925,7 +899,7 @@ async function carregarConsolidadoCaixa(){
   const box = $('consolidadoContent');
   if (!box) return;
 
-  const dataRef = isoDate(dataCaixa);
+  const dataRef = isoDate(dataConsolidadoCaixa);
 
   box.innerHTML = `
     <div class="state-box">
@@ -1147,7 +1121,7 @@ function bindEventos(){
   const btnFechar = $('btnFecharVendaCaixa');
   if (btnFechar) btnFechar.onclick = fecharPainelVendaCaixa;
 
-  // Data da aba Bolões
+  // Eventos da data simples da aba Bolões
   const prevCaixa = $('btnDtPrevCaixa');
   const nextCaixa = $('btnDtNextCaixa');
   const hojeCaixa = $('btnHojeCaixa');
@@ -1166,7 +1140,7 @@ function bindEventos(){
     pickerCaixa.onchange = () => setDataCaixaPorISO(pickerCaixa.value);
   }
 
-  // Consolidado mensal
+  // Eventos do consolidado mensal
   const btnMesPrevCons = $('btnMesPrevCons');
   if (btnMesPrevCons) {
     btnMesPrevCons.onclick = () => alterarMesConsolidadoCaixa(-1);
@@ -1188,23 +1162,6 @@ function bindEventos(){
       await carregarResumoMensalCaixa();
       await carregarConsolidadoCaixa();
     };
-  }
-
-  // Fallback para IDs antigos do consolidado, caso ainda existam no HTML
-  const prevCons = $('btnDtPrevCons');
-  const nextCons = $('btnDtNextCons');
-  const displayCons = $('dateDisplayCons');
-  const pickerCons = $('datePickerCons');
-
-  if (prevCons) prevCons.onclick = () => alterarDataCaixa(-1);
-  if (nextCons) nextCons.onclick = () => alterarDataCaixa(1);
-
-  if (displayCons && pickerCons) {
-    displayCons.onclick = () => pickerCons.showPicker ? pickerCons.showPicker() : pickerCons.click();
-  }
-
-  if (pickerCons) {
-    pickerCons.onchange = () => setDataCaixaPorISO(pickerCons.value);
   }
 }
 
@@ -1237,7 +1194,10 @@ async function init(){
     await carregarContextoLojas();
 
     dataCaixa = hojeLocal();
-    atualizarDatasCaixa();
+    dataConsolidadoCaixa = hojeLocal();
+
+    atualizarDataBolaoUI();
+    atualizarTituloMesCaixa();
     gerarAbasDiasCaixa();
 
     await buscarBoloesCaixa();
