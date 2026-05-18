@@ -1076,10 +1076,6 @@ function renderConsolidadoCaixa(payload, dataRef){
 
   const totalGeral = totalBoloesValor + totalFederalValor + totalProdutosValor;
 
-  const totalGruposBoloes = boloes.length;
-  const totalGruposFederal = federais.length;
-  const totalGruposProdutos = produtos.length;
-
   const linhasBoloes = boloes.length
     ? boloes.map(r => `
       <div class="cx-det-row cx-det-row-editavel">
@@ -1220,7 +1216,7 @@ function renderConsolidadoCaixa(payload, dataRef){
               <span>Setor</span>
               <strong>Bolões</strong>
             </div>
-            <em>${totalGruposBoloes} bolão${totalGruposBoloes !== 1 ? 'ões' : ''}</em>
+            <em>${boloes.length} bolão${boloes.length !== 1 ? 'ões' : ''}</em>
           </div>
 
           <div class="cx-det-list">
@@ -1239,7 +1235,7 @@ function renderConsolidadoCaixa(payload, dataRef){
               <span>Setor</span>
               <strong>Federal</strong>
             </div>
-            <em>${totalGruposFederal} concurso${totalGruposFederal !== 1 ? 's' : ''}</em>
+            <em>${federais.length} concurso${federais.length !== 1 ? 's' : ''}</em>
           </div>
 
           <div class="cx-det-list">
@@ -1258,7 +1254,7 @@ function renderConsolidadoCaixa(payload, dataRef){
               <span>Setor</span>
               <strong>Produtos</strong>
             </div>
-            <em>${totalGruposProdutos} produto${totalGruposProdutos !== 1 ? 's' : ''}</em>
+            <em>${produtos.length} produto${produtos.length !== 1 ? 's' : ''}</em>
           </div>
 
           <div class="cx-det-list">
