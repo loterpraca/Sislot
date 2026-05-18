@@ -79,20 +79,27 @@
         </button>
       </div>
 
-      <div class="date-bar" style="margin-bottom:14px">
-        <div class="date-label">Data da venda</div>
-        <div class="date-stepper">
-          <button class="btn-date" id="btnDtPrevCaixa" type="button">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <button type="button" class="date-display" id="dateDisplayCaixa">—</button>
-          <input type="date" id="datePickerCaixa" class="date-picker-hidden"/>
-          <button class="btn-date" id="btnDtNextCaixa" type="button">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-        </div>
-        <button class="btn-hoje" id="btnHojeCaixa" type="button">Hoje</button>
-      </div>
+     <div class="cx-mes-bar">
+  <button class="cx-mes-btn" id="btnMesPrevCons" type="button">
+    <i class="fas fa-chevron-left"></i>
+  </button>
+
+  <div class="cx-mes-info">
+    <div class="cx-mes-label">Período</div>
+    <div class="cx-mes-title" id="cxMesTitle">—</div>
+  </div>
+
+  <button class="cx-mes-btn" id="btnMesNextCons" type="button">
+    <i class="fas fa-chevron-right"></i>
+  </button>
+
+  <button class="cx-mes-hoje" id="btnHojeCons" type="button">Hoje</button>
+  <button class="cx-mes-hoje" id="btnAtualizarCons" type="button">Atualizar</button>
+</div>
+
+<div class="cx-dias-wrap">
+  <div class="cx-dias-scroll" id="cxDiasScroll"></div>
+</div>
 
       <div id="boloesCaixaLista">
         <div class="state-box"><div class="spinner"></div><div class="state-title">Buscando bolões…</div></div>
