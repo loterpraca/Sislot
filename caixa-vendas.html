@@ -79,29 +79,23 @@
         </button>
       </div>
 
-     <div class="cx-mes-bar">
-  <button class="cx-mes-btn" id="btnMesPrevCons" type="button">
-    <i class="fas fa-chevron-left"></i>
-  </button>
+      <!-- DATA SIMPLES DA VENDA — somente aba Bolões -->
+      <div class="date-bar">
+        <div class="date-label">Data da venda</div>
+        <div class="date-stepper">
+          <button class="btn-date" id="btnDtPrevCaixa" type="button">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button type="button" class="date-display" id="dateDisplayCaixa">—</button>
+          <input type="date" id="datePickerCaixa" class="date-picker-hidden"/>
+          <button class="btn-date" id="btnDtNextCaixa" type="button">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        <button class="btn-hoje" id="btnHojeCaixa" type="button">Hoje</button>
+      </div>
 
-  <div class="cx-mes-info">
-    <div class="cx-mes-label">Período</div>
-    <div class="cx-mes-title" id="cxMesTitle">—</div>
-  </div>
-
-  <button class="cx-mes-btn" id="btnMesNextCons" type="button">
-    <i class="fas fa-chevron-right"></i>
-  </button>
-
-  <button class="cx-mes-hoje" id="btnHojeCons" type="button">Hoje</button>
-  <button class="cx-mes-hoje" id="btnAtualizarCons" type="button">Atualizar</button>
-</div>
-
-<div class="cx-dias-wrap">
-  <div class="cx-dias-scroll" id="cxDiasScroll"></div>
-</div>
-
-      <div id="boloesCaixaLista">
+<div id="boloesCaixaLista">
         <div class="state-box"><div class="spinner"></div><div class="state-title">Buscando bolões…</div></div>
       </div>
 
@@ -152,29 +146,39 @@
     <div class="reg-panel">
       <div class="reg-headline">
         <div>
-          <div class="reg-section-title">Consolidado do dia</div>
-          <div class="caixa-subline">Resumo das vendas BALCÃO da loja ativa.</div>
+          <div class="reg-section-title">Consolidado do caixa</div>
+          <div class="caixa-subline">Resumo mensal e diário das vendas BALCÃO da loja ativa.</div>
         </div>
       </div>
 
-      <div class="date-bar" style="margin-bottom:14px">
-        <div class="date-label">Data</div>
-        <div class="date-stepper">
-          <button class="btn-date" id="btnDtPrevCons" type="button">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <button type="button" class="date-display" id="dateDisplayCons">—</button>
-          <input type="date" id="datePickerCons" class="date-picker-hidden"/>
-          <button class="btn-date" id="btnDtNextCons" type="button">
-            <i class="fas fa-chevron-right"></i>
-          </button>
+      <!-- ABAS MENSAIS — somente aba Consolidado -->
+      <div class="cx-mes-bar">
+        <button class="cx-mes-btn" id="btnMesPrevCons" type="button">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <div class="cx-mes-info">
+          <div class="cx-mes-label">Período</div>
+          <div class="cx-mes-title" id="cxMesTitle">—</div>
         </div>
-        <button class="btn-hoje" id="btnHojeCons" type="button">Hoje</button>
-        <button class="btn-hoje" id="btnAtualizarCons" type="button">Atualizar</button>
+
+        <button class="cx-mes-btn" id="btnMesNextCons" type="button">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+
+        <button class="cx-mes-hoje" id="btnHojeCons" type="button">Hoje</button>
+        <button class="cx-mes-hoje" id="btnAtualizarCons" type="button">Atualizar</button>
+      </div>
+
+      <div class="cx-dias-wrap">
+        <div class="cx-dias-scroll" id="cxDiasScroll"></div>
       </div>
 
       <div id="consolidadoContent">
-        <div class="state-box"><div class="state-title">Abra esta aba para carregar o consolidado.</div></div>
+        <div class="state-box">
+          <div class="state-title">Consolidado do dia</div>
+          <div class="state-sub">Selecione um dia para visualizar Bolões, Federal, Produtos e Total Geral.</div>
+        </div>
       </div>
     </div>
   </div>
