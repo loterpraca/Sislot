@@ -1751,8 +1751,9 @@ async function carregarConsolidadoCaixa(){
       .select('*')
       .eq('loteria_vendedora_id', lojaId)
       .eq('data_referencia', dataRef)
-      .order('modalidade')
-      .order('concurso'),
+      .order('modalidade', { ascending: true })
+      .order('valor_cota', { ascending: true })
+      .order('concurso', { ascending: true })
 
     sb
       .from('view_caixa_vendas_federal_grupo')
