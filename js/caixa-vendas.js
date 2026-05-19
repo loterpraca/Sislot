@@ -1200,7 +1200,9 @@ function renderBoloesCaixa(boloes){
     grupos[b.modalidade].push(b);
   });
 
-  Object.keys(grupos).sort().forEach(mod => {
+  Object.keys(grupos)
+  .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'))
+  .forEach(mod => {
     const sep = document.createElement('div');
     sep.className = 'sec-sep';
     sep.style.margin = '8px 0 6px';
@@ -1211,12 +1213,24 @@ function renderBoloesCaixa(boloes){
     wrap.appendChild(sep);
 
     grupos[mod]
-      .sort((a, b) => {
-        if ((a.loteria_origem_nome || '') !== (b.loteria_origem_nome || '')) {
-          return (a.loteria_origem_nome || '').localeCompare(b.loteria_origem_nome || '');
-        }
-        return (a.valor_cota || 0) - (b.valor_cota || 0);
-      })
+  .sort((a, b) => {
+    const precoA = Number(a.valor_cota || 0);
+    const precoB = Number(b.valor_cota || 0);
+
+    if (precoA !== precoB) {
+      return precoA - precoB;
+    }
+
+    const concursoA = Number(a.concurso || 0);
+    const concursoB = Number(b.concurso || 0);
+
+    if (concursoA !== concursoB) {
+      return concursoA - concursoB;
+    }
+
+    return String(a.loteria_origem_nome || '')
+      .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
+  })
       .forEach(b => {
 
         const saldoPills = (b.saldos_lojas || []).map(s => {
