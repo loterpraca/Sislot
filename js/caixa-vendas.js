@@ -2182,10 +2182,15 @@ function irParaModalidadeCaixa(nomes){
 
   const bloco = label.closest('.sec-sep') || label;
 
-  bloco.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start'
-  });
+ const offsetTopo = 95; // ajuste conforme altura do cabeçalho
+
+const y = bloco.getBoundingClientRect().top + window.scrollY - offsetTopo;
+
+window.scrollTo({
+  top: y,
+  left: 0,
+  behavior: 'smooth'
+});
 
   bloco.classList.add('atalho-destaque');
 
