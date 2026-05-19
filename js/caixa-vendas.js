@@ -2182,7 +2182,7 @@ function irParaModalidadeCaixa(nomes){
 
   const bloco = label.closest('.sec-sep') || label;
 
- const offsetTopo = 95; // ajuste conforme altura do cabeçalho
+ const offsetTopo = 105; // ajuste conforme altura do cabeçalho
 
 const y = bloco.getBoundingClientRect().top + window.scrollY - offsetTopo;
 
