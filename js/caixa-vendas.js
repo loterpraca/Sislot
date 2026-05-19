@@ -1406,7 +1406,31 @@ function calcTotalCaixa(){
 }
 
 window.calcTotalCaixa = calcTotalCaixa;
+function capturarScrollBoloesCaixa(){
+  const lista = $('boloesCaixaLista');
 
+  return {
+    windowY: window.scrollY || 0,
+    listaTop: lista ? lista.scrollTop : 0
+  };
+}
+
+function restaurarScrollBoloesCaixa(pos){
+  if (!pos) return;
+
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: pos.windowY || 0,
+      left: 0,
+      behavior: 'auto'
+    });
+
+    const lista = $('boloesCaixaLista');
+    if (lista) {
+      lista.scrollTop = pos.listaTop || 0;
+    }
+  });
+}
 async function registrarVendaBolaoCaixa(){
   if (!bolaoSelecionadoCaixa) {
     setStatusCaixa('Selecione um bolão.', 'err');
@@ -1460,22 +1484,26 @@ async function registrarVendaBolaoCaixa(){
     return;
   }
 
-  if ($('inputQtdCaixa')) $('inputQtdCaixa').value = '1';
+const posScroll = capturarScrollBoloesCaixa();
 
-  fecharPainelVendaCaixa();
-  calcTotalCaixa();
+if ($('inputQtdCaixa')) $('inputQtdCaixa').value = '1';
 
-  await buscarBoloesCaixa();
+fecharPainelVendaCaixa();
+calcTotalCaixa();
 
-  if ($('tab-consolidado')?.classList.contains('active')) {
-    await carregarResumoMensalCaixa();
-    await carregarConsolidadoCaixa();
-  }
+await buscarBoloesCaixa();
 
-  setStatusCaixa(
-    `✓ Venda registrada no caixa ${lojaCaixaAtiva.loteria_nome}.`,
-    'ok'
-  );
+restaurarScrollBoloesCaixa(posScroll);
+
+if ($('tab-consolidado')?.classList.contains('active')) {
+  await carregarResumoMensalCaixa();
+  await carregarConsolidadoCaixa();
+}
+
+setStatusCaixa(
+  `✓ Venda registrada no caixa ${lojaCaixaAtiva.loteria_nome}.`,
+  'ok'
+);
 }
 
 window.registrarVendaBolaoCaixa = registrarVendaBolaoCaixa;
