@@ -2898,3 +2898,23 @@ body.app-picker-open{
     padding:2px 5px;
   }
 }
+.sec-sep.atalho-destaque {
+  animation: destaqueAtalhoModalidade .9s ease;
+}
+
+@keyframes destaqueAtalhoModalidade {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  35% {
+    transform: scale(1.015);
+    filter: brightness(1.45);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
