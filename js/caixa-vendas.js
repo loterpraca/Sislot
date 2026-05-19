@@ -1781,7 +1781,7 @@ async function carregarConsolidadoCaixa(){
       .eq('data_referencia', dataRef)
       .order('modalidade', { ascending: true })
       .order('valor_cota', { ascending: true })
-      .order('concurso', { ascending: true })
+      .order('concurso', { ascending: true }),
 
     sb
       .from('view_caixa_vendas_federal_grupo')
@@ -2134,7 +2134,7 @@ const ATALHOS_MODALIDADES_CAIXA = {
   d: ['Dupla Sena'],
   s: ['Super Sete', 'Supersete'],
   i: ['Dia de Sorte'],
-  n: ['+Milionária', 'Milionária', '+Milionaria', 'Milionaria'],
+  '+': ['+Milionária', 'Milionária', '+Milionaria', 'Milionaria'],
   t: ['Timemania']
 };
 
