@@ -2125,6 +2125,98 @@ function confirmar(titulo, corpo){
   });
 }
 
+let atalhosModalidadesCaixaAtivos = false;
+
+const ATALHOS_MODALIDADES_CAIXA = {
+  m: ['Mega Sena', 'Mega-Sena'],
+  q: ['Quina'],
+  l: ['Lotofácil', 'Lotofacil'],
+  d: ['Dupla Sena'],
+  s: ['Super Sete', 'Supersete'],
+  i: ['Dia de Sorte'],
+  n: ['+Milionária', 'Milionária', '+Milionaria', 'Milionaria'],
+  t: ['Timemania']
+};
+
+function normalizarTextoAtalho(txt){
+  return String(txt || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[+\-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function focoEstaEmCampoDigitavel(){
+  const el = document.activeElement;
+  if (!el) return false;
+
+  const tag = String(el.tagName || '').toLowerCase();
+
+  return (
+    tag === 'input' ||
+    tag === 'textarea' ||
+    tag === 'select' ||
+    el.isContentEditable
+  );
+}
+
+function irParaModalidadeCaixa(nomes){
+  const lista = $('boloesCaixaLista');
+  if (!lista) return false;
+
+  const alvos = (nomes || []).map(normalizarTextoAtalho);
+
+  const labels = Array.from(lista.querySelectorAll('.sec-sep-label'));
+
+  const label = labels.find(el => {
+    const texto = normalizarTextoAtalho(el.textContent);
+    return alvos.some(nome => texto === nome || texto.includes(nome));
+  });
+
+  if (!label) {
+    setStatusCaixa?.(`Modalidade não encontrada nesta lista.`, 'info');
+    return false;
+  }
+
+  const bloco = label.closest('.sec-sep') || label;
+
+  bloco.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
+
+  bloco.classList.add('atalho-destaque');
+
+  setTimeout(() => {
+    bloco.classList.remove('atalho-destaque');
+  }, 900);
+
+  return true;
+}
+
+function bindAtalhosModalidadesCaixa(){
+  if (atalhosModalidadesCaixaAtivos) return;
+  atalhosModalidadesCaixaAtivos = true;
+
+  document.addEventListener('keydown', ev => {
+    if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+    if (focoEstaEmCampoDigitavel()) return;
+
+    const tecla = String(ev.key || '').toLowerCase();
+
+    const nomes = ATALHOS_MODALIDADES_CAIXA[tecla];
+    if (!nomes) return;
+
+    const abaBoloesAtiva = $('tab-boloes')?.classList.contains('active');
+    if (!abaBoloesAtiva) return;
+
+    ev.preventDefault();
+    irParaModalidadeCaixa(nomes);
+  });
+}
+
 // ── Eventos / Init ────────────────────────────────────────────────
 function bindEventos(){
   const btnLogout = $('btnLogout');
@@ -2315,6 +2407,7 @@ if (btnFecharProduto) {
       await carregarConsolidadoCaixa();
     };
   }
+  bindAtalhosModalidadesCaixa();
 }
 
 async function init(){
