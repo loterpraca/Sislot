@@ -1,4 +1,5 @@
 const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
+const utils = window.SISLOT_UTILS || {};
 
 // ── CORES disponíveis para bolões ────────────────────────────────
 const CORE_BOLAO = [
@@ -368,8 +369,10 @@ if (lojaWhatsappAtiva?.loteria_id) {
 }
 
 const { data:vendas, error } = await query
-  .order('modalidade')
-  .order('created_at');
+  .order('modalidade', { ascending: true })
+  .order('valor_cota', { ascending: true })
+  .order('concurso', { ascending: true })
+  .order('created_at', { ascending: true });
 
 if (error) {
   $('vendasContent').innerHTML = `
@@ -405,21 +408,62 @@ if (error) {
 
 // ── RENDER: por bolão ─────────────────────────────────────────────
 function renderVendasPorBolao(boloes,vendas){
-  const wrap=document.createElement('div');wrap.className='fade-in';
-  const grupos={};
-  boloes.forEach(b=>{if(!grupos[b.modalidade])grupos[b.modalidade]=[];grupos[b.modalidade].push(b)});
-  const mods=Object.keys(grupos).sort();
+ const wrap = document.createElement('div');
+wrap.className = 'fade-in';
 
-  mods.forEach((mod,mi)=>{
+const boloesOrdenacao = (boloes || []).map(b => ({
+  ...b,
+  loteria_origem_nome: b.loterias?.nome || ''
+}));
+
+let grupos = {};
+let mods = [];
+
+if (utils.agruparOrdenarPorCampos) {
+  const ordenado = utils.agruparOrdenarPorCampos(boloesOrdenacao, {
+    campoGrupo: 'modalidade',
+    campoPreco: 'valor_cota',
+    campoConcurso: 'concurso',
+    campoOrigem: 'loteria_origem_nome'
+  });
+
+  grupos = ordenado.grupos;
+  mods = ordenado.gruposOrdenados;
+} else {
+  boloesOrdenacao.forEach(b => {
+    if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
+    grupos[b.modalidade].push(b);
+  });
+
+  mods = Object.keys(grupos).sort((a, b) =>
+    String(a || '').localeCompare(String(b || ''), 'pt-BR')
+  );
+
+  mods.forEach(mod => {
+    grupos[mod].sort((a, b) => {
+      const precoA = Number(a.valor_cota || 0);
+      const precoB = Number(b.valor_cota || 0);
+
+      if (precoA !== precoB) return precoA - precoB;
+
+      const concursoA = Number(a.concurso || 0);
+      const concursoB = Number(b.concurso || 0);
+
+      if (concursoA !== concursoB) return concursoA - concursoB;
+
+      return String(a.loteria_origem_nome || '')
+        .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
+    });
+  });
+}
+
+mods.forEach((mod, mi) => {
     const sep=document.createElement('div');sep.className='sec-sep';
     if(mi>0)sep.style.marginTop='28px';
     sep.innerHTML=`<div class="sec-sep-label">${mod}</div><div class="sec-sep-line"></div><div class="sec-sep-count">${grupos[mod].length}</div>`;
     wrap.appendChild(sep);
 
-    grupos[mod].sort((a,b)=>{
-      if(a.loterias?.nome!==b.loterias?.nome)return(a.loterias?.nome||'')>(b.loterias?.nome||'')?1:-1;
-      return(a.valor_cota||0)-(b.valor_cota||0);
-    }).forEach(b=>{
+    (grupos[mod] || []).forEach(b => {
       const vb=vendas.filter(v=>v.bolao_id===b.id);
       const totalCotas=vb.reduce((s,v)=>s+(v.qtd_vendida||0),0);
       const totalVal=vb.reduce((s,v)=>s+(v.qtd_vendida||0)*(v.valor_cota||0),0);
@@ -755,27 +799,55 @@ function renderBoloesReg(boloes){
   const wrap = document.createElement('div');
   wrap.className = 'bolao-cards-grid';
 
-  const grupos = {};
-  boloes.forEach(b => {
+  let grupos = {};
+let gruposOrdenados = [];
+
+if (utils.agruparOrdenarPorCampos) {
+  const ordenado = utils.agruparOrdenarPorCampos(boloes || [], {
+    campoGrupo: 'modalidade',
+    campoPreco: 'valor_cota',
+    campoConcurso: 'concurso',
+    campoOrigem: 'loteria_origem_nome'
+  });
+
+  grupos = ordenado.grupos;
+  gruposOrdenados = ordenado.gruposOrdenados;
+} else {
+  (boloes || []).forEach(b => {
     if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
     grupos[b.modalidade].push(b);
   });
 
-  Object.keys(grupos).sort().forEach(mod => {
+  gruposOrdenados = Object.keys(grupos).sort((a, b) =>
+    String(a || '').localeCompare(String(b || ''), 'pt-BR')
+  );
+
+  gruposOrdenados.forEach(mod => {
+    grupos[mod].sort((a, b) => {
+      const precoA = Number(a.valor_cota || 0);
+      const precoB = Number(b.valor_cota || 0);
+
+      if (precoA !== precoB) return precoA - precoB;
+
+      const concursoA = Number(a.concurso || 0);
+      const concursoB = Number(b.concurso || 0);
+
+      if (concursoA !== concursoB) return concursoA - concursoB;
+
+      return String(a.loteria_origem_nome || '')
+        .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
+    });
+  });
+}
+
+gruposOrdenados.forEach(mod => {
     const sep = document.createElement('div');
     sep.className = 'sec-sep';
     sep.style.margin = '8px 0 6px';
     sep.innerHTML = `<div class="sec-sep-label">${mod}</div><div class="sec-sep-line"></div>`;
     wrap.appendChild(sep);
 
-    grupos[mod]
-      .sort((a,b) => {
-        if ((a.loteria_origem_nome || '') !== (b.loteria_origem_nome || '')) {
-          return (a.loteria_origem_nome || '').localeCompare(b.loteria_origem_nome || '');
-        }
-        return (a.valor_cota || 0) - (b.valor_cota || 0);
-      })
-      .forEach(b => {
+    (grupos[mod] || []).forEach(b => {
         const saldoContexto = getSaldoContextoBolao(b);
 
         const saldoPills = (b.saldos_lojas || []).map(s => {
@@ -1740,6 +1812,29 @@ if (filtConcurso) {
       fecharPicker();
     }
   });
+if (utils.bindAtalhosPorSecao) {
+  utils.bindAtalhosPorSecao({
+    namespace: 'whatsapp-vendas-boloes',
+    listaId: 'vendasContent',
+    offsetTopo: 105,
+    labelSelector: '.sec-sep-label',
+    blocoSelector: '.sec-sep',
+    ativoQuando: () =>
+      $('tab-vendas')?.classList.contains('active') &&
+      viewMode === 'bolao',
+    onNaoEncontrou: () => console.warn('Modalidade não encontrada na aba Vendas.')
+  });
 
+  utils.bindAtalhosPorSecao({
+    namespace: 'whatsapp-registrar-boloes',
+    listaId: 'boloesRegLista',
+    offsetTopo: 105,
+    labelSelector: '.sec-sep-label',
+    blocoSelector: '.sec-sep',
+    ativoQuando: () =>
+      $('tab-registrar')?.classList.contains('active'),
+    onNaoEncontrou: () => setStatusReg?.('Modalidade não encontrada nesta lista.', 'info')
+  });
+}
   init();
 });
