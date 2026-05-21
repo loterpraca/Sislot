@@ -415,6 +415,172 @@ function hojeSaoPauloISO() {
         }
     }
 
+        // =====================================================
+    // ORDENAÇÃO E ATALHOS POR SEÇÃO
+    // =====================================================
+
+    const atalhosModalidadesPadrao = {
+        m: ['Mega Sena', 'Mega-Sena'],
+        q: ['Quina'],
+        l: ['Lotofácil', 'Lotofacil'],
+        d: ['Dupla Sena'],
+        s: ['Super Sete', 'Supersete'],
+        i: ['Dia de Sorte'],
+        '+': ['+Milionária', 'Milionária', '+Milionaria', 'Milionaria'],
+        n: ['+Milionária', 'Milionária', '+Milionaria', 'Milionaria'],
+        t: ['Timemania']
+    };
+
+    function normalizarTexto(txt) {
+        return String(txt || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[+\-]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function campoDigitavelAtivo() {
+        const el = document.activeElement;
+        if (!el) return false;
+
+        const tag = String(el.tagName || '').toLowerCase();
+
+        return (
+            tag === 'input' ||
+            tag === 'textarea' ||
+            tag === 'select' ||
+            el.isContentEditable
+        );
+    }
+
+    function compararTexto(a, b) {
+        return String(a || '').localeCompare(String(b || ''), 'pt-BR');
+    }
+
+    function agruparOrdenarPorCampos(rows, config = {}) {
+        const campoGrupo = config.campoGrupo || 'modalidade';
+        const campoPreco = config.campoPreco || 'valor_cota';
+        const campoConcurso = config.campoConcurso || 'concurso';
+        const campoOrigem = config.campoOrigem || 'loteria_origem_nome';
+
+        const grupos = {};
+
+        (rows || []).forEach(item => {
+            const grupo = item[campoGrupo] || 'Outros';
+
+            if (!grupos[grupo]) grupos[grupo] = [];
+            grupos[grupo].push(item);
+        });
+
+        const gruposOrdenados = Object.keys(grupos)
+            .sort((a, b) => compararTexto(a, b));
+
+        gruposOrdenados.forEach(grupo => {
+            grupos[grupo].sort((a, b) => {
+                const precoA = Number(a[campoPreco] || 0);
+                const precoB = Number(b[campoPreco] || 0);
+
+                if (precoA !== precoB) return precoA - precoB;
+
+                const concursoA = Number(a[campoConcurso] || 0);
+                const concursoB = Number(b[campoConcurso] || 0);
+
+                if (concursoA !== concursoB) return concursoA - concursoB;
+
+                return compararTexto(a[campoOrigem], b[campoOrigem]);
+            });
+        });
+
+        return {
+            grupos,
+            gruposOrdenados
+        };
+    }
+
+    function irParaSecaoPorTexto(config = {}) {
+        const lista = document.getElementById(config.listaId);
+        if (!lista) return false;
+
+        const nomes = config.nomes || [];
+        const offsetTopo = Number(config.offsetTopo || 105);
+
+        const alvos = nomes.map(normalizarTexto);
+
+        const labels = Array.from(lista.querySelectorAll(
+            config.labelSelector || '.sec-sep-label'
+        ));
+
+        const label = labels.find(el => {
+            const texto = normalizarTexto(el.textContent);
+            return alvos.some(nome => texto === nome || texto.includes(nome));
+        });
+
+        if (!label) {
+            if (typeof config.onNaoEncontrou === 'function') {
+                config.onNaoEncontrou();
+            }
+
+            return false;
+        }
+
+        const bloco = label.closest(config.blocoSelector || '.sec-sep') || label;
+
+        const y = bloco.getBoundingClientRect().top + window.scrollY - offsetTopo;
+
+        window.scrollTo({
+            top: Math.max(0, y),
+            left: 0,
+            behavior: 'smooth'
+        });
+
+        bloco.classList.add(config.classeDestaque || 'atalho-destaque');
+
+        setTimeout(() => {
+            bloco.classList.remove(config.classeDestaque || 'atalho-destaque');
+        }, 900);
+
+        return true;
+    }
+
+    function bindAtalhosPorSecao(config = {}) {
+        const namespace = config.namespace || 'default';
+
+        window.__SISLOT_ATALHOS_BINDADOS__ = window.__SISLOT_ATALHOS_BINDADOS__ || {};
+
+        if (window.__SISLOT_ATALHOS_BINDADOS__[namespace]) return;
+
+        window.__SISLOT_ATALHOS_BINDADOS__[namespace] = true;
+
+        const atalhos = config.atalhos || atalhosModalidadesPadrao;
+
+        document.addEventListener('keydown', ev => {
+            if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+            if (campoDigitavelAtivo()) return;
+
+            const tecla = String(ev.key || '').toLowerCase();
+            const nomes = atalhos[tecla];
+
+            if (!nomes) return;
+
+            if (typeof config.ativoQuando === 'function') {
+                if (!config.ativoQuando()) return;
+            }
+
+            ev.preventDefault();
+
+            irParaSecaoPorTexto({
+                listaId: config.listaId,
+                nomes,
+                offsetTopo: config.offsetTopo || 105,
+                labelSelector: config.labelSelector || '.sec-sep-label',
+                blocoSelector: config.blocoSelector || '.sec-sep',
+                classeDestaque: config.classeDestaque || 'atalho-destaque',
+                onNaoEncontrou: config.onNaoEncontrou
+            });
+        });
+    }
     // =====================================================
     // EXPORT
     // =====================================================
@@ -424,7 +590,15 @@ function hojeSaoPauloISO() {
     setStatus, showStatus, hideStatus, setBtnLoading, showModal, showToast, updateClock, startClock,
     fillSelect,
     validarCPF, validarCNPJ, validarEmail,
-    apiRequest
+apiRequest,
+
+atalhosModalidadesPadrao,
+normalizarTexto,
+campoDigitavelAtivo,
+compararTexto,
+agruparOrdenarPorCampos,
+irParaSecaoPorTexto,
+bindAtalhosPorSecao
 };
 
     // Aliases para compatibilidade
