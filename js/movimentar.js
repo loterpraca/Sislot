@@ -211,22 +211,57 @@ function renderBoloes(boloes, posicoes, movs) {
 
     lista.innerHTML = '';
 
-    const grupos = {};
-    boloes.forEach(b => {
+    const boloesBaseOrdenacao = (boloes || []).map(b => ({
+    ...b,
+    loteria_origem_nome: b.loterias?.nome || ''
+}));
+
+let grupos = {};
+let gruposOrdenados = [];
+
+if (utils.agruparOrdenarPorCampos) {
+    const ordenado = utils.agruparOrdenarPorCampos(boloesBaseOrdenacao, {
+        campoGrupo: 'modalidade',
+        campoPreco: 'valor_cota',
+        campoConcurso: 'concurso',
+        campoOrigem: 'loteria_origem_nome'
+    });
+
+    grupos = ordenado.grupos;
+    gruposOrdenados = ordenado.gruposOrdenados;
+} else {
+    // Fallback caso o sislot-utils.js ainda não tenha sido atualizado
+    boloesBaseOrdenacao.forEach(b => {
         if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
         grupos[b.modalidade].push(b);
     });
 
-    const mods = Object.keys(grupos).sort();
-    let totalCards = 0;
+    gruposOrdenados = Object.keys(grupos).sort((a, b) =>
+        String(a || '').localeCompare(String(b || ''), 'pt-BR')
+    );
 
-    mods.forEach(mod => {
-        const listaMod = grupos[mod].sort((a, b) => {
-            const nA = a.loterias?.nome || '';
-            const nB = b.loterias?.nome || '';
-            if (nA !== nB) return nA < nB ? -1 : 1;
-            return (a.valor_cota || 0) - (b.valor_cota || 0);
+    gruposOrdenados.forEach(mod => {
+        grupos[mod].sort((a, b) => {
+            const precoA = Number(a.valor_cota || 0);
+            const precoB = Number(b.valor_cota || 0);
+
+            if (precoA !== precoB) return precoA - precoB;
+
+            const concursoA = Number(a.concurso || 0);
+            const concursoB = Number(b.concurso || 0);
+
+            if (concursoA !== concursoB) return concursoA - concursoB;
+
+            return String(a.loteria_origem_nome || '')
+                .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
         });
+    });
+}
+
+let totalCards = 0;
+
+gruposOrdenados.forEach(mod => {
+    const listaMod = grupos[mod] || [];
 
         const sep = document.createElement('div');
         sep.className = 'section-sep';
@@ -665,6 +700,17 @@ function bind() {
         });
         await doMovimentar(bolaoSelecionado, deltas);
     });
+    if (utils.bindAtalhosPorSecao) {
+    utils.bindAtalhosPorSecao({
+        namespace: 'movimentacao-cotas-boloes',
+        listaId: 'stLista',
+        offsetTopo: 105,
+        labelSelector: '.section-sep-label',
+        blocoSelector: '.section-sep',
+        ativoQuando: () => true,
+        onNaoEncontrou: () => setStatus('statusBar', 'Modalidade não encontrada nesta lista.', 'info')
+    });
+}
 }
 
 // =====================================================
