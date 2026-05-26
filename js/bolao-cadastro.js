@@ -60,6 +60,7 @@ let loteriaAtiva = null;
 let todasLojas = [];
 let lojaIdPorSlug = {};
 let SHORTCUTS = {};
+let ESPECIAIS = {};
 
 const CAMPOS_FORM = ['modalidade', 'concurso', 'dataInicial', 'dataConcurso', 'qtdJogos', 'qtdDezenas', 'valorCota', 'cotas'];
 const CAMPOS_MOV  = ['deltaBoulevard', 'deltaCentro', 'deltaLotobel', 'deltaSantaTereza', 'deltaViaBrasil'];
@@ -101,7 +102,8 @@ async function init() {
         return;
     }
 
-    await carregarModelos();
+   await carregarModelos();
+    await carregarEspeciais();
 
     aplicarTema(loteriaAtiva.loteria_slug);
     atualizarOrigemUI();
@@ -174,6 +176,50 @@ async function ajustarConcurso(delta) {
     } catch (e) {
         setStatus('status', e.message || 'Erro ao buscar concurso.', 'err', 'exclamation-circle');
     }
+}
+async function carregarEspeciais() {
+    const { data, error } = await sb
+        .from('modelos_boloes_especiais')
+        .select('modalidade, concurso, dt_inicial, dt_concurso')
+        .eq('ativo', true);
+
+    if (error) {
+        console.warn('Erro ao carregar modelos especiais:', error.message);
+        ESPECIAIS = {};
+        return;
+    }
+
+    ESPECIAIS = {};
+
+    (data || []).forEach(e => {
+        ESPECIAIS[e.modalidade] = {
+            concurso: e.concurso,
+            dataInicial: e.dt_inicial,
+            dataConcurso: e.dt_concurso,
+        };
+    });
+}
+function aplicarModeloEspecial(modalidade, force = false) {
+    const cfg = ESPECIAIS[modalidade];
+    if (!cfg) return false;
+
+    const concursoEl = $('concurso');
+    const dataInicialEl = $('dataInicial');
+    const dataConcursoEl = $('dataConcurso');
+
+    if (concursoEl && (force || !concursoEl.value)) {
+        concursoEl.value = cfg.concurso || '';
+    }
+
+    if (dataInicialEl && (force || !dataInicialEl.value)) {
+        dataInicialEl.value = cfg.dataInicial || '';
+    }
+
+    if (dataConcursoEl && (force || !dataConcursoEl.value)) {
+        dataConcursoEl.value = cfg.dataConcurso || '';
+    }
+
+    return true;
 }
 
 async function carregarModelos() {
@@ -341,6 +387,9 @@ function selecionarMod(modKey) {
     setActiveModBtn(modKey);
     renderChips(modKey);
     applyFederalUI();
+    if (aplicarModeloEspecial(modKey, true)) {
+    setStatus('status', `${modKey} selecionado: concurso e datas preenchidos automaticamente.`, 'ok', 'calendar-check');
+}
     saveDraft();
 }
 
@@ -405,6 +454,7 @@ function aplicarShortcut(modKey, sc) {
     if (valorCotaEl) valorCotaEl.value = fmtBR(sc.valor_cota);
     if (cotasEl) cotasEl.value = sc.qtd_cotas ?? '';
     applyFederalUI();
+    aplicarModeloEspecial(modKey, false);
     setStatus('status', 'Atalho aplicado: ' + sc.nome, 'ok', 'check-circle');
     saveDraft();
 }
@@ -1029,13 +1079,18 @@ function bind() {
         setStatus('status', 'Movimentação limpa.', 'muted', 'broom');
     });
 
-    if (modalidade) modalidade.addEventListener('change', () => {
+   if (modalidade) modalidade.addEventListener('change', () => {
     const m = modalidade.value;
+
     limparFormCompletoMantendoModalidade(m);
 
-    if (m) {
+    if (aplicarModeloEspecial(m, true)) {
+        setStatus('status', `${m} selecionado: concurso e datas preenchidos automaticamente.`, 'ok', 'calendar-check');
+    } else if (m) {
         setStatus('status', 'Modalidade alterada. Dados anteriores foram limpos.', 'muted', 'broom');
     }
+
+    saveDraft();
 });
 
     [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
@@ -1065,6 +1120,16 @@ if (btnSair) btnSair.addEventListener('click', async () => {
     localStorage.removeItem('sl_active_mod');
     await window.SISLOT_SECURITY.sair();
 });
+const modGrid = $('modGrid');
+
+if (modGrid) {
+    modGrid.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            e.preventDefault();
+            modGrid.scrollLeft += e.deltaY;
+        }
+    }, { passive: false });
+}
 }
 
 // Inicialização
