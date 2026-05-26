@@ -300,3 +300,55 @@ button:disabled{opacity:.4;cursor:not-allowed}
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
+/* =========================================================
+   QUICKBAR — SCROLL REAL DOS ÍCONES DE MODALIDADE
+   Corrige desktop sem mudar ordem dos ícones
+========================================================= */
+
+.quickbar {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.quickbar-grid {
+  width: 100%;
+  max-width: 100%;
+
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  padding: 4px 2px 10px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.quickbar-grid .qmod {
+  flex: 0 0 64px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+}
+
+.quickbar-grid::-webkit-scrollbar {
+  height: 8px;
+}
+
+.quickbar-grid::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.06);
+  border-radius: 999px;
+}
+
+.quickbar-grid::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.28);
+  border-radius: 999px;
+}
+
+.quickbar-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,.42);
+}
