@@ -108,11 +108,16 @@ async function init() {
     aplicarTema(loteriaAtiva.loteria_slug);
     atualizarOrigemUI();
     atualizarCamposMov();
-    renderQuickbar();
-    loadDraft();
-    applyFederalUI();
-    bind();
+   renderQuickbar();
+loadDraft();
 
+const modAtual = $('modalidade')?.value || '';
+if (modAtual) {
+    aplicarModeloEspecial(modAtual, false);
+}
+
+applyFederalUI();
+bind();
    }
 
 async function buscarUltimoConcurso(modalidade) {
@@ -377,7 +382,14 @@ function selecionarMod(modKey) {
 
     if (mudouModalidade) {
         limparFormCompletoMantendoModalidade(modKey);
-        setStatus('status', 'Modalidade alterada. Dados anteriores foram limpos.', 'muted', 'broom');
+
+        if (aplicarModeloEspecial(modKey, true)) {
+            setStatus('status', `${modKey} selecionado: concurso e datas preenchidos automaticamente.`, 'ok', 'calendar-check');
+        } else {
+            setStatus('status', 'Modalidade alterada. Dados anteriores foram limpos.', 'muted', 'broom');
+        }
+
+        saveDraft();
         return;
     }
 
@@ -387,12 +399,13 @@ function selecionarMod(modKey) {
     setActiveModBtn(modKey);
     renderChips(modKey);
     applyFederalUI();
+
     if (aplicarModeloEspecial(modKey, true)) {
-    setStatus('status', `${modKey} selecionado: concurso e datas preenchidos automaticamente.`, 'ok', 'calendar-check');
-}
+        setStatus('status', `${modKey} selecionado: concurso e datas preenchidos automaticamente.`, 'ok', 'calendar-check');
+    }
+
     saveDraft();
 }
-
 function setActiveModBtn(modKey) {
     document.querySelectorAll('.qmod').forEach(b =>
         b.classList.toggle('active', b.dataset.mod === modKey)
