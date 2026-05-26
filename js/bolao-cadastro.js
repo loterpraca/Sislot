@@ -209,32 +209,36 @@ async function carregarEspeciais() {
 
     console.log('ESPECIAIS carregados:', ESPECIAIS);
 }
-async function carregarEspeciais() {
-    const { data, error } = await sb
-        .from('modelos_boloes_especiais')
-        .select('modalidade, concurso, dt_inicial, dt_concurso, ativo')
-        .eq('ativo', true);
 
-    if (error) {
-        console.error('ERRO carregarEspeciais:', error);
-        setStatus('status', 'Erro ao carregar concursos especiais. Verifique RLS/permissão da tabela modelos_boloes_especiais.', 'err', 'exclamation-circle');
-        ESPECIAIS = {};
-        return;
-    }
+function aplicarModeloEspecial(modalidade, force = false) {
+    const chave = String(modalidade || '').trim();
+    const cfg = ESPECIAIS[chave];
 
-    ESPECIAIS = {};
-
-    (data || []).forEach(e => {
-        const modalidade = String(e.modalidade || '').trim();
-
-        ESPECIAIS[modalidade] = {
-            concurso: e.concurso,
-            dataInicial: e.dt_inicial,
-            dataConcurso: e.dt_concurso,
-        };
+    console.log('Aplicando modelo especial:', {
+        modalidade: chave,
+        force,
+        cfg,
+        ESPECIAIS
     });
 
-    console.log('ESPECIAIS carregados:', ESPECIAIS);
+    if (!cfg) return false;
+
+    const preencher = (id, valor) => {
+        const el = $(id);
+        if (!el) return;
+
+        if (force || !el.value) {
+            el.value = valor || '';
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    };
+
+    preencher('concurso', cfg.concurso);
+    preencher('dataInicial', cfg.dataInicial);
+    preencher('dataConcurso', cfg.dataConcurso);
+
+    return true;
 }
 
 async function carregarModelos() {
