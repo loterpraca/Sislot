@@ -185,11 +185,12 @@ async function ajustarConcurso(delta) {
 async function carregarEspeciais() {
     const { data, error } = await sb
         .from('modelos_boloes_especiais')
-        .select('modalidade, concurso, dt_inicial, dt_concurso')
+        .select('modalidade, concurso, dt_inicial, dt_concurso, ativo')
         .eq('ativo', true);
 
     if (error) {
-        console.warn('Erro ao carregar modelos especiais:', error.message);
+        console.error('ERRO carregarEspeciais:', error);
+        setStatus('status', 'Erro ao carregar concursos especiais. Verifique RLS/permissão da tabela modelos_boloes_especiais.', 'err', 'exclamation-circle');
         ESPECIAIS = {};
         return;
     }
@@ -197,34 +198,43 @@ async function carregarEspeciais() {
     ESPECIAIS = {};
 
     (data || []).forEach(e => {
-        ESPECIAIS[e.modalidade] = {
+        const modalidade = String(e.modalidade || '').trim();
+
+        ESPECIAIS[modalidade] = {
             concurso: e.concurso,
             dataInicial: e.dt_inicial,
             dataConcurso: e.dt_concurso,
         };
     });
+
+    console.log('ESPECIAIS carregados:', ESPECIAIS);
 }
-function aplicarModeloEspecial(modalidade, force = false) {
-    const cfg = ESPECIAIS[modalidade];
-    if (!cfg) return false;
+async function carregarEspeciais() {
+    const { data, error } = await sb
+        .from('modelos_boloes_especiais')
+        .select('modalidade, concurso, dt_inicial, dt_concurso, ativo')
+        .eq('ativo', true);
 
-    const concursoEl = $('concurso');
-    const dataInicialEl = $('dataInicial');
-    const dataConcursoEl = $('dataConcurso');
-
-    if (concursoEl && (force || !concursoEl.value)) {
-        concursoEl.value = cfg.concurso || '';
+    if (error) {
+        console.error('ERRO carregarEspeciais:', error);
+        setStatus('status', 'Erro ao carregar concursos especiais. Verifique RLS/permissão da tabela modelos_boloes_especiais.', 'err', 'exclamation-circle');
+        ESPECIAIS = {};
+        return;
     }
 
-    if (dataInicialEl && (force || !dataInicialEl.value)) {
-        dataInicialEl.value = cfg.dataInicial || '';
-    }
+    ESPECIAIS = {};
 
-    if (dataConcursoEl && (force || !dataConcursoEl.value)) {
-        dataConcursoEl.value = cfg.dataConcurso || '';
-    }
+    (data || []).forEach(e => {
+        const modalidade = String(e.modalidade || '').trim();
 
-    return true;
+        ESPECIAIS[modalidade] = {
+            concurso: e.concurso,
+            dataInicial: e.dt_inicial,
+            dataConcurso: e.dt_concurso,
+        };
+    });
+
+    console.log('ESPECIAIS carregados:', ESPECIAIS);
 }
 
 async function carregarModelos() {
