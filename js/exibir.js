@@ -611,28 +611,74 @@ function fecharModalBolao() {
   mostrarAvisoModal('');
   mostrarSucessoModal('');
 }
+function popularOrigemModal(bolao) {
+  const sel = $('bmOrigemInput');
+  if (!sel) return;
 
+  const origemAtualId = Number(
+    bolao.origem_loteria_id ||
+    bolao.loteria_id ||
+    bolao.loteria_origem_id ||
+    0
+  );
+
+  sel.innerHTML = '';
+
+  let origemExisteNaLista = false;
+
+  lojas.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = String(l.id);
+    opt.textContent = l.nome;
+
+    if (Number(l.id) === origemAtualId) {
+      origemExisteNaLista = true;
+    }
+
+    sel.appendChild(opt);
+  });
+
+  // Segurança: se a origem atual não estiver nas lojas permitidas,
+  // mantém ela visível para não salvar vazio.
+  if (origemAtualId && !origemExisteNaLista) {
+    const opt = document.createElement('option');
+    opt.value = String(origemAtualId);
+    opt.textContent = bolao.origem_nome || `Loja ${origemAtualId}`;
+    sel.prepend(opt);
+  }
+
+  sel.value = origemAtualId ? String(origemAtualId) : '';
+}
 function preencherModalBolao(bolao) {
   bolaoSelecionadoModal = bolao;
 
   $('bmTitulo').textContent = `${bolao.modalidade || 'Bolão'} — Concurso ${bolao.concurso || '—'}`;
-  $('bmOrigem').textContent = bolao.origem_nome || '—';
+
+  popularOrigemModal(bolao);
+
   $('bmCodigoLoterico').textContent = bolao.codigo_loterico || '—';
   $('bmStatus').textContent = bolao.status || '—';
   $('bmObservacao').textContent = bolao.observacao || 'Sem observação';
 
-  $('bmResumoAgregado').textContent = `Venda real ${fmtN(bolao.venda_real_total)} · Encalhe ${fmtN(bolao.encalhe_total)}`;
-  $('bmResumoFinanceiro').textContent = `Estoque líquido ${fmtN(bolao.estoque_liquido_total)} · V. contábil ${fmtN(bolao.venda_contabil_total)}`;
+  $('bmResumoAgregado').textContent =
+    `Venda real ${fmtN(bolao.venda_real_total)} · Encalhe ${fmtN(bolao.encalhe_total)}`;
+
+  $('bmResumoFinanceiro').textContent =
+    `Estoque líquido ${fmtN(bolao.estoque_liquido_total)} · V. contábil ${fmtN(bolao.venda_contabil_total)}`;
 
   $('bmModalidadeInput').value = bolao.modalidade || '';
   $('bmConcursoInput').value = bolao.concurso || '';
   $('bmDtInicialInput').value = fmtDateInput(bolao.dt_inicial);
   $('bmDtConcursoInput').value = fmtDateInput(bolao.dt_concurso);
-  $('bmValorCotaInput').value = bolao.valor_cota == null ? '' : Number(bolao.valor_cota).toFixed(2);
+
+  $('bmQtdJogosInput').value = bolao.qtd_jogos ?? 0;
+  $('bmQtdDezenasInput').value = bolao.qtd_dezenas ?? 0;
+
+  $('bmValorCotaInput').value =
+    bolao.valor_cota == null ? '' : Number(bolao.valor_cota).toFixed(2);
+
   $('bmQtdCotasInput').value = bolao.qtd_cotas_total ?? '';
 
-  $('bmQtdJogos').textContent = fmtN(bolao.qtd_jogos);
-  $('bmQtdDezenas').textContent = fmtN(bolao.qtd_dezenas);
   $('bmVendaReal').textContent = fmtN(bolao.venda_real_total);
   $('bmEncalheTotal').textContent = fmtN(bolao.encalhe_total);
   $('bmEstoqueLiquido').textContent = fmtN(bolao.estoque_liquido_total);
@@ -640,20 +686,33 @@ function preencherModalBolao(bolao) {
 
   mostrarAvisoModal('');
   mostrarSucessoModal('');
-  aplicarEstadoModal({ pode_editar_basico: true, pode_editar_valor: true, cancelado: String(bolao.status || '').toUpperCase() === 'CANCELADO' });
-}
 
+  aplicarEstadoModal({
+    pode_editar_basico: true,
+    pode_editar_valor: true,
+    pode_editar_qtd_cotas: true,
+    pode_editar_origem: true,
+    cancelado: String(bolao.status || '').toUpperCase() === 'CANCELADO'
+  });
+}
 function aplicarEstadoModal(permissao) {
   const podeBasico = !!permissao?.pode_editar_basico;
   const podeValor = !!permissao?.pode_editar_valor;
+  const podeQtdCotas = permissao?.pode_editar_qtd_cotas !== false && podeBasico;
+  const podeOrigem = !!permissao?.pode_editar_origem;
   const cancelado = !!permissao?.cancelado;
+
+  $('bmOrigemInput').disabled = !podeOrigem;
 
   $('bmModalidadeInput').disabled = !podeBasico;
   $('bmConcursoInput').disabled = !podeBasico;
   $('bmDtInicialInput').disabled = !podeBasico;
   $('bmDtConcursoInput').disabled = !podeBasico;
+  $('bmQtdJogosInput').disabled = !podeBasico;
+  $('bmQtdDezenasInput').disabled = !podeBasico;
+
   $('bmValorCotaInput').disabled = !podeValor;
-  $('bmQtdCotasInput').disabled = !podeValor;
+  $('bmQtdCotasInput').disabled = !podeQtdCotas;
 
   const btnSalvar = $('bmConfirmar');
   const btnDeletar = $('bmDeletar');
@@ -669,11 +728,26 @@ function aplicarEstadoModal(permissao) {
     btnDeletar.textContent = cancelado ? 'Bolão já cancelado' : 'Deletar bolão';
   }
 
-  if (!podeBasico) {
-    mostrarAvisoModal(permissao?.motivo || 'Este bolão não pode ser alterado.');
-  }
-}
+  const avisos = [];
 
+  if (permissao?.qtd_minima_cotas) {
+    avisos.push(`Qtd. mínima permitida: ${permissao.qtd_minima_cotas} cotas.`);
+  }
+
+  if (!podeOrigem && !cancelado) {
+    avisos.push('Origem bloqueada quando já existe venda, movimentação ou fechamento.');
+  }
+
+  if (!podeValor && !cancelado) {
+    avisos.push('Valor da cota bloqueado quando há acerto financeiro pago.');
+  }
+
+  if (!podeBasico) {
+    avisos.push(permissao?.motivo || 'Este bolão não pode ser alterado.');
+  }
+
+  mostrarAvisoModal(avisos.join(' '));
+}
 async function validarBolaoSelecionado() {
   if (!bolaoSelecionadoModal) return;
 
@@ -724,25 +798,38 @@ async function salvarBolaoSelecionado() {
 
     const payload = {
       p_bolao_id: Number(bolaoSelecionadoModal.bolao_id),
+
+      p_loteria_id: Number($('bmOrigemInput').value),
+
       p_modalidade: $('bmModalidadeInput').value.trim(),
       p_concurso: $('bmConcursoInput').value.trim(),
       p_dt_inicial: $('bmDtInicialInput').value,
       p_dt_concurso: $('bmDtConcursoInput').value,
+
+      p_qtd_jogos: Number($('bmQtdJogosInput').value),
+      p_qtd_dezenas: Number($('bmQtdDezenasInput').value),
+
       p_valor_cota: Number($('bmValorCotaInput').value),
       p_qtd_cotas_total: Number($('bmQtdCotasInput').value)
     };
 
     const { data, error } = await sb.rpc('rpc_editar_bolao', payload);
+
     if (error) throw error;
     if (!data?.ok) throw new Error(data?.motivo || 'Não foi possível salvar as alterações.');
 
     mostrarSucessoModal('Bolão atualizado com sucesso.');
+
     await exibir();
 
-    const bolaoAtualizado = boloesCache.find(b => Number(b.bolao_id) === Number(payload.p_bolao_id));
+    const bolaoAtualizado = boloesCache.find(
+      b => Number(b.bolao_id) === Number(payload.p_bolao_id)
+    );
+
     if (bolaoAtualizado) {
       preencherModalBolao(bolaoAtualizado);
       await validarBolaoSelecionado();
+
       const chk = document.querySelector(`.bolao-check[data-id="${payload.p_bolao_id}"]`);
       if (chk) chk.checked = true;
     }
@@ -753,7 +840,6 @@ async function salvarBolaoSelecionado() {
     setModalBusyState(false);
   }
 }
-
 async function deletarBolaoSelecionado() {
   if (!bolaoSelecionadoModal || modalBusy) return;
 
