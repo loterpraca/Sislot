@@ -1480,12 +1480,7 @@ body.modal-open { overflow: hidden; }
   .bm-grid .bm-item:nth-child(7) { order: 7; }
   .bm-grid .bm-item:nth-child(8) { order: 8; }
 
-  .bm-grid .bm-item:nth-child(9),
-  .bm-grid .bm-item:nth-child(10),
-  .bm-grid .bm-item:nth-child(11),
-  .bm-grid .bm-item:nth-child(12) {
-    display: none !important;
-  }
+
 
   .bolao-modal-actions {
     position: fixed;
