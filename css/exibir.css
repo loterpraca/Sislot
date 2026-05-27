@@ -1278,6 +1278,38 @@ body.modal-open { overflow: hidden; }
    Padrão smartphone: edição rápida e fluida
 ============================================================ */
 
+/* ============================================================
+   MODAL — EDIÇÃO COMPLETA DE BOLÕES
+============================================================ */
+
+.bm-select {
+  width: 100%;
+  height: 42px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border2);
+  background: var(--input-bg);
+  color: var(--text);
+  padding: 0 12px;
+  outline: none;
+  font: 500 13px var(--sans);
+}
+
+.bm-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,200,150,.12);
+}
+
+.bm-select:disabled {
+  background: rgba(255,255,255,.015);
+  color: var(--text3);
+  cursor: not-allowed;
+  border-color: var(--border);
+}
+
+/* ============================================================
+   MODAL MOBILE — 2 COLUNAS
+============================================================ */
+
 @media (max-width: 700px) {
 
   html,
@@ -1347,14 +1379,12 @@ body.modal-open { overflow: hidden; }
     padding: 10px 10px 106px;
   }
 
-  /* Alertas */
   .bm-alert {
     font-size: 12px;
     padding: 9px 10px;
     margin-bottom: 8px;
   }
 
-  /* Topo: deixar só ORIGEM em linha única */
   .bm-summary-grid {
     display: grid;
     grid-template-columns: 1fr !important;
@@ -1382,13 +1412,21 @@ body.modal-open { overflow: hidden; }
     line-height: 1.3;
   }
 
-  /* No smartphone: mostra apenas Origem no topo */
+  .bm-summary-card-origem {
+    grid-column: 1 / -1;
+  }
+
+  .bm-summary-card-origem .bm-select {
+    height: 40px;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
   .bm-summary-card:nth-child(2),
   .bm-summary-card:nth-child(3) {
     display: none !important;
   }
 
-  /* Grid principal em 2 colunas */
   .bm-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -1419,29 +1457,29 @@ body.modal-open { overflow: hidden; }
 
   .bm-item-edit input {
     height: 40px;
-    font-size: 16px; /* evita zoom automático no iPhone */
+    font-size: 16px;
     padding: 0 8px;
   }
 
-  /* Ordem visual no smartphone */
-
-  /* Modalidade | Concurso */
+  /* Novo HTML:
+     1 Modalidade
+     2 Concurso
+     3 Data inicial
+     4 Data concurso
+     5 Qtd jogos
+     6 Qtd dezenas
+     7 Valor cota
+     8 Qtd cotas
+  */
   .bm-grid .bm-item:nth-child(1) { order: 1; }
   .bm-grid .bm-item:nth-child(2) { order: 2; }
-
-  /* Data inicial | Data concurso */
   .bm-grid .bm-item:nth-child(3) { order: 3; }
   .bm-grid .bm-item:nth-child(4) { order: 4; }
+  .bm-grid .bm-item:nth-child(5) { order: 5; }
+  .bm-grid .bm-item:nth-child(6) { order: 6; }
+  .bm-grid .bm-item:nth-child(7) { order: 7; }
+  .bm-grid .bm-item:nth-child(8) { order: 8; }
 
-  /* Qtd jogos | Qtd dezenas */
-  .bm-grid .bm-item:nth-child(7) { order: 5; }
-  .bm-grid .bm-item:nth-child(8) { order: 6; }
-
-  /* Valor cota | Qtd cotas */
-  .bm-grid .bm-item:nth-child(5) { order: 7; }
-  .bm-grid .bm-item:nth-child(6) { order: 8; }
-
-  /* Esconde os campos de conferência para deixar a edição limpa */
   .bm-grid .bm-item:nth-child(9),
   .bm-grid .bm-item:nth-child(10),
   .bm-grid .bm-item:nth-child(11),
@@ -1449,7 +1487,6 @@ body.modal-open { overflow: hidden; }
     display: none !important;
   }
 
-  /* Rodapé fixo com ações */
   .bolao-modal-actions {
     position: fixed;
     left: 0;
@@ -1487,3 +1524,4 @@ body.modal-open { overflow: hidden; }
     order: 3;
   }
 }
+
