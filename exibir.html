@@ -190,22 +190,13 @@
       <div class="bm-alert bm-alert--success" id="bmSucesso" hidden></div>
 
       <!-- Sumário rápido -->
-      <div class="bm-summary-card bm-summary-card-origem">
-  <label for="bmOrigemInput">Origem</label>
-  <select id="bmOrigemInput" class="bm-select"></select>
-  <span id="bmCodigoLoterico">—</span>
+    <div class="bm-summary-grid bm-summary-grid-clean">
+  <div class="bm-summary-card bm-summary-card-origem">
+    <label for="bmOrigemInput">Origem</label>
+    <select id="bmOrigemInput" class="bm-select"></select>
+    <span id="bmCodigoLoterico">—</span>
+  </div>
 </div>
-        <div class="bm-summary-card">
-          <label>Status</label>
-          <strong id="bmStatus">—</strong>
-          <span id="bmObservacao">—</span>
-        </div>
-        <div class="bm-summary-card">
-          <label>Agregado</label>
-          <strong id="bmResumoAgregado">—</strong>
-          <span id="bmResumoFinanceiro">—</span>
-        </div>
-      </div>
 
       <!-- Formulário de edição + leitura -->
       <form id="bmForm">
@@ -214,7 +205,22 @@
           <!-- Campos editáveis -->
 <div class="bm-item bm-item-edit">
   <label for="bmModalidadeInput">Modalidade</label>
-  <input id="bmModalidadeInput" type="text"/>
+  <select id="bmModalidadeInput" class="bm-select">
+    <option value="">Selecione</option>
+    <option value="Mega Sena">Mega Sena</option>
+    <option value="Lotofácil">Lotofácil</option>
+    <option value="Quina">Quina</option>
+    <option value="Dupla Sena">Dupla Sena</option>
+    <option value="Dia de Sorte">Dia de Sorte</option>
+    <option value="Supersete">Supersete</option>
+    <option value="Milionária">Milionária</option>
+    <option value="Timemania">Timemania</option>
+    <option value="Loteca">Loteca</option>
+    <option value="Páscoa">Páscoa</option>
+    <option value="São João">São João</option>
+    <option value="Independência">Independência</option>
+    <option value="Virada">Virada</option>
+  </select>
 </div>
 
 <div class="bm-item bm-item-edit">
@@ -251,28 +257,6 @@
   <label for="bmQtdCotasInput">Qtd. de cotas</label>
   <input id="bmQtdCotasInput" type="number" step="1" min="1"/>
 </div>
-
-<!-- Campos de conferência -->
-<div class="bm-item">
-  <label>Venda real</label>
-  <div id="bmVendaReal">—</div>
-</div>
-
-<div class="bm-item">
-  <label>Encalhe total</label>
-  <div id="bmEncalheTotal">—</div>
-</div>
-
-<div class="bm-item">
-  <label>Estoque líquido</label>
-  <div id="bmEstoqueLiquido">—</div>
-</div>
-
-<div class="bm-item">
-  <label>Venda contábil</label>
-  <div id="bmVendaContabil">—</div>
-</div>
-    </div>
 
     <!-- Ações -->
     <div class="bolao-modal-actions">
