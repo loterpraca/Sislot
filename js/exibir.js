@@ -657,14 +657,6 @@ function preencherModalBolao(bolao) {
   popularOrigemModal(bolao);
 
   $('bmCodigoLoterico').textContent = bolao.codigo_loterico || '—';
-  $('bmStatus').textContent = bolao.status || '—';
-  $('bmObservacao').textContent = bolao.observacao || 'Sem observação';
-
-  $('bmResumoAgregado').textContent =
-    `Venda real ${fmtN(bolao.venda_real_total)} · Encalhe ${fmtN(bolao.encalhe_total)}`;
-
-  $('bmResumoFinanceiro').textContent =
-    `Estoque líquido ${fmtN(bolao.estoque_liquido_total)} · V. contábil ${fmtN(bolao.venda_contabil_total)}`;
 
   $('bmModalidadeInput').value = bolao.modalidade || '';
   $('bmConcursoInput').value = bolao.concurso || '';
@@ -678,11 +670,6 @@ function preencherModalBolao(bolao) {
     bolao.valor_cota == null ? '' : Number(bolao.valor_cota).toFixed(2);
 
   $('bmQtdCotasInput').value = bolao.qtd_cotas_total ?? '';
-
-  $('bmVendaReal').textContent = fmtN(bolao.venda_real_total);
-  $('bmEncalheTotal').textContent = fmtN(bolao.encalhe_total);
-  $('bmEstoqueLiquido').textContent = fmtN(bolao.estoque_liquido_total);
-  $('bmVendaContabil').textContent = fmtN(bolao.venda_contabil_total);
 
   mostrarAvisoModal('');
   mostrarSucessoModal('');
