@@ -1,0 +1,13 @@
+{
+  "name": "sislot-marketplace-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "monitor:marketplace": "node scripts/monitor-marketplace-caixa.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "playwright": "^1.52.0"
+  }
+}
