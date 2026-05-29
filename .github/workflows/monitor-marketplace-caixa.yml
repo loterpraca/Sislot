@@ -1,0 +1,42 @@
+name: Monitor Marketplace Caixa
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Instalar navegador Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Rodar monitor Marketplace Caixa
+        run: node scripts/monitor-marketplace-caixa.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MARKETPLACE_LOJAS_JSON: ${{ secrets.MARKETPLACE_LOJAS_JSON }}
+          ALERTA_COTAS_LIMITE: "2"
+          WHATSAPP_WEBHOOK_URL: ${{ secrets.WHATSAPP_WEBHOOK_URL }}
+          WHATSAPP_WEBHOOK_TOKEN: ${{ secrets.WHATSAPP_WEBHOOK_TOKEN }}
+
+      - name: Salvar print da execução
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prints-marketplace-caixa
+          path: print-marketplace-*.png
