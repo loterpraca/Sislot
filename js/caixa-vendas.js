@@ -384,15 +384,14 @@ async function alterarDataCaixa(deltaDias){
   dataCaixa = d;
 
   atualizarDatasCaixa();
-  await buscarBoloesCaixa();
+  await recarregarAbaCaixaAtiva();
 }
 
 async function setDataCaixaPorISO(iso){
   dataCaixa = dataFromISO(iso);
   atualizarDatasCaixa();
-  await buscarBoloesCaixa();
+  await recarregarAbaCaixaAtiva();
 }
-
 function getSaldoFederal(f){
   return Number(f?.estoque_atual || 0);
 }
@@ -2465,3 +2464,24 @@ async function init(){
 }
 
 document.addEventListener('DOMContentLoaded', init);
+async function recarregarAbaCaixaAtiva(){
+  if ($('tab-boloes')?.classList.contains('active')) {
+    await buscarBoloesCaixa();
+    return;
+  }
+
+  if ($('tab-federal')?.classList.contains('active')) {
+    await buscarFederaisCaixa();
+    return;
+  }
+
+  if ($('tab-produtos')?.classList.contains('active')) {
+    await buscarProdutosCaixa();
+    return;
+  }
+
+  if ($('tab-consolidado')?.classList.contains('active')) {
+    await carregarResumoMensalCaixa();
+    await carregarConsolidadoCaixa();
+  }
+}
