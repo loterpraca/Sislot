@@ -50,16 +50,20 @@ function aplicarFiltroLojaPrincipal() {
     select.value = principalId;
   }
 }
-  async function loadResumo() {
-    const { data, error } = await sb
-      .from('view_resumo_federal')
-      .select('*')
-      .order('dt_sorteio', { ascending: false })
-      .order('concurso', { ascending: false });
+ async function loadResumo() {
+  const { data, error } = await sb
+    .from('view_resumo_federal_operacional')
+    .select('*')
+    .order('dt_sorteio', { ascending: false })
+    .order('concurso', { ascending: false });
 
-    state.resumo = error ? [] : (data || []);
-  }
-
+  state.resumo = error ? [] : (data || []).map(r => ({
+    ...r,
+    saldo_final_exibicao: Number(r.saldo_operacional ?? r.saldo_final ?? r.estoque_atual ?? 0),
+    qtd_entrada_operacional: Number(r.qtd_entrada_operacional || 0),
+    qtd_saida_operacional: Number(r.qtd_saida_operacional || 0)
+  }));
+}
   async function loadDetalheLojas() {
   const { data, error } = await sb
     .from('view_detalhe_federal_lojas')
@@ -108,7 +112,7 @@ function aplicarFiltroLojaPrincipal() {
       <td class="mono">${r.qtd_dev_cx_externa ?? 0}</td>
       <td class="mono">${r.qtd_encalhe ?? 0}</td>
       <td class="mono">${r.qtd_apurada ?? 0}</td>
-      <td class="mono">${r.saldo_final ?? 0}</td>
+      <td class="mono">${r.saldo_operacional ?? 0}</td>
       <td>
         <div class="flex" style="flex-wrap:nowrap;gap:6px">
           <button class="btn-amber" data-action="detalhar" data-id="${r.federal_id}">Detalhar</button>
@@ -252,9 +256,11 @@ function aplicarFiltroLojaPrincipal() {
           <span class="pill">Venda externa ${resumo?.qtd_venda_externa ?? 0}</span>
           <span class="pill">Dev. externa ${resumo?.qtd_dev_cx_externa ?? 0}</span>
           <span class="pill">Encalhe ${resumo?.qtd_encalhe ?? 0}</span>
-          <span class="pill">Qtd apurada ${resumo?.qtd_apurada ?? 0}</span>
-          <span class="pill">Saldo final ${resumo?.saldo_final ?? 0}</span>
-          <span class="pill">Resultado ${fmtMoney(resumo?.resultado || 0)}</span>
+          <span class="pill">Entrada operacional ${resumo?.qtd_entrada_operacional ?? 0}</span>
+<span class="pill">Saída operacional ${resumo?.qtd_saida_operacional ?? 0}</span>
+<span class="pill">Qtd apurada ${resumo?.qtd_apurada ?? 0}</span>
+<span class="pill">Saldo final ${resumo?.saldo_final_exibicao ?? resumo?.saldo_operacional ?? resumo?.saldo_final ?? 0}</span>
+<span class="pill">Resultado ${fmtMoney(resumo?.resultado || 0)}</span>
         </div>
       </div>
 
