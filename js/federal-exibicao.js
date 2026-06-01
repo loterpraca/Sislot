@@ -112,7 +112,7 @@ function aplicarFiltroLojaPrincipal() {
       <td class="mono">${r.qtd_dev_cx_externa ?? 0}</td>
       <td class="mono">${r.qtd_encalhe ?? 0}</td>
       <td class="mono">${r.qtd_apurada ?? 0}</td>
-      <td class="mono">${r.saldo_operacional ?? 0}</td>
+     <td class="mono">${r.saldo_final_exibicao ?? 0}</td>
       <td>
         <div class="flex" style="flex-wrap:nowrap;gap:6px">
           <button class="btn-amber" data-action="detalhar" data-id="${r.federal_id}">Detalhar</button>
@@ -179,63 +179,47 @@ function aplicarFiltroLojaPrincipal() {
     state.lancFederalId = null;
   }
 
-  async function saveLancamento() {
-    try {
-      if (!state.lancFederalId) return;
+ async function saveLancamento() {
+  try {
+    if (!state.lancFederalId) return;
 
-      const qtdDev = Number($('lanc-qtd-dev').value || 0);
-      const qtdEnc = Number($('lanc-qtd-enc').value || 0);
-      const premio = Number($('lanc-vlr-premio').value || 0);
-      const obs = $('lanc-obs').value.trim() || null;
+    const qtdDev = Number($('lanc-qtd-dev').value || 0);
+    const qtdEnc = Number($('lanc-qtd-enc').value || 0);
+    const premio = Number($('lanc-vlr-premio').value || 0);
+    const obs = $('lanc-obs').value.trim() || null;
 
-      let r = await sb.from('federais').update({
-        qtd_devolvidas: qtdDev,
-        qtd_encalhe: qtdEnc,
-        updated_at: new Date().toISOString()
-      }).eq('id', state.lancFederalId);
-
-      if (r.error) throw r.error;
-
-      if (premio > 0) {
-        const busca = await sb
-          .from('federal_encalhe_premio')
-          .select('id')
-          .eq('federal_id', state.lancFederalId)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (busca.error) throw busca.error;
-
-        if (busca.data && busca.data.length) {
-          r = await sb.from('federal_encalhe_premio').update({
-            qtd_fracoes_premiadas: qtdEnc || 1,
-            valor_premio: premio,
-            observacao: obs,
-            data_registro: hojeSaoPauloISO()
-          }).eq('id', busca.data[0].id);
-
-          if (r.error) throw r.error;
-        } else {
-          r = await sb.from('federal_encalhe_premio').insert({
-  federal_id: state.lancFederalId,
-  qtd_fracoes_premiadas: qtdEnc || 1,
-  valor_premio: premio,
-  observacao: obs,
-  data_registro: hojeSaoPauloISO(),
-  criado_por: state.usuario?.id || null
-});
-
-          if (r.error) throw r.error;
-        }
-      }
-
-      showStatus('st-visao', 'Lançamento salvo.', 'ok');
-      closeLancamento();
-      await refresh();
-    } catch (e) {
-      showStatus('st-visao', e.message, 'err');
+    if (!Number.isFinite(qtdDev) || qtdDev < 0) {
+      throw new Error('Quantidade de devolução inválida.');
     }
+
+    if (!Number.isFinite(qtdEnc) || qtdEnc < 0) {
+      throw new Error('Quantidade de encalhe inválida.');
+    }
+
+    if (!Number.isFinite(premio) || premio < 0) {
+      throw new Error('Valor de prêmio inválido.');
+    }
+
+    const { data, error } = await sb.rpc('rpc_federal_salvar_lancamento_interno', {
+      p_federal_id: state.lancFederalId,
+      p_qtd_devolvidas: Math.trunc(qtdDev),
+      p_qtd_encalhe: Math.trunc(qtdEnc),
+      p_valor_premio: premio,
+      p_observacao: obs
+    });
+
+    if (error) throw error;
+
+    showStatus('st-visao', 'Lançamento salvo com validação de saldo.', 'ok');
+    closeLancamento();
+    await refresh();
+
+    console.log('[Federal lançamento salvo]', data);
+  } catch (e) {
+    showStatus('st-visao', e?.message || 'Erro ao salvar lançamento.', 'err');
+    console.error('[saveLancamento]', e);
   }
+}
 
   function openFederalDetail(federalId) {
   const resumo = state.resumo.find(x => String(x.federal_id) === String(federalId));
