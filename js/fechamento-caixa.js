@@ -386,7 +386,7 @@ async function avancarStep(para) {
 
         if (para === 2) {
             const dataRef = $('data-ref').value;
-            if (dataRef) await buscarFederaisSupabase(dataRef);
+            if (dataRef) await Supabase(dataRef);
         }
 
         if (para === 3) {
@@ -810,7 +810,7 @@ async function buscarFechamentoExistente() {
         preencherTela1(fech);
         await getCFOrThrow().carregarFechamentoExistente({ fechamentoId: fech.id });
         await carregarProdutos();
-        await buscarFederaisSupabase(fech.data_ref);
+        await Supabase(fech.data_ref);
         await carregarBoloes();
 
         toast('Fechamento carregado com sucesso.', true);
@@ -934,10 +934,10 @@ function federaisVisiveis() {
 
 function getSaldoFederal(item) { return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0); }
 
-async function buscarFederais() {
+async function () {
     const dataRef = $('data-ref').value;
     if (!dataRef) { alert('Defina a data do fechamento antes de buscar federais.'); return; }
-    await buscarFederaisSupabase(dataRef);
+    await Supabase(dataRef);
 }
 
 async function buscarFederaisSupabase(dataRef) {
@@ -946,8 +946,23 @@ async function buscarFederaisSupabase(dataRef) {
         $('fs-load-sub').textContent = 'Consultando federais disponíveis para esta loja...';
 
         const { data, error } = await sb
-            .from('view_resumo_federal')
-            .select(`federal_id,loteria_id,loja_origem,modalidade,concurso,dt_sorteio,valor_fracao,valor_custo,qtd_inicial,qtd_vendida_funcionarios,qtd_vendida_whatsapp,qtd_vendida_caixa,qtd_vendida_cambista_interno,qtd_venda_interna_total,estoque_atual,resultado`)
+            .from('view_posicao_federal_loja')
+            .select(`
+                federal_id,
+                loteria_id,
+                loja_nome,
+                modalidade,
+                concurso,
+                dt_sorteio,
+                valor_fracao,
+                valor_custo,
+                qtd_inicial,
+                qtd_entrada,
+                qtd_saida,
+                qtd_devolvidas,
+                qtd_encalhe,
+                estoque_atual
+            `)
             .eq('loteria_id', loteriaAtiva.id)
             .gte('dt_sorteio', dataRef)
             .order('dt_sorteio', { ascending: true })
@@ -958,20 +973,21 @@ async function buscarFederaisSupabase(dataRef) {
         const base = (data || []).map(f => ({
             federal_id: f.federal_id,
             loteriaId: Number(f.loteria_id),
-            lojaOrigem: f.loja_origem,
+            lojaOrigem: f.loja_nome,
             modalidade: f.modalidade,
             concurso: f.concurso,
             dtSorteio: f.dt_sorteio,
             valorUnit: Number(f.valor_fracao || 0),
             valorCusto: Number(f.valor_custo || 0),
             qtdInicial: Number(f.qtd_inicial || 0),
-            qtdVendidaFuncionarios: Number(f.qtd_vendida_funcionarios || 0),
-            qtdVendidaWhatsapp: Number(f.qtd_vendida_whatsapp || 0),
-            qtdVendidaCaixa: Number(f.qtd_vendida_caixa || 0),
-            qtdVendidaCambista: Number(f.qtd_vendida_cambista_interno || 0),
-            qtdVendaInternaTotal: Number(f.qtd_venda_interna_total || 0),
+
+            qtdEntradaOperacional: Number(f.qtd_entrada || 0),
+            qtdSaidaOperacional: Number(f.qtd_saida || 0),
+            qtdDevolvidas: Number(f.qtd_devolvidas || 0),
+            qtdEncalhe: Number(f.qtd_encalhe || 0),
+
             saldo_atual: Number(f.estoque_atual || 0),
-            resultado: Number(f.resultado || 0)
+            resultado: 0
         }));
 
         federais = aplicarContextoEdicaoFederais(base);
@@ -979,7 +995,10 @@ async function buscarFederaisSupabase(dataRef) {
 
         renderFed();
 
-        if (!federais.length) { setFS('fs-vazio'); return; }
+        if (!federais.length) {
+            setFS('fs-vazio');
+            return;
+        }
 
         setFS('fs-lista');
 
