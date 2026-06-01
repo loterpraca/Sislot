@@ -386,7 +386,7 @@ async function avancarStep(para) {
 
         if (para === 2) {
             const dataRef = $('data-ref').value;
-            if (dataRef) await Supabase(dataRef);
+            if (dataRef) await buscarFederaisSupabase(dataRef);
         }
 
         if (para === 3) {
@@ -810,7 +810,7 @@ async function buscarFechamentoExistente() {
         preencherTela1(fech);
         await getCFOrThrow().carregarFechamentoExistente({ fechamentoId: fech.id });
         await carregarProdutos();
-        await Supabase(fech.data_ref);
+        await buscarFederaisSupabase(fech.data_ref);
         await carregarBoloes();
 
         toast('Fechamento carregado com sucesso.', true);
@@ -934,12 +934,15 @@ function federaisVisiveis() {
 
 function getSaldoFederal(item) { return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0); }
 
-async function () {
+async function buscarFederais() {
     const dataRef = $('data-ref').value;
-    if (!dataRef) { alert('Defina a data do fechamento antes de buscar federais.'); return; }
-    await Supabase(dataRef);
-}
+    if (!dataRef) {
+        alert('Defina a data do fechamento antes de buscar federais.');
+        return;
+    }
 
+    await buscarFederaisSupabase(dataRef);
+}
 async function buscarFederaisSupabase(dataRef) {
     try {
         setFS('fs-loading');
