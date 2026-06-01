@@ -254,20 +254,35 @@
   }
 
   async function loadResumoFederal() {
-    const { data, error } = await sb
-      .from('view_resumo_federal')
-      .select('*')
-      .order('dt_sorteio', { ascending: true })
-      .order('concurso', { ascending: true });
+  const { data, error } = await sb
+    .from('view_posicao_federal_loja')
+    .select('*')
+    .order('dt_sorteio', { ascending: true })
+    .order('concurso', { ascending: true })
+    .order('loja_nome', { ascending: true });
 
-    if (error) {
-      showStatus('st-mov', error.message, 'err');
-      state.resumoFederal = [];
-      return;
-    }
-
-    state.resumoFederal = data || [];
+  if (error) {
+    showStatus('st-mov', error.message, 'err');
+    state.resumoFederal = [];
+    return;
   }
+
+  /*
+    Normalização para manter o restante da tela funcionando.
+    A tela antiga esperava loja_origem vindo da view_resumo_federal.
+    A view correta traz loja_nome.
+  */
+  state.resumoFederal = (data || []).map(r => ({
+    ...r,
+    loja_origem: r.loja_origem || r.loja_nome || '—',
+    qtd_inicial: Number(r.qtd_inicial || 0),
+    estoque_atual: Number(r.estoque_atual || 0),
+    qtd_entrada: Number(r.qtd_entrada || 0),
+    qtd_saida: Number(r.qtd_saida || 0),
+    qtd_devolvidas: Number(r.qtd_devolvidas || 0),
+    qtd_encalhe: Number(r.qtd_encalhe || 0)
+  }));
+}
 
   async function loadMovimentacoesResumo() {
     const { data, error } = await sb
