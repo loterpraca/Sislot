@@ -321,6 +321,7 @@
       .form-grid-apu { grid-template-columns: 1fr; }
       .apu-stats { grid-template-columns: 1fr 1fr; }
     }
+/* ── Checkbox pequeno ao lado da data ── */
 .date-label-check {
   display: inline-flex;
   align-items: center;
@@ -333,41 +334,53 @@
   height: 14px;
   margin: 0;
   cursor: pointer;
-  accent-color: #22c55e;
+  accent-color: var(--accent);
 }
 
+/* ── Filtros de concurso ── */
 .filter-input {
-  height: 38px;
-  min-width: 140px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  color: var(--text, #fff);
-  font-family: inherit;
-  font-size: 13px;
+  background: var(--blue-panel);
+  border: 1px solid var(--blue-border);
+  border-radius: 6px;
+  color: var(--text-bright);
+  padding: 7px 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  min-width: 150px;
+  height: 34px;
   outline: none;
 }
 
 .filter-input::placeholder {
-  color: rgba(255,255,255,.45);
+  color: var(--text-dim);
 }
 
 .filter-input:focus,
 .filter-select:focus {
-  border-color: rgba(59,130,246,.8);
-  box-shadow: 0 0 0 3px rgba(59,130,246,.18);
+  border-color: rgba(245,166,35,0.55);
+  box-shadow: 0 0 0 3px rgba(245,166,35,0.10);
 }
 
+.filter-input::-webkit-outer-spin-button,
+.filter-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.filter-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ── Botões de data desabilitados ── */
 .btn-date:disabled,
 .btn-hoje:disabled {
   opacity: .45;
   cursor: not-allowed;
 }
 
-@media (max-width: 780px) {
+@media (max-width: 600px) {
   .filter-input {
-    width: 100%;
     min-width: 100%;
+    width: 100%;
   }
 }
