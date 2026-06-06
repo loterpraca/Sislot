@@ -45,30 +45,68 @@
   </div>
 
   <div class="date-bar">
-    <div class="date-label">Data de referência</div>
-    <div class="date-stepper">
-      <button class="btn-date" id="btnDtPrev">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <div class="date-display" id="dateDisplay">—</div>
-      <button class="btn-date" id="btnDtNext">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-    </div>
-    <button class="btn-hoje" id="btnHoje">Hoje</button>
-
-    <select class="filter-select" id="selOrigem">
-      <option value="">Todas as origens</option>
-    </select>
-
-    <select class="filter-select" id="selPendencia">
-      <option value="TODOS">Todas</option>
-      <option value="SIM">Com pendência</option>
-      <option value="NAO">Sem pendência</option>
-    </select>
-
-    <div class="boloes-count" id="boloesCount"></div>
+  <div class="date-label date-label-check">
+    Data de referência
+    <input 
+      type="checkbox" 
+      id="chkUsarData" 
+      checked 
+      title="Marque para usar a data de referência no filtro"
+    >
   </div>
+
+  <div class="date-stepper">
+    <button class="btn-date" id="btnDtPrev">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+
+    <div class="date-display" id="dateDisplay">—</div>
+
+    <button class="btn-date" id="btnDtNext">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  </div>
+
+  <button class="btn-hoje" id="btnHoje">Hoje</button>
+
+  <select class="filter-select" id="selOrigem">
+    <option value="">Todas as origens</option>
+  </select>
+
+  <select class="filter-select" id="selModalidade">
+    <option value="">Todas as modalidades</option>
+  </select>
+
+  <input 
+    class="filter-input" 
+    type="number" 
+    id="inputConcursoIni" 
+    min="0" 
+    inputmode="numeric"
+    placeholder="Concurso inicial"
+  >
+
+  <input 
+    class="filter-input" 
+    type="number" 
+    id="inputConcursoFim" 
+    min="0" 
+    inputmode="numeric"
+    placeholder="Concurso final"
+  >
+
+  <select class="filter-select" id="selPendencia">
+    <option value="TODOS">Todas</option>
+    <option value="SIM">Com pendência</option>
+    <option value="NAO">Sem pendência</option>
+  </select>
+
+  <div class="boloes-count" id="boloesCount"></div>
+</div>
 
   <div class="list-area" id="listArea">
     <div id="stLoading" class="state-box">
