@@ -322,13 +322,13 @@ async function buscarBoloes() {
   $('stLista').style.display = 'none';
   $('boloesCount').innerHTML = '';
 
-  let q = sb.from('view_boloes_apuracao_marketplace')
-    .select('*')
-    .eq('status', 'ATIVO')
-    .order('modalidade')
-    .order('origem_nome')
-    .order('concurso');
-
+ let q = sb.from('view_boloes_apuracao_marketplace')
+  .select('*')
+  .eq('status', 'ATIVO')
+  .order('modalidade', { ascending: true })
+  .order('concurso', { ascending: true })
+  .order('valor_cota', { ascending: true });
+  .order('origem_nome', { ascending: true })
   q = aplicarFiltrosBase(q);
 
   const { data: boloes, error } = await q;
