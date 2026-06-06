@@ -436,12 +436,18 @@ function renderBoloes(boloes) {
 
   mods.forEach(mod => {
     const lst = grupos[mod].sort((a, b) => {
-      const nA = a.origem_nome || '';
-      const nB = b.origem_nome || '';
-      if (nA !== nB) return nA.localeCompare(nB, 'pt-BR');
-      return Number(a.valor_cota || 0) - Number(b.valor_cota || 0);
-    });
+  const cA = Number(a.concurso || 0);
+  const cB = Number(b.concurso || 0);
 
+  if (cA !== cB) return cA - cB;
+
+  const nA = a.origem_nome || '';
+  const nB = b.origem_nome || '';
+
+  if (nA !== nB) return nA.localeCompare(nB, 'pt-BR');
+
+  return Number(a.valor_cota || 0) - Number(b.valor_cota || 0);
+});
     const sep = document.createElement('div');
     sep.className = 'section-sep';
     sep.style.marginTop = total > 0 ? '20px' : '0';
