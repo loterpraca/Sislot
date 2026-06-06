@@ -327,8 +327,8 @@ async function buscarBoloes() {
   .eq('status', 'ATIVO')
   .order('modalidade', { ascending: true })
   .order('concurso', { ascending: true })
-  .order('valor_cota', { ascending: true });
-  .order('origem_nome', { ascending: true })
+  .order('valor_cota', { ascending: true })
+  .order('origem_nome', { ascending: true });
   q = aplicarFiltrosBase(q);
 
   const { data: boloes, error } = await q;
