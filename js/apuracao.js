@@ -6,6 +6,11 @@ let bolaoSel = null;
 let todosBoloes = [];
 let origemFiltro = '';
 let pendenciaFiltro = 'TODOS';
+let modalidadeFiltro = '';
+let concursoIniFiltro = null;
+let concursoFimFiltro = null;
+let usarDataReferencia = true;
+let filtroAtivoTimer = null;
 
 const $ = id => document.getElementById(id);
 
@@ -61,7 +66,93 @@ function numOrNull(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
+function lerFiltrosAvancados() {
+  modalidadeFiltro = $('selModalidade')?.value || '';
+  concursoIniFiltro = intOrNull($('inputConcursoIni')?.value);
+  concursoFimFiltro = intOrNull($('inputConcursoFim')?.value);
+  usarDataReferencia = $('chkUsarData') ? $('chkUsarData').checked : true;
+}
 
+function validarRangeConcurso() {
+  if (
+    concursoIniFiltro !== null &&
+    concursoFimFiltro !== null &&
+    concursoFimFiltro < concursoIniFiltro
+  ) {
+    setStatus('O concurso final não pode ser menor que o concurso inicial.', 'err');
+    return false;
+  }
+
+  return true;
+}
+
+function aplicarFiltrosBase(q, opts = {}) {
+  const {
+    usarFiltroData = true,
+    usarFiltroOrigem = true,
+    usarFiltroModalidade = true,
+    usarFiltroConcurso = true,
+    usarFiltroPendencia = true
+  } = opts;
+
+  const iso = isoDate(dataAtual);
+
+  if (usarFiltroData && usarDataReferencia) {
+    q = q
+      .lte('dt_inicial', iso)
+      .gte('dt_concurso', iso);
+  }
+
+  if (usarFiltroOrigem && origemFiltro) {
+    q = q.eq('origem_loteria_id', Number(origemFiltro));
+  }
+
+  if (usarFiltroModalidade && modalidadeFiltro) {
+    q = q.eq('modalidade', modalidadeFiltro);
+  }
+
+  if (usarFiltroConcurso) {
+    if (concursoIniFiltro !== null && concursoFimFiltro !== null) {
+      q = q.gte('concurso', concursoIniFiltro).lte('concurso', concursoFimFiltro);
+    } else if (concursoIniFiltro !== null) {
+      q = q.eq('concurso', concursoIniFiltro);
+    } else if (concursoFimFiltro !== null) {
+      q = q.lte('concurso', concursoFimFiltro);
+    }
+  }
+
+  if (usarFiltroPendencia) {
+    if (pendenciaFiltro === 'SIM') q = q.eq('pendencia_apuracao', true);
+    if (pendenciaFiltro === 'NAO') q = q.eq('pendencia_apuracao', false);
+  }
+
+  return q;
+}
+
+function atualizarEstadoFiltroData() {
+  const usandoData = $('chkUsarData') ? $('chkUsarData').checked : true;
+
+  $('btnDtPrev').disabled = !usandoData;
+  $('btnDtNext').disabled = !usandoData;
+  $('btnHoje').disabled = !usandoData;
+
+  $('dateDisplay').style.opacity = usandoData ? '1' : '.45';
+}
+
+function agendarFiltroAtivo(delay = 450) {
+  clearTimeout(filtroAtivoTimer);
+
+  filtroAtivoTimer = setTimeout(async () => {
+    lerFiltrosAvancados();
+
+    if (!validarRangeConcurso()) return;
+
+    fecharPanel();
+    await carregarOrigens();
+    await carregarModalidades();
+    await buscarBoloes();
+  }, delay);
+}
 function setStatus(msg, tipo='info') {
   const el = $('statusBar');
   el.textContent = msg;
@@ -81,33 +172,92 @@ setInterval(updateClock, 1000);
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = './login.html'; return; }
 
-  const { data: usr } = await sb.from('usuarios')
+  if (!session) {
+    location.href = './login.html';
+    return;
+  }
+
+  const { data: usr } = await sb
+    .from('usuarios')
     .select('id, nome, perfil, ativo, pode_logar')
     .eq('auth_user_id', session.user.id)
     .eq('ativo', true)
     .eq('pode_logar', true)
     .maybeSingle();
 
-  if (!usr) { location.href = './login.html'; return; }
+  if (!usr) {
+    location.href = './login.html';
+    return;
+  }
+
   usuario = usr;
 
-  $('btnLogout').onclick = async () => { await sb.auth.signOut(); location.href = './login.html'; };
+  $('btnLogout').onclick = async () => {
+    await sb.auth.signOut();
+    location.href = './login.html';
+  };
+
   $('selOrigem').addEventListener('change', async e => {
     origemFiltro = e.target.value || '';
+
     fecharPanel();
-    await buscarBoloes();
-  });
-  $('selPendencia').addEventListener('change', async e => {
-    pendenciaFiltro = e.target.value;
-    fecharPanel();
+
+    await carregarModalidades();
     await buscarBoloes();
   });
 
+  $('selPendencia').addEventListener('change', async e => {
+    pendenciaFiltro = e.target.value;
+
+    fecharPanel();
+
+    await buscarBoloes();
+  });
+
+  if ($('selModalidade')) {
+    $('selModalidade').addEventListener('change', async e => {
+      modalidadeFiltro = e.target.value || '';
+
+      fecharPanel();
+
+      await carregarOrigens();
+      await buscarBoloes();
+    });
+  }
+
+  if ($('chkUsarData')) {
+    $('chkUsarData').addEventListener('change', async e => {
+      usarDataReferencia = e.target.checked;
+
+      atualizarEstadoFiltroData();
+      fecharPanel();
+
+      await carregarOrigens();
+      await carregarModalidades();
+      await buscarBoloes();
+    });
+  }
+
+  if ($('inputConcursoIni')) {
+    $('inputConcursoIni').addEventListener('input', () => {
+      agendarFiltroAtivo(450);
+    });
+  }
+
+  if ($('inputConcursoFim')) {
+    $('inputConcursoFim').addEventListener('input', () => {
+      agendarFiltroAtivo(450);
+    });
+  }
+
   dataAtual = hojeSaoPauloDate();
+
   atualizarDateDisplay();
+  atualizarEstadoFiltroData();
+
   await carregarOrigens();
+  await carregarModalidades();
   await buscarBoloes();
 }
 
@@ -119,8 +269,10 @@ async function mudarData(delta) {
   dataAtual.setDate(dataAtual.getDate() + delta);
   atualizarDateDisplay();
   fecharPanel();
-  await carregarOrigens();
-  await buscarBoloes();
+ atualizarEstadoFiltroData();
+await carregarOrigens();
+await carregarModalidades();
+await buscarBoloes();
 }
 
 async function carregarOrigens() {
@@ -154,30 +306,38 @@ async function carregarOrigens() {
 }
 
 async function buscarBoloes() {
+  lerFiltrosAvancados();
+
+  if (!validarRangeConcurso()) {
+    $('stLoading').style.display = 'none';
+    $('stVazio').style.display = 'flex';
+    $('stLista').style.display = 'none';
+    $('boloesCount').innerHTML = '';
+    todosBoloes = [];
+    return;
+  }
+
   $('stLoading').style.display = 'flex';
   $('stVazio').style.display = 'none';
   $('stLista').style.display = 'none';
   $('boloesCount').innerHTML = '';
 
-  const iso = isoDate(dataAtual);
   let q = sb.from('view_boloes_apuracao_marketplace')
     .select('*')
     .eq('status', 'ATIVO')
-    .lte('dt_inicial', iso)
-    .gte('dt_concurso', iso)
     .order('modalidade')
     .order('origem_nome')
     .order('concurso');
 
-  if (origemFiltro) q = q.eq('origem_loteria_id', Number(origemFiltro));
-  if (pendenciaFiltro === 'SIM') q = q.eq('pendencia_apuracao', true);
-  if (pendenciaFiltro === 'NAO') q = q.eq('pendencia_apuracao', false);
+  q = aplicarFiltrosBase(q);
 
   const { data: boloes, error } = await q;
+
   $('stLoading').style.display = 'none';
 
   if (error || !boloes?.length) {
-    $('stVazioSub').textContent = `Nenhum bolão encontrado para ${fmtData(dataAtual)}.`;
+    const textoData = usarDataReferencia ? ` para ${fmtData(dataAtual)}.` : '.';
+    $('stVazioSub').textContent = `Nenhum bolão encontrado${textoData}`;
     $('stVazio').style.display = 'flex';
     todosBoloes = [];
     return;
@@ -187,6 +347,45 @@ async function buscarBoloes() {
   renderBoloes(boloes);
 }
 
+async function carregarModalidades() {
+  lerFiltrosAvancados();
+
+  let q = sb
+    .from('view_boloes_apuracao_marketplace')
+    .select('modalidade')
+    .eq('status', 'ATIVO');
+
+  q = aplicarFiltrosBase(q, {
+    usarFiltroData: true,
+    usarFiltroOrigem: true,
+    usarFiltroModalidade: false,
+    usarFiltroConcurso: false,
+    usarFiltroPendencia: false
+  });
+
+  const { data, error } = await q;
+  if (error) return;
+
+  const modalidades = [...new Set((data || [])
+    .map(r => r.modalidade)
+    .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const sel = $('selModalidade');
+  if (!sel) return;
+
+  const atual = modalidadeFiltro;
+
+  sel.innerHTML = '<option value="">Todas as modalidades</option>';
+
+  modalidades.forEach(mod => {
+    const op = document.createElement('option');
+    op.value = mod;
+    op.textContent = mod;
+    if (mod === atual) op.selected = true;
+    sel.appendChild(op);
+  });
+}
 function pendBadge(b) {
   return b.pendencia_apuracao
     ? '<span class="pend-badge pend">?</span>'
