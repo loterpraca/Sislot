@@ -1991,4 +1991,73 @@ body.app-picker-open{
     margin-left:auto;
   }
 }
+/* =========================================================
+   ABA VENDAS — ALINHAMENTO FIXO DAS TABELAS EXPANDIDAS
+========================================================= */
 
+.bolao-body .vendas-table{
+  table-layout:fixed;
+  width:100%;
+}
+
+.bolao-body .vendas-table th,
+.bolao-body .vendas-table td{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Coluna 1 — Cliente */
+.bolao-body .vendas-table th:nth-child(1),
+.bolao-body .vendas-table td:nth-child(1){
+  width:20%;
+}
+
+/* Coluna 2 — Origem */
+.bolao-body .vendas-table th:nth-child(2),
+.bolao-body .vendas-table td:nth-child(2){
+  width:12%;
+}
+
+/* Coluna 3 — Loja Vendedora */
+.bolao-body .vendas-table th:nth-child(3),
+.bolao-body .vendas-table td:nth-child(3){
+  width:15%;
+}
+
+/* Coluna 4 — Qtd */
+.bolao-body .vendas-table th:nth-child(4),
+.bolao-body .vendas-table td:nth-child(4){
+  width:6%;
+  text-align:center;
+}
+
+/* Coluna 5 — Valor */
+.bolao-body .vendas-table th:nth-child(5),
+.bolao-body .vendas-table td:nth-child(5){
+  width:10%;
+}
+
+/* Coluna 6 — Pagamento */
+.bolao-body .vendas-table th:nth-child(6),
+.bolao-body .vendas-table td:nth-child(6){
+  width:11%;
+}
+
+/* Coluna 7 — Conferência */
+.bolao-body .vendas-table th:nth-child(7),
+.bolao-body .vendas-table td:nth-child(7){
+  width:12%;
+}
+
+/* Coluna 8 — Separação */
+.bolao-body .vendas-table th:nth-child(8),
+.bolao-body .vendas-table td:nth-child(8){
+  width:11%;
+}
+
+/* Coluna 9 — Ações */
+.bolao-body .vendas-table th:nth-child(9),
+.bolao-body .vendas-table td:nth-child(9){
+  width:95px;
+}
