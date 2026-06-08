@@ -367,11 +367,75 @@ function alterarDataRegistro(deltaDias){
   return buscarBoloesReg();
 }
 
+function setKpiText(id, valor){
+  const el = $(id);
+  if (el) el.textContent = valor;
+}
+
+function zerarKpisVendas(){
+  setKpiText('kpiCotasDia', '0');
+  setKpiText('kpiVendaDia', 'R$ 0,00');
+  setKpiText('kpiCotasMes', '0');
+  setKpiText('kpiVendaMes', 'R$ 0,00');
+}
+
+async function carregarKpisVendas(){
+  if (!lojaWhatsappAtiva?.loteria_id) {
+    zerarKpisVendas();
+    return;
+  }
+
+  const ref = normalizaDataLocal(dataAtual);
+  const isoDia = isoDate(ref);
+
+  const inicioMes = new Date(ref.getFullYear(), ref.getMonth(), 1);
+  const isoInicioMes = isoDate(inicioMes);
+
+  let q = sb
+    .from('view_vendas_whatsapp')
+    .select('data_referencia,qtd_vendida,valor_cota')
+    .gte('data_referencia', isoInicioMes)
+    .lte('data_referencia', isoDia)
+    .eq('loteria_id', lojaWhatsappAtiva.loteria_id);
+
+  const { data, error } = await q;
+
+  if (error) {
+    console.warn('Erro ao carregar KPIs de vendas:', error.message);
+    zerarKpisVendas();
+    return;
+  }
+
+  const vendasMes = data || [];
+  const vendasDia = vendasMes.filter(v => String(v.data_referencia).slice(0, 10) === isoDia);
+
+  const cotasDia = vendasDia.reduce((s, v) => {
+    return s + Number(v.qtd_vendida || 0);
+  }, 0);
+
+  const vendaDia = vendasDia.reduce((s, v) => {
+    return s + Number(v.qtd_vendida || 0) * Number(v.valor_cota || 0);
+  }, 0);
+
+  const cotasMes = vendasMes.reduce((s, v) => {
+    return s + Number(v.qtd_vendida || 0);
+  }, 0);
+
+  const vendaMes = vendasMes.reduce((s, v) => {
+    return s + Number(v.qtd_vendida || 0) * Number(v.valor_cota || 0);
+  }, 0);
+
+  setKpiText('kpiCotasDia', cotasDia.toLocaleString('pt-BR'));
+  setKpiText('kpiVendaDia', fmtBRL(vendaDia));
+  setKpiText('kpiCotasMes', cotasMes.toLocaleString('pt-BR'));
+  setKpiText('kpiVendaMes', fmtBRL(vendaMes));
+}
+
 // ── VENDAS (aba principal) ────────────────────────────────────────
 async function carregarVendas(){
   $('vendasContent').innerHTML='<div class="state-box"><div class="spinner"></div><div class="state-title">Buscando…</div></div>';
   const iso=isoDate(dataAtual);
-
+  carregarKpisVendas();
   // Busca vendas da data (bolões vigentes com ao menos 1 venda)
  let query = sb.from('view_vendas_whatsapp')
   .select('*')
