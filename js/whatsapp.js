@@ -551,11 +551,21 @@ mods.forEach((mod, mi) => {
                 const nome=v.cliente_apelido?`${v.cliente_nome}<div class="td-sub">${v.cliente_apelido}</div>`:v.cliente_nome;
                 const vt=fmtBRL((v.qtd_vendida||0)*(v.valor_cota||0));
                 return`<tr>
-                  <td><div class="td-nome">${nome}</div></td>
-                  <td>
-                <div class="td-nome">${v.loteria_nome || lojaWhatsappAtiva?.loteria_nome || '—'}</div>
-                </td>
-                  <td class="td-mono">${v.qtd_vendida}</td>
+               <td><div class="td-nome">${nome}</div></td>
+
+<td>
+  <span class="wpp-tag amber">
+    ${v.origem_bolao_nome || v.loteria_origem_nome || b.loteria_origem_nome || '—'}
+  </span>
+</td>
+
+<td>
+  <span class="bolao-tag bolao-tag-loja">
+    ${v.loteria_nome || lojaWhatsappAtiva?.loteria_nome || '—'}
+  </span>
+</td>
+
+<td class="td-mono">${v.qtd_vendida}</td>
                   <td class="td-green">${vt}</td>
                   <td><button class="badge ${v.pago?'badge-pago':'badge-pendente'}" onclick="togglePago(${v.id},${v.pago},this)">${v.pago?'✓ Pago':'$ Pendente'}</button></td>
                   <td><button class="badge ${v.conferencia_enviada?'badge-conf-ok':'badge-conf-no'}" onclick="toggleConf(${v.id},${v.conferencia_enviada},this)">${v.conferencia_enviada?'✓ Enviada':'⏳ Pendente'}</button></td>
