@@ -391,15 +391,44 @@ if (error) {
   }
 
   // Monta lista de bolões únicos a partir das vendas
-  const boloesMap={};
-  vendas.forEach(v=>{
-    if(!boloesMap[v.bolao_id]) boloesMap[v.bolao_id]={
-      id:v.bolao_id, modalidade:v.modalidade, concurso:v.concurso,
-      valor_cota:v.valor_cota, qtd_jogos:v.qtd_jogos, qtd_dezenas:v.qtd_dezenas,
-      qtd_cotas_total:null, loteria_id:v.loteria_id,
-      loterias:{nome:v.loteria_nome, slug:v.loteria_slug}
+  const boloesMap = {};
+
+vendas.forEach(v => {
+  const origemNome =
+    v.origem_bolao_nome ||
+    v.loteria_origem_nome ||
+    v.origem_nome ||
+    '—';
+
+  const lojaVendedoraNome =
+    v.loteria_nome ||
+    lojaWhatsappAtiva?.loteria_nome ||
+    '—';
+
+  if (!boloesMap[v.bolao_id]) {
+    boloesMap[v.bolao_id] = {
+      id: v.bolao_id,
+      modalidade: v.modalidade,
+      concurso: v.concurso,
+      valor_cota: v.valor_cota,
+      qtd_jogos: v.qtd_jogos,
+      qtd_dezenas: v.qtd_dezenas,
+      qtd_cotas_total: v.qtd_cotas_total || null,
+      loteria_id: v.loteria_id,
+
+      // loja dona/origem real do bolão
+      loteria_origem_nome: origemNome,
+
+      // loja que vendeu pelo WhatsApp
+      loja_vendedora_nome: lojaVendedoraNome,
+
+      loterias: {
+        nome: lojaVendedoraNome,
+        slug: v.loteria_slug
+      }
     };
-  });
+  }
+});
   const boloes=Object.values(boloesMap);
 
   if(viewMode==='bolao') renderVendasPorBolao(boloes,vendas||[]);
@@ -413,7 +442,8 @@ wrap.className = 'fade-in';
 
 const boloesOrdenacao = (boloes || []).map(b => ({
   ...b,
-  loteria_origem_nome: b.loterias?.nome || ''
+  loteria_origem_nome: b.loteria_origem_nome || '—',
+  loja_vendedora_nome: b.loja_vendedora_nome || b.loterias?.nome || '—'
 }));
 
 let grupos = {};
@@ -483,7 +513,13 @@ mods.forEach((mod, mi) => {
             <div class="bolao-titulo">
               ${b.modalidade}
               <span class="bolao-tag">#${b.concurso}</span>
-              <span class="bolao-tag bolao-tag-loja">${b.loterias?.nome||'—'}</span>
+              <span class="bolao-tag bolao-tag-loja">
+            Origem: ${b.loteria_origem_nome || '—'}
+            </span>
+
+          <span class="bolao-tag bolao-tag-loja">
+          Loja Vendedora: ${b.loja_vendedora_nome || b.loterias?.nome || '—'}
+          </span>
               <span class="bolao-tag bolao-tag-val">${fmtBRL(b.valor_cota)}</span>
             </div>
             <div class="bolao-stats">
@@ -502,7 +538,7 @@ mods.forEach((mod, mi) => {
             ? '<div style="padding:16px 20px;font-size:12px;color:var(--text3)">Nenhuma venda registrada para este bolão nesta data.</div>'
             : `<table class="vendas-table">
               <thead><tr>
-                <th>Cliente</th><th>Qtd</th><th>Valor</th>
+                <th>Cliente</th><th>Loja Vendedora</th><th>Qtd</th><th>Valor</th>
                 <th>Pagamento</th><th>Conferência</th><th>Separação</th><th></th>
               </tr></thead>
               <tbody>${vb.map(v=>{
@@ -510,6 +546,9 @@ mods.forEach((mod, mi) => {
                 const vt=fmtBRL((v.qtd_vendida||0)*(v.valor_cota||0));
                 return`<tr>
                   <td><div class="td-nome">${nome}</div></td>
+                  <td>
+                <div class="td-nome">${v.loteria_nome || lojaWhatsappAtiva?.loteria_nome || '—'}</div>
+                </td>
                   <td class="td-mono">${v.qtd_vendida}</td>
                   <td class="td-green">${vt}</td>
                   <td><button class="badge ${v.pago?'badge-pago':'badge-pendente'}" onclick="togglePago(${v.id},${v.pago},this)">${v.pago?'✓ Pago':'$ Pendente'}</button></td>
@@ -573,13 +612,24 @@ function renderVendasPorCliente(boloes,vendas){
       </div>
       <div class="bolao-body" style="display:none">
         <table class="vendas-table">
-          <thead><tr><th>Bolão</th><th>Loja</th><th>Qtd</th><th>Valor</th><th>Pagamento</th><th>Conferência</th><th>Separação</th><th></th></tr></thead>
+          <thead><tr>
+  <th>Bolão</th>
+  <th>Origem</th>
+  <th>Loja Vendedora</th>
+  <th>Qtd</th>
+  <th>Valor</th>
+  <th>Pagamento</th>
+  <th>Conferência</th>
+  <th>Separação</th>
+  <th></th>
+</tr></thead>
           <tbody>${cli.vendas.map(v=>{
             const vt=fmtBRL((v.qtd_vendida||0)*(v.valor_cota||0));
             const cor=getCorBolao(v.bolao_id);
             return`<tr>
               <td><div style="display:flex;align-items:center;gap:7px"><div style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0"></div><div class="td-nome">${v.modalidade} #${v.concurso}</div></div></td>
-              <td>${v.loteria_nome}</td>
+             <td>${v.origem_bolao_nome || v.loteria_origem_nome || '—'}</td>
+            <td>${v.loteria_nome || '—'}</td>
               <td class="td-mono">${v.qtd_vendida}</td>
               <td class="td-green">${vt}</td>
               <td><button class="badge ${v.pago?'badge-pago':'badge-pendente'}" onclick="togglePago(${v.id},${v.pago})">${v.pago?'✓ Pago':'$ Pend.'}</button></td>
