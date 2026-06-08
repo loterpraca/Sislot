@@ -245,6 +245,20 @@ function saveCoresBolao(){try{localStorage.setItem('sl_cores_bolao',JSON.stringi
 function getCorBolao(id){return coresBolao[id]||'#3d5a8a'}
 function setCorBolao(id,cor){coresBolao[id]=cor;saveCoresBolao()}
 
+function atualizarKpisVendas(vendasDia = [], vendasMes = []){
+  const cotasDia = vendasDia.reduce((s,v) => s + Number(v.qtd_vendida || 0), 0);
+  const vendaDia = vendasDia.reduce((s,v) => s + (Number(v.qtd_vendida || 0) * Number(v.valor_cota || 0)), 0);
+
+  const cotasMes = vendasMes.reduce((s,v) => s + Number(v.qtd_vendida || 0), 0);
+  const vendaMes = vendasMes.reduce((s,v) => s + (Number(v.qtd_vendida || 0) * Number(v.valor_cota || 0)), 0);
+
+  if ($('kpiCotasDia')) $('kpiCotasDia').textContent = cotasDia.toLocaleString('pt-BR');
+  if ($('kpiVendaDia')) $('kpiVendaDia').textContent = fmtBRL(vendaDia);
+
+  if ($('kpiCotasMes')) $('kpiCotasMes').textContent = cotasMes.toLocaleString('pt-BR');
+  if ($('kpiVendaMes')) $('kpiVendaMes').textContent = fmtBRL(vendaMes);
+}
+
 // ── TABS ──────────────────────────────────────────────────────────
 async function switchTab(id){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
