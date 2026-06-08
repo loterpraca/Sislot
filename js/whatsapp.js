@@ -513,13 +513,12 @@ mods.forEach((mod, mi) => {
             <div class="bolao-titulo">
               ${b.modalidade}
               <span class="bolao-tag">#${b.concurso}</span>
-              <span class="bolao-tag bolao-tag-loja">
-            Origem: ${b.loteria_origem_nome || '—'}
-            </span>
-
-          <span class="bolao-tag bolao-tag-loja">
-          Loja Vendedora: ${b.loja_vendedora_nome || b.loterias?.nome || '—'}
+             <span class="bolao-tag bolao-tag-origem">
+            ${b.loteria_origem_nome || '—'}
           </span>
+          <span class="bolao-tag bolao-tag-vendedora">
+        Loja Vendedora: ${b.loja_vendedora_nome || b.loterias?.nome || '—'}
+        </span>
               <span class="bolao-tag bolao-tag-val">${fmtBRL(b.valor_cota)}</span>
             </div>
             <div class="bolao-stats">
@@ -726,7 +725,7 @@ function renderResumoBolaoSelecionado(b){
   $('wppSelectedTitle').textContent = `${b.modalidade} — Concurso ${b.concurso}`;
 
   $('wppSelectedTags').innerHTML = `
-    <span class="wpp-tag amber">Origem: ${b.loteria_origem_nome || '—'}</span>
+    <span class="wpp-tag amber">${b.loteria_origem_nome || '—'}</span>
     <span class="wpp-tag accent">WhatsApp: ${lojaWhatsappAtiva?.loteria_nome || '—'}</span>
     <span class="wpp-tag">${b.qtd_jogos} jogos</span>
     <span class="wpp-tag">${b.qtd_dezenas} dezenas</span>
