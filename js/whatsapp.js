@@ -536,10 +536,17 @@ mods.forEach((mod, mi) => {
           ${vb.length===0
             ? '<div style="padding:16px 20px;font-size:12px;color:var(--text3)">Nenhuma venda registrada para este bolão nesta data.</div>'
             : `<table class="vendas-table">
-              <thead><tr>
-                <th>Cliente</th><th>Loja Vendedora</th><th>Qtd</th><th>Valor</th>
-                <th>Pagamento</th><th>Conferência</th><th>Separação</th><th></th>
-              </tr></thead>
+            <thead><tr>
+              <th>Cliente</th>
+              <th>Origem</th>
+              <th>Loja Vendedora</th>
+              <th>Qtd</th>
+              <th>Valor</th>
+              <th>Pagamento</th>
+              <th>Conferência</th>
+              <th>Separação</th>
+              <th></th>
+            </tr></thead>
               <tbody>${vb.map(v=>{
                 const nome=v.cliente_apelido?`${v.cliente_nome}<div class="td-sub">${v.cliente_apelido}</div>`:v.cliente_nome;
                 const vt=fmtBRL((v.qtd_vendida||0)*(v.valor_cota||0));
