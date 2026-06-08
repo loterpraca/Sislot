@@ -513,7 +513,7 @@ mods.forEach((mod, mi) => {
             <div class="bolao-titulo">
               ${b.modalidade}
               <span class="bolao-tag">#${b.concurso}</span>
-             <span class="bolao-tag bolao-tag-origem">
+             <span class="wpp-tag amber">
             ${b.loteria_origem_nome || '—'}
           </span>
           <span class="bolao-tag bolao-tag-vendedora">
