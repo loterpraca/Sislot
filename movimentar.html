@@ -48,7 +48,10 @@
 
   <!-- ── Barra de data (sem o contador, que foi para o header) ── -->
   <div class="date-bar">
-    <div class="date-label">Data Ref</div>
+    <label class="date-label date-label-check">
+  <input id="chkUsarData" type="checkbox" checked>
+    Data Ref
+    </label>
     <div class="date-stepper">
       <button class="btn-date" id="btnDtPrev" title="Dia anterior">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -73,32 +76,20 @@
 </div>
 
 <div class="filtros-avancados">
-    <select id="selOrigem" class="filtro-campo">
-        <option value="">Todas as origens</option>
-    </select>
+  <select id="selOrigem" class="filtro-campo">
+    <option value="">Origem</option>
+  </select>
 
-    <select id="selModalidade" class="filtro-campo">
-        <option value="">Todas as modalidades</option>
-    </select>
+  <select id="selModalidade" class="filtro-campo">
+    <option value="">Modalidade</option>
+  </select>
 
-    <input 
-        id="inputConcursoIni" 
-        class="filtro-campo"
-        type="number" 
-        placeholder="Concurso inicial"
-    >
-
-    <input 
-        id="inputConcursoFim" 
-        class="filtro-campo"
-        type="number" 
-        placeholder="Concurso final"
-    >
-
-    <label class="filtro-check">
-        <input id="chkUsarData" type="checkbox" checked>
-        Usar data de referência
-    </label>
+  <input 
+    id="inputConcurso" 
+    class="filtro-campo"
+    type="number" 
+    placeholder="Concurso"
+  >
 </div>
 
   <!-- ── Área principal de listagem ── -->
