@@ -302,23 +302,22 @@ function _mostrarOperacaoFiado() {
 
 
     function _atualizarSaldoSidebar() {
-        const saldo  = _saldoClienteAtual();
-        const val    = $('cf-saldo-sb-val');
-        const sub    = $('cf-saldo-sb-sub');
-        const box    = $('cf-saldo-sb');
-        if (val) {
-            val.textContent = _fmtBRL(saldo);
-            val.className   = 'cf-saldo-sb-val' + (saldo === 0 ? ' zerado' : '');
-        }
-        if (sub) sub.textContent = saldo > 0
-            ? `${_lancamentosDoCliente().length} lançamento(s) nesta sessão`
-            : 'Sem pendências';
-        if (box) {
-            box.style.borderColor = saldo > 0
-                ? 'rgba(245,166,35,0.2)'
-                : 'rgba(0,200,150,0.15)';
-        }
+    const saldo = _saldoClienteAtual();
+
+    const val = $('cf-saldo-sb-val');
+    if (val) {
+        val.textContent = _fmtBRL(saldo);
+        val.className = 'cf-saldo-sb-val' + (saldo === 0 ? ' zerado' : '');
     }
+
+    const sub = $('cf-saldo-sb-sub');
+    if (sub) {
+        const qtd = _lancamentosDoCliente().length;
+        sub.textContent = qtd > 0
+            ? `${qtd} lançamento${qtd > 1 ? 's' : ''} nesta sessão`
+            : 'Somente informativo';
+    }
+}
 
     // ─────────────────────────────────────────────────────────────────────
     // EXTRATO DA SESSÃO
@@ -1677,7 +1676,6 @@ function _refreshSessaoUI() {
     _renderLancamentosSessao();
 
     if (_clienteAtual) {
-        _renderExtrato();
         _atualizarSaldoSidebar();
     }
 }
@@ -1712,6 +1710,7 @@ function _rmItemLancado(lancId, itemIdx) {
     if (novo) novo.style.display = 'none';
 
     _carregarClientes();
+    _renderLancamentosSessao();
 }
     
     // ─────────────────────────────────────────────────────────────────────
