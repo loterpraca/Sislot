@@ -1678,3 +1678,91 @@
     margin-top: 1px;
   }
 }
+/* ═══════════════════════════════════════════════
+   LISTA DE CLIENTES — CORREÇÃO FINAL
+   Garante nome visível no desktop e mobile
+   ═══════════════════════════════════════════════ */
+
+#m-area-cliente .cf-fiado-clientes {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  max-height: 470px !important;
+  overflow-y: auto !important;
+}
+
+#m-area-cliente .cf-cliente-card-clean {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 44px !important;
+  height: auto !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  overflow: visible !important;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-mini-avatar {
+  display: none !important;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-cli-info {
+  display: block !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-cli-nome {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: var(--bright) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-cli-tel {
+  display: none !important;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-cli-saldo-clean {
+  display: block !important;
+  justify-self: end !important;
+  text-align: right !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  color: rgba(148, 163, 184, .62) !important;
+  white-space: nowrap !important;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-cli-saldo-clean.tem-saldo {
+  color: rgba(245, 166, 35, .72) !important;
+}
+
+@media (max-width: 700px) {
+  #m-area-cliente .cf-cliente-card-clean {
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+    min-height: 48px !important;
+  }
+
+  #m-area-cliente .cf-cliente-card-clean .cf-cli-nome {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    font-size: 14px !important;
+  }
+
+  #m-area-cliente .cf-cliente-card-clean .cf-cli-saldo-clean {
+    justify-self: end !important;
+    opacity: .65 !important;
+  }
+}
