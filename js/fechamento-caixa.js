@@ -203,12 +203,26 @@ async function init() {
 
         await definirLoteriaAtiva(inicial);
 
-       $('data-ref').value = hojeSaoPauloISO();
+        $('data-ref').value = hojeSaoPauloISO();
+        $('data-ref')?.classList.add('filled');
 
         await carregarProdutos();
-        buildRaspadinha();
+
+        $('data-ref')?.addEventListener('change', async () => {
+            await carregarProdutos();
+
+            if (stepAtual >= 2) {
+                const dataRef = $('data-ref')?.value;
+                if (dataRef) await buscarFederaisSupabase(dataRef);
+            }
+
+            if (stepAtual >= 3) {
+                await carregarBoloes();
+            }
+        });
 
         $('prod-filtro-tipo')?.addEventListener('change', carregarProdutos);
+
         $('toggle-produtos-todos')?.addEventListener('change', (e) => {
             mostrarProdutosSemEstoque = !!e.target.checked;
             renderProdutos();
@@ -217,22 +231,22 @@ async function init() {
         bindHeaderActions();
         bindStepClicks();
 
-        // ── Inicializa o módulo Área do Cliente ────────────────────────────
-  getCFOrThrow().init({
-    sb,
-    getLoteriaAtiva: () => loteriaAtiva,
-    getUsuario:      () => usuario,
-    getEstado:       () => ESTADO,
-    getBoloes:       () => allBoloes,
-    getFederais:     () => federais,
-    getProdutos:     () => produtosLista,
-    fmtBRL,
-    fmtData
-});
+        getCFOrThrow().init({
+            sb,
+            getLoteriaAtiva: () => loteriaAtiva,
+            getUsuario:      () => usuario,
+            getEstado:       () => ESTADO,
+            getBoloes:       () => allBoloes,
+            getFederais:     () => federais,
+            getProdutos:     () => produtosLista,
+            fmtBRL,
+            fmtData
+        });
 
         setFS('fs-inicial');
         setB3('b3-inicial');
         showStep(1);
+
     } catch (e) {
         console.error(e);
         alert('Erro ao iniciar: ' + (e.message || e));
@@ -386,7 +400,12 @@ async function avancarStep(para) {
 
         if (para === 2) {
             const dataRef = $('data-ref').value;
-            if (dataRef) await buscarFederaisSupabase(dataRef);
+
+            await carregarProdutos();
+
+            if (dataRef) {
+                await buscarFederaisSupabase(dataRef);
+            }
         }
 
         if (para === 3) {
