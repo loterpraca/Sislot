@@ -143,22 +143,19 @@ async function aplicarDataReferencia(novaData) {
     atualizarEstadoFiltroData();
     fecharPanel();
 
-    
     await buscarBoloes();
 }
 
-async function aplicarDataReferencia(novaData) {
-    dataAtual = new Date(
-        novaData.getFullYear(),
-        novaData.getMonth(),
-        novaData.getDate()
+async function moverDataReferencia(deltaDias) {
+    const d = new Date(
+        dataAtual.getFullYear(),
+        dataAtual.getMonth(),
+        dataAtual.getDate()
     );
 
-    atualizarDateDisplay();
-    atualizarEstadoFiltroData();
-    fecharPanel();
+    d.setDate(d.getDate() + deltaDias);
 
-    await buscarBoloes();
+    await aplicarDataReferencia(d);
 }
 
 // =====================================================
@@ -229,185 +226,81 @@ async function buscarBoloes() {
     const vazioEl   = $('stVazio');
     const listaEl   = $('stLista');
     const countEl   = $('boloesCount');
-    
+
     if (loadingEl) loadingEl.style.display = 'flex';
     if (vazioEl)   vazioEl.style.display   = 'none';
     if (listaEl)   listaEl.style.display   = 'none';
     if (countEl)   countEl.innerHTML       = '';
 
-    let q = sb
-        .from('boloes')
-        .select(`
-            id, modalidade, concurso, valor_cota, qtd_jogos, qtd_dezenas,
-            qtd_cotas_total, dt_inicial, dt_concurso, status,
-            loteria_id,
-            loterias(id, nome, slug)
-        `)
-        .eq('status', 'ATIVO')
-        .order('modalidade', { ascending: true })
-        .order('concurso', { ascending: true })
-        .order('valor_cota', { ascending: true })
-        .order('loteria_id', { ascending: true });
+    try {
+        let q = sb
+            .from('boloes')
+            .select(`
+                id, modalidade, concurso, valor_cota, qtd_jogos, qtd_dezenas,
+                qtd_cotas_total, dt_inicial, dt_concurso, status,
+                loteria_id,
+                loterias(id, nome, slug)
+            `)
+            .eq('status', 'ATIVO')
+            .order('modalidade', { ascending: true })
+            .order('concurso', { ascending: true })
+            .order('valor_cota', { ascending: true })
+            .order('loteria_id', { ascending: true });
 
-    q = aplicarFiltrosBase(q);
+        q = aplicarFiltrosBase(q);
 
-    const { data: boloes, error } = await q;
+        const { data: boloes, error } = await q;
 
-    if (loadingEl) loadingEl.style.display = 'none';
+        if (error) throw error;
 
-    if (error || !boloes || !boloes.length) {
-        if (vazioEl) {
-            const vazioSub = $('stVazioSub');
-            const textoData = usarDataReferencia
-                ? ` para ${formatarDataSegura(dataAtual)}.`
-                : '.';
+        if (!boloes || !boloes.length) {
+            if (vazioEl) {
+                const vazioSub = $('stVazioSub');
+                const textoData = usarDataReferencia
+                    ? ` para ${formatarDataSegura(dataAtual)}.`
+                    : '.';
 
-            if (vazioSub) {
-                vazioSub.textContent = `Nenhum bolão encontrado${textoData}`;
+                if (vazioSub) {
+                    vazioSub.textContent = `Nenhum bolão encontrado${textoData}`;
+                }
+
+                vazioEl.style.display = 'flex';
             }
 
-            vazioEl.style.display = 'flex';
+            return;
         }
 
-        if (countEl) countEl.innerHTML = '';
-        return;
-    }
+        const ids = boloes.map(b => b.id);
 
-    const ids = boloes.map(b => b.id);
+        const { data: posicoes, error: posError } = await sb
+            .from('view_posicao_bolao_lojas')
+            .select('*')
+            .in('bolao_id', ids);
 
-    const { data: posicoes } = await sb
-        .from('view_posicao_bolao_lojas')
-        .select('*')
-        .in('bolao_id', ids);
+        if (posError) throw posError;
 
-    const { data: movs } = await sb
-        .from('movimentacoes_cotas')
-        .select('bolao_id, loteria_origem, loteria_destino, qtd_cotas')
-        .in('bolao_id', ids)
-        .eq('status', 'ATIVO');
+        const { data: movs, error: movError } = await sb
+            .from('movimentacoes_cotas')
+            .select('bolao_id, loteria_origem, loteria_destino, qtd_cotas')
+            .in('bolao_id', ids)
+            .eq('status', 'ATIVO');
 
-    renderBoloes(boloes, posicoes || [], movs || []);
-}
+        if (movError) throw movError;
 
-function renderBoloes(boloes, posicoes, movs) {
-    const lista   = $('stLista');
-    const countEl = $('boloesCount');
-    if (!lista) return;
+        renderBoloes(boloes, posicoes || [], movs || []);
 
-    lista.innerHTML = '';
+    } catch (e) {
+        console.error('Erro ao buscar bolões:', e);
 
-    const boloesBaseOrdenacao = (boloes || []).map(b => ({
-    ...b,
-    loteria_origem_nome: b.loterias?.nome || ''
-}));
-
-let grupos = {};
-let gruposOrdenados = [];
-
-boloesBaseOrdenacao.forEach(b => {
-    const grupo = b.modalidade || 'Sem modalidade';
-
-    if (!grupos[grupo]) grupos[grupo] = [];
-    grupos[grupo].push(b);
-});
-
-gruposOrdenados = Object.keys(grupos).sort((a, b) =>
-    String(a || '').localeCompare(String(b || ''), 'pt-BR')
-);
-
-gruposOrdenados.forEach(mod => {
-    grupos[mod].sort((a, b) => {
-        const concursoA = Number(a.concurso || 0);
-        const concursoB = Number(b.concurso || 0);
-
-        // Concurso ASC
-        if (concursoA !== concursoB) return concursoA - concursoB;
-
-        const precoA = Number(a.valor_cota || 0);
-        const precoB = Number(b.valor_cota || 0);
-
-        // Dentro do mesmo concurso, menor valor primeiro
-        if (precoA !== precoB) return precoA - precoB;
-
-        return String(a.loteria_origem_nome || '')
-            .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
-    });
-});
-    
-let totalCards = 0;
-
-gruposOrdenados.forEach(mod => {
-    const listaMod = grupos[mod] || [];
-
-        const sep = document.createElement('div');
-        sep.className = 'section-sep';
-        sep.style.marginTop = totalCards > 0 ? '20px' : '0';
-        sep.innerHTML = `
-            <div class="section-sep-label">${mod}</div>
-            <div class="section-sep-line"></div>
-            <div class="section-sep-count">${listaMod.length}</div>
-        `;
-        lista.appendChild(sep);
-
-        const grid = document.createElement('div');
-        grid.className = 'boloes-grid';
-
-        listaMod.forEach((b, i) => {
-            const pos = posicoes.filter(p => p.bolao_id === b.id);
-            let saldoPills = '';
-            if (pos.length) {
-                pos.forEach(p => {
-                    const qtd = Number(p.qtd_cotas_posicao || 0);
-                    if (qtd > 0) {
-                        saldoPills += `<div class="saldo-pill">
-                            <span class="sp-loja">${p.loteria_nome || '—'}</span>
-                            <span class="sp-val">${qtd}</span>
-                        </div>`;
-                    }
-                });
+        if (vazioEl) {
+            const vazioSub = $('stVazioSub');
+            if (vazioSub) {
+                vazioSub.textContent = e.message || 'Erro ao buscar bolões.';
             }
-            if (!saldoPills) {
-                saldoPills = '<div class="saldo-pill"><span class="sp-loja">Sem distribuição</span></div>';
-            }
-
-            const card = document.createElement('div');
-            card.className = 'bolao-card';
-            card.dataset.id = b.id;
-            card.style.animationDelay = (i * 0.04) + 's';
-            card.innerHTML = `
-                <div class="bolao-main">
-                    <div class="bolao-header">
-                        <span class="bolao-modal">${b.modalidade}</span>
-                        <span class="bolao-concurso">#${b.concurso}</span>
-                        <span class="bolao-origem">${b.loterias?.nome || '—'}</span>
-                    </div>
-                    <div class="bolao-tags">
-                        <span class="btag">${b.qtd_jogos} jogos</span>
-                        <span class="btag">${b.qtd_dezenas} dez.</span>
-                        <span class="btag">${b.qtd_cotas_total} cotas</span>
-                        <span class="btag">${fmtBRL(b.valor_cota)}/cota</span>
-                    </div>
-                    <div class="bolao-saldos">${saldoPills}</div>
-                </div>
-                <div class="bolao-select-ind">
-                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="2 6 5 9 10 3"/>
-                    </svg>
-                </div>
-            `;
-            card.addEventListener('click', () => selecionarBolao(b, pos, movs));
-            grid.appendChild(card);
-            totalCards++;
-        });
-
-        lista.appendChild(grid);
-    });
-
-    lista.style.display = 'block';
-
-    // Atualiza contador no cabeçalho
-    if (countEl) {
-        countEl.innerHTML = `<span>${totalCards}</span> bolões vigentes`;
+            vazioEl.style.display = 'flex';
+        }
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
     }
 }
 
@@ -732,46 +625,64 @@ function bind() {
         });
     }
 
-    if (btnDtPrev) {
-        btnDtPrev.onclick = () => moverDataReferencia(-1);
-    }
+  if (btnDtPrev) {
+    btnDtPrev.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        await moverDataReferencia(-1);
+    });
+}
 
-    if (btnDtNext) {
-        btnDtNext.onclick = () => moverDataReferencia(1);
-    }
+if (btnDtNext) {
+    btnDtNext.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        await moverDataReferencia(1);
+    });
+}
 
-    if (btnHoje) {
-        btnHoje.onclick = async () => {
-            const hoje = new Date();
-            await aplicarDataReferencia(
-                new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
-            );
-        };
-    }
+if (btnHoje) {
+    btnHoje.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
 
-    // Abre o calendário ao clicar na data
-    if (dateDisplay && datePicker) {
-        dateDisplay.onclick = () => {
-            atualizarDateDisplay();
+        const hoje = new Date();
 
-            if (typeof datePicker.showPicker === 'function') {
-                datePicker.showPicker();
-            } else {
-                datePicker.click();
-            }
-        };
-    }
+        await aplicarDataReferencia(
+            new Date(
+                hoje.getFullYear(),
+                hoje.getMonth(),
+                hoje.getDate()
+            )
+        );
+    });
+}
 
-    // Aplica a data escolhida no calendário
-    if (datePicker) {
-        datePicker.onchange = async () => {
-            if (!datePicker.value) return;
+// Abre o calendário ao clicar na data
+if (dateDisplay && datePicker) {
+    dateDisplay.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
 
-            const [y, m, d] = datePicker.value.split('-').map(Number);
-            await aplicarDataReferencia(new Date(y, m - 1, d));
-        };
-    }
+        atualizarDateDisplay();
 
+        if (typeof datePicker.showPicker === 'function') {
+            datePicker.showPicker();
+        } else {
+            datePicker.click();
+        }
+    });
+}
+
+// Aplica a data escolhida no calendário
+if (datePicker) {
+    datePicker.addEventListener('change', async () => {
+        if (!datePicker.value) return;
+
+        const [y, m, d] = datePicker.value.split('-').map(Number);
+        await aplicarDataReferencia(new Date(y, m - 1, d));
+    });
+}
     // Liga/desliga o uso da data de referência
     if (chkUsarData) {
         chkUsarData.addEventListener('change', async e => {
