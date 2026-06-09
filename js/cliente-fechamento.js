@@ -234,17 +234,33 @@ window.CF = (() => {
     selecionarCliente(cli);
 }
 
-    function selecionarCliente(cli) {
-        _clienteAtual       = cli;
-        window._cfClienteAtual = cli;
-     _getCF().clienteSelecionado = {
-    id: cli.id,
-    nome: cli.nome || '',
-    telefone: cli.telefone || '',
-    documento: cli.documento || '',
-    observacao: cli.observacao || ''
+   function selecionarCliente(cli) {
+    _clienteAtual = cli;
+    window._cfClienteAtual = cli;
+
+    _getCF().clienteSelecionado = {
+        id: cli.id,
+        nome: cli.nome || '',
+        telefone: cli.telefone || '',
+        documento: cli.documento || '',
+        observacao: cli.observacao || ''
+    };
+
+    const ini = _iniciais(cli.nome);
+
+    const av = $('cf-avatar-iniciais');
+    if (av) av.textContent = ini;
+
+    const sbNome = $('cf-sb-nome');
+    if (sbNome) sbNome.textContent = cli.nome || 'Cliente';
+
+    const sbTel = $('cf-sb-tel');
+    if (sbTel) sbTel.textContent = cli.telefone || cli.documento || '—';
+
+    _atualizarSaldoSidebar();
     _mostrarOperacaoFiado();
-};
+}
+
 function _limparOperacaoFiado() {
     const vazio = $('cf-fiado-sem-cliente');
     const box = $('cf-fiado-com-cliente');
@@ -265,55 +281,6 @@ function _mostrarOperacaoFiado() {
     if (vazio) vazio.style.display = 'none';
     if (box) box.style.display = 'block';
 }
-        // ── Atualiza sidebar ───────────────────────────────────────────
-        const ini = _iniciais(cli.nome);
-        const av  = $('cf-avatar-iniciais');
-        if (av) av.textContent = ini;
-
-        const sbNome = $('cf-sb-nome');
-        if (sbNome) sbNome.textContent = cli.nome;
-
-        const sbTel = $('cf-sb-tel');
-        if (sbTel) sbTel.textContent = cli.telefone || cli.documento || '—';
-
-        const saldo    = _saldoClienteAtual();
-        const sbStatus = $('cf-sb-status');
-        if (sbStatus) {
-            sbStatus.textContent = saldo > 0 ? 'devendo' : 'em dia';
-            sbStatus.className   = 'cf-status-dot ' + (saldo > 0 ? 'devendo' : 'ativo');
-        }
-        _atualizarSaldoSidebar();
-
-        // ── Preenche header da view cliente ────────────────────────────
-        const ch = $('cf-cliente-header');
-        if (ch) ch.innerHTML = `
-            <div class="cf-cli-nome-lg">${cli.nome}</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">
-                ${cli.telefone || cli.documento || '—'}
-            </div>`;
-
-        const sp = $('cf-saldo-pendente');
-if (sp) {
-    if (saldo > 0) {
-        const qtdLan = _lancamentosDoCliente().length;
-        sp.innerHTML = `
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <polyline points="19 12 12 19 5 12"/>
-            </svg>
-            Devendo ${_fmtBRL(saldo)}
-            ${qtdLan > 0 ? `· ${qtdLan} lançamento${qtdLan > 1 ? 's' : ''} nesta sessão` : ''}
-        `;
-    } else {
-        sp.innerHTML = `<span style="color:var(--accent)">✓ Sem pendências</span>`;
-    }
-}
-
-        _renderExtrato();
-        _switchView('cliente');
-        _syncNav('cliente');
-    }
 
     function _saldoClienteAtual() {
     if (!_clienteAtual) return 0;
