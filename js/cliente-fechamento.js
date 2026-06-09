@@ -156,10 +156,15 @@ window.CF = (() => {
             saldo_devedor: Number(c.saldo_devedor || 0)
         }));
 
-        _renderClientes(_clientes);
-
         const totalEl = $('cf-total-clientes');
         if (totalEl) totalEl.textContent = _clientes.length;
+
+        if (_isMobileCF()) {
+            _renderBuscaInicialMobile();
+        } else {
+            _renderClientes(_clientes);
+        }
+
     } catch (e) {
         console.error('CF: erro ao carregar clientes:', e);
         wrap.innerHTML = `
