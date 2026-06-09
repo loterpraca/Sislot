@@ -412,45 +412,36 @@ function renderBoloes(boloes, posicoes, movs) {
 let grupos = {};
 let gruposOrdenados = [];
 
-if (utils.agruparOrdenarPorCampos) {
-    const ordenado = utils.agruparOrdenarPorCampos(boloesBaseOrdenacao, {
-        campoGrupo: 'modalidade',
-        campoPreco: 'valor_cota',
-        campoConcurso: 'concurso',
-        campoOrigem: 'loteria_origem_nome'
+boloesBaseOrdenacao.forEach(b => {
+    const grupo = b.modalidade || 'Sem modalidade';
+
+    if (!grupos[grupo]) grupos[grupo] = [];
+    grupos[grupo].push(b);
+});
+
+gruposOrdenados = Object.keys(grupos).sort((a, b) =>
+    String(a || '').localeCompare(String(b || ''), 'pt-BR')
+);
+
+gruposOrdenados.forEach(mod => {
+    grupos[mod].sort((a, b) => {
+        const concursoA = Number(a.concurso || 0);
+        const concursoB = Number(b.concurso || 0);
+
+        // Concurso ASC
+        if (concursoA !== concursoB) return concursoA - concursoB;
+
+        const precoA = Number(a.valor_cota || 0);
+        const precoB = Number(b.valor_cota || 0);
+
+        // Dentro do mesmo concurso, menor valor primeiro
+        if (precoA !== precoB) return precoA - precoB;
+
+        return String(a.loteria_origem_nome || '')
+            .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
     });
-
-    grupos = ordenado.grupos;
-    gruposOrdenados = ordenado.gruposOrdenados;
-} else {
-    // Fallback caso o sislot-utils.js ainda não tenha sido atualizado
-    boloesBaseOrdenacao.forEach(b => {
-        if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
-        grupos[b.modalidade].push(b);
-    });
-
-    gruposOrdenados = Object.keys(grupos).sort((a, b) =>
-        String(a || '').localeCompare(String(b || ''), 'pt-BR')
-    );
-
-    gruposOrdenados.forEach(mod => {
-        grupos[mod].sort((a, b) => {
-            const precoA = Number(a.valor_cota || 0);
-            const precoB = Number(b.valor_cota || 0);
-
-            if (precoA !== precoB) return precoA - precoB;
-
-            const concursoA = Number(a.concurso || 0);
-            const concursoB = Number(b.concurso || 0);
-
-            if (concursoA !== concursoB) return concursoA - concursoB;
-
-            return String(a.loteria_origem_nome || '')
-                .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
-        });
-    });
-}
-
+});
+    
 let totalCards = 0;
 
 gruposOrdenados.forEach(mod => {
