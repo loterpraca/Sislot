@@ -116,7 +116,23 @@ window.CF = (() => {
     // ─────────────────────────────────────────────────────────────────────
     // CARREGAR CLIENTES DO BANCO
     // ─────────────────────────────────────────────────────────────────────
-   async function _carregarClientes() {
+   function _isMobileCF() {
+    return window.matchMedia('(max-width: 700px)').matches;
+}
+
+function _renderBuscaInicialMobile() {
+    const wrap = $('cf-clientes-lista');
+    if (!wrap) return;
+
+    wrap.innerHTML = `
+        <div class="cf-empty cf-empty-mobile-busca">
+            <div class="cf-empty-icon">🔎</div>
+            <div>Digite o nome do cliente</div>
+            <small>A lista aparece conforme a busca.</small>
+        </div>`;
+}
+    
+    async function _carregarClientes() {
     const wrap = $('cf-clientes-lista');
     if (!wrap) return;
 
@@ -215,15 +231,38 @@ window.CF = (() => {
     }).join('');
 }
     function filtrarClientes() {
-        const q = ($('cf-busca-cliente')?.value || '').toLowerCase().trim();
-        if (!q) { _renderClientes(_clientes); return; }
-        _renderClientes(_clientes.filter(c =>
-            (c.nome     || '').toLowerCase().includes(q) ||
-            (c.telefone || '').includes(q)               ||
-            (c.documento|| '').includes(q)
-        ));
+    const q = ($('cf-busca-cliente')?.value || '').toLowerCase().trim();
+
+    if (!q) {
+        if (_isMobileCF()) {
+            _renderBuscaInicialMobile();
+        } else {
+            _renderClientes(_clientes);
+        }
+        return;
     }
 
+    if (_isMobileCF() && q.length < 2) {
+        const wrap = $('cf-clientes-lista');
+        if (wrap) {
+            wrap.innerHTML = `
+                <div class="cf-empty cf-empty-mobile-busca">
+                    <div class="cf-empty-icon">⌨️</div>
+                    <div>Continue digitando</div>
+                    <small>Use pelo menos 2 letras para buscar.</small>
+                </div>`;
+        }
+        return;
+    }
+
+    const filtrados = _clientes.filter(c =>
+        (c.nome || '').toLowerCase().includes(q) ||
+        (c.telefone || '').includes(q) ||
+        (c.documento || '').includes(q)
+    );
+
+    _renderClientes(filtrados);
+}
     // ─────────────────────────────────────────────────────────────────────
     // SELECIONAR CLIENTE
     // ─────────────────────────────────────────────────────────────────────
