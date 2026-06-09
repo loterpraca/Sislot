@@ -460,17 +460,19 @@ function aplicarContextoEdicaoProdutos(lista) {
 
 async function carregarProdutos() {
     const tipo = $('prod-filtro-tipo')?.value || '';
+    const dataRef = $('data-ref')?.value || hojeSaoPauloISO();
 
-    let query = sb
-        .from('view_produtos_saldo_loja')
-        .select(`loteria_id,produto,campanha_nome,item_nome,raspadinha_id,telesena_item_id,valor_venda,saldo_atual`)
-        .eq('loteria_id', loteriaAtiva.id)
-        .order('produto')
-        .order('item_nome');
+    if (!loteriaAtiva?.id || !dataRef) {
+        produtosLista = [];
+        renderProdutos();
+        return;
+    }
 
-    if (tipo) query = query.eq('produto', tipo);
-
-    const { data, error } = await query;
+    const { data, error } = await sb.rpc('buscar_produtos_saldo_fechamento', {
+        p_loteria_id: Number(loteriaAtiva.id),
+        p_data_ref: dataRef,
+        p_tipo: tipo || null
+    });
 
     if (error) {
         console.error('Erro ao carregar produtos:', error);
@@ -484,7 +486,6 @@ async function carregarProdutos() {
 
     if (ESTADO.tela2?.produtos?.length) restaurarProdutos();
 }
-
 function restaurarProdutos() {
     const produtosSalvos = ESTADO.tela2?.produtos || [];
     const mapa = {};
