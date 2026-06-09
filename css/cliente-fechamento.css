@@ -1286,3 +1286,267 @@
     font-weight:600;
     color:var(--bright);
 }
+.cf-fiado-box {
+  width: min(1080px, calc(100vw - 24px));
+  max-height: calc(100vh - 28px);
+  overflow: hidden;
+}
+
+.cf-fiado-layout {
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: 14px;
+  padding: 14px;
+  max-height: calc(100vh - 92px);
+  overflow: auto;
+}
+
+.cf-fiado-panel {
+  background: rgba(15, 23, 42, .72);
+  border: 1px solid rgba(148, 163, 184, .15);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.cf-fiado-sessao {
+  grid-column: 1 / -1;
+}
+
+.cf-fiado-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cf-fiado-title {
+  color: var(--bright);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.cf-fiado-sub {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.cf-fiado-input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, .16);
+  background: rgba(2, 6, 23, .55);
+  color: var(--bright);
+  border-radius: 13px;
+  padding: 11px 12px;
+  outline: none;
+}
+
+.cf-fiado-clientes {
+  margin-top: 12px;
+  max-height: 470px;
+  overflow: auto;
+}
+
+.cf-fiado-btn-mini {
+  border: 1px solid rgba(148, 163, 184, .18);
+  background: rgba(30, 41, 59, .7);
+  color: var(--bright);
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cf-fiado-btn-add {
+  border: none;
+  background: linear-gradient(135deg, var(--accent), #10b981);
+  color: #042f2e;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 900;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 14px;
+}
+
+.cf-fiado-empty {
+  min-height: 310px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.cf-fiado-empty strong {
+  color: var(--bright);
+  font-size: 17px;
+}
+
+.cf-fiado-cliente-card {
+  display: grid;
+  grid-template-columns: 54px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border-radius: 18px;
+  background: rgba(2, 6, 23, .42);
+  border: 1px solid rgba(148, 163, 184, .13);
+}
+
+.cf-fiado-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1d4ed8, var(--accent));
+  color: #fff;
+  font-weight: 900;
+}
+
+.cf-fiado-cliente-nome {
+  color: var(--bright);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.cf-fiado-cliente-tel {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.cf-fiado-saldo {
+  text-align: right;
+}
+
+.cf-fiado-saldo span,
+.cf-fiado-saldo small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.cf-fiado-saldo strong {
+  color: var(--amber);
+  font-size: 18px;
+}
+
+.cf-fiado-alerta {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(59, 130, 246, .10);
+  border: 1px solid rgba(59, 130, 246, .18);
+  color: #bfdbfe;
+  font-size: 12px;
+}
+
+.cf-fiado-form {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cf-fiado-form label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.cf-fiado-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.cf-fiado-total {
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 900;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.cf-fiado-novo {
+  padding: 14px;
+  max-height: calc(100vh - 92px);
+  overflow: auto;
+}
+
+.cf-fiado-form-cadastro {
+  grid-template-columns: 1fr 1fr;
+}
+
+.cf-fiado-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cf-lanc-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, .42);
+  border: 1px solid rgba(148, 163, 184, .12);
+  margin-top: 8px;
+}
+
+.cf-lanc-cli {
+  color: var(--bright);
+  font-weight: 800;
+}
+
+.cf-lanc-forma {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.cf-lanc-val {
+  color: var(--accent);
+  font-weight: 900;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.cf-btn-remove-lanc {
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, .14);
+  color: #fca5a5;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .cf-fiado-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cf-fiado-cliente-card,
+  .cf-fiado-form,
+  .cf-fiado-form-cadastro {
+    grid-template-columns: 1fr;
+  }
+
+  .cf-fiado-saldo {
+    text-align: left;
+  }
+}
