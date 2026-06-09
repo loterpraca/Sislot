@@ -1550,3 +1550,39 @@
     text-align: left;
   }
 }
+#m-area-cliente .cf-fiado-box {
+  width: min(1080px, calc(100vw - 24px)) !important;
+  max-height: calc(100vh - 28px) !important;
+}
+
+#m-area-cliente .cf-fiado-layout {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  overflow: auto;
+  max-height: calc(100vh - 92px);
+}
+
+#m-area-cliente #cf-view-novo-cliente {
+  width: 100%;
+}
+
+#m-area-cliente .cf-fiado-sessao {
+  grid-column: 1 / -1;
+}
+
+#m-area-cliente .cf-fiado-clientes {
+  max-height: 470px;
+  overflow: auto;
+}
+
+#m-area-cliente .cf-fiado-operacao {
+  min-height: 320px;
+}
+
+@media (max-width: 900px) {
+  #m-area-cliente .cf-fiado-layout {
+    grid-template-columns: 1fr;
+  }
+}
