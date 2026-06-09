@@ -563,3 +563,46 @@
     grid-template-columns: 1fr auto;
   }
 }
+/* ═══════════════════════════════════════════════
+   MOBILE — EVITAR FIADOS DA SESSÃO SOBRE O BOTÃO
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 700px) {
+  #m-area-cliente .cf-fiado-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    gap: 10px !important;
+    padding-bottom: 28px !important;
+  }
+
+  #m-area-cliente .cf-fiado-panel:nth-child(1) {
+    order: 1;
+  }
+
+  #m-area-cliente .cf-fiado-operacao {
+    order: 2;
+    min-height: auto !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+
+  #m-area-cliente .cf-fiado-sessao {
+    order: 3;
+    grid-column: auto !important;
+    position: relative !important;
+    z-index: 1 !important;
+    margin-top: 4px !important;
+  }
+
+  #m-area-cliente .cf-fiado-btn-add {
+    position: relative !important;
+    z-index: 5 !important;
+    margin-top: 14px !important;
+    margin-bottom: 16px !important;
+  }
+
+  #m-area-cliente #cf-fiado-com-cliente {
+    padding-bottom: 8px !important;
+  }
+}
