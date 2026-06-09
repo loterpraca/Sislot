@@ -61,9 +61,7 @@ let dataAtual = new Date();
 let bolaoSelecionado = null;
 let saldosPorLoja = {};
 let historicoPorLoja = {};
-let origemFiltro = '';
-let modalidadeFiltro = '';
-let concursoFiltro = null;
+    let concursoFiltro = null;
 let usarDataReferencia = true;
 let filtroAtivoTimer = null;
 
@@ -116,16 +114,37 @@ function dataAtualISO() {
 // FIX: usava $('dateDisplayText') e $('calendarPicker') — IDs inexistentes.
 // Correto: $('dateDisplay') e $('datePicker').
 function atualizarDateDisplay() {
-    const btn    = $('dateDisplay'); // botão visível com a data
-    const picker = $('datePicker');  // input[type=date] oculto
+    const btnText = $('dateDisplayText');
+    const btn     = $('dateDisplay');
+    const picker  = $('datePicker');
 
     const iso = dataAtualISO();
     if (!iso) return;
 
     const [y, m, d] = iso.split('-');
+    const texto = `${d}/${m}/${y}`;
 
-    if (btn) btn.textContent = `${d}/${m}/${y}`;
+    if (btnText) {
+        btnText.textContent = texto;
+    } else if (btn) {
+        btn.textContent = texto;
+    }
+
     if (picker) picker.value = iso;
+}
+async function aplicarDataReferencia(novaData) {
+    dataAtual = new Date(
+        novaData.getFullYear(),
+        novaData.getMonth(),
+        novaData.getDate()
+    );
+
+    atualizarDateDisplay();
+    atualizarEstadoFiltroData();
+    fecharPanel();
+
+    
+    await buscarBoloes();
 }
 
 async function aplicarDataReferencia(novaData) {
@@ -139,21 +158,7 @@ async function aplicarDataReferencia(novaData) {
     atualizarEstadoFiltroData();
     fecharPanel();
 
-    await carregarOrigens();
-    await carregarModalidades();
     await buscarBoloes();
-}
-
-async function moverDataReferencia(deltaDias) {
-    const d = new Date(
-        dataAtual.getFullYear(),
-        dataAtual.getMonth(),
-        dataAtual.getDate()
-    );
-
-    d.setDate(d.getDate() + deltaDias);
-
-    await aplicarDataReferencia(d);
 }
 
 // =====================================================
@@ -167,8 +172,6 @@ function intOrNull(v) {
 }
 
 function lerFiltrosAvancados() {
-    origemFiltro = $('selOrigem')?.value || '';
-    modalidadeFiltro = $('selModalidade')?.value || '';
     concursoFiltro = intOrNull($('inputConcurso')?.value);
     usarDataReferencia = $('chkUsarData') ? $('chkUsarData').checked : true;
 }
@@ -178,8 +181,6 @@ function lerFiltrosAvancados() {
 function aplicarFiltrosBase(q, opts = {}) {
     const {
         usarFiltroData = true,
-        usarFiltroOrigem = true,
-        usarFiltroModalidade = true,
         usarFiltroConcurso = true
     } = opts;
 
@@ -191,20 +192,12 @@ function aplicarFiltrosBase(q, opts = {}) {
             .gte('dt_concurso', iso);
     }
 
-    // Na Movimentação, origem do bolão = loteria_id
-    if (usarFiltroOrigem && origemFiltro) {
-        q = q.eq('loteria_id', Number(origemFiltro));
+    if (usarFiltroConcurso && concursoFiltro !== null) {
+        q = q.eq('concurso', concursoFiltro);
     }
 
-    if (usarFiltroModalidade && modalidadeFiltro) {
-        q = q.eq('modalidade', modalidadeFiltro);
-    }
-  if (usarFiltroConcurso && concursoFiltro !== null) {
-    q = q.eq('concurso', concursoFiltro);
-}
     return q;
 }
-
 function atualizarEstadoFiltroData() {
     const usandoData = $('chkUsarData') ? $('chkUsarData').checked : true;
 
@@ -224,112 +217,11 @@ function agendarFiltroAtivo(delay = 450) {
 
     filtroAtivoTimer = setTimeout(async () => {
         lerFiltrosAvancados();
-
         fecharPanel();
-
-        await carregarOrigens();
-        await carregarModalidades();
         await buscarBoloes();
     }, delay);
 }
-async function carregarOrigens() {
-    lerFiltrosAvancados();
 
-    let q = sb
-        .from('boloes')
-        .select(`
-            loteria_id,
-            loterias(id, nome, slug)
-        `)
-        .eq('status', 'ATIVO');
-
-    q = aplicarFiltrosBase(q, {
-        usarFiltroData: true,
-        usarFiltroOrigem: true,
-        usarFiltroModalidade: true,
-        usarFiltroConcurso: true
-    });
-
-    const { data, error } = await q;
-    if (error) return;
-
-    const mapa = new Map();
-
-    (data || []).forEach(r => {
-        if (!r.loteria_id) return;
-
-        if (!mapa.has(String(r.loteria_id))) {
-            mapa.set(String(r.loteria_id), {
-                id: r.loteria_id,
-                nome: r.loterias?.nome || lojaNomePorId[r.loteria_id] || '—'
-            });
-        }
-    });
-
-    const sel = $('selOrigem');
-    if (!sel) return;
-
-    const atual = origemFiltro;
-
-    sel.innerHTML = '<option value="">Origens</option>';
-
-    [...mapa.values()]
-        .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
-        .forEach(r => {
-            const op = document.createElement('option');
-            op.value = r.id;
-            op.textContent = r.nome;
-
-            if (String(r.id) === String(atual)) {
-                op.selected = true;
-            }
-
-            sel.appendChild(op);
-        });
-}
-
-async function carregarModalidades() {
-    lerFiltrosAvancados();
-
-    let q = sb
-        .from('boloes')
-        .select('modalidade')
-        .eq('status', 'ATIVO');
-
-    q = aplicarFiltrosBase(q, {
-        usarFiltroData: true,
-        usarFiltroOrigem: true,
-        usarFiltroModalidade: false,
-        usarFiltroConcurso: false
-    });
-
-    const { data, error } = await q;
-    if (error) return;
-
-    const modalidades = [...new Set((data || [])
-        .map(r => r.modalidade)
-        .filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-    const sel = $('selModalidade');
-    if (!sel) return;
-
-    const atual = modalidadeFiltro;
-
-    sel.innerHTML = '<option value="">Modalidades</option>';
-
-    modalidades.forEach(mod => {
-        const op = document.createElement('option');
-        op.value = mod;
-        op.textContent = mod;
-
-        if (mod === atual) {
-            op.selected = true;
-        }
-
-        sel.appendChild(op);
-    });
-}
 async function buscarBoloes() {
     lerFiltrosAvancados();
 
@@ -819,32 +711,49 @@ function bind() {
     const btnDtPrev      = $('btnDtPrev');
     const btnDtNext      = $('btnDtNext');
     const btnHoje        = $('btnHoje');
-    const dateDisplay    = $('dateDisplay');   // botão visível
-    const datePicker     = $('datePicker');    // FIX: era 'calendarPicker' (ID inexistente)
+    const dateDisplay    = $('dateDisplay');
+    const datePicker     = $('datePicker');
     const btnFecharPanel = $('btnFecharPanel');
     const btnZerarMov    = $('btnZerarMov');
     const btnMovimentar  = $('btnMovimentar');
     const confirmCancel  = $('confirmCancel');
     const confirmOverlay = $('confirmOverlay');
     const confirmOk      = $('confirmOk');
+    const chkUsarData    = $('chkUsarData');
+    const inputConcurso  = $('inputConcurso');
 
-    if (btnMenu)   btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
-    if (btnLogout) btnLogout.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
+    if (btnMenu) {
+        btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
+    }
 
-    if (btnDtPrev) btnDtPrev.onclick = () => moverDataReferencia(-1);
-    if (btnDtNext) btnDtNext.onclick = () => moverDataReferencia(1);
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            await window.SISLOT_SECURITY.sair();
+        });
+    }
+
+    if (btnDtPrev) {
+        btnDtPrev.onclick = () => moverDataReferencia(-1);
+    }
+
+    if (btnDtNext) {
+        btnDtNext.onclick = () => moverDataReferencia(1);
+    }
 
     if (btnHoje) {
-        btnHoje.onclick = () => {
+        btnHoje.onclick = async () => {
             const hoje = new Date();
-            aplicarDataReferencia(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
+            await aplicarDataReferencia(
+                new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
+            );
         };
     }
 
-    // Clique no botão da data abre o picker nativo
+    // Abre o calendário ao clicar na data
     if (dateDisplay && datePicker) {
         dateDisplay.onclick = () => {
             atualizarDateDisplay();
+
             if (typeof datePicker.showPicker === 'function') {
                 datePicker.showPicker();
             } else {
@@ -853,95 +762,92 @@ function bind() {
         };
     }
 
-    // Mudança no picker aplica nova data
+    // Aplica a data escolhida no calendário
     if (datePicker) {
-        datePicker.onchange = () => {
+        datePicker.onchange = async () => {
             if (!datePicker.value) return;
+
             const [y, m, d] = datePicker.value.split('-').map(Number);
-            aplicarDataReferencia(new Date(y, m - 1, d));
+            await aplicarDataReferencia(new Date(y, m - 1, d));
         };
     }
 
-    if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
-    if (btnZerarMov)    btnZerarMov.addEventListener('click', () => zerarMov());
-    if (btnMovimentar)  btnMovimentar.addEventListener('click', onMovimentar);
+    // Liga/desliga o uso da data de referência
+    if (chkUsarData) {
+        chkUsarData.addEventListener('change', async e => {
+            usarDataReferencia = e.target.checked;
 
-    if (confirmCancel) confirmCancel.addEventListener('click', () => {
-        if (confirmOverlay) confirmOverlay.classList.remove('show');
-    });
-    if (confirmOverlay) confirmOverlay.addEventListener('click', (e) => {
-        if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
-    });
-    if (confirmOk) confirmOk.addEventListener('click', async () => {
-        if (confirmOverlay) confirmOverlay.classList.remove('show');
-        if (!bolaoSelecionado) return;
-        const deltas = {};
-        LOJAS.forEach(l => {
-            const inp = $(`dest-${l.slug}`);
-            if (!inp || inp.disabled) return;
-            const qtd = parseDeltaCotas(inp.value);
-            if (qtd !== 0) deltas[l.slug] = qtd;
+            atualizarEstadoFiltroData();
+            fecharPanel();
+
+            await buscarBoloes();
         });
-        await doMovimentar(bolaoSelecionado, deltas);
-    });
-    const selOrigem = $('selOrigem');
-const selModalidade = $('selModalidade');
-const chkUsarData = $('chkUsarData');
-const inputConcurso = $('inputConcurso');
+    }
 
-if (selOrigem) {
-    selOrigem.addEventListener('change', async e => {
-        origemFiltro = e.target.value || '';
+    // Filtro por concurso
+    if (inputConcurso) {
+        inputConcurso.addEventListener('input', () => {
+            agendarFiltroAtivo(450);
+        });
+    }
 
-        fecharPanel();
+    if (btnFecharPanel) {
+        btnFecharPanel.addEventListener('click', fecharPanel);
+    }
 
-        await carregarModalidades();
-        await buscarBoloes();
-    });
-}
+    if (btnZerarMov) {
+        btnZerarMov.addEventListener('click', () => zerarMov());
+    }
 
-if (selModalidade) {
-    selModalidade.addEventListener('change', async e => {
-        modalidadeFiltro = e.target.value || '';
+    if (btnMovimentar) {
+        btnMovimentar.addEventListener('click', onMovimentar);
+    }
 
-        fecharPanel();
+    if (confirmCancel) {
+        confirmCancel.addEventListener('click', () => {
+            if (confirmOverlay) confirmOverlay.classList.remove('show');
+        });
+    }
 
-        await carregarOrigens();
-        await buscarBoloes();
-    });
-}
+    if (confirmOverlay) {
+        confirmOverlay.addEventListener('click', e => {
+            if (e.target === confirmOverlay) {
+                confirmOverlay.classList.remove('show');
+            }
+        });
+    }
 
-if (chkUsarData) {
-    chkUsarData.addEventListener('change', async e => {
-        usarDataReferencia = e.target.checked;
+    if (confirmOk) {
+        confirmOk.addEventListener('click', async () => {
+            if (confirmOverlay) confirmOverlay.classList.remove('show');
+            if (!bolaoSelecionado) return;
 
-        atualizarEstadoFiltroData();
-        fecharPanel();
+            const deltas = {};
 
-        await carregarOrigens();
-        await carregarModalidades();
-        await buscarBoloes();
-    });
-}
-if (inputConcurso) {
-    inputConcurso.addEventListener('input', () => {
-        agendarFiltroAtivo(450);
-    });
-}
+            LOJAS.forEach(l => {
+                const inp = $(`dest-${l.slug}`);
+                if (!inp || inp.disabled) return;
+
+                const qtd = parseDeltaCotas(inp.value);
+                if (qtd !== 0) deltas[l.slug] = qtd;
+            });
+
+            await doMovimentar(bolaoSelecionado, deltas);
+        });
+    }
 
     if (utils.bindAtalhosPorSecao) {
-    utils.bindAtalhosPorSecao({
-        namespace: 'movimentacao-cotas-boloes',
-        listaId: 'stLista',
-        offsetTopo: 105,
-        labelSelector: '.section-sep-label',
-        blocoSelector: '.section-sep',
-        ativoQuando: () => true,
-        onNaoEncontrou: () => setStatus('statusBar', 'Modalidade não encontrada nesta lista.', 'info')
-    });
+        utils.bindAtalhosPorSecao({
+            namespace: 'movimentacao-cotas-boloes',
+            listaId: 'stLista',
+            offsetTopo: 105,
+            labelSelector: '.section-sep-label',
+            blocoSelector: '.section-sep',
+            ativoQuando: () => true,
+            onNaoEncontrou: () => setStatus('statusBar', 'Modalidade não encontrada nesta lista.', 'info')
+        });
+    }
 }
-}
-
 // =====================================================
 // INICIALIZAÇÃO
 // =====================================================
@@ -979,8 +885,7 @@ dataAtual = new Date();
 atualizarDateDisplay();
 atualizarEstadoFiltroData();
 
-await carregarOrigens();
-await carregarModalidades();
+
 await buscarBoloes();
 }
 
