@@ -56,12 +56,10 @@
         </svg>
       </button>
 
-      <!-- Botão visível com a data formatada -->
       <button type="button" class="date-display" id="dateDisplay" title="Clique para escolher uma data">
         —
       </button>
 
-      <!-- Input nativo oculto — id="datePicker" (o JS usa este ID) -->
       <input type="date" id="datePicker" class="date-picker-hidden"/>
 
       <button class="btn-date" id="btnDtNext" title="Próximo dia">
@@ -70,8 +68,38 @@
         </svg>
       </button>
     </div>
+
     <button class="btn-hoje" id="btnHoje">Hoje</button>
-  </div>
+</div>
+
+<div class="filtros-avancados">
+    <select id="selOrigem" class="filtro-campo">
+        <option value="">Todas as origens</option>
+    </select>
+
+    <select id="selModalidade" class="filtro-campo">
+        <option value="">Todas as modalidades</option>
+    </select>
+
+    <input 
+        id="inputConcursoIni" 
+        class="filtro-campo"
+        type="number" 
+        placeholder="Concurso inicial"
+    >
+
+    <input 
+        id="inputConcursoFim" 
+        class="filtro-campo"
+        type="number" 
+        placeholder="Concurso final"
+    >
+
+    <label class="filtro-check">
+        <input id="chkUsarData" type="checkbox" checked>
+        Usar data de referência
+    </label>
+</div>
 
   <!-- ── Área principal de listagem ── -->
   <div class="list-area" id="listArea">
