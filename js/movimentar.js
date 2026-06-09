@@ -61,6 +61,12 @@ let dataAtual = new Date();
 let bolaoSelecionado = null;
 let saldosPorLoja = {};
 let historicoPorLoja = {};
+let origemFiltro = '';
+let modalidadeFiltro = '';
+let concursoIniFiltro = null;
+let concursoFimFiltro = null;
+let usarDataReferencia = true;
+let filtroAtivoTimer = null;
 
 // =====================================================
 // FORMATAÇÃO DE DATA
@@ -123,45 +129,253 @@ function atualizarDateDisplay() {
     if (picker) picker.value = iso;
 }
 
-function aplicarDataReferencia(novaData) {
+async function aplicarDataReferencia(novaData) {
     dataAtual = new Date(
         novaData.getFullYear(),
         novaData.getMonth(),
         novaData.getDate()
     );
+
     atualizarDateDisplay();
+    atualizarEstadoFiltroData();
     fecharPanel();
-    buscarBoloes();
+
+    await carregarOrigens();
+    await carregarModalidades();
+    await buscarBoloes();
 }
 
-function moverDataReferencia(deltaDias) {
+async function moverDataReferencia(deltaDias) {
     const d = new Date(
         dataAtual.getFullYear(),
         dataAtual.getMonth(),
         dataAtual.getDate()
     );
+
     d.setDate(d.getDate() + deltaDias);
-    aplicarDataReferencia(d);
+
+    await aplicarDataReferencia(d);
 }
 
 // =====================================================
 // FUNÇÕES ASSÍNCRONAS
 // =====================================================
+function intOrNull(v) {
+    if (v === '' || v === null || v === undefined) return null;
 
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+function lerFiltrosAvancados() {
+    origemFiltro = $('selOrigem')?.value || '';
+    modalidadeFiltro = $('selModalidade')?.value || '';
+    concursoIniFiltro = intOrNull($('inputConcursoIni')?.value);
+    concursoFimFiltro = intOrNull($('inputConcursoFim')?.value);
+    usarDataReferencia = $('chkUsarData') ? $('chkUsarData').checked : true;
+}
+
+function validarRangeConcurso() {
+    if (
+        concursoIniFiltro !== null &&
+        concursoFimFiltro !== null &&
+        concursoFimFiltro < concursoIniFiltro
+    ) {
+        setStatus('statusBar', 'O concurso final não pode ser menor que o concurso inicial.', 'err');
+        return false;
+    }
+
+    return true;
+}
+
+function aplicarFiltrosBase(q, opts = {}) {
+    const {
+        usarFiltroData = true,
+        usarFiltroOrigem = true,
+        usarFiltroModalidade = true,
+        usarFiltroConcurso = true
+    } = opts;
+
+    const iso = dataAtualISO();
+
+    if (usarFiltroData && usarDataReferencia) {
+        q = q
+            .lte('dt_inicial', iso)
+            .gte('dt_concurso', iso);
+    }
+
+    // Na Movimentação, origem do bolão = loteria_id
+    if (usarFiltroOrigem && origemFiltro) {
+        q = q.eq('loteria_id', Number(origemFiltro));
+    }
+
+    if (usarFiltroModalidade && modalidadeFiltro) {
+        q = q.eq('modalidade', modalidadeFiltro);
+    }
+
+    if (usarFiltroConcurso) {
+        if (concursoIniFiltro !== null && concursoFimFiltro !== null) {
+            q = q
+                .gte('concurso', concursoIniFiltro)
+                .lte('concurso', concursoFimFiltro);
+        } else if (concursoIniFiltro !== null) {
+            q = q.eq('concurso', concursoIniFiltro);
+        } else if (concursoFimFiltro !== null) {
+            q = q.lte('concurso', concursoFimFiltro);
+        }
+    }
+
+    return q;
+}
+
+function atualizarEstadoFiltroData() {
+    const usandoData = $('chkUsarData') ? $('chkUsarData').checked : true;
+
+    const btnDtPrev = $('btnDtPrev');
+    const btnDtNext = $('btnDtNext');
+    const btnHoje = $('btnHoje');
+    const dateDisplay = $('dateDisplay');
+
+    if (btnDtPrev) btnDtPrev.disabled = !usandoData;
+    if (btnDtNext) btnDtNext.disabled = !usandoData;
+    if (btnHoje) btnHoje.disabled = !usandoData;
+    if (dateDisplay) dateDisplay.style.opacity = usandoData ? '1' : '.45';
+}
+
+function agendarFiltroAtivo(delay = 450) {
+    clearTimeout(filtroAtivoTimer);
+
+    filtroAtivoTimer = setTimeout(async () => {
+        lerFiltrosAvancados();
+
+        if (!validarRangeConcurso()) return;
+
+        fecharPanel();
+        await carregarOrigens();
+        await carregarModalidades();
+        await buscarBoloes();
+    }, delay);
+}
+async function carregarOrigens() {
+    lerFiltrosAvancados();
+
+    let q = sb
+        .from('boloes')
+        .select(`
+            loteria_id,
+            loterias(id, nome, slug)
+        `)
+        .eq('status', 'ATIVO');
+
+    q = aplicarFiltrosBase(q, {
+        usarFiltroData: true,
+        usarFiltroOrigem: false,
+        usarFiltroModalidade: true,
+        usarFiltroConcurso: true
+    });
+
+    const { data, error } = await q;
+    if (error) return;
+
+    const mapa = new Map();
+
+    (data || []).forEach(r => {
+        if (!r.loteria_id) return;
+
+        if (!mapa.has(String(r.loteria_id))) {
+            mapa.set(String(r.loteria_id), {
+                id: r.loteria_id,
+                nome: r.loterias?.nome || lojaNomePorId[r.loteria_id] || '—'
+            });
+        }
+    });
+
+    const sel = $('selOrigem');
+    if (!sel) return;
+
+    const atual = origemFiltro;
+
+    sel.innerHTML = '<option value="">Todas as origens</option>';
+
+    [...mapa.values()]
+        .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
+        .forEach(r => {
+            const op = document.createElement('option');
+            op.value = r.id;
+            op.textContent = r.nome;
+
+            if (String(r.id) === String(atual)) {
+                op.selected = true;
+            }
+
+            sel.appendChild(op);
+        });
+}
+
+async function carregarModalidades() {
+    lerFiltrosAvancados();
+
+    let q = sb
+        .from('boloes')
+        .select('modalidade')
+        .eq('status', 'ATIVO');
+
+    q = aplicarFiltrosBase(q, {
+        usarFiltroData: true,
+        usarFiltroOrigem: true,
+        usarFiltroModalidade: false,
+        usarFiltroConcurso: false
+    });
+
+    const { data, error } = await q;
+    if (error) return;
+
+    const modalidades = [...new Set((data || [])
+        .map(r => r.modalidade)
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    const sel = $('selModalidade');
+    if (!sel) return;
+
+    const atual = modalidadeFiltro;
+
+    sel.innerHTML = '<option value="">Todas as modalidades</option>';
+
+    modalidades.forEach(mod => {
+        const op = document.createElement('option');
+        op.value = mod;
+        op.textContent = mod;
+
+        if (mod === atual) {
+            op.selected = true;
+        }
+
+        sel.appendChild(op);
+    });
+}
 async function buscarBoloes() {
+    lerFiltrosAvancados();
+
     const loadingEl = $('stLoading');
     const vazioEl   = $('stVazio');
     const listaEl   = $('stLista');
     const countEl   = $('boloesCount');
+
+    if (!validarRangeConcurso()) {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (vazioEl) vazioEl.style.display = 'flex';
+        if (listaEl) listaEl.style.display = 'none';
+        if (countEl) countEl.innerHTML = '';
+        return;
+    }
 
     if (loadingEl) loadingEl.style.display = 'flex';
     if (vazioEl)   vazioEl.style.display   = 'none';
     if (listaEl)   listaEl.style.display   = 'none';
     if (countEl)   countEl.innerHTML       = '';
 
-    const iso = dataAtualISO();
-
-    const { data: boloes, error } = await sb
+    let q = sb
         .from('boloes')
         .select(`
             id, modalidade, concurso, valor_cota, qtd_jogos, qtd_dezenas,
@@ -170,20 +384,31 @@ async function buscarBoloes() {
             loterias(id, nome, slug)
         `)
         .eq('status', 'ATIVO')
-        .lte('dt_inicial', iso)
-        .gte('dt_concurso', iso)
-        .order('modalidade')
-        .order('loteria_id');
+        .order('modalidade', { ascending: true })
+        .order('concurso', { ascending: true })
+        .order('valor_cota', { ascending: true })
+        .order('loteria_id', { ascending: true });
+
+    q = aplicarFiltrosBase(q);
+
+    const { data: boloes, error } = await q;
 
     if (loadingEl) loadingEl.style.display = 'none';
 
     if (error || !boloes || !boloes.length) {
         if (vazioEl) {
             const vazioSub = $('stVazioSub');
-            if (vazioSub) vazioSub.textContent = `Nenhum bolão ativo para ${formatarDataSegura(dataAtual)}.`;
+            const textoData = usarDataReferencia
+                ? ` para ${formatarDataSegura(dataAtual)}.`
+                : '.';
+
+            if (vazioSub) {
+                vazioSub.textContent = `Nenhum bolão encontrado${textoData}`;
+            }
+
             vazioEl.style.display = 'flex';
         }
-        // Zera o contador no header
+
         if (countEl) countEl.innerHTML = '';
         return;
     }
@@ -700,6 +925,58 @@ function bind() {
         });
         await doMovimentar(bolaoSelecionado, deltas);
     });
+    const selOrigem = $('selOrigem');
+const selModalidade = $('selModalidade');
+const chkUsarData = $('chkUsarData');
+const inputConcursoIni = $('inputConcursoIni');
+const inputConcursoFim = $('inputConcursoFim');
+
+if (selOrigem) {
+    selOrigem.addEventListener('change', async e => {
+        origemFiltro = e.target.value || '';
+
+        fecharPanel();
+
+        await carregarModalidades();
+        await buscarBoloes();
+    });
+}
+
+if (selModalidade) {
+    selModalidade.addEventListener('change', async e => {
+        modalidadeFiltro = e.target.value || '';
+
+        fecharPanel();
+
+        await carregarOrigens();
+        await buscarBoloes();
+    });
+}
+
+if (chkUsarData) {
+    chkUsarData.addEventListener('change', async e => {
+        usarDataReferencia = e.target.checked;
+
+        atualizarEstadoFiltroData();
+        fecharPanel();
+
+        await carregarOrigens();
+        await carregarModalidades();
+        await buscarBoloes();
+    });
+}
+
+if (inputConcursoIni) {
+    inputConcursoIni.addEventListener('input', () => {
+        agendarFiltroAtivo(450);
+    });
+}
+
+if (inputConcursoFim) {
+    inputConcursoFim.addEventListener('input', () => {
+        agendarFiltroAtivo(450);
+    });
+}
     if (utils.bindAtalhosPorSecao) {
     utils.bindAtalhosPorSecao({
         namespace: 'movimentacao-cotas-boloes',
@@ -743,11 +1020,16 @@ async function init() {
             lojaNomePorId[l.id]   = l.nome;
         });
     }
-
+    
     bind();
-    dataAtual = new Date();
-    atualizarDateDisplay();
-    await buscarBoloes();
+
+dataAtual = new Date();
+atualizarDateDisplay();
+atualizarEstadoFiltroData();
+
+await carregarOrigens();
+await carregarModalidades();
+await buscarBoloes();
 }
 
 init();
