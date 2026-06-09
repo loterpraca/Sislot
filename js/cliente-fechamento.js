@@ -174,7 +174,7 @@ window.CF = (() => {
         return (nome || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
     }
 
-    function _renderClientes(lista) {
+  function _renderClientes(lista) {
     const wrap = $('cf-clientes-lista');
     if (!wrap) return;
 
@@ -192,26 +192,20 @@ window.CF = (() => {
         const saldo = Number(c.saldo_devedor || 0);
 
         return `
-            <div class="cf-cliente-card"
+            <div class="cf-cliente-card cf-cliente-card-clean"
                  style="animation-delay:${i * 0.03}s"
                  onclick="CF._selecionarClienteById('${c.id}')">
+
                 <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
 
                 <div class="cf-cli-info">
                     <div class="cf-cli-nome">${c.nome}</div>
-                    <div class="cf-cli-tel">${c.telefone || c.documento || '—'}</div>
                 </div>
 
-                <div class="cf-cli-saldo">
-                    <span class="${saldo > 0 ? 'cf-badge-warn' : 'cf-badge-ok'}">
-                        ${saldo > 0 ? _fmtBRL(saldo) : 'em dia'}
-                    </span>
+                <div class="cf-cli-saldo cf-cli-saldo-clean ${saldo > 0 ? 'tem-saldo' : ''}">
+                    ${saldo > 0 ? _fmtBRL(saldo) : 'em dia'}
                 </div>
 
-                <svg class="cf-card-arrow" width="13" height="13" viewBox="0 0 24 24"
-                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
             </div>`;
     }).join('');
 }
