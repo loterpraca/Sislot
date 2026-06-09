@@ -263,25 +263,32 @@ body {
 
 /* FIX: input nativo completamente oculto fora da tela.
    O CSS original não tinha esta classe — por isso aparecia visível. */
+.date-picker-shell {
+  position: relative;
+  display: flex;
+}
+
 .date-picker-hidden {
-  position: fixed !important;
-  left: -9999px !important;
-  top: -9999px !important;
-  width: 1px !important;
-  height: 1px !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
   opacity: 0 !important;
-  pointer-events: none !important;
+  cursor: pointer !important;
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
   background: transparent !important;
   appearance: none !important;
   -webkit-appearance: none !important;
-  color-scheme: dark; /* calendário nativo em tema escuro */
+  color-scheme: dark;
 }
 
-.date-picker-hidden::-webkit-calendar-picker-indicator { opacity: 0; }
-
+.date-picker-hidden::-webkit-calendar-picker-indicator {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
 .btn-hoje {
   background: transparent;
   border: 1px solid rgba(0,200,150,0.25);
