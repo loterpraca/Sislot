@@ -1008,3 +1008,20 @@ select.filtro-campo {
     height: 40px;
   }
 }
+.date-display {
+  gap: 7px;
+}
+
+.date-display-text {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.date-display-icon {
+  font-size: 13px;
+  opacity: .72;
+  line-height: 1;
+}
+
+.date-display:hover .date-display-icon {
+  opacity: 1;
+}
