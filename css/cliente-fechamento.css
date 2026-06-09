@@ -1586,3 +1586,44 @@
     grid-template-columns: 1fr;
   }
 }
+#m-area-cliente .cf-cliente-card-clean {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-mini-avatar {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-cli-info {
+  min-width: 0;
+}
+
+#m-area-cliente .cf-cliente-card-clean .cf-cli-nome {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#m-area-cliente .cf-cli-saldo-clean {
+  justify-self: end;
+  text-align: right;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(148, 163, 184, .62);
+  white-space: nowrap;
+}
+
+#m-area-cliente .cf-cli-saldo-clean.tem-saldo {
+  color: rgba(245, 166, 35, .72);
+}
