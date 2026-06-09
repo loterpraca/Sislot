@@ -63,8 +63,7 @@ let saldosPorLoja = {};
 let historicoPorLoja = {};
 let origemFiltro = '';
 let modalidadeFiltro = '';
-let concursoIniFiltro = null;
-let concursoFimFiltro = null;
+let concursoFiltro = null;
 let usarDataReferencia = true;
 let filtroAtivoTimer = null;
 
@@ -170,23 +169,11 @@ function intOrNull(v) {
 function lerFiltrosAvancados() {
     origemFiltro = $('selOrigem')?.value || '';
     modalidadeFiltro = $('selModalidade')?.value || '';
-    concursoIniFiltro = intOrNull($('inputConcursoIni')?.value);
-    concursoFimFiltro = intOrNull($('inputConcursoFim')?.value);
+    concursoFiltro = intOrNull($('inputConcurso')?.value);
     usarDataReferencia = $('chkUsarData') ? $('chkUsarData').checked : true;
 }
 
-function validarRangeConcurso() {
-    if (
-        concursoIniFiltro !== null &&
-        concursoFimFiltro !== null &&
-        concursoFimFiltro < concursoIniFiltro
-    ) {
-        setStatus('statusBar', 'O concurso final não pode ser menor que o concurso inicial.', 'err');
-        return false;
-    }
 
-    return true;
-}
 
 function aplicarFiltrosBase(q, opts = {}) {
     const {
@@ -212,19 +199,9 @@ function aplicarFiltrosBase(q, opts = {}) {
     if (usarFiltroModalidade && modalidadeFiltro) {
         q = q.eq('modalidade', modalidadeFiltro);
     }
-
-    if (usarFiltroConcurso) {
-        if (concursoIniFiltro !== null && concursoFimFiltro !== null) {
-            q = q
-                .gte('concurso', concursoIniFiltro)
-                .lte('concurso', concursoFimFiltro);
-        } else if (concursoIniFiltro !== null) {
-            q = q.eq('concurso', concursoIniFiltro);
-        } else if (concursoFimFiltro !== null) {
-            q = q.lte('concurso', concursoFimFiltro);
-        }
-    }
-
+  if (usarFiltroConcurso && concursoFiltro !== null) {
+    q = q.eq('concurso', concursoFiltro);
+}
     return q;
 }
 
@@ -248,9 +225,8 @@ function agendarFiltroAtivo(delay = 450) {
     filtroAtivoTimer = setTimeout(async () => {
         lerFiltrosAvancados();
 
-        if (!validarRangeConcurso()) return;
-
         fecharPanel();
+
         await carregarOrigens();
         await carregarModalidades();
         await buscarBoloes();
@@ -269,7 +245,7 @@ async function carregarOrigens() {
 
     q = aplicarFiltrosBase(q, {
         usarFiltroData: true,
-        usarFiltroOrigem: false,
+        usarFiltroOrigem: true,
         usarFiltroModalidade: true,
         usarFiltroConcurso: true
     });
@@ -295,7 +271,7 @@ async function carregarOrigens() {
 
     const atual = origemFiltro;
 
-    sel.innerHTML = '<option value="">Todas as origens</option>';
+    sel.innerHTML = '<option value="">Origens</option>';
 
     [...mapa.values()]
         .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
@@ -340,7 +316,7 @@ async function carregarModalidades() {
 
     const atual = modalidadeFiltro;
 
-    sel.innerHTML = '<option value="">Todas as modalidades</option>';
+    sel.innerHTML = '<option value="">Modalidades</option>';
 
     modalidades.forEach(mod => {
         const op = document.createElement('option');
@@ -361,15 +337,7 @@ async function buscarBoloes() {
     const vazioEl   = $('stVazio');
     const listaEl   = $('stLista');
     const countEl   = $('boloesCount');
-
-    if (!validarRangeConcurso()) {
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (vazioEl) vazioEl.style.display = 'flex';
-        if (listaEl) listaEl.style.display = 'none';
-        if (countEl) countEl.innerHTML = '';
-        return;
-    }
-
+    
     if (loadingEl) loadingEl.style.display = 'flex';
     if (vazioEl)   vazioEl.style.display   = 'none';
     if (listaEl)   listaEl.style.display   = 'none';
@@ -928,8 +896,7 @@ function bind() {
     const selOrigem = $('selOrigem');
 const selModalidade = $('selModalidade');
 const chkUsarData = $('chkUsarData');
-const inputConcursoIni = $('inputConcursoIni');
-const inputConcursoFim = $('inputConcursoFim');
+const inputConcurso = $('inputConcurso');
 
 if (selOrigem) {
     selOrigem.addEventListener('change', async e => {
@@ -965,18 +932,12 @@ if (chkUsarData) {
         await buscarBoloes();
     });
 }
-
-if (inputConcursoIni) {
-    inputConcursoIni.addEventListener('input', () => {
+if (inputConcurso) {
+    inputConcurso.addEventListener('input', () => {
         agendarFiltroAtivo(450);
     });
 }
 
-if (inputConcursoFim) {
-    inputConcursoFim.addEventListener('input', () => {
-        agendarFiltroAtivo(450);
-    });
-}
     if (utils.bindAtalhosPorSecao) {
     utils.bindAtalhosPorSecao({
         namespace: 'movimentacao-cotas-boloes',
