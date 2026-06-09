@@ -115,19 +115,42 @@ window.CF = (() => {
     const wrap = $('cf-clientes-lista');
     if (!wrap) return;
 
-    wrap.innerHTML = `<div class="cf-empty"><div class="spinner" style="margin-bottom:8px"></div><div>Carregando clientes...</div></div>`;
+    wrap.innerHTML = `
+        <div class="cf-empty">
+            <div class="spinner" style="margin-bottom:8px"></div>
+            <div>Carregando clientes...</div>
+        </div>`;
 
     try {
         const { data, error } = await _sb
-            .from(TB_CLIENTES)
-            .select('id, nome, telefone, documento, observacao, ativo')
+            .from('vw_cliente_fechamento_saldo_simples')
+            .select(`
+                cliente_id,
+                loteria_id,
+                nome,
+                telefone,
+                documento,
+                observacao,
+                ativo,
+                saldo_devedor
+            `)
             .eq('loteria_id', Number(_getLoteriaAtiva().id))
             .eq('ativo', true)
             .order('nome', { ascending: true });
 
         if (error) throw error;
 
-        _clientes = data || [];
+        _clientes = (data || []).map(c => ({
+            id: c.cliente_id,
+            loteria_id: c.loteria_id,
+            nome: c.nome || '',
+            telefone: c.telefone || '',
+            documento: c.documento || '',
+            observacao: c.observacao || '',
+            ativo: c.ativo,
+            saldo_devedor: Number(c.saldo_devedor || 0)
+        }));
+
         _renderClientes(_clientes);
 
         const totalEl = $('cf-total-clientes');
@@ -160,26 +183,33 @@ window.CF = (() => {
         return;
     }
 
-    wrap.innerHTML = lista.map((c, i) => `
-        <div class="cf-cliente-card"
-             style="animation-delay:${i * 0.03}s"
-             onclick="CF._selecionarClienteById('${c.id}')">
-            <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
-            <div class="cf-cli-info">
-                <div class="cf-cli-nome">${c.nome}</div>
-                <div class="cf-cli-tel">${c.telefone || c.documento || '—'}</div>
-            </div>
-            <div class="cf-cli-saldo">
-                <span class="cf-badge-ok">cliente</span>
-            </div>
-            <svg class="cf-card-arrow" width="13" height="13" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-        </div>
-    `).join('');
-}
+    wrap.innerHTML = lista.map((c, i) => {
+        const saldo = Number(c.saldo_devedor || 0);
 
+        return `
+            <div class="cf-cliente-card"
+                 style="animation-delay:${i * 0.03}s"
+                 onclick="CF._selecionarClienteById('${c.id}')">
+                <div class="cf-mini-avatar">${_iniciais(c.nome)}</div>
+
+                <div class="cf-cli-info">
+                    <div class="cf-cli-nome">${c.nome}</div>
+                    <div class="cf-cli-tel">${c.telefone || c.documento || '—'}</div>
+                </div>
+
+                <div class="cf-cli-saldo">
+                    <span class="${saldo > 0 ? 'cf-badge-warn' : 'cf-badge-ok'}">
+                        ${saldo > 0 ? _fmtBRL(saldo) : 'em dia'}
+                    </span>
+                </div>
+
+                <svg class="cf-card-arrow" width="13" height="13" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </div>`;
+    }).join('');
+}
     function filtrarClientes() {
         const q = ($('cf-busca-cliente')?.value || '').toLowerCase().trim();
         if (!q) { _renderClientes(_clientes); return; }
@@ -262,9 +292,16 @@ if (sp) {
 
     function _saldoClienteAtual() {
     if (!_clienteAtual) return 0;
-    return _lancamentosDoCliente().reduce((a, l) => a + Number(l.valor || 0), 0);
-}
 
+    const saldoBase = Number(_clienteAtual.saldo_devedor || 0);
+
+    return _lancamentosDoCliente().reduce((a, l) => {
+        if (String(l.tipo_movimento || '').toUpperCase() === 'DEBITO') {
+            return a + Number(l.valor || 0);
+        }
+        return a;
+    }, saldoBase);
+}
     function _lancamentosDoCliente() {
     if (!_clienteAtual) return [];
     return _getLancamentos().filter(l => String(l.cliente_id) === String(_clienteAtual.id));
@@ -1132,13 +1169,24 @@ if (sp) {
         const obs = ($('cf-obs-debito')?.value || '').trim();
 
         const lancamento = {
-            id:             _uid(),
-            cliente_id:     _clienteAtual.id,
-            tipo_movimento: 'DEBITO',
-            valor:          total,
-            observacao:     obs || null,
-            itens,
-        };
+    id: _uid(),
+
+    cliente_id: _clienteAtual.id,
+    cliente_nome: _clienteAtual.nome || '',
+
+    tipo_movimento: 'DEBITO',
+    forma_pagamento: 'NAO_APLICA',
+    status: 'CONFIRMADO',
+
+    valor: total,
+    observacao: obs || null,
+
+    gera_credito_fechamento: true,
+    gera_abatimento_divida: false,
+    gera_pix_quitacao: false,
+
+    itens,
+};
 
         _getCF().lancamentos.push(lancamento);
 
@@ -1253,21 +1301,38 @@ async function gravarNoSupabase(fechId, t1) {
   const lans = _getLancamentos();
   if (!lans.length) return;
 
+  const funcionarioResponsavelId = Number(t1?.funcionario_id || _getUsuario()?.id || null);
+
+  if (!funcionarioResponsavelId) {
+    throw new Error('Funcionário responsável pelo fechamento não identificado.');
+  }
+
   for (const l of lans) {
+    const valor = Number(l.valor || 0);
+
+    if (valor <= 0) continue;
+
     const { data: extrato, error: errExtrato } = await _sb
       .from(TB_EXTRATO)
       .insert({
         loteria_id: Number(_getLoteriaAtiva().id),
         cliente_id: l.cliente_id,
         fechamento_id: fechId,
-        usuario_id: Number(_getUsuario()?.id || null),
-        tipo_movimento: l.tipo_movimento || 'DEBITO',
+
+        // IMPORTANTE:
+        // funcionário responsável pela dívida, não necessariamente o usuário logado
+        usuario_id: funcionarioResponsavelId,
+
+        tipo_movimento: 'DEBITO',
         forma_pagamento: 'NAO_APLICA',
         status: 'CONFIRMADO',
-        valor_total: Number(l.valor || 0),
+
+        valor_total: valor,
+
         gera_credito_fechamento: true,
         gera_abatimento_divida: false,
         gera_pix_quitacao: false,
+
         data_movimento: t1?.data_ref,
         observacao: l.observacao || null
       })
@@ -1276,13 +1341,13 @@ async function gravarNoSupabase(fechId, t1) {
 
     if (errExtrato) throw errExtrato;
 
+    l.extrato_id = extrato.id;
+
     const itensRows = cfMontarItensRows({
       extratoId: extrato.id,
       dataRef: t1?.data_ref,
       lancamentos: l.itens || []
     });
-
-    console.log('CF ITENS INSERT', itensRows);
 
     if (itensRows.length) {
       const { error: errItens } = await _sb
