@@ -75,15 +75,20 @@ window.CF = (() => {
     // ─────────────────────────────────────────────────────────────────────
     // ABRIR / FECHAR MODAL
     // ─────────────────────────────────────────────────────────────────────
-    async function openModal() {
-        $('m-area-cliente')?.classList.add('show');
-        _switchView('lista');
-        _syncNav('lista');
-        await _carregarClientes();
-        _renderResumoSessao();
-        _renderLancamentosSessao();
-    }
+   async function openModal() {
+    $('m-area-cliente')?.classList.add('show');
 
+    const layout = document.querySelector('.cf-fiado-layout');
+    const novo = $('cf-view-novo-cliente');
+
+    if (layout) layout.style.display = 'grid';
+    if (novo) novo.style.display = 'none';
+
+    await _carregarClientes();
+    _limparOperacaoFiado();
+    _renderResumoSessao();
+    _renderLancamentosSessao();
+}
     function closeModal() {
         $('m-area-cliente')?.classList.remove('show');
     }
@@ -238,8 +243,28 @@ window.CF = (() => {
     telefone: cli.telefone || '',
     documento: cli.documento || '',
     observacao: cli.observacao || ''
+    _mostrarOperacaoFiado();
 };
+function _limparOperacaoFiado() {
+    const vazio = $('cf-fiado-sem-cliente');
+    const box = $('cf-fiado-com-cliente');
 
+    if (!_clienteAtual) {
+        if (vazio) vazio.style.display = 'flex';
+        if (box) box.style.display = 'none';
+    }
+
+    if ($('cf-valor-fiado')) $('cf-valor-fiado').value = '';
+    if ($('cf-obs-fiado')) $('cf-obs-fiado').value = '';
+}
+
+function _mostrarOperacaoFiado() {
+    const vazio = $('cf-fiado-sem-cliente');
+    const box = $('cf-fiado-com-cliente');
+
+    if (vazio) vazio.style.display = 'none';
+    if (box) box.style.display = 'block';
+}
         // ── Atualiza sidebar ───────────────────────────────────────────
         const ini = _iniciais(cli.nome);
         const av  = $('cf-avatar-iniciais');
@@ -299,6 +324,7 @@ if (sp) {
         if (String(l.tipo_movimento || '').toUpperCase() === 'DEBITO') {
             return a + Number(l.valor || 0);
         }
+
         return a;
     }, saldoBase);
 }
@@ -542,23 +568,49 @@ if (sp) {
             </div>`;
     }
 
-    function _renderLancamentosSessao() {
+   function _renderLancamentosSessao() {
     const wrap = $('cf-lista-lancamentos');
-    if (!wrap) return;
-    const lans = _getLancamentos();
-    if (!lans.length) { wrap.innerHTML = ''; return; }
+    const badge = $('cf-badge-lancamentos');
+    const totalEl = $('cf-resumo-sessao-total') || $('cf-resumo-sessao-inner');
 
-    wrap.innerHTML = lans.map(l => {
-        const cli = _clientes.find(c => String(c.id) === String(l.cliente_id));
-        return `
-            <div class="cf-lanc-row">
-                <div class="cf-lanc-esq">
-                    <span class="cf-lanc-cli">${cli?.nome || '—'}</span>
-                    <span class="cf-lanc-forma">FIADO</span>
-                </div>
-                <span class="cf-val-neg">−${_fmtBRL(l.valor)}</span>
+    const lans = _getLancamentos();
+
+    if (badge) {
+        badge.textContent = `${lans.length} lançamento${lans.length === 1 ? '' : 's'}`;
+    }
+
+    const total = lans.reduce((a, l) => a + Number(l.valor || 0), 0);
+
+    if (totalEl) {
+        totalEl.textContent = _fmtBRL(total);
+    }
+
+    if (!wrap) return;
+
+    if (!lans.length) {
+        wrap.innerHTML = `
+            <div class="cf-empty" style="padding:16px">
+                Nenhum fiado lançado nesta sessão
             </div>`;
-    }).join('');
+        return;
+    }
+
+    wrap.innerHTML = lans.map(l => `
+        <div class="cf-lanc-row">
+            <div>
+                <div class="cf-lanc-cli">${l.cliente_nome || 'Cliente'}</div>
+                <span class="cf-lanc-forma">${l.observacao || 'Fiado lançado no fechamento'}</span>
+            </div>
+
+            <div class="cf-lanc-val">${_fmtBRL(l.valor || 0)}</div>
+
+            <button type="button"
+                    class="cf-btn-remove-lanc"
+                    onclick="CF._rmLancamento('${l.id}')">
+                ×
+            </button>
+        </div>
+    `).join('');
 }
 
     function _atualizarBadge() {
@@ -1209,14 +1261,25 @@ if (sp) {
     // NOVO CADASTRO
     // ─────────────────────────────────────────────────────────────────────
     function iniciarNovoCadastro() {
-        ['cf-novo-nome', 'cf-novo-tel', 'cf-novo-doc', 'cf-novo-obs'].forEach(id => {
-            const el = $(id); if (el) el.value = '';
-        });
-        const err = $('cf-novo-err');
-        if (err) { err.textContent = ''; err.style.display = 'none'; }
-        _switchView('novo-cliente');
-        _syncNav('lista');
+    const layout = document.querySelector('.cf-fiado-layout');
+    const novo = $('cf-view-novo-cliente');
+
+    if (layout) layout.style.display = 'none';
+    if (novo) novo.style.display = 'block';
+
+    ['cf-novo-nome', 'cf-novo-tel', 'cf-novo-doc', 'cf-novo-obs'].forEach(id => {
+        const el = $(id);
+        if (el) el.value = '';
+    });
+
+    const err = $('cf-novo-err');
+    if (err) {
+        err.textContent = '';
+        err.style.display = 'none';
     }
+
+    setTimeout(() => $('cf-novo-nome')?.focus(), 50);
+}
 
    async function salvarNovoCadastro() {
     const nome = ($('cf-novo-nome')?.value || '').trim();
@@ -1296,7 +1359,57 @@ function _mapReferenciaId(item) {
     if (item.telesena_item_id) return String(item.telesena_item_id);
     return null;
 }
+function adicionarFiadoSimples() {
+    if (!_clienteAtual) {
+        alert('Selecione um cliente.');
+        return;
+    }
 
+    const valor = Number(String($('cf-valor-fiado')?.value || '0').replace(',', '.'));
+    const obs = String($('cf-obs-fiado')?.value || '').trim();
+
+    if (valor <= 0) {
+        alert('Informe um valor de fiado maior que zero.');
+        return;
+    }
+
+    const lancamento = {
+        id: _uid(),
+
+        cliente_id: _clienteAtual.id,
+        cliente_nome: _clienteAtual.nome || '',
+
+        tipo_movimento: 'DEBITO',
+        forma_pagamento: 'NAO_APLICA',
+        status: 'CONFIRMADO',
+
+        valor,
+        observacao: obs || 'Fiado lançado no fechamento',
+
+        gera_credito_fechamento: true,
+        gera_abatimento_divida: false,
+        gera_pix_quitacao: false,
+
+        itens: [{
+            tipo: 'CONTA',
+            descricao: obs || 'Fiado lançado no fechamento',
+            qtd: 1,
+            valor,
+            valorUnit: valor
+        }]
+    };
+
+    _getCF().lancamentos.push(lancamento);
+
+    if ($('cf-valor-fiado')) $('cf-valor-fiado').value = '';
+    if ($('cf-obs-fiado')) $('cf-obs-fiado').value = '';
+
+    _atualizarSaldoSidebar();
+    _renderResumoSessao();
+    _renderLancamentosSessao();
+
+    selecionarCliente(_clienteAtual);
+}
 async function gravarNoSupabase(fechId, t1) {
   const lans = _getLancamentos();
   if (!lans.length) return;
@@ -1624,7 +1737,15 @@ function _rmItemLancado(lancId, itemIdx) {
 
     _refreshSessaoUI();
 }
+    function voltarDoCadastro() {
+    const layout = document.querySelector('.cf-fiado-layout');
+    const novo = $('cf-view-novo-cliente');
 
+    if (layout) layout.style.display = 'grid';
+    if (novo) novo.style.display = 'none';
+
+    _carregarClientes();
+}
     
     // ─────────────────────────────────────────────────────────────────────
     // API PÚBLICA
@@ -1667,6 +1788,8 @@ function _rmItemLancado(lancId, itemIdx) {
         gravarNoSupabase,
         estornarDoFechamento,
         carregarFechamentoExistente,
+        adicionarFiadoSimples,
+        voltarDoCadastro,
     };
 
 })();
