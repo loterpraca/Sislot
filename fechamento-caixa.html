@@ -547,9 +547,8 @@
      ══════════════════════════════════════════════════════════════════════ -->
 
 <div class="modal-cf" id="m-area-cliente">
-  <div class="modal-cf-box">
+  <div class="modal-cf-box cf-fiado-box">
 
-    <!-- ── HEADER ──────────────────────────────────────────────────── -->
     <div class="modal-cf-header">
       <div class="modal-cf-title">
         <div class="modal-cf-title-icon">
@@ -559,6 +558,165 @@
             <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
           </svg>
         </div>
+        Área do Cliente
+      </div>
+
+      <button type="button" class="modal-cf-close" onclick="CF.closeModal()" title="Fechar">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="cf-fiado-layout">
+
+      <section class="cf-fiado-panel">
+        <div class="cf-fiado-panel-head">
+          <div>
+            <div class="cf-fiado-title">Clientes</div>
+            <div class="cf-fiado-sub">
+              <span id="cf-total-clientes">0</span> cadastrados
+            </div>
+          </div>
+
+          <button type="button" class="cf-fiado-btn-mini" onclick="CF.iniciarNovoCadastro()">
+            + Novo
+          </button>
+        </div>
+
+        <input
+          type="text"
+          id="cf-busca-cliente"
+          class="cf-fiado-input"
+          placeholder="Buscar cliente..."
+          oninput="CF.filtrarClientes()">
+
+        <div id="cf-clientes-lista" class="cf-clientes-lista cf-fiado-clientes">
+          <div class="cf-empty">
+            <div class="spinner" style="margin-bottom:8px"></div>
+            <div>Carregando clientes...</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cf-fiado-panel cf-fiado-operacao">
+
+        <div id="cf-fiado-sem-cliente" class="cf-fiado-empty">
+          <div style="font-size:34px">👤</div>
+          <strong>Selecione um cliente</strong>
+          <span>Depois informe o valor do fiado lançado no fechamento.</span>
+        </div>
+
+        <div id="cf-fiado-com-cliente" style="display:none">
+
+          <div class="cf-fiado-cliente-card">
+            <div class="cf-fiado-avatar" id="cf-avatar-iniciais">—</div>
+
+            <div>
+              <div class="cf-fiado-cliente-nome" id="cf-sb-nome">Cliente</div>
+              <div class="cf-fiado-cliente-tel" id="cf-sb-tel">—</div>
+            </div>
+
+            <div class="cf-fiado-saldo">
+              <span>Saldo atual</span>
+              <strong id="cf-saldo-sb-val">R$ 0,00</strong>
+              <small id="cf-saldo-sb-sub">Somente informativo</small>
+            </div>
+          </div>
+
+          <div class="cf-fiado-alerta">
+            Este lançamento entra como fiado do cliente e ajuda a fechar o caixa.
+          </div>
+
+          <div class="cf-fiado-form">
+            <div>
+              <label>Valor do fiado</label>
+              <input
+                type="number"
+                id="cf-valor-fiado"
+                class="cf-fiado-input"
+                step="0.01"
+                min="0"
+                placeholder="0,00">
+            </div>
+
+            <div>
+              <label>Observação</label>
+              <input
+                type="text"
+                id="cf-obs-fiado"
+                class="cf-fiado-input"
+                placeholder="Ex: bolão, federal, venda por telefone...">
+            </div>
+          </div>
+
+          <button type="button" class="cf-fiado-btn-add" onclick="CF.adicionarFiadoSimples()">
+            Adicionar fiado
+          </button>
+
+        </div>
+      </section>
+
+      <section class="cf-fiado-panel cf-fiado-sessao">
+        <div class="cf-fiado-panel-head">
+          <div>
+            <div class="cf-fiado-title">Fiados desta sessão</div>
+            <div class="cf-fiado-sub" id="cf-badge-lancamentos">0 lançamentos</div>
+          </div>
+
+          <div class="cf-fiado-total" id="cf-resumo-sessao-total">R$ 0,00</div>
+        </div>
+
+        <div id="cf-lista-lancamentos" class="cf-lista-lancamentos"></div>
+      </section>
+
+    </div>
+
+    <div id="cf-view-novo-cliente" class="cf-fiado-novo" style="display:none">
+      <div class="cf-fiado-panel">
+        <button type="button" class="cf-fiado-btn-mini" onclick="CF.voltarDoCadastro()">
+          ← Voltar
+        </button>
+
+        <div class="cf-fiado-title" style="margin-top:14px">Cadastrar cliente</div>
+        <div class="cf-fiado-sub">Preencha os dados básicos para lançar fiado.</div>
+
+        <div class="cf-fiado-form cf-fiado-form-cadastro">
+          <div>
+            <label>Nome do Cliente</label>
+            <input type="text" id="cf-novo-nome" class="cf-fiado-input" placeholder="Nome completo">
+          </div>
+
+          <div>
+            <label>Telefone</label>
+            <input type="text" id="cf-novo-tel" class="cf-fiado-input" placeholder="(00) 00000-0000">
+          </div>
+
+          <div>
+            <label>CPF / Documento</label>
+            <input type="text" id="cf-novo-doc" class="cf-fiado-input" placeholder="Opcional">
+          </div>
+
+          <div>
+            <label>Observação</label>
+            <textarea id="cf-novo-obs" class="cf-fiado-input" placeholder="Opcional"></textarea>
+          </div>
+        </div>
+
+        <div class="cf-err" id="cf-novo-err"></div>
+
+        <div class="cf-fiado-actions">
+          <button type="button" class="cf-fiado-btn-mini" onclick="CF.voltarDoCadastro()">Cancelar</button>
+          <button type="button" class="cf-fiado-btn-add" id="cf-btn-salvar-novo" onclick="CF.salvarNovoCadastro()">
+            Cadastrar cliente
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
         Área do Cliente
         <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;
                      background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);
