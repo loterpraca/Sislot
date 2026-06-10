@@ -57,7 +57,7 @@ let usuario = null;
 let lojaIdPorSlug = {};
 let lojaSlugPorId = {};
 let lojaNomePorId = {};
-let dataAtual = new Date();
+let dataAtual = null;
 let bolaoSelecionado = null;
 let saldosPorLoja = {};
 let historicoPorLoja = {};
@@ -68,6 +68,40 @@ let filtroAtivoTimer = null;
 // =====================================================
 // FORMATAÇÃO DE DATA
 // =====================================================
+
+function hojeSaoPauloDate() {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(new Date());
+
+    const get = tipo => partes.find(p => p.type === tipo)?.value;
+
+    const y = Number(get('year'));
+    const m = Number(get('month'));
+    const d = Number(get('day'));
+
+    return criarDataReferencia(y, m, d);
+}
+
+function criarDataReferencia(ano, mes, dia) {
+    // Meio-dia evita virada estranha por fuso/DST
+    return new Date(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0, 0);
+}
+
+function dataAtualISO() {
+    if (!(dataAtual instanceof Date) || Number.isNaN(dataAtual.getTime())) {
+        dataAtual = hojeSaoPauloDate();
+    }
+
+    const y = dataAtual.getFullYear();
+    const m = String(dataAtual.getMonth() + 1).padStart(2, '0');
+    const d = String(dataAtual.getDate()).padStart(2, '0');
+
+    return `${y}-${m}-${d}`;
+}
 
 function formatarDataSegura(data) {
     if (!data) return '—';
@@ -102,15 +136,6 @@ function formatarDataSegura(data) {
     }
 }
 
-function dataAtualISO() {
-    const d = dataAtual instanceof Date ? dataAtual : new Date(dataAtual);
-    if (isNaN(d.getTime())) return '';
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dia = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${dia}`;
-}
-
 // FIX: usava $('dateDisplayText') e $('calendarPicker') — IDs inexistentes.
 // Correto: $('dateDisplay') e $('datePicker').
 function atualizarDateDisplay() {
@@ -133,9 +158,9 @@ function atualizarDateDisplay() {
     if (picker) picker.value = iso;
 }
 async function aplicarDataReferencia(novaData) {
-    dataAtual = new Date(
+    dataAtual = criarDataReferencia(
         novaData.getFullYear(),
-        novaData.getMonth(),
+        novaData.getMonth() + 1,
         novaData.getDate()
     );
 
@@ -147,17 +172,26 @@ async function aplicarDataReferencia(novaData) {
 }
 
 async function moverDataReferencia(deltaDias) {
-    const d = new Date(
+    const d = criarDataReferencia(
         dataAtual.getFullYear(),
-        dataAtual.getMonth(),
+        dataAtual.getMonth() + 1,
         dataAtual.getDate()
     );
 
     d.setDate(d.getDate() + deltaDias);
 
-    await aplicarDataReferencia(d);
-}
+    dataAtual = criarDataReferencia(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        d.getDate()
+    );
 
+    atualizarDateDisplay();
+    atualizarEstadoFiltroData();
+    fecharPanel();
+
+    await buscarBoloes();
+}
 // =====================================================
 // FUNÇÕES ASSÍNCRONAS
 // =====================================================
@@ -303,7 +337,112 @@ async function buscarBoloes() {
         if (loadingEl) loadingEl.style.display = 'none';
     }
 }
+function renderBoloes(boloes, posicoes, movs) {
+    const loadingEl = $('stLoading');
+    const vazioEl   = $('stVazio');
+    const listaEl   = $('stLista');
+    const countEl   = $('boloesCount');
 
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (vazioEl)   vazioEl.style.display   = 'none';
+    if (listaEl)   listaEl.style.display   = 'block';
+
+    if (countEl) {
+        countEl.textContent = `${boloes.length} bolão${boloes.length === 1 ? '' : 'ões'}`;
+    }
+
+    if (!listaEl) return;
+
+    listaEl.innerHTML = '';
+
+    const grupos = {};
+
+    boloes.forEach(b => {
+        const mod = b.modalidade || 'Sem modalidade';
+        if (!grupos[mod]) grupos[mod] = [];
+        grupos[mod].push(b);
+    });
+
+    const modalidades = Object.keys(grupos).sort((a, b) =>
+        String(a || '').localeCompare(String(b || ''), 'pt-BR')
+    );
+
+    modalidades.forEach(modalidade => {
+        grupos[modalidade].sort((a, b) => {
+            const concursoA = Number(a.concurso || 0);
+            const concursoB = Number(b.concurso || 0);
+
+            if (concursoA !== concursoB) return concursoA - concursoB;
+
+            const valorA = Number(a.valor_cota || 0);
+            const valorB = Number(b.valor_cota || 0);
+
+            if (valorA !== valorB) return valorA - valorB;
+
+            return String(a.loterias?.nome || '').localeCompare(
+                String(b.loterias?.nome || ''),
+                'pt-BR'
+            );
+        });
+
+        const section = document.createElement('section');
+        section.className = 'section-sep';
+
+        const label = document.createElement('div');
+        label.className = 'section-sep-label';
+        label.textContent = modalidade;
+
+        const grid = document.createElement('div');
+        grid.className = 'boloes-grid';
+
+        grupos[modalidade].forEach(b => {
+            const posBolao = posicoes.filter(p => p.bolao_id === b.id);
+
+            const saldoTotal = posBolao.reduce((acc, p) => {
+                return acc + Number(p.qtd_cotas_posicao || 0);
+            }, 0);
+
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'bolao-card';
+            card.dataset.id = b.id;
+
+            card.innerHTML = `
+                <div class="bolao-card-top">
+                    <div>
+                        <div class="bolao-modalidade">${b.modalidade || '—'}</div>
+                        <div class="bolao-concurso">Concurso ${b.concurso || '—'}</div>
+                    </div>
+                    <div class="bolao-preco">${fmtBRL(b.valor_cota)}</div>
+                </div>
+
+                <div class="bolao-info-row">
+                    <span>${b.qtd_jogos || 0} jogos</span>
+                    <span>${b.qtd_dezenas || 0} dez.</span>
+                    <span>${b.qtd_cotas_total || 0} cotas</span>
+                </div>
+
+                <div class="bolao-origem">
+                    Origem: <strong>${b.loterias?.nome || '—'}</strong>
+                </div>
+
+                <div class="bolao-saldo">
+                    Saldo atual: <strong>${saldoTotal}</strong>
+                </div>
+            `;
+
+            card.addEventListener('click', () => {
+                selecionarBolao(b, posicoes, movs);
+            });
+
+            grid.appendChild(card);
+        });
+
+        section.appendChild(label);
+        section.appendChild(grid);
+        listaEl.appendChild(section);
+    });
+}
 function selecionarBolao(b, posicoes, movs) {
     document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
     const card = document.querySelector(`.bolao-card[data-id="${b.id}"]`);
@@ -646,15 +785,13 @@ if (btnHoje) {
         e.preventDefault();
         e.stopPropagation();
 
-        const hoje = new Date();
+        dataAtual = hojeSaoPauloDate();
 
-        await aplicarDataReferencia(
-            new Date(
-                hoje.getFullYear(),
-                hoje.getMonth(),
-                hoje.getDate()
-            )
-        );
+        atualizarDateDisplay();
+        atualizarEstadoFiltroData();
+        fecharPanel();
+
+        await buscarBoloes();
     });
 }
 
@@ -680,7 +817,14 @@ if (datePicker) {
         if (!datePicker.value) return;
 
         const [y, m, d] = datePicker.value.split('-').map(Number);
-        await aplicarDataReferencia(new Date(y, m - 1, d));
+
+dataAtual = criarDataReferencia(y, m, d);
+
+atualizarDateDisplay();
+atualizarEstadoFiltroData();
+fecharPanel();
+
+await buscarBoloes();
     });
 }
     // Liga/desliga o uso da data de referência
@@ -792,7 +936,7 @@ async function init() {
     
     bind();
 
-dataAtual = new Date();
+dataAtual = hojeSaoPauloDate();
 atualizarDateDisplay();
 atualizarEstadoFiltroData();
 
