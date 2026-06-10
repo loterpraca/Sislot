@@ -111,18 +111,24 @@ function dataAtualISO() {
 // FIX: usava $('dateDisplayText') e $('calendarPicker') — IDs inexistentes.
 // Correto: $('dateDisplay') e $('datePicker').
 function atualizarDateDisplay() {
-    const btn    = $('dateDisplay'); // botão visível com a data
-    const picker = $('datePicker');  // input[type=date] oculto
+    const btnText = $('dateDisplayText');
+    const btn     = $('dateDisplay');
+    const picker  = $('datePicker');
 
     const iso = dataAtualISO();
     if (!iso) return;
 
     const [y, m, d] = iso.split('-');
+    const texto = `${d}/${m}/${y}`;
 
-    if (btn) btn.textContent = `${d}/${m}/${y}`;
+    if (btnText) {
+        btnText.textContent = texto;
+    } else if (btn) {
+        btn.textContent = texto;
+    }
+
     if (picker) picker.value = iso;
 }
-
 function aplicarDataReferencia(novaData) {
     dataAtual = new Date(
         novaData.getFullYear(),
