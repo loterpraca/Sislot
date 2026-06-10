@@ -57,51 +57,14 @@ let usuario = null;
 let lojaIdPorSlug = {};
 let lojaSlugPorId = {};
 let lojaNomePorId = {};
-let dataAtual = null;
+let dataAtual = new Date();
 let bolaoSelecionado = null;
 let saldosPorLoja = {};
 let historicoPorLoja = {};
-    let concursoFiltro = null;
-let usarDataReferencia = true;
-let filtroAtivoTimer = null;
 
 // =====================================================
 // FORMATAÇÃO DE DATA
 // =====================================================
-
-function hojeSaoPauloDate() {
-    const partes = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).formatToParts(new Date());
-
-    const get = tipo => partes.find(p => p.type === tipo)?.value;
-
-    const y = Number(get('year'));
-    const m = Number(get('month'));
-    const d = Number(get('day'));
-
-    return criarDataReferencia(y, m, d);
-}
-
-function criarDataReferencia(ano, mes, dia) {
-    // Meio-dia evita virada estranha por fuso/DST
-    return new Date(Number(ano), Number(mes) - 1, Number(dia), 12, 0, 0, 0);
-}
-
-function dataAtualISO() {
-    if (!(dataAtual instanceof Date) || Number.isNaN(dataAtual.getTime())) {
-        dataAtual = hojeSaoPauloDate();
-    }
-
-    const y = dataAtual.getFullYear();
-    const m = String(dataAtual.getMonth() + 1).padStart(2, '0');
-    const d = String(dataAtual.getDate()).padStart(2, '0');
-
-    return `${y}-${m}-${d}`;
-}
 
 function formatarDataSegura(data) {
     if (!data) return '—';
@@ -136,126 +99,56 @@ function formatarDataSegura(data) {
     }
 }
 
+function dataAtualISO() {
+    const d = dataAtual instanceof Date ? dataAtual : new Date(dataAtual);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dia}`;
+}
+
 // FIX: usava $('dateDisplayText') e $('calendarPicker') — IDs inexistentes.
 // Correto: $('dateDisplay') e $('datePicker').
 function atualizarDateDisplay() {
-    const btnText = $('dateDisplayText');
-    const btn     = $('dateDisplay');
-    const picker  = $('datePicker');
+    const btn    = $('dateDisplay'); // botão visível com a data
+    const picker = $('datePicker');  // input[type=date] oculto
 
     const iso = dataAtualISO();
     if (!iso) return;
 
     const [y, m, d] = iso.split('-');
-    const texto = `${d}/${m}/${y}`;
 
-    if (btnText) {
-        btnText.textContent = texto;
-    } else if (btn) {
-        btn.textContent = texto;
-    }
-
+    if (btn) btn.textContent = `${d}/${m}/${y}`;
     if (picker) picker.value = iso;
 }
-async function aplicarDataReferencia(novaData) {
-    dataAtual = criarDataReferencia(
+
+function aplicarDataReferencia(novaData) {
+    dataAtual = new Date(
         novaData.getFullYear(),
-        novaData.getMonth() + 1,
+        novaData.getMonth(),
         novaData.getDate()
     );
-
     atualizarDateDisplay();
-    atualizarEstadoFiltroData();
     fecharPanel();
-
-    await buscarBoloes();
+    buscarBoloes();
 }
 
-async function moverDataReferencia(deltaDias) {
-    const d = criarDataReferencia(
+function moverDataReferencia(deltaDias) {
+    const d = new Date(
         dataAtual.getFullYear(),
-        dataAtual.getMonth() + 1,
+        dataAtual.getMonth(),
         dataAtual.getDate()
     );
-
     d.setDate(d.getDate() + deltaDias);
-
-    dataAtual = criarDataReferencia(
-        d.getFullYear(),
-        d.getMonth() + 1,
-        d.getDate()
-    );
-
-    atualizarDateDisplay();
-    atualizarEstadoFiltroData();
-    fecharPanel();
-
-    await buscarBoloes();
+    aplicarDataReferencia(d);
 }
+
 // =====================================================
 // FUNÇÕES ASSÍNCRONAS
 // =====================================================
-function intOrNull(v) {
-    if (v === '' || v === null || v === undefined) return null;
-
-    const n = Number(v);
-    return Number.isFinite(n) ? Math.trunc(n) : null;
-}
-
-function lerFiltrosAvancados() {
-    concursoFiltro = intOrNull($('inputConcurso')?.value);
-    usarDataReferencia = $('chkUsarData') ? $('chkUsarData').checked : true;
-}
-
-
-
-function aplicarFiltrosBase(q, opts = {}) {
-    const {
-        usarFiltroData = true,
-        usarFiltroConcurso = true
-    } = opts;
-
-    const iso = dataAtualISO();
-
-    if (usarFiltroData && usarDataReferencia) {
-        q = q
-            .lte('dt_inicial', iso)
-            .gte('dt_concurso', iso);
-    }
-
-    if (usarFiltroConcurso && concursoFiltro !== null) {
-        q = q.eq('concurso', concursoFiltro);
-    }
-
-    return q;
-}
-function atualizarEstadoFiltroData() {
-    const usandoData = $('chkUsarData') ? $('chkUsarData').checked : true;
-
-    const btnDtPrev = $('btnDtPrev');
-    const btnDtNext = $('btnDtNext');
-    const btnHoje = $('btnHoje');
-    const dateDisplay = $('dateDisplay');
-
-    if (btnDtPrev) btnDtPrev.disabled = !usandoData;
-    if (btnDtNext) btnDtNext.disabled = !usandoData;
-    if (btnHoje) btnHoje.disabled = !usandoData;
-    if (dateDisplay) dateDisplay.style.opacity = usandoData ? '1' : '.45';
-}
-
-function agendarFiltroAtivo(delay = 450) {
-    clearTimeout(filtroAtivoTimer);
-
-    filtroAtivoTimer = setTimeout(async () => {
-        lerFiltrosAvancados();
-        fecharPanel();
-        await buscarBoloes();
-    }, delay);
-}
 
 async function buscarBoloes() {
-    lerFiltrosAvancados();
-
     const loadingEl = $('stLoading');
     const vazioEl   = $('stVazio');
     const listaEl   = $('stLista');
@@ -266,118 +159,109 @@ async function buscarBoloes() {
     if (listaEl)   listaEl.style.display   = 'none';
     if (countEl)   countEl.innerHTML       = '';
 
-    try {
-        let q = sb
-            .from('boloes')
-            .select(`
-                id, modalidade, concurso, valor_cota, qtd_jogos, qtd_dezenas,
-                qtd_cotas_total, dt_inicial, dt_concurso, status,
-                loteria_id,
-                loterias(id, nome, slug)
-            `)
-            .eq('status', 'ATIVO')
-            .order('modalidade', { ascending: true })
-            .order('concurso', { ascending: true })
-            .order('valor_cota', { ascending: true })
-            .order('loteria_id', { ascending: true });
+    const iso = dataAtualISO();
 
-        q = aplicarFiltrosBase(q);
+    const { data: boloes, error } = await sb
+        .from('boloes')
+        .select(`
+            id, modalidade, concurso, valor_cota, qtd_jogos, qtd_dezenas,
+            qtd_cotas_total, dt_inicial, dt_concurso, status,
+            loteria_id,
+            loterias(id, nome, slug)
+        `)
+        .eq('status', 'ATIVO')
+        .lte('dt_inicial', iso)
+        .gte('dt_concurso', iso)
+        .order('modalidade')
+        .order('loteria_id');
 
-        const { data: boloes, error } = await q;
+    if (loadingEl) loadingEl.style.display = 'none';
 
-        if (error) throw error;
-
-        if (!boloes || !boloes.length) {
-            if (vazioEl) {
-                const vazioSub = $('stVazioSub');
-                const textoData = usarDataReferencia
-                    ? ` para ${formatarDataSegura(dataAtual)}.`
-                    : '.';
-
-                if (vazioSub) {
-                    vazioSub.textContent = `Nenhum bolão encontrado${textoData}`;
-                }
-
-                vazioEl.style.display = 'flex';
-            }
-
-            return;
-        }
-
-        const ids = boloes.map(b => b.id);
-
-        const { data: posicoes, error: posError } = await sb
-            .from('view_posicao_bolao_lojas')
-            .select('*')
-            .in('bolao_id', ids);
-
-        if (posError) throw posError;
-
-        const { data: movs, error: movError } = await sb
-            .from('movimentacoes_cotas')
-            .select('bolao_id, loteria_origem, loteria_destino, qtd_cotas')
-            .in('bolao_id', ids)
-            .eq('status', 'ATIVO');
-
-        if (movError) throw movError;
-
-        renderBoloes(boloes, posicoes || [], movs || []);
-
-    } catch (e) {
-        console.error('Erro ao buscar bolões:', e);
-
+    if (error || !boloes || !boloes.length) {
         if (vazioEl) {
             const vazioSub = $('stVazioSub');
-            if (vazioSub) {
-                vazioSub.textContent = e.message || 'Erro ao buscar bolões.';
-            }
+            if (vazioSub) vazioSub.textContent = `Nenhum bolão ativo para ${formatarDataSegura(dataAtual)}.`;
             vazioEl.style.display = 'flex';
         }
-    } finally {
-        if (loadingEl) loadingEl.style.display = 'none';
+        // Zera o contador no header
+        if (countEl) countEl.innerHTML = '';
+        return;
     }
+
+    const ids = boloes.map(b => b.id);
+
+    const { data: posicoes } = await sb
+        .from('view_posicao_bolao_lojas')
+        .select('*')
+        .in('bolao_id', ids);
+
+    const { data: movs } = await sb
+        .from('movimentacoes_cotas')
+        .select('bolao_id, loteria_origem, loteria_destino, qtd_cotas')
+        .in('bolao_id', ids)
+        .eq('status', 'ATIVO');
+
+    renderBoloes(boloes, posicoes || [], movs || []);
 }
+
 function renderBoloes(boloes, posicoes, movs) {
     const lista   = $('stLista');
     const countEl = $('boloesCount');
-
     if (!lista) return;
 
     lista.innerHTML = '';
 
-    const grupos = {};
+    const boloesBaseOrdenacao = (boloes || []).map(b => ({
+    ...b,
+    loteria_origem_nome: b.loterias?.nome || ''
+}));
 
-    (boloes || []).forEach(b => {
-        const mod = b.modalidade || 'Sem modalidade';
-        if (!grupos[mod]) grupos[mod] = [];
-        grupos[mod].push(b);
+let grupos = {};
+let gruposOrdenados = [];
+
+if (utils.agruparOrdenarPorCampos) {
+    const ordenado = utils.agruparOrdenarPorCampos(boloesBaseOrdenacao, {
+        campoGrupo: 'modalidade',
+        campoPreco: 'valor_cota',
+        campoConcurso: 'concurso',
+        campoOrigem: 'loteria_origem_nome'
     });
 
-    const gruposOrdenados = Object.keys(grupos).sort((a, b) =>
+    grupos = ordenado.grupos;
+    gruposOrdenados = ordenado.gruposOrdenados;
+} else {
+    // Fallback caso o sislot-utils.js ainda não tenha sido atualizado
+    boloesBaseOrdenacao.forEach(b => {
+        if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
+        grupos[b.modalidade].push(b);
+    });
+
+    gruposOrdenados = Object.keys(grupos).sort((a, b) =>
         String(a || '').localeCompare(String(b || ''), 'pt-BR')
     );
 
-    let totalCards = 0;
-
     gruposOrdenados.forEach(mod => {
-        const listaMod = grupos[mod] || [];
+        grupos[mod].sort((a, b) => {
+            const precoA = Number(a.valor_cota || 0);
+            const precoB = Number(b.valor_cota || 0);
 
-        listaMod.sort((a, b) => {
+            if (precoA !== precoB) return precoA - precoB;
+
             const concursoA = Number(a.concurso || 0);
             const concursoB = Number(b.concurso || 0);
 
             if (concursoA !== concursoB) return concursoA - concursoB;
 
-            const valorA = Number(a.valor_cota || 0);
-            const valorB = Number(b.valor_cota || 0);
-
-            if (valorA !== valorB) return valorA - valorB;
-
-            return String(a.loterias?.nome || '').localeCompare(
-                String(b.loterias?.nome || ''),
-                'pt-BR'
-            );
+            return String(a.loteria_origem_nome || '')
+                .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
         });
+    });
+}
+
+let totalCards = 0;
+
+gruposOrdenados.forEach(mod => {
+    const listaMod = grupos[mod] || [];
 
         const sep = document.createElement('div');
         sep.className = 'section-sep';
@@ -394,66 +278,48 @@ function renderBoloes(boloes, posicoes, movs) {
 
         listaMod.forEach((b, i) => {
             const pos = posicoes.filter(p => p.bolao_id === b.id);
-
             let saldoPills = '';
-
-            pos.forEach(p => {
-                const qtd = Number(p.qtd_cotas_posicao || 0);
-
-                if (qtd > 0) {
-                    saldoPills += `
-                        <div class="saldo-pill">
-                            <span class="sp-loja">${p.loteria_nome || lojaNomePorId[p.loteria_id] || '—'}</span>
+            if (pos.length) {
+                pos.forEach(p => {
+                    const qtd = Number(p.qtd_cotas_posicao || 0);
+                    if (qtd > 0) {
+                        saldoPills += `<div class="saldo-pill">
+                            <span class="sp-loja">${p.loteria_nome || '—'}</span>
                             <span class="sp-val">${qtd}</span>
-                        </div>
-                    `;
-                }
-            });
-
+                        </div>`;
+                    }
+                });
+            }
             if (!saldoPills) {
-                saldoPills = `
-                    <div class="saldo-pill">
-                        <span class="sp-loja">Sem distribuição</span>
-                    </div>
-                `;
+                saldoPills = '<div class="saldo-pill"><span class="sp-loja">Sem distribuição</span></div>';
             }
 
             const card = document.createElement('div');
             card.className = 'bolao-card';
             card.dataset.id = b.id;
             card.style.animationDelay = (i * 0.04) + 's';
-
             card.innerHTML = `
                 <div class="bolao-main">
                     <div class="bolao-header">
-                        <span class="bolao-modal">${b.modalidade || '—'}</span>
-                        <span class="bolao-concurso">#${b.concurso || '—'}</span>
+                        <span class="bolao-modal">${b.modalidade}</span>
+                        <span class="bolao-concurso">#${b.concurso}</span>
                         <span class="bolao-origem">${b.loterias?.nome || '—'}</span>
                     </div>
-
                     <div class="bolao-tags">
-                        <span class="btag">${b.qtd_jogos || 0} jogos</span>
-                        <span class="btag">${b.qtd_dezenas || 0} dez.</span>
-                        <span class="btag">${b.qtd_cotas_total || 0} cotas</span>
+                        <span class="btag">${b.qtd_jogos} jogos</span>
+                        <span class="btag">${b.qtd_dezenas} dez.</span>
+                        <span class="btag">${b.qtd_cotas_total} cotas</span>
                         <span class="btag">${fmtBRL(b.valor_cota)}/cota</span>
                     </div>
-
-                    <div class="bolao-saldos">
-                        ${saldoPills}
-                    </div>
+                    <div class="bolao-saldos">${saldoPills}</div>
                 </div>
-
                 <div class="bolao-select-ind">
                     <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="2 6 5 9 10 3"/>
                     </svg>
                 </div>
             `;
-
-            card.addEventListener('click', () => {
-                selecionarBolao(b, pos, movs);
-            });
-
+            card.addEventListener('click', () => selecionarBolao(b, pos, movs));
             grid.appendChild(card);
             totalCards++;
         });
@@ -463,10 +329,12 @@ function renderBoloes(boloes, posicoes, movs) {
 
     lista.style.display = 'block';
 
+    // Atualiza contador no cabeçalho
     if (countEl) {
         countEl.innerHTML = `<span>${totalCards}</span> bolões vigentes`;
     }
 }
+
 function selecionarBolao(b, posicoes, movs) {
     document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
     const card = document.querySelector(`.bolao-card[data-id="${b.id}"]`);
@@ -767,166 +635,84 @@ function bind() {
     const btnDtPrev      = $('btnDtPrev');
     const btnDtNext      = $('btnDtNext');
     const btnHoje        = $('btnHoje');
-    const dateDisplay    = $('dateDisplay');
-    const datePicker     = $('datePicker');
+    const dateDisplay    = $('dateDisplay');   // botão visível
+    const datePicker     = $('datePicker');    // FIX: era 'calendarPicker' (ID inexistente)
     const btnFecharPanel = $('btnFecharPanel');
     const btnZerarMov    = $('btnZerarMov');
     const btnMovimentar  = $('btnMovimentar');
     const confirmCancel  = $('confirmCancel');
     const confirmOverlay = $('confirmOverlay');
     const confirmOk      = $('confirmOk');
-    const chkUsarData    = $('chkUsarData');
-    const inputConcurso  = $('inputConcurso');
 
-    if (btnMenu) {
-        btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
+    if (btnMenu)   btnMenu.addEventListener('click', () => window.SISLOT_SECURITY.irParaInicio());
+    if (btnLogout) btnLogout.addEventListener('click', async () => await window.SISLOT_SECURITY.sair());
+
+    if (btnDtPrev) btnDtPrev.onclick = () => moverDataReferencia(-1);
+    if (btnDtNext) btnDtNext.onclick = () => moverDataReferencia(1);
+
+    if (btnHoje) {
+        btnHoje.onclick = () => {
+            const hoje = new Date();
+            aplicarDataReferencia(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
+        };
     }
 
-    if (btnLogout) {
-        btnLogout.addEventListener('click', async () => {
-            await window.SISLOT_SECURITY.sair();
-        });
-    }
-
-  if (btnDtPrev) {
-    btnDtPrev.addEventListener('click', async e => {
-        e.preventDefault();
-        e.stopPropagation();
-        await moverDataReferencia(-1);
-    });
-}
-
-if (btnDtNext) {
-    btnDtNext.addEventListener('click', async e => {
-        e.preventDefault();
-        e.stopPropagation();
-        await moverDataReferencia(1);
-    });
-}
-
-if (btnHoje) {
-    btnHoje.addEventListener('click', async e => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        dataAtual = hojeSaoPauloDate();
-
-        atualizarDateDisplay();
-        atualizarEstadoFiltroData();
-        fecharPanel();
-
-        await buscarBoloes();
-    });
-}
-
-// Abre o calendário ao clicar na data
-if (dateDisplay && datePicker) {
-    dateDisplay.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        atualizarDateDisplay();
-
-        if (typeof datePicker.showPicker === 'function') {
-            datePicker.showPicker();
-        } else {
-            datePicker.click();
-        }
-    });
-}
-
-// Aplica a data escolhida no calendário
-if (datePicker) {
-    datePicker.addEventListener('change', async () => {
-        if (!datePicker.value) return;
-
-        const [y, m, d] = datePicker.value.split('-').map(Number);
-
-dataAtual = criarDataReferencia(y, m, d);
-
-atualizarDateDisplay();
-atualizarEstadoFiltroData();
-fecharPanel();
-
-await buscarBoloes();
-    });
-}
-    // Liga/desliga o uso da data de referência
-    if (chkUsarData) {
-        chkUsarData.addEventListener('change', async e => {
-            usarDataReferencia = e.target.checked;
-
-            atualizarEstadoFiltroData();
-            fecharPanel();
-
-            await buscarBoloes();
-        });
-    }
-
-    // Filtro por concurso
-    if (inputConcurso) {
-        inputConcurso.addEventListener('input', () => {
-            agendarFiltroAtivo(450);
-        });
-    }
-
-    if (btnFecharPanel) {
-        btnFecharPanel.addEventListener('click', fecharPanel);
-    }
-
-    if (btnZerarMov) {
-        btnZerarMov.addEventListener('click', () => zerarMov());
-    }
-
-    if (btnMovimentar) {
-        btnMovimentar.addEventListener('click', onMovimentar);
-    }
-
-    if (confirmCancel) {
-        confirmCancel.addEventListener('click', () => {
-            if (confirmOverlay) confirmOverlay.classList.remove('show');
-        });
-    }
-
-    if (confirmOverlay) {
-        confirmOverlay.addEventListener('click', e => {
-            if (e.target === confirmOverlay) {
-                confirmOverlay.classList.remove('show');
+    // Clique no botão da data abre o picker nativo
+    if (dateDisplay && datePicker) {
+        dateDisplay.onclick = () => {
+            atualizarDateDisplay();
+            if (typeof datePicker.showPicker === 'function') {
+                datePicker.showPicker();
+            } else {
+                datePicker.click();
             }
-        });
+        };
     }
 
-    if (confirmOk) {
-        confirmOk.addEventListener('click', async () => {
-            if (confirmOverlay) confirmOverlay.classList.remove('show');
-            if (!bolaoSelecionado) return;
-
-            const deltas = {};
-
-            LOJAS.forEach(l => {
-                const inp = $(`dest-${l.slug}`);
-                if (!inp || inp.disabled) return;
-
-                const qtd = parseDeltaCotas(inp.value);
-                if (qtd !== 0) deltas[l.slug] = qtd;
-            });
-
-            await doMovimentar(bolaoSelecionado, deltas);
-        });
+    // Mudança no picker aplica nova data
+    if (datePicker) {
+        datePicker.onchange = () => {
+            if (!datePicker.value) return;
+            const [y, m, d] = datePicker.value.split('-').map(Number);
+            aplicarDataReferencia(new Date(y, m - 1, d));
+        };
     }
 
+    if (btnFecharPanel) btnFecharPanel.addEventListener('click', fecharPanel);
+    if (btnZerarMov)    btnZerarMov.addEventListener('click', () => zerarMov());
+    if (btnMovimentar)  btnMovimentar.addEventListener('click', onMovimentar);
+
+    if (confirmCancel) confirmCancel.addEventListener('click', () => {
+        if (confirmOverlay) confirmOverlay.classList.remove('show');
+    });
+    if (confirmOverlay) confirmOverlay.addEventListener('click', (e) => {
+        if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
+    });
+    if (confirmOk) confirmOk.addEventListener('click', async () => {
+        if (confirmOverlay) confirmOverlay.classList.remove('show');
+        if (!bolaoSelecionado) return;
+        const deltas = {};
+        LOJAS.forEach(l => {
+            const inp = $(`dest-${l.slug}`);
+            if (!inp || inp.disabled) return;
+            const qtd = parseDeltaCotas(inp.value);
+            if (qtd !== 0) deltas[l.slug] = qtd;
+        });
+        await doMovimentar(bolaoSelecionado, deltas);
+    });
     if (utils.bindAtalhosPorSecao) {
-        utils.bindAtalhosPorSecao({
-            namespace: 'movimentacao-cotas-boloes',
-            listaId: 'stLista',
-            offsetTopo: 105,
-            labelSelector: '.section-sep-label',
-            blocoSelector: '.section-sep',
-            ativoQuando: () => true,
-            onNaoEncontrou: () => setStatus('statusBar', 'Modalidade não encontrada nesta lista.', 'info')
-        });
-    }
+    utils.bindAtalhosPorSecao({
+        namespace: 'movimentacao-cotas-boloes',
+        listaId: 'stLista',
+        offsetTopo: 105,
+        labelSelector: '.section-sep-label',
+        blocoSelector: '.section-sep',
+        ativoQuando: () => true,
+        onNaoEncontrou: () => setStatus('statusBar', 'Modalidade não encontrada nesta lista.', 'info')
+    });
 }
+}
+
 // =====================================================
 // INICIALIZAÇÃO
 // =====================================================
@@ -957,15 +743,11 @@ async function init() {
             lojaNomePorId[l.id]   = l.nome;
         });
     }
-    
+
     bind();
-
-dataAtual = hojeSaoPauloDate();
-atualizarDateDisplay();
-atualizarEstadoFiltroData();
-
-
-await buscarBoloes();
+    dataAtual = new Date();
+    atualizarDateDisplay();
+    await buscarBoloes();
 }
 
 init();
