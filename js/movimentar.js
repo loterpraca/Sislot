@@ -338,37 +338,31 @@ async function buscarBoloes() {
     }
 }
 function renderBoloes(boloes, posicoes, movs) {
-    const loadingEl = $('stLoading');
-    const vazioEl   = $('stVazio');
-    const listaEl   = $('stLista');
-    const countEl   = $('boloesCount');
+    const lista   = $('stLista');
+    const countEl = $('boloesCount');
 
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (vazioEl)   vazioEl.style.display   = 'none';
-    if (listaEl)   listaEl.style.display   = 'block';
+    if (!lista) return;
 
-    if (countEl) {
-        countEl.textContent = `${boloes.length} bolão${boloes.length === 1 ? '' : 'ões'}`;
-    }
-
-    if (!listaEl) return;
-
-    listaEl.innerHTML = '';
+    lista.innerHTML = '';
 
     const grupos = {};
 
-    boloes.forEach(b => {
+    (boloes || []).forEach(b => {
         const mod = b.modalidade || 'Sem modalidade';
         if (!grupos[mod]) grupos[mod] = [];
         grupos[mod].push(b);
     });
 
-    const modalidades = Object.keys(grupos).sort((a, b) =>
+    const gruposOrdenados = Object.keys(grupos).sort((a, b) =>
         String(a || '').localeCompare(String(b || ''), 'pt-BR')
     );
 
-    modalidades.forEach(modalidade => {
-        grupos[modalidade].sort((a, b) => {
+    let totalCards = 0;
+
+    gruposOrdenados.forEach(mod => {
+        const listaMod = grupos[mod] || [];
+
+        listaMod.sort((a, b) => {
             const concursoA = Number(a.concurso || 0);
             const concursoB = Number(b.concurso || 0);
 
@@ -385,63 +379,93 @@ function renderBoloes(boloes, posicoes, movs) {
             );
         });
 
-        const section = document.createElement('section');
-        section.className = 'section-sep';
-
-        const label = document.createElement('div');
-        label.className = 'section-sep-label';
-        label.textContent = modalidade;
+        const sep = document.createElement('div');
+        sep.className = 'section-sep';
+        sep.style.marginTop = totalCards > 0 ? '20px' : '0';
+        sep.innerHTML = `
+            <div class="section-sep-label">${mod}</div>
+            <div class="section-sep-line"></div>
+            <div class="section-sep-count">${listaMod.length}</div>
+        `;
+        lista.appendChild(sep);
 
         const grid = document.createElement('div');
         grid.className = 'boloes-grid';
 
-        grupos[modalidade].forEach(b => {
-            const posBolao = posicoes.filter(p => p.bolao_id === b.id);
+        listaMod.forEach((b, i) => {
+            const pos = posicoes.filter(p => p.bolao_id === b.id);
 
-            const saldoTotal = posBolao.reduce((acc, p) => {
-                return acc + Number(p.qtd_cotas_posicao || 0);
-            }, 0);
+            let saldoPills = '';
 
-            const card = document.createElement('button');
-            card.type = 'button';
+            pos.forEach(p => {
+                const qtd = Number(p.qtd_cotas_posicao || 0);
+
+                if (qtd > 0) {
+                    saldoPills += `
+                        <div class="saldo-pill">
+                            <span class="sp-loja">${p.loteria_nome || lojaNomePorId[p.loteria_id] || '—'}</span>
+                            <span class="sp-val">${qtd}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            if (!saldoPills) {
+                saldoPills = `
+                    <div class="saldo-pill">
+                        <span class="sp-loja">Sem distribuição</span>
+                    </div>
+                `;
+            }
+
+            const card = document.createElement('div');
             card.className = 'bolao-card';
             card.dataset.id = b.id;
+            card.style.animationDelay = (i * 0.04) + 's';
 
             card.innerHTML = `
-                <div class="bolao-card-top">
-                    <div>
-                        <div class="bolao-modalidade">${b.modalidade || '—'}</div>
-                        <div class="bolao-concurso">Concurso ${b.concurso || '—'}</div>
+                <div class="bolao-main">
+                    <div class="bolao-header">
+                        <span class="bolao-modal">${b.modalidade || '—'}</span>
+                        <span class="bolao-concurso">#${b.concurso || '—'}</span>
+                        <span class="bolao-origem">${b.loterias?.nome || '—'}</span>
                     </div>
-                    <div class="bolao-preco">${fmtBRL(b.valor_cota)}</div>
+
+                    <div class="bolao-tags">
+                        <span class="btag">${b.qtd_jogos || 0} jogos</span>
+                        <span class="btag">${b.qtd_dezenas || 0} dez.</span>
+                        <span class="btag">${b.qtd_cotas_total || 0} cotas</span>
+                        <span class="btag">${fmtBRL(b.valor_cota)}/cota</span>
+                    </div>
+
+                    <div class="bolao-saldos">
+                        ${saldoPills}
+                    </div>
                 </div>
 
-                <div class="bolao-info-row">
-                    <span>${b.qtd_jogos || 0} jogos</span>
-                    <span>${b.qtd_dezenas || 0} dez.</span>
-                    <span>${b.qtd_cotas_total || 0} cotas</span>
-                </div>
-
-                <div class="bolao-origem">
-                    Origem: <strong>${b.loterias?.nome || '—'}</strong>
-                </div>
-
-                <div class="bolao-saldo">
-                    Saldo atual: <strong>${saldoTotal}</strong>
+                <div class="bolao-select-ind">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="2 6 5 9 10 3"/>
+                    </svg>
                 </div>
             `;
 
             card.addEventListener('click', () => {
-                selecionarBolao(b, posicoes, movs);
+                selecionarBolao(b, pos, movs);
             });
 
             grid.appendChild(card);
+            totalCards++;
         });
 
-        section.appendChild(label);
-        section.appendChild(grid);
-        listaEl.appendChild(section);
+        lista.appendChild(grid);
     });
+
+    lista.style.display = 'block';
+
+    if (countEl) {
+        countEl.innerHTML = `<span>${totalCards}</span> bolões vigentes`;
+    }
 }
 function selecionarBolao(b, posicoes, movs) {
     document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
