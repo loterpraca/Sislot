@@ -384,3 +384,50 @@
     width: 100%;
   }
 }
+.toast-global {
+  position: fixed;
+  top: 82px;
+  right: 24px;
+  z-index: 9999;
+
+  min-width: 280px;
+  max-width: 420px;
+  padding: 14px 18px;
+
+  border-radius: 10px;
+  background: #17211c;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+
+  color: #d9ffe5;
+  font-size: 14px;
+  font-weight: 600;
+
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s;
+}
+
+.toast-global.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.toast-global.err {
+  background: #2a1717;
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #ffd6d6;
+}
+
+.toast-global.info {
+  background: #17222a;
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #d9ecff;
+}
