@@ -153,6 +153,21 @@ function agendarFiltroAtivo(delay = 450) {
     await buscarBoloes();
   }, delay);
 }
+let toastTimer = null;
+
+function mostrarToast(mensagem, tipo = 'ok', duracao = 4500) {
+  const toast = $('toastGlobal');
+  if (!toast) return;
+
+  clearTimeout(toastTimer);
+
+  toast.textContent = mensagem;
+  toast.className = `toast-global ${tipo} show`;
+
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, duracao);
+}
 function setStatus(msg, tipo='info') {
   const el = $('statusBar');
   el.textContent = msg;
@@ -574,15 +589,15 @@ async function salvarApuracao() {
 
   btn.disabled = false;
 
-  if (error) {
-    setStatus(error.message, 'err');
-    return;
-  }
+if (error) {
+  setStatus(error.message, 'err');
+  return;
+}
 
-setStatus('Apuração salva com sucesso.', 'ok');
-
-await buscarBoloes();
 fecharPanel();
+await buscarBoloes();
+
+mostrarToast('Apuração salva com sucesso.', 'ok');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
