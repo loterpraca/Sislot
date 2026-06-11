@@ -525,14 +525,24 @@ function renderResumoApuracao() {
   if ($('apuSituacao')) $('apuSituacao').textContent = '';
 }
 
-function fecharPanel() {
+function fecharPanel(limparStatus = true) {
   const panel = $('vendaPanel');
-  if (panel) panel.classList.remove('open');
+
+  if (panel) {
+    panel.classList.remove('open');
+  }
 
   document.body.classList.remove('panel-open');
-  document.querySelectorAll('.bolao-card').forEach(c => c.classList.remove('selected'));
+
+  document.querySelectorAll('.bolao-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+
   bolaoSel = null;
-  clearStatus();
+
+  if (limparStatus) {
+    clearStatus();
+  }
 }
 
 async function salvarApuracao() {
@@ -569,12 +579,10 @@ async function salvarApuracao() {
     return;
   }
 
-  setStatus('Apuração salva com sucesso.', 'ok');
+setStatus('Apuração salva com sucesso.', 'ok');
 
-  const bolaoId = bolaoSel.bolao_id;
-  await buscarBoloes();
-  const atualizado = todosBoloes.find(x => Number(x.bolao_id) === Number(bolaoId));
-  if (atualizado) await selecionarBolao(atualizado);
+await buscarBoloes();
+fecharPanel();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
