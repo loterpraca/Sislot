@@ -130,13 +130,35 @@ function aplicarFiltrosBase(q, opts = {}) {
 }
 
 function atualizarEstadoFiltroData() {
-  const usandoData = $('chkUsarData') ? $('chkUsarData').checked : true;
+  const usandoData = $('chkUsarData')
+    ? $('chkUsarData').checked
+    : true;
 
-  $('btnDtPrev').disabled = !usandoData;
-  $('btnDtNext').disabled = !usandoData;
-  $('btnHoje').disabled = !usandoData;
+  const btnPrev = $('btnDtPrev');
+  const btnNext = $('btnDtNext');
+  const btnHoje = $('btnHoje');
+  const inputData = $('inputDataReferencia');
+  const dateDisplay = $('dateDisplay');
 
-  $('dateDisplay').style.opacity = usandoData ? '1' : '.45';
+  if (btnPrev) {
+    btnPrev.disabled = !usandoData;
+  }
+
+  if (btnNext) {
+    btnNext.disabled = !usandoData;
+  }
+
+  if (btnHoje) {
+    btnHoje.disabled = !usandoData;
+  }
+
+  if (inputData) {
+    inputData.disabled = !usandoData;
+  }
+
+  if (dateDisplay) {
+    dateDisplay.style.opacity = usandoData ? '1' : '.45';
+  }
 }
 
 function agendarFiltroAtivo(delay = 450) {
@@ -277,19 +299,51 @@ async function init() {
 }
 
 function atualizarDateDisplay() {
-  $('dateDisplay').textContent = fmtData(dataAtual);
-}
+  const display = $('dateDisplay');
+  const inputData = $('inputDataReferencia');
 
-async function mudarData(delta) {
-  dataAtual.setDate(dataAtual.getDate() + delta);
+  if (display) {
+    display.textContent = fmtData(dataAtual);
+  }
+
+  if (inputData) {
+    inputData.value = isoDate(dataAtual);
+  }
+}
+async function selecionarDataReferencia(valor) {
+  if (!valor) return;
+
+  const partes = valor.split('-').map(Number);
+
+  if (
+    partes.length !== 3 ||
+    !partes[0] ||
+    !partes[1] ||
+    !partes[2]
+  ) {
+    return;
+  }
+
+  const [ano, mes, dia] = partes;
+
+  /*
+    Criar a data dessa maneira evita o erro de UTC
+    que pode fazer a data voltar um dia.
+  */
+  const novaData = new Date(ano, mes - 1, dia);
+
+  if (Number.isNaN(novaData.getTime())) return;
+
+  dataAtual = novaData;
+
   atualizarDateDisplay();
+  atualizarEstadoFiltroData();
   fecharPanel();
- atualizarEstadoFiltroData();
-await carregarOrigens();
-await carregarModalidades();
-await buscarBoloes();
-}
 
+  await carregarOrigens();
+  await carregarModalidades();
+  await buscarBoloes();
+}
 async function carregarOrigens() {
   const iso = isoDate(dataAtual);
   const { data, error } = await sb
@@ -601,15 +655,48 @@ mostrarToast('Apuração salva com sucesso.', 'ok');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  $('btnDtPrev').addEventListener('click', () => mudarData(-1));
-  $('btnDtNext').addEventListener('click', () => mudarData(+1));
-  $('btnHoje').addEventListener('click', async () => {
+  const btnPrev = $('btnDtPrev');
+  const btnNext = $('btnDtNext');
+  const btnHoje = $('btnHoje');
+  const inputData = $('inputDataReferencia');
+  const btnFecharPanel = $('btnFecharPanel');
+
+  btnPrev?.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    await mudarData(-1);
+  });
+
+  btnNext?.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    await mudarData(1);
+  });
+
+  btnHoje?.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
+
     dataAtual = hojeSaoPauloDate();
+
     atualizarDateDisplay();
+    atualizarEstadoFiltroData();
     fecharPanel();
+
     await carregarOrigens();
+    await carregarModalidades();
     await buscarBoloes();
   });
-  $('btnFecharPanel').addEventListener('click', fecharPanel);
+
+  inputData?.addEventListener('change', async event => {
+    const valorSelecionado = event.target.value;
+
+    await selecionarDataReferencia(valorSelecionado);
+  });
+
+  btnFecharPanel?.addEventListener('click', fecharPanel);
+
   init();
 });
