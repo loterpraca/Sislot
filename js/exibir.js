@@ -1144,36 +1144,114 @@ renderResumoOrdenacao();
     <th colspan="4" class="grp-sint">Síntese Geral</th>
   </tr>`;
 
-  const funcCols = funcIds.map(id => `<th>${funcNomes[id] || 'Func.'}</th>`).join('');
-  const lojaCols = slugsLojas.map(s => `<th>${slugLabel[s]}</th>`).join('');
+ const funcCols = funcIds.map(id => `
+  <th class="col-func">
+    ${funcNomes[id] || 'Func.'}
+  </th>
+`).join('');
+
+const lojaCols = slugsLojas.map(s => `
+  <th class="col-loja">
+    ${slugLabel[s]}
+  </th>
+`).join('');
 
 const colRow = `<tr class="col-row">
-  <th>Sel.</th>
-  ${sortTh('origem_nome', 'Origem', 'left')}
-  ${sortTh('dt_inicial', 'Dt Ini')}
-  ${sortTh('dt_concurso', 'Dt Conc')}
-  ${sortTh('modalidade', 'Modalidade', 'left')}
-  ${sortTh('concurso', 'Conc.')}
-  ${sortTh('qtd_jogos', 'Jogos')}
-  ${sortTh('qtd_dezenas', 'Dez.')}
-  ${sortTh('valor_cota', 'V.Cota')}
-  ${sortTh('qtd_cotas_total', 'Qtd Cotas', 'sep-col')}
+  <th class="col-sel">Sel.</th>
 
-  <th>Balcão</th>
-  <th>WPP</th>
-  <th class="sep-col">MKP</th>
+  ${sortTh(
+    'origem_nome',
+    'Origem',
+    'left col-origem'
+  )}
+
+  ${sortTh(
+    'dt_inicial',
+    'Data inicial',
+    'col-data',
+    'Data<br>Inicial'
+  )}
+
+  ${sortTh(
+    'dt_concurso',
+    'Data do concurso',
+    'col-data',
+    'Data<br>Sorteio'
+  )}
+
+  ${sortTh(
+    'modalidade',
+    'Modalidade',
+    'left col-modalidade',
+    'Modalidade'
+  )}
+
+  ${sortTh(
+    'concurso',
+    'Concurso',
+    'col-concurso',
+    'Concurso'
+  )}
+
+  ${sortTh(
+    'qtd_jogos',
+    'Quantidade de jogos',
+    'col-quantidade',
+    'Qtd.<br>Jogos'
+  )}
+
+  ${sortTh(
+    'qtd_dezenas',
+    'Quantidade de dezenas',
+    'col-quantidade',
+    'Qtd.<br>Dezenas'
+  )}
+
+  ${sortTh(
+    'valor_cota',
+    'Valor da cota',
+    'col-valor',
+    'Valor<br>Cota'
+  )}
+
+  ${sortTh(
+    'qtd_cotas_total',
+    'Quantidade de cotas',
+    'col-quantidade sep-col',
+    'Qtd.<br>Cotas'
+  )}
+
+  <th class="col-numero">Balcão</th>
+  <th class="col-numero">WPP</th>
+  <th class="col-numero sep-col">MKP</th>
 
   ${nFunc > 0 ? funcCols : ''}
 
   ${lojaCols}
 
-  <th>Enc.Físico</th>
-  <th class="sep-col">Enc.Virtual</th>
+  <th class="col-numero">
+    Enc.<br>Físico
+  </th>
 
-  <th>Total Cotas / Venda Real</th>
-  <th>Encalhe Total</th>
-  <th>Est. Líquido</th>
-  <th>V.Contábil</th>
+  <th class="col-numero sep-col">
+    Enc.<br>Virtual
+  </th>
+
+  <th class="col-sintese">
+    Cotas /<br>Venda Real
+  </th>
+
+  <th class="col-sintese">
+    Encalhe<br>Total
+  </th>
+
+  <th class="col-sintese">
+    Estoque<br>Líquido
+  </th>
+
+  <th class="col-sintese">
+    Venda<br>Contábil
+  </th>
 </tr>`;
 
   const rows = boloes.map(b => {
@@ -1181,44 +1259,110 @@ const colRow = `<tr class="col-row">
     const lm = lojaMap[b.bolao_id] || {};
     const fm = funcMap[b.bolao_id] || {};
 
-    const funcTds = funcIds.map(id => `<td class="purple">${fmtN(fm[id] || 0)}</td>`).join('');
+    const funcTds = funcIds.map(id => `
+  <td class="purple col-func cell-numero">
+    ${fmtN(fm[id] || 0)}
+  </td>
+`).join('');
+    
     const lojaTds = slugsLojas.map(s => {
-      const cell = lm[s];
-      return `<td class="cyan">${cell?.bruto_venda || fmtPair(null, null)}</td>`;
-    }).join('');
+  const cell = lm[s];
 
-    return `<tr>
-      <td>
-        <label class="bolao-check-wrap">
-          <input type="checkbox" class="bolao-check" data-id="${b.bolao_id}">
-        </label>
-      </td>
-      <td class="left">${b.origem_nome || '—'}</td>
-      <td class="mono dim">${fmtDate(b.dt_inicial)}</td>
-      <td class="mono dim">${fmtDate(b.dt_concurso)}</td>
-      <td class="left bold">${b.modalidade}</td>
-      <td class="mono">#${b.concurso}</td>
-      <td class="mono">${fmtN(b.qtd_jogos)}</td>
-      <td class="mono">${fmtN(b.qtd_dezenas)}</td>
-      <td class="amber">${fmtBRL(b.valor_cota)}</td>
-      <td class="mono sep-col">${fmtN(b.qtd_cotas_total)}</td>
+  return `
+    <td class="cyan col-loja cell-numero">
+      ${cell?.bruto_venda || fmtPair(null, null)}
+    </td>
+  `;
+}).join('');
+    
+return `<tr>
+  <td class="col-sel">
+    <label class="bolao-check-wrap">
+      <input
+        type="checkbox"
+        class="bolao-check"
+        data-id="${b.bolao_id}"
+      >
+    </label>
+  </td>
 
-      <td class="blue">${fmtN(cm.BALCAO || 0)}</td>
-      <td class="blue">${fmtN(cm.WHATSAPP || 0)}</td>
-      <td class="blue sep-col">${fmtN(cm.MARKETPLACE || 0)}</td>
+  <td class="left col-origem">
+    ${b.origem_nome || '—'}
+  </td>
 
-      ${nFunc > 0 ? funcTds : ''}
+  <td class="mono dim col-data cell-numero">
+    ${fmtDate(b.dt_inicial)}
+  </td>
 
-      ${lojaTds}
+  <td class="mono dim col-data cell-numero">
+    ${fmtDate(b.dt_concurso)}
+  </td>
 
-      <td class="amber">${fmtN(b.enc_fisico)}</td>
-      <td class="amber sep-col">${fmtN(b.enc_virtual)}</td>
+  <td class="left bold col-modalidade">
+    ${b.modalidade}
+  </td>
 
-      <td class="green">${b.total_cotas_venda_real || fmtPair(b.qtd_cotas_total, b.venda_real_total)}</td>
-      <td class="amber">${fmtN(b.encalhe_total)}</td>
-      <td class="blue">${fmtN(b.estoque_liquido_total)}</td>
-      <td class="green">${fmtN(b.venda_contabil_total)}</td>
-    </tr>`;
+  <td class="mono col-concurso cell-numero">
+    #${b.concurso}
+  </td>
+
+  <td class="mono col-quantidade cell-numero">
+    ${fmtN(b.qtd_jogos)}
+  </td>
+
+  <td class="mono col-quantidade cell-numero">
+    ${fmtN(b.qtd_dezenas)}
+  </td>
+
+  <td class="amber col-valor cell-numero">
+    ${fmtBRL(b.valor_cota)}
+  </td>
+
+  <td class="mono col-quantidade cell-numero sep-col">
+    ${fmtN(b.qtd_cotas_total)}
+  </td>
+
+  <td class="blue col-numero cell-numero">
+    ${fmtN(cm.BALCAO || 0)}
+  </td>
+
+  <td class="blue col-numero cell-numero">
+    ${fmtN(cm.WHATSAPP || 0)}
+  </td>
+
+  <td class="blue col-numero cell-numero sep-col">
+    ${fmtN(cm.MARKETPLACE || 0)}
+  </td>
+
+  ${nFunc > 0 ? funcTds : ''}
+
+  ${lojaTds}
+
+  <td class="amber col-numero cell-numero">
+    ${fmtN(b.enc_fisico)}
+  </td>
+
+  <td class="amber col-numero cell-numero sep-col">
+    ${fmtN(b.enc_virtual)}
+  </td>
+
+  <td class="green col-sintese cell-numero">
+    ${b.total_cotas_venda_real ||
+      fmtPair(b.qtd_cotas_total, b.venda_real_total)}
+  </td>
+
+  <td class="amber col-sintese cell-numero">
+    ${fmtN(b.encalhe_total)}
+  </td>
+
+  <td class="blue col-sintese cell-numero">
+    ${fmtN(b.estoque_liquido_total)}
+  </td>
+
+  <td class="green col-sintese cell-numero">
+    ${fmtN(b.venda_contabil_total)}
+  </td>
+</tr>`;
   }).join('');
 
   const totCanal = { BALCAO: 0, WHATSAPP: 0, MARKETPLACE: 0 };
@@ -1230,7 +1374,11 @@ const colRow = `<tr class="col-row">
 
   const totFuncTds = funcIds.map(id => {
     const t = Object.values(funcMap).reduce((s, fm) => s + (fm[id] || 0), 0);
-    return `<td class="purple bold">${fmtN(t)}</td>`;
+    return `
+  <td class="purple bold col-func cell-numero">
+    ${fmtN(t)}
+  </td>
+`;
   }).join('');
 
   const totLojaTds = slugsLojas.map(s => {
@@ -1242,33 +1390,66 @@ const colRow = `<tr class="col-row">
       .filter(r => r.loja_slug === s)
       .reduce((sum, r) => sum + Number(r.qtd_vendida_loja || 0), 0);
 
-    return `<td class="cyan bold">${fmtPair(bruto, venda)}</td>`;
+    return `
+  <td class="cyan bold col-loja cell-numero">
+    ${fmtPair(bruto, venda)}
+  </td>
+`;
   }).join('');
 
   const totEncFis = boloes.reduce((s, b) => s + Number(b.enc_fisico || 0), 0);
   const totEncVirt = boloes.reduce((s, b) => s + Number(b.enc_virtual || 0), 0);
   const totCotas = boloes.reduce((s, b) => s + Number(b.qtd_cotas_total || 0), 0);
 
-  const totalRow = `<tr style="background:rgba(0,200,150,0.04);border-top:1px solid var(--border2)">
-    <td class="left bold" style="color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.1em">TOTAL</td>
-    <td colspan="9" class="sep-col"></td>
+  const totalRow = `
+<tr class="total-row">
+  <td class="left bold total-label">
+    TOTAL
+  </td>
 
-    <td class="blue bold">${fmtN(totCanal.BALCAO)}</td>
-    <td class="blue bold">${fmtN(totCanal.WHATSAPP)}</td>
-    <td class="blue bold sep-col">${fmtN(totCanal.MARKETPLACE)}</td>
+  <td colspan="9" class="sep-col"></td>
 
-    ${nFunc > 0 ? totFuncTds : ''}
+  <td class="blue bold col-numero cell-numero">
+    ${fmtN(totCanal.BALCAO)}
+  </td>
 
-    ${totLojaTds}
+  <td class="blue bold col-numero cell-numero">
+    ${fmtN(totCanal.WHATSAPP)}
+  </td>
 
-    <td class="amber bold">${fmtN(totEncFis)}</td>
-    <td class="amber bold sep-col">${fmtN(totEncVirt)}</td>
+  <td class="blue bold col-numero cell-numero sep-col">
+    ${fmtN(totCanal.MARKETPLACE)}
+  </td>
 
-    <td class="green bold">${fmtPair(totCotas, totVendaReal)}</td>
-    <td class="amber bold">${fmtN(totEncalhe)}</td>
-    <td class="blue bold">${fmtN(totLiquido)}</td>
-    <td class="green bold">${fmtN(totVCont)}</td>
-  </tr>`;
+  ${nFunc > 0 ? totFuncTds : ''}
+
+  ${totLojaTds}
+
+  <td class="amber bold col-numero cell-numero">
+    ${fmtN(totEncFis)}
+  </td>
+
+  <td class="amber bold col-numero cell-numero sep-col">
+    ${fmtN(totEncVirt)}
+  </td>
+
+  <td class="green bold col-sintese cell-numero">
+    ${fmtPair(totCotas, totVendaReal)}
+  </td>
+
+  <td class="amber bold col-sintese cell-numero">
+    ${fmtN(totEncalhe)}
+  </td>
+
+  <td class="blue bold col-sintese cell-numero">
+    ${fmtN(totLiquido)}
+  </td>
+
+  <td class="green bold col-sintese cell-numero">
+    ${fmtN(totVCont)}
+  </td>
+</tr>`;
+  
 
   wrap.innerHTML = `<table class="data-table">
     <thead>${grpRow}${colRow}</thead>
