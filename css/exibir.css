@@ -262,9 +262,9 @@ body.modal-open { overflow: hidden; }
   background: rgba(255,255,255,.02);
 }
 
-
-/* ── Tabela ────────────────────────────────────────────────── */
-/* ── Tabela com rolagem horizontal real ────────────────────── */
+/* ============================================================
+   TABELA OPERACIONAL COMPACTA
+============================================================ */
 
 #tableArea {
   width: 100%;
@@ -274,84 +274,97 @@ body.modal-open { overflow: hidden; }
 }
 
 .table-wrap {
-  border: 1px solid var(--border);
-  border-radius: var(--r);
+  display: block;
 
   width: 100%;
   max-width: 100%;
   min-width: 0;
 
-  display: block;
-
-  /* força rolagem horizontal e vertical dentro da tabela */
-  overflow-x: scroll !important;
-  overflow-y: auto !important;
-
-  /* altura do quadro da tabela */
   max-height: calc(100dvh - 230px);
+
+  overflow-x: auto;
+  overflow-y: auto;
+
+  border: 1px solid var(--border);
+  border-radius: var(--r);
 
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-x pan-y;
 
-  scrollbar-gutter: stable both-edges;
+  scrollbar-gutter: stable;
 }
 
-/* força a tabela a ser maior que a tela */
+/*
+  Não força mais 2400 ou 2600 pixels.
+  A largura passa a ser determinada pelo conteúdo real.
+*/
 .data-table {
   display: table;
-  width: auto;
-  min-width: 2400px;
-  border-collapse: collapse;
+
+  width: max-content;
+  min-width: 100%;
+
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: auto;
 }
 
-/* Cabeçalho fixo dentro da rolagem */
+/* ============================================================
+   CABEÇALHOS FIXOS
+============================================================ */
+
 .data-table thead tr.grp-row th {
   position: sticky;
   top: 0;
   z-index: 30;
-}
 
-.data-table thead tr.col-row th {
-  position: sticky;
-  top: 27px;
-  z-index: 31;
-}
+  height: 25px;
+  padding: 4px 5px;
 
-/* Grupo de colunas */
-.data-table thead tr.grp-row th {
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  padding: 9px 0 5px;
-  text-align: center;
   background: var(--bg2);
-  border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+
   white-space: nowrap;
 }
 
 .data-table thead tr.grp-row th:last-child {
-  border-right: none;
+  border-right: 0;
 }
 
-/* Cabeçalho de colunas */
 .data-table thead tr.col-row th {
-  font-family: var(--mono);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  padding: 7px 10px;
-  text-align: right;
+  position: sticky;
+  top: 25px;
+  z-index: 31;
+
+  height: 40px;
+  padding: 4px 5px;
+
   background: var(--panel);
   color: var(--text3);
+
+  border-right: 1px solid rgba(22, 45, 88, .35);
   border-bottom: 1px solid var(--border);
-  border-right: 1px solid rgba(22,45,88,.4);
-  white-space: nowrap;
+
+  font-family: var(--mono);
+  font-size: 8.8px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  text-align: center;
+
+  white-space: normal;
+  vertical-align: middle;
 }
 
 .data-table thead tr.col-row th.left {
@@ -359,7 +372,183 @@ body.modal-open { overflow: hidden; }
 }
 
 .data-table thead tr.col-row th:last-child {
-  border-right: none;
+  border-right: 0;
+}
+
+/* ============================================================
+   LARGURAS DAS COLUNAS
+============================================================ */
+
+.data-table .col-sel {
+  width: 31px;
+  min-width: 31px;
+  max-width: 31px;
+}
+
+.data-table .col-origem {
+  width: 96px;
+  min-width: 90px;
+  max-width: 110px;
+}
+
+.data-table .col-data {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+}
+
+.data-table .col-modalidade {
+  width: 88px;
+  min-width: 82px;
+  max-width: 100px;
+}
+
+.data-table .col-concurso {
+  width: 59px;
+  min-width: 59px;
+  max-width: 64px;
+}
+
+.data-table .col-qtd {
+  width: 44px;
+  min-width: 44px;
+  max-width: 49px;
+}
+
+.data-table .col-valor {
+  width: 72px;
+  min-width: 72px;
+  max-width: 78px;
+}
+
+.data-table .col-canal {
+  width: 48px;
+  min-width: 48px;
+  max-width: 54px;
+}
+
+.data-table .col-func {
+  width: 53px;
+  min-width: 53px;
+  max-width: 64px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-table .col-loja {
+  width: 52px;
+  min-width: 52px;
+  max-width: 58px;
+}
+
+.data-table .col-enc {
+  width: 51px;
+  min-width: 51px;
+  max-width: 57px;
+}
+
+.data-table .col-sintese {
+  width: 64px;
+  min-width: 64px;
+  max-width: 72px;
+}
+
+/* ============================================================
+   CORPO DA TABELA
+============================================================ */
+
+.data-table tbody tr {
+  transition: background .12s;
+}
+
+.data-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid rgba(22, 45, 88, .24);
+}
+
+.data-table tbody tr:hover td {
+  background: rgba(0, 200, 150, .022);
+}
+
+.data-table td {
+  padding: 6px 5px;
+
+  color: var(--text2);
+
+  border-right: 1px solid rgba(22, 45, 88, .18);
+
+  font-size: 11.5px;
+  line-height: 1.08;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.data-table td:last-child {
+  border-right: 0;
+}
+
+.data-table td.left {
+  text-align: left;
+}
+
+/*
+  Origem e modalidade podem quebrar em duas linhas.
+  Isso economiza bastante largura.
+*/
+.data-table tbody td:nth-child(2),
+.data-table tbody td:nth-child(5) {
+  white-space: normal;
+  line-height: 1.12;
+}
+
+.data-table tbody td:nth-child(2) {
+  min-width: 90px;
+  max-width: 110px;
+}
+
+.data-table tbody td:nth-child(5) {
+  min-width: 82px;
+  max-width: 100px;
+}
+
+/* Números maiores */
+.data-table td.mono,
+.data-table td.green,
+.data-table td.amber,
+.data-table td.blue,
+.data-table td.purple,
+.data-table td.cyan {
+  font-family: var(--mono);
+  font-size: 12.8px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.025em;
+}
+
+/* Datas um pouco menores para não alargar a coluna */
+.data-table td.dim {
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Texto destacado */
+.data-table td.bold {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Cores numéricas */
+.data-table td.green  { color: var(--accent); }
+.data-table td.amber  { color: var(--amber); }
+.data-table td.blue   { color: var(--blue); }
+.data-table td.purple { color: var(--purple); }
+.data-table td.cyan   { color: var(--cyan); }
+
+/* Separação entre grupos */
+.sep-col {
+  border-right: 1px solid var(--border2) !important;
 }
 
 /* Cores dos grupos */
@@ -369,44 +558,6 @@ body.modal-open { overflow: hidden; }
 .grp-loja  { color: var(--cyan); }
 .grp-enc   { color: #f87171; }
 .grp-sint  { color: var(--accent); }
-
-/* Linhas do corpo */
-.data-table tbody tr {
-  border-bottom: 1px solid rgba(22,45,88,.3);
-  transition: background .12s;
-}
-
-.data-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.data-table tbody tr:hover {
-  background: rgba(0,200,150,.022);
-}
-
-.data-table td {
-  padding: 9px 10px;
-  font-size: 11px;
-  color: var(--text2);
-  text-align: right;
-  white-space: nowrap;
-  border-right: 1px solid rgba(22,45,88,.22);
-}
-
-.data-table td:last-child { border-right: none; }
-.data-table td.left   { text-align: left; }
-.data-table td.bold   { font-weight: 600; color: var(--text); }
-.data-table td.mono   { font-family: var(--mono); font-size: 11px; }
-.data-table td.dim    { color: var(--text3); font-family: var(--mono); }
-.data-table td.green  { color: var(--accent); font-family: var(--mono); font-weight: 600; }
-.data-table td.amber  { color: var(--amber);  font-family: var(--mono); font-weight: 600; }
-.data-table td.blue   { color: var(--blue);   font-family: var(--mono); font-weight: 600; }
-.data-table td.purple { color: var(--purple); font-family: var(--mono); font-weight: 600; }
-.data-table td.cyan   { color: var(--cyan);   font-family: var(--mono); font-weight: 600; }
-
-.sep-col {
-  border-right: 1px solid var(--border2) !important;
-}
 /* ── Estado vazio / carregando ─────────────────────────────── */
 .state-box {
   display: flex;
