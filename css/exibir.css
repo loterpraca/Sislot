@@ -1662,30 +1662,28 @@ body.modal-open { overflow: hidden; }
   }
 }
 /* ============================================================
-   FAIXAS ALTERNADAS POR COLUNA
+   LINHAS ALTERNADAS
 ============================================================ */
 
-/* Cabeçalho alternado, mantendo fundo opaco por ser sticky */
-.data-table thead tr.col-row th:nth-child(odd):not(.active) {
-  background-color: var(--panel);
+/* Linha ímpar */
+.data-table tbody tr:not(.total-row):nth-child(odd) td {
+  background-color: rgba(255, 255, 255, .008);
 }
 
-.data-table thead tr.col-row th:nth-child(even):not(.active) {
-  background-color: #10203a;
+/* Linha par */
+.data-table tbody tr:not(.total-row):nth-child(even) td {
+  background-color: rgba(56, 189, 248, .032);
 }
 
-/* Corpo: alternância vertical bem leve */
-.data-table tbody tr:not(:last-child) td:nth-child(odd) {
-  background-color: rgba(255, 255, 255, .009);
+/* Destaca a linha completa ao passar o mouse */
+.data-table tbody tr:not(.total-row):hover td {
+  background-color: rgba(0, 200, 150, .075) !important;
 }
 
-.data-table tbody tr:not(:last-child) td:nth-child(even) {
-  background-color: rgba(56, 189, 248, .025);
-}
-
-/* Hover continua identificando a linha inteira */
-.data-table tbody tr:not(:last-child):hover td {
-  background-color: rgba(0, 200, 150, .065) !important;
+/* Linha de total com aparência própria */
+.data-table tbody tr.total-row td {
+  background-color: rgba(0, 200, 150, .055);
+  border-top: 1px solid var(--border2);
 }
 
 /* Linha total não recebe o zebrado */
