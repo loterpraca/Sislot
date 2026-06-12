@@ -55,21 +55,47 @@
     >
   </div>
 
-  <div class="date-stepper">
-    <button class="btn-date" id="btnDtPrev">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6"/>
-      </svg>
-    </button>
+ <div class="date-stepper">
+  <button
+    type="button"
+    class="btn-date"
+    id="btnDtPrev"
+    title="Dia anterior"
+    aria-label="Dia anterior"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
 
+  <div
+    class="date-picker-wrap"
+    title="Clique para selecionar uma data"
+  >
     <div class="date-display" id="dateDisplay">—</div>
 
-    <button class="btn-date" id="btnDtNext">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>
-    </button>
+    <input
+      type="date"
+      id="inputDataReferencia"
+      class="date-input-native"
+      aria-label="Selecionar data de referência"
+    >
   </div>
+
+  <button
+    type="button"
+    class="btn-date"
+    id="btnDtNext"
+    title="Próximo dia"
+    aria-label="Próximo dia"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </button>
+</div>
 
   <button class="btn-hoje" id="btnHoje">Hoje</button>
 
