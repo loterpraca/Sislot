@@ -1214,20 +1214,20 @@ const colRow = `<tr class="col-row">
     'Valor<br>Cota'
   )}
 
-  ${sortTh(
-    'qtd_cotas_total',
-    'Quantidade de cotas',
-    'col-quantidade sep-col',
-    'Qtd.<br>Cotas'
-  )}
+${sortTh(
+  'qtd_cotas_total',
+  'Quantidade de cotas',
+  'col-quantidade sep-col',
+  'Qtd.<br>Cotas'
+)}
 
-  <td class="blue">${fmtN(cm.BALCAO || 0)}</td>
-<td class="blue">${fmtN(cm.WHATSAPP || 0)}</td>
-<td class="blue sep-col">${fmtN(cm.MARKETPLACE || 0)}</td>
+<th class="col-canal">Balcão</th>
+<th class="col-canal">WPP</th>
+<th class="col-canal mkp-col sep-col">MKP</th>
 
-  ${nFunc > 0 ? funcCols : ''}
+${nFunc > 0 ? funcCols : ''}
 
-  ${lojaCols}
+${lojaCols}
 
   <th class="col-numero">
     Enc.<br>Físico
@@ -1322,17 +1322,17 @@ return `<tr>
     ${fmtN(b.qtd_cotas_total)}
   </td>
 
-  <td class="blue col-numero cell-numero">
-    ${fmtN(cm.BALCAO || 0)}
-  </td>
+ <td class="blue col-canal cell-numero">
+  ${fmtN(cm.BALCAO || 0)}
+</td>
 
-  <td class="blue col-numero cell-numero">
-    ${fmtN(cm.WHATSAPP || 0)}
-  </td>
+<td class="blue col-canal cell-numero">
+  ${fmtN(cm.WHATSAPP || 0)}
+</td>
 
-  <td class="blue col-numero cell-numero sep-col">
-    ${fmtN(cm.MARKETPLACE || 0)}
-  </td>
+<td class="blue col-canal mkp-col cell-numero sep-col">
+  ${fmtN(cm.MARKETPLACE || 0)}
+</td>
 
   ${nFunc > 0 ? funcTds : ''}
 
