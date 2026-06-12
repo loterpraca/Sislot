@@ -247,7 +247,7 @@ function ordenarPorCabecalho(key) {
   exibir();
 }
 
-function sortTh(key, label, extraClass = '') {
+function sortTh(key, label, extraClass = '', labelHtml = label) {
   const ativo = sortAtivo(key);
   const seta = ativo ? getShortDir(key, ativo.dir) : '';
 
@@ -257,7 +257,7 @@ function sortTh(key, label, extraClass = '') {
       data-sort="${key}"
       title="Clique para ordenar por ${label}"
     >
-      <span class="sort-label">${label}</span>
+      <span class="sort-label">${labelHtml}</span>
       ${ativo ? `<span class="sort-arrow">${seta}</span>` : ''}
     </th>
   `;
