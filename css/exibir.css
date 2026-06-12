@@ -1661,3 +1661,59 @@ body.modal-open { overflow: hidden; }
     order: 3;
   }
 }
+/* ============================================================
+   FAIXAS ALTERNADAS POR COLUNA
+============================================================ */
+
+/* Cabeçalho alternado, mantendo fundo opaco por ser sticky */
+.data-table thead tr.col-row th:nth-child(odd):not(.active) {
+  background-color: var(--panel);
+}
+
+.data-table thead tr.col-row th:nth-child(even):not(.active) {
+  background-color: #10203a;
+}
+
+/* Corpo: alternância vertical bem leve */
+.data-table tbody tr:not(:last-child) td:nth-child(odd) {
+  background-color: rgba(255, 255, 255, .009);
+}
+
+.data-table tbody tr:not(:last-child) td:nth-child(even) {
+  background-color: rgba(56, 189, 248, .025);
+}
+
+/* Hover continua identificando a linha inteira */
+.data-table tbody tr:not(:last-child):hover td {
+  background-color: rgba(0, 200, 150, .065) !important;
+}
+
+/* Linha total não recebe o zebrado */
+.data-table tbody tr:last-child td {
+  background-color: rgba(0, 200, 150, .045);
+}
+
+/* ============================================================
+   CANAIS DE VENDA COM LARGURA CONTROLADA
+============================================================ */
+
+.data-table th.col-canal,
+.data-table td.col-canal {
+  width: 47px !important;
+  min-width: 47px !important;
+  max-width: 47px !important;
+
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Marketplace pode ser ainda menor */
+.data-table th.mkp-col,
+.data-table td.mkp-col {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+}
