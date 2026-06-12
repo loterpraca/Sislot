@@ -1221,9 +1221,9 @@ const colRow = `<tr class="col-row">
     'Qtd.<br>Cotas'
   )}
 
-  <th class="col-numero">Balcão</th>
-  <th class="col-numero">WPP</th>
-  <th class="col-numero sep-col">MKP</th>
+  <td class="blue">${fmtN(cm.BALCAO || 0)}</td>
+<td class="blue">${fmtN(cm.WHATSAPP || 0)}</td>
+<td class="blue sep-col">${fmtN(cm.MARKETPLACE || 0)}</td>
 
   ${nFunc > 0 ? funcCols : ''}
 
@@ -1409,17 +1409,11 @@ return `<tr>
 
   <td colspan="9" class="sep-col"></td>
 
-  <td class="blue bold col-numero cell-numero">
-    ${fmtN(totCanal.BALCAO)}
-  </td>
-
-  <td class="blue bold col-numero cell-numero">
-    ${fmtN(totCanal.WHATSAPP)}
-  </td>
-
-  <td class="blue bold col-numero cell-numero sep-col">
-    ${fmtN(totCanal.MARKETPLACE)}
-  </td>
+  <td class="blue bold col-canal">${fmtN(totCanal.BALCAO)}</td>
+<td class="blue bold col-canal">${fmtN(totCanal.WHATSAPP)}</td>
+<td class="blue bold col-canal mkp-col sep-col">
+  ${fmtN(totCanal.MARKETPLACE)}
+</td>
 
   ${nFunc > 0 ? totFuncTds : ''}
 
