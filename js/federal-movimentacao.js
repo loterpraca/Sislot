@@ -360,60 +360,59 @@
     }) || null;
   }
 
-  function getHistoricoDestino(resumoRow, destinoId) {
-    const row = getMovRow(resumoRow, destinoId);
+ function getHistoricoDestino(resumoRow, destinoId) {
+  const row = getMovRow(resumoRow, destinoId);
 
-    if (!row) {
-      return {
-        expr: '0',
-        saldo: 0,
-        totalTransferido: 0,
-        totalVenda: 0,
-        totalDevolucao: 0,
-        totalCambista: 0,
-        totalRetorno: 0,
-        row: null,
-        logs: []
-      };
-    }
-
-    const logs = (state.movimentacoesLog || [])
-      .filter(log => String(log.movimentacao_id) === String(row.id) && num(log.delta_qtd_fracoes) !== 0)
-      .sort((a, b) => {
-        const at = String(a.created_at || '');
-        const bt = String(b.created_at || '');
-        if (at !== bt) return at.localeCompare(bt, 'pt-BR');
-        return num(a.id) - num(b.id);
-      });
-
-    const exprMov = logs.length
-      ? logs.map((log, idx) => {
-          const qtd = num(log.delta_qtd_fracoes || 0);
-          if (idx === 0) return String(qtd);
-          return qtd >= 0 ? `+${qtd}` : String(qtd);
-        }).join('')
-      : String(num(row.qtd_fracoes || 0));
-
-    const totalTransferido = num(row.qtd_fracoes || 0);
-    const totalVenda = num(row.qtd_vendida || 0);
-    const totalDevolucao = num(row.qtd_devolucao_caixa || 0);
-    const totalCambista = num(row.qtd_venda_cambista || 0);
-    const totalRetorno = num(row.qtd_retorno_origem || 0);
-    const saldo = totalTransferido - totalVenda - totalDevolucao - totalCambista - totalRetorno;
-
+  if (!row) {
     return {
-      expr: exprMov || '0',
-      saldo,
-      totalTransferido,
-      totalVenda,
-      totalDevolucao,
-      totalCambista,
-      totalRetorno,
-      row,
-      logs
+      expr: '0',
+      saldo: 0,
+      totalTransferido: 0,
+      totalVenda: 0,
+      totalDevolucao: 0,
+      totalCambista: 0,
+      row: null,
+      logs: []
     };
   }
 
+  const logs = (state.movimentacoesLog || [])
+    .filter(log => String(log.movimentacao_id) === String(row.id) && num(log.delta_qtd_fracoes) !== 0)
+    .sort((a, b) => {
+      const at = String(a.created_at || '');
+      const bt = String(b.created_at || '');
+      if (at !== bt) return at.localeCompare(bt, 'pt-BR');
+      return num(a.id) - num(b.id);
+    });
+
+  const exprMov = logs.length
+    ? logs.map((log, idx) => {
+        const qtd = num(log.delta_qtd_fracoes || 0);
+        if (idx === 0) return String(qtd);
+        return qtd >= 0 ? `+${qtd}` : String(qtd);
+      }).join('')
+    : String(num(row.qtd_fracoes || 0));
+
+  const totalTransferido = num(row.qtd_fracoes || 0);
+  const totalVenda = num(row.qtd_vendida || 0);
+  const totalDevolucao = num(row.qtd_devolucao_caixa || 0);
+  const totalCambista = num(row.qtd_venda_cambista || 0);
+
+  // Retorno à origem não entra mais aqui.
+  // Retorno agora reduz qtd_fracoes via movimentação negativa.
+  const saldo = totalTransferido - totalVenda - totalDevolucao - totalCambista;
+
+  return {
+    expr: exprMov || '0',
+    saldo,
+    totalTransferido,
+    totalVenda,
+    totalDevolucao,
+    totalCambista,
+    row,
+    logs
+  };
+}
   function getConsolidatedTransferTarget(resumoRow, destinoId) {
     return getHistoricoDestino(resumoRow, destinoId).row;
   }
@@ -443,63 +442,65 @@
     renderListaFederais();
   }
 
-  function ensureDesfechoDraft(resumoRow, destinoId, federal) {
-    const hist = getHistoricoDestino(resumoRow, destinoId);
-    const row = hist.row;
-    if (!row) return null;
+ function ensureDesfechoDraft(resumoRow, destinoId, federal) {
+  const hist = getHistoricoDestino(resumoRow, destinoId);
+  const row = hist.row;
+  if (!row) return null;
 
-    const key = getDesfechoKey(resumoRow.federal_id, resumoRow.loteria_id, destinoId);
-    if (!state.desfechoDraft[key]) {
-      state.desfechoDraft[key] = {
-        qtd_devolucao_caixa: String(int(row.qtd_devolucao_caixa || 0)),
-        valor_devolucao_caixa: String(getDefaultDevolucaoValue(federal).toFixed(2)),
-        qtd_venda_cambista: String(int(row.qtd_venda_cambista || 0)),
-        valor_cambista: String(getDefaultCambistaValue(row, federal).toFixed(2)),
-        qtd_retorno_origem: String(int(row.qtd_retorno_origem || 0))
-      };
-    }
+  const key = getDesfechoKey(resumoRow.federal_id, resumoRow.loteria_id, destinoId);
 
-    return state.desfechoDraft[key];
-  }
-
-  function getDesfechoCalc(resumoRow, destinoId, federal) {
-    const hist = getHistoricoDestino(resumoRow, destinoId);
-    const draft = ensureDesfechoDraft(resumoRow, destinoId, federal);
-    if (!draft || !hist.row) return null;
-
-    const qtdTransferida = int(hist.totalTransferido || 0);
-    const qtdDevolucao = int(draft.qtd_devolucao_caixa || 0);
-    const qtdCambista = int(draft.qtd_venda_cambista || 0);
-    const qtdRetorno = int(draft.qtd_retorno_origem || 0);
-    const qtdVendida = qtdTransferida - qtdCambista - qtdDevolucao - qtdRetorno;
-
-    const valorVenda = getDefaultVendaValue(federal);
-    const valorDevolucao = num(draft.valor_devolucao_caixa || getDefaultDevolucaoValue(federal));
-    const valorCambista = num(draft.valor_cambista || getDefaultCambistaValue(hist.row, federal));
-
-    const totalQtd = qtdVendida + qtdDevolucao + qtdCambista + qtdRetorno;
-    const saldoRestante = qtdTransferida - totalQtd;
-    const totalFinanceiro =
-      (qtdVendida * valorVenda) +
-      (qtdDevolucao * valorDevolucao) +
-      (qtdCambista * valorCambista);
-
-    return {
-      qtdTransferida,
-      qtdVendida,
-      qtdDevolucao,
-      qtdCambista,
-      qtdRetorno,
-      totalQtd,
-      saldoRestante,
-      valorVenda,
-      valorDevolucao,
-      valorCambista,
-      totalFinanceiro,
-      valorCambistaTotal: qtdCambista * valorCambista,
-      hasError: qtdVendida < 0
+  if (!state.desfechoDraft[key]) {
+    state.desfechoDraft[key] = {
+      qtd_devolucao_caixa: String(int(row.qtd_devolucao_caixa || 0)),
+      valor_devolucao_caixa: String(getDefaultDevolucaoValue(federal).toFixed(2)),
+      qtd_venda_cambista: String(int(row.qtd_venda_cambista || 0)),
+      valor_cambista: String(getDefaultCambistaValue(row, federal).toFixed(2))
     };
   }
+
+  return state.desfechoDraft[key];
+}
+
+ function getDesfechoCalc(resumoRow, destinoId, federal) {
+  const hist = getHistoricoDestino(resumoRow, destinoId);
+  const draft = ensureDesfechoDraft(resumoRow, destinoId, federal);
+
+  if (!draft || !hist.row) return null;
+
+  const qtdTransferida = int(hist.totalTransferido || 0);
+  const qtdDevolucao = int(draft.qtd_devolucao_caixa || 0);
+  const qtdCambista = int(draft.qtd_venda_cambista || 0);
+
+  // Tudo que não for devolução caixa nem cambista vira venda normal.
+  const qtdVendida = qtdTransferida - qtdCambista - qtdDevolucao;
+
+  const valorVenda = getDefaultVendaValue(federal);
+  const valorDevolucao = num(draft.valor_devolucao_caixa || getDefaultDevolucaoValue(federal));
+  const valorCambista = num(draft.valor_cambista || getDefaultCambistaValue(hist.row, federal));
+
+  const totalQtd = qtdVendida + qtdDevolucao + qtdCambista;
+  const saldoRestante = qtdTransferida - totalQtd;
+
+  const totalFinanceiro =
+    (qtdVendida * valorVenda) +
+    (qtdDevolucao * valorDevolucao) +
+    (qtdCambista * valorCambista);
+
+  return {
+    qtdTransferida,
+    qtdVendida,
+    qtdDevolucao,
+    qtdCambista,
+    totalQtd,
+    saldoRestante,
+    valorVenda,
+    valorDevolucao,
+    valorCambista,
+    totalFinanceiro,
+    valorCambistaTotal: qtdCambista * valorCambista,
+    hasError: qtdVendida < 0
+  };
+}
 
   function renderResumoSelecao() {
     const resumo = $('mov-resumo-selec');
@@ -735,7 +736,7 @@
                 data-dest-input
                 data-dest-id="${l.id}"
                 value="${draft.qtd ?? ''}"
-                placeholder="10 ou -10"
+                placeholder=" "
               >
             </div>
           </div>
@@ -747,7 +748,6 @@
               <span>V <b>${fmtSaldo(hist.totalVenda)}</b></span>
               <span>CX <b>${fmtSaldo(hist.totalDevolucao)}</b></span>
               <span>CB <b>${fmtSaldo(hist.totalCambista)}</b></span>
-              <span>RT <b>${fmtSaldo(hist.totalRetorno)}</b></span>
             </div>
             <div class="mov-dest-hist">${hist.expr}</div>
           </div>
@@ -836,19 +836,7 @@
           </div>
         </div>
 
-        <div class="mov-expand-row">
-          <div class="mov-expand-top">
-            <span class="mov-expand-label is-return">Retorno origem</span>
-            <span class="mov-expand-meta">Sem financeiro</span>
-          </div>
-          <div class="mov-expand-controls single">
-            <div class="field">
-              <label class="field-label">Qtd retorno</label>
-              <input type="number" min="0" step="1" data-desfecho-key="${desfechoKey}" data-dest-id="${destino.id}" data-field="qtd_retorno_origem" value="${draft.qtd_retorno_origem ?? '0'}">
-            </div>
-          </div>
-        </div>
-
+        
         <div class="mov-mini-grid">
           <div class="mov-balance-box">
   <span>Saldo restante</span>
@@ -935,16 +923,28 @@
 
       showStatus('st-mov', 'Salvando transferências...', 'warn');
 
-      for (const op of ops) {
-        const { error } = await sb.rpc('rpc_federal_transferir_delta', {
-          p_federal_id: federal.id,
-          p_loteria_origem: origemId,
-          p_loteria_destino: op.destId,
-          p_delta_qtd_fracoes: op.qtd,
-          p_observacao: null
-        });
-        if (error) throw error;
-      }
+     for (const op of ops) {
+  const hist = getHistoricoDestino(resumo, op.destId);
+
+  if (op.qtd < 0 && Math.abs(op.qtd) > hist.totalTransferido) {
+    throw new Error(
+      `Retorno inválido para ${nomeLoteriaExibicao(op.destId)}. ` +
+      `Transferido atual: ${hist.totalTransferido}, tentativa de retorno: ${Math.abs(op.qtd)}.`
+    );
+  }
+
+  const { error } = await sb.rpc('rpc_federal_transferir_delta', {
+    p_federal_id: federal.id,
+    p_loteria_origem: origemId,
+    p_loteria_destino: op.destId,
+    p_delta_qtd_fracoes: op.qtd,
+    p_observacao: op.qtd < 0
+      ? `Retorno à origem de ${Math.abs(op.qtd)} frações`
+      : `Transferência de ${op.qtd} frações`
+  });
+
+  if (error) throw error;
+}
 
       showStatus('st-mov', 'Transferências registradas.', 'ok');
 
@@ -994,13 +994,13 @@
       }
 
       const { error } = await sb.rpc('rpc_federal_salvar_desfecho', {
-        p_movimentacao_id: num(targetRow.id),
-        p_qtd_devolucao_caixa: calc.qtdDevolucao,
-        p_qtd_venda_cambista: calc.qtdCambista,
-        p_valor_cambista_total: Number(calc.valorCambistaTotal.toFixed(2)),
-        p_qtd_retorno_origem: calc.qtdRetorno,
-        p_observacao: null
-      });
+  p_movimentacao_id: num(targetRow.id),
+  p_qtd_devolucao_caixa: calc.qtdDevolucao,
+  p_qtd_venda_cambista: calc.qtdCambista,
+  p_valor_cambista_total: Number(calc.valorCambistaTotal.toFixed(2)),
+  p_qtd_retorno_origem: 0,
+  p_observacao: null
+});
 
       if (error) throw error;
 
