@@ -1065,6 +1065,114 @@ async function carregarBoloesFiltrados() {
 
   return todos;
 }
+
+function dividirEmLotes(lista, tamanho = 100) {
+  const lotes = [];
+
+  for (let i = 0; i < lista.length; i += tamanho) {
+    lotes.push(lista.slice(i, i + tamanho));
+  }
+
+  return lotes;
+}
+
+async function carregarVendasOperacionais(ids) {
+  const idsValidos = [
+    ...new Set(
+      (ids || [])
+        .map(Number)
+        .filter(Number.isFinite)
+    )
+  ];
+
+  if (!idsValidos.length) return [];
+
+  const resultado = [];
+  const lotes = dividirEmLotes(idsValidos, 100);
+  const pageSize = 1000;
+
+  for (const loteIds of lotes) {
+    let from = 0;
+
+    while (true) {
+      const to = from + pageSize - 1;
+
+      const { data, error } = await sb
+        .from(VIEW_VENDAS)
+        .select('*')
+        .in('bolao_id', loteIds)
+        .order('bolao_id', { ascending: true })
+        .order('loteria_vendedora_id', { ascending: true })
+        .order('usuario_id', {
+          ascending: true,
+          nullsFirst: true
+        })
+        .order('canal', { ascending: true })
+        .range(from, to);
+
+      if (error) {
+        console.error(`Erro em ${VIEW_VENDAS}:`, error);
+        throw error;
+      }
+
+      const pagina = data || [];
+      resultado.push(...pagina);
+
+      if (pagina.length < pageSize) break;
+
+      from += pageSize;
+    }
+  }
+
+  return resultado;
+}
+
+async function carregarLojasOperacionais(ids) {
+  const idsValidos = [
+    ...new Set(
+      (ids || [])
+        .map(Number)
+        .filter(Number.isFinite)
+    )
+  ];
+
+  if (!idsValidos.length) return [];
+
+  const resultado = [];
+  const lotes = dividirEmLotes(idsValidos, 100);
+  const pageSize = 1000;
+
+  for (const loteIds of lotes) {
+    let from = 0;
+
+    while (true) {
+      const to = from + pageSize - 1;
+
+      const { data, error } = await sb
+        .from(VIEW_LOJAS)
+        .select('*')
+        .in('bolao_id', loteIds)
+        .order('bolao_id', { ascending: true })
+        .order('loteria_id', { ascending: true })
+        .order('eh_origem', { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        console.error(`Erro em ${VIEW_LOJAS}:`, error);
+        throw error;
+      }
+
+      const pagina = data || [];
+      resultado.push(...pagina);
+
+      if (pagina.length < pageSize) break;
+
+      from += pageSize;
+    }
+  }
+
+  return resultado;
+}
 async function exibir() {
 
 $('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Carregando…</div></div>';
@@ -1092,10 +1200,40 @@ renderResumoOrdenacao();
 
   const ids = boloes.map(b => b.bolao_id);
 
-  const [{ data: vendas }, { data: lojasBolao }] = await Promise.all([
-    sb.from(VIEW_VENDAS).select('*').in('bolao_id', ids),
-    sb.from(VIEW_LOJAS).select('*').in('bolao_id', ids)
+  let vendas = [];
+let lojasBolao = [];
+
+try {
+  [vendas, lojasBolao] = await Promise.all([
+    carregarVendasOperacionais(ids),
+    carregarLojasOperacionais(ids)
   ]);
+} catch (error) {
+  console.error(
+    'Erro ao carregar vendas e movimentações por loja:',
+    error
+  );
+
+  $('tableArea').innerHTML = `
+    <div class="state-box">
+      <div class="state-title">
+        Erro ao carregar informações complementares
+      </div>
+
+      <div class="state-sub">
+        ${error?.message || 'Verifique o console para detalhes.'}
+      </div>
+    </div>
+  `;
+
+  return;
+}
+
+console.info('Exibir operacional — carga completa:', {
+  boloes: boloes.length,
+  vendas: vendas.length,
+  lojasBolao: lojasBolao.length
+});
 
   const canalMap = {};
   const funcMap = {};
