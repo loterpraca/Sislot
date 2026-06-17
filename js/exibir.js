@@ -1229,57 +1229,7 @@ async function carregarLojasOperacionais(ids) {
   return resultado;
 }
 
-async function carregarAuxiliarPaginado(
-  viewName,
-  ids
-) {
-  const idsValidos = [
-    ...new Set(
-      (ids || [])
-        .map(Number)
-        .filter(Number.isFinite)
-    )
-  ];
 
-  if (!idsValidos.length) return [];
-
-  const resultado = [];
-  const pageSize = 1000;
-
-  let inicio = 0;
-
-  while (true) {
-    const fim = inicio + pageSize - 1;
-
-    const { data, error } = await sb
-      .from(viewName)
-      .select('*')
-      .in('bolao_id', idsValidos)
-      .order('bolao_id', {
-        ascending: true
-      })
-      .range(inicio, fim);
-
-    if (error) {
-      console.error(
-        `Erro ao carregar ${viewName}:`,
-        error
-      );
-
-      throw error;
-    }
-
-    const pagina = data || [];
-
-    resultado.push(...pagina);
-
-    if (pagina.length < pageSize) break;
-
-    inicio += pageSize;
-  }
-
-  return resultado;
-}
 
 function montarPaginacaoHtml() {
   return `
