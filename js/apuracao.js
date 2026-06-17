@@ -581,17 +581,101 @@ function renderResumoApuracao() {
   const ev = intOrNull($('inputEncVirtual').value);
   const premio = numOrNull($('inputPremio').value);
 
-  $('apuracaoResumo').innerHTML = `
-    <strong>Marketplace:</strong> ${mp === null ? '' : mp} ·
-    <strong>Encalhe Físico:</strong> ${ef === null ? '' : ef} ·
-    <strong>Encalhe Virtual:</strong> ${ev === null ? '' : ev} ·
-    <strong>Prêmio_Cota:</strong> ${premio === null ? '' : fmtBRL(premio)}
-  `;
+  const totalCotas =
+    Number(bolaoSel.qtd_cotas_total || 0);
 
-  if ($('apuBaseOrigem')) $('apuBaseOrigem').textContent = '';
-  if ($('apuVendidoOperacional')) $('apuVendidoOperacional').textContent = '';
-  if ($('apuSaldoFinal')) $('apuSaldoFinal').textContent = '';
-  if ($('apuSituacao')) $('apuSituacao').textContent = '';
+  const vendidoOperacional =
+    Number(bolaoSel.qtd_vendida_operacional_total || 0);
+
+  /*
+   * Apuração geral do bolão:
+   *
+   * total de cotas
+   * - vendas operacionais de todas as lojas
+   * - marketplace
+   * - encalhe físico
+   * - encalhe virtual
+   *
+   * Movimentações entre lojas não entram aqui,
+   * pois não alteram o total geral do bolão.
+   */
+  const saldoFinal =
+    totalCotas
+    - vendidoOperacional
+    - Number(mp || 0)
+    - Number(ef || 0)
+    - Number(ev || 0);
+
+  const pendente =
+    [mp, ef, ev, premio].some(valor => valor === null);
+
+  if ($('apuBaseOrigem')) {
+    $('apuBaseOrigem').textContent =
+      String(bolaoSel.saldo_base_origem ?? 0);
+  }
+
+  if ($('apuVendidoOperacional')) {
+    $('apuVendidoOperacional').textContent =
+      String(vendidoOperacional);
+  }
+
+  if ($('apuSaldoFinal')) {
+    $('apuSaldoFinal').textContent =
+      String(saldoFinal);
+  }
+
+  const situacao = $('apuSituacao');
+
+  if (situacao) {
+    if (pendente) {
+      situacao.textContent = 'Pendente';
+      situacao.className = 'apu-card-val warn';
+
+    } else if (saldoFinal === 0) {
+      situacao.textContent = 'Fechado';
+      situacao.className = 'apu-card-val ok';
+
+    } else if (saldoFinal > 0) {
+      situacao.textContent = 'Diferença';
+      situacao.className = 'apu-card-val warn';
+
+    } else {
+      situacao.textContent = 'Excedido';
+      situacao.className = 'apu-card-val err';
+    }
+  }
+
+  let mensagemSaldo = '';
+
+  if (saldoFinal === 0) {
+    mensagemSaldo = 'Apuração fechada corretamente.';
+  } else if (saldoFinal > 0) {
+    mensagemSaldo =
+      `Ainda restam ${saldoFinal} cota(s) sem classificação.`;
+  } else {
+    mensagemSaldo =
+      `A apuração excedeu o disponível em ${Math.abs(saldoFinal)} cota(s).`;
+  }
+
+  $('apuracaoResumo').innerHTML = `
+    <strong>Total de cotas:</strong> ${totalCotas} ·
+    <strong>Vendas operacionais:</strong> ${vendidoOperacional}<br>
+
+    <strong>Marketplace:</strong>
+    ${mp === null ? 'não lançado' : mp} ·
+
+    <strong>Encalhe físico:</strong>
+    ${ef === null ? 'não lançado' : ef} ·
+
+    <strong>Encalhe virtual:</strong>
+    ${ev === null ? 'não lançado' : ev} ·
+
+    <strong>Prêmio/cota:</strong>
+    ${premio === null ? 'não lançado' : fmtBRL(premio)}<br>
+
+    <strong>Saldo final:</strong> ${saldoFinal} cota(s).
+    ${mensagemSaldo}
+  `;
 }
 
 function fecharPanel(limparStatus = true) {
@@ -627,7 +711,28 @@ async function salvarApuracao() {
     setStatus('Os valores não podem ser negativos.', 'err');
     return;
   }
+const totalCotas =
+  Number(bolaoSel.qtd_cotas_total || 0);
 
+const vendidoOperacional =
+  Number(bolaoSel.qtd_vendida_operacional_total || 0);
+
+const saldoFinal =
+  totalCotas
+  - vendidoOperacional
+  - Number(qtd_marketplace || 0)
+  - Number(enc_fisico || 0)
+  - Number(enc_virtual || 0);
+
+if (saldoFinal < 0) {
+  setStatus(
+    `A apuração excede o saldo disponível em ${Math.abs(saldoFinal)} cota(s). Revise marketplace e encalhes.`,
+    'err'
+  );
+
+  renderResumoApuracao();
+  return;
+}
   const btn = $('btnRegistrar');
   btn.disabled = true;
   setStatus('Salvando apuração…', 'info');
