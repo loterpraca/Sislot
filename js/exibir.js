@@ -116,6 +116,16 @@ const SORT_OPTIONS = [
     shortDesc: '↓'
   },
   {
+  key: 'estoque_liquido_total',
+  label: 'Estoque líquido',
+  type: 'number',
+  defaultDir: 'desc',
+  ascLabel: 'Menor primeiro',
+  descLabel: 'Maior primeiro',
+  shortAsc: '↑',
+  shortDesc: '↓'
+},
+  {
     key: 'qtd_jogos',
     label: 'Jogos',
     type: 'number',
@@ -1245,9 +1255,12 @@ ${lojaCols}
     Encalhe<br>Total
   </th>
 
-  <th class="col-sintese">
-    Estoque<br>Líquido
-  </th>
+  ${sortTh(
+  'estoque_liquido_total',
+  'Estoque líquido',
+  'col-sintese',
+  'Estoque<br>Líquido'
+)}
 
   <th class="col-sintese">
     Venda<br>Contábil
@@ -1259,6 +1272,15 @@ ${lojaCols}
     const lm = lojaMap[b.bolao_id] || {};
     const fm = funcMap[b.bolao_id] || {};
 
+    const estoqueLiquido = Number(b.estoque_liquido_total || 0);
+
+const classeEstoqueLiquido =
+  estoqueLiquido < 0
+    ? 'estoque-negativo'
+    : estoqueLiquido === 0
+      ? 'estoque-zerado'
+      : 'estoque-positivo';
+    
     const funcTds = funcIds.map(id => `
   <td class="purple col-func cell-numero">
     ${fmtN(fm[id] || 0)}
@@ -1355,9 +1377,12 @@ return `<tr>
     ${fmtN(b.encalhe_total)}
   </td>
 
-  <td class="blue col-sintese cell-numero">
-    ${fmtN(b.estoque_liquido_total)}
-  </td>
+  <td
+  class="blue col-sintese cell-numero ${classeEstoqueLiquido}"
+  title="${estoqueLiquido < 0 ? 'Saldo negativo — revisar bolão' : 'Estoque líquido'}"
+>
+  ${fmtN(estoqueLiquido)}
+</td>
 
   <td class="green col-sintese cell-numero">
     ${fmtN(b.venda_contabil_total)}
