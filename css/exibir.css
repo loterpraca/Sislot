@@ -1732,3 +1732,84 @@ body.modal-open { overflow: hidden; }
 .data-table td.estoque-positivo {
   font-weight: 600;
 }
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+
+  padding: 18px 16px;
+  margin-top: 2px;
+
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 14, 24, 0.96);
+}
+
+.pagination-btn {
+  min-width: 112px;
+  height: 38px;
+  padding: 0 16px;
+
+  border: 1px solid rgba(94, 234, 212, 0.32);
+  border-radius: 8px;
+
+  background: rgba(94, 234, 212, 0.08);
+  color: #d8fffa;
+
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: rgba(94, 234, 212, 0.16);
+  border-color: rgba(94, 234, 212, 0.55);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  min-width: 170px;
+  text-align: center;
+
+  color: #d7deea;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+}
+
+.pagination-info strong {
+  color: #5eead4;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.pagination-info span {
+  color: #7d899a;
+  margin-left: 4px;
+}
+
+@media (max-width: 600px) {
+  .pagination-bar {
+    gap: 8px;
+    padding: 14px 8px;
+  }
+
+  .pagination-btn {
+    min-width: 88px;
+    padding: 0 10px;
+  }
+
+  .pagination-info {
+    min-width: auto;
+    font-size: 12px;
+  }
+
+  .pagination-info span {
+    display: none;
+  }
+}
