@@ -26,6 +26,10 @@ let filtroTimer = null;
 let boloesCache = [];
 let bolaoSelecionadoModal = null;
 let modalBusy = false;
+const PAGE_SIZE = 100;
+
+let paginaAtual = 1;
+let temProximaPagina = false;
 /* ============================================================
    ORDENAÇÃO RESPONSIVA
    - Cabeçalho: ordenação simples
@@ -253,7 +257,7 @@ function ordenarPorCabecalho(key) {
   } else {
     ordenacoes = [{ key, dir: def.defaultDir || 'asc' }];
   }
-
+  paginaAtual = 1;
   exibir();
 }
 
@@ -407,6 +411,7 @@ function restaurarOrdenacaoPadrao() {
 function aplicarOrdenacaoPainel() {
   removerDuplicatasOrdenacaoDraft();
   ordenacoes = ordenacoesDraft.map(o => ({ ...o }));
+  paginaAtual = 1;
   fecharPainelOrdenacao();
   exibir();
 }
@@ -507,11 +512,13 @@ function updateClock() {
 
 function agendarExibicao() {
   clearTimeout(filtroTimer);
+
+  paginaAtual = 1;
+
   filtroTimer = setTimeout(() => {
     exibir();
   }, 250);
 }
-
 function limparSelecaoBoloes() {
   document.querySelectorAll('.bolao-check').forEach(chk => {
     chk.checked = false;
@@ -1017,7 +1024,7 @@ function limpar() {
   $('fLoja').value = '';
 
   ordenacoes = [{ key: 'created_at', dir: 'desc' }];
-
+  paginaAtual = 1;
   exibir();
 }
 function montarQueryBoloes() {
@@ -1043,27 +1050,75 @@ function montarQueryBoloes() {
   return q;
 }
 
-async function carregarBoloesFiltrados() {
-  const pageSize = 1000;
-  let from = 0;
-  let todos = [];
+const SORT_DB_MAP = {
+  created_at: 'bolao_id',
+  dt_inicial: 'dt_inicial',
+  dt_concurso: 'dt_concurso',
+  concurso: 'concurso',
+  modalidade: 'modalidade',
+  origem_nome: 'origem_nome',
+  valor_cota: 'valor_cota',
+  qtd_cotas_total: 'qtd_cotas_total',
+  estoque_liquido_total: 'estoque_liquido_total',
+  qtd_jogos: 'qtd_jogos',
+  qtd_dezenas: 'qtd_dezenas'
+};
 
-  while (true) {
-    const to = from + pageSize - 1;
+function aplicarOrdenacaoBanco(query) {
+  const colunasUsadas = new Set();
 
-    const { data, error } = await montarQueryBoloes().range(from, to);
+  for (const ordenacao of ordenacoes) {
+    const coluna =
+      SORT_DB_MAP[ordenacao.key] ||
+      ordenacao.key;
 
-    if (error) throw error;
+    if (colunasUsadas.has(coluna)) continue;
 
-    const lote = data || [];
-    todos = todos.concat(lote);
+    query = query.order(coluna, {
+      ascending: ordenacao.dir === 'asc',
+      nullsFirst: false
+    });
 
-    if (lote.length < pageSize) break;
-
-    from += pageSize;
+    colunasUsadas.add(coluna);
   }
 
-  return todos;
+  // Desempate estável.
+  if (!colunasUsadas.has('bolao_id')) {
+    query = query.order('bolao_id', {
+      ascending: false
+    });
+  }
+
+  return query;
+}
+
+async function carregarPaginaBoloes() {
+  const inicio = (paginaAtual - 1) * PAGE_SIZE;
+
+  /*
+   * Buscamos 101 registros:
+   * - os primeiros 100 são exibidos;
+   * - o registro extra indica que existe próxima página.
+   */
+  const fim = inicio + PAGE_SIZE;
+
+  let query = montarQueryBoloes();
+
+  query = aplicarOrdenacaoBanco(query);
+
+  const { data, error } = await query.range(
+    inicio,
+    fim
+  );
+
+  if (error) throw error;
+
+  const registros = data || [];
+
+  temProximaPagina =
+    registros.length > PAGE_SIZE;
+
+  return registros.slice(0, PAGE_SIZE);
 }
 
 function dividirEmLotes(lista, tamanho = 100) {
@@ -1173,6 +1228,121 @@ async function carregarLojasOperacionais(ids) {
 
   return resultado;
 }
+
+async function carregarAuxiliarPaginado(
+  viewName,
+  ids
+) {
+  const idsValidos = [
+    ...new Set(
+      (ids || [])
+        .map(Number)
+        .filter(Number.isFinite)
+    )
+  ];
+
+  if (!idsValidos.length) return [];
+
+  const resultado = [];
+  const pageSize = 1000;
+
+  let inicio = 0;
+
+  while (true) {
+    const fim = inicio + pageSize - 1;
+
+    const { data, error } = await sb
+      .from(viewName)
+      .select('*')
+      .in('bolao_id', idsValidos)
+      .order('bolao_id', {
+        ascending: true
+      })
+      .range(inicio, fim);
+
+    if (error) {
+      console.error(
+        `Erro ao carregar ${viewName}:`,
+        error
+      );
+
+      throw error;
+    }
+
+    const pagina = data || [];
+
+    resultado.push(...pagina);
+
+    if (pagina.length < pageSize) break;
+
+    inicio += pageSize;
+  }
+
+  return resultado;
+}
+
+function montarPaginacaoHtml() {
+  return `
+    <div class="pagination-bar">
+      <button
+        id="pagAnterior"
+        class="pagination-btn"
+        type="button"
+        ${paginaAtual <= 1 ? 'disabled' : ''}
+      >
+        ← Anterior
+      </button>
+
+      <div class="pagination-info">
+        Página <strong>${paginaAtual}</strong>
+        <span>· até ${PAGE_SIZE} bolões</span>
+      </div>
+
+      <button
+        id="pagProxima"
+        class="pagination-btn"
+        type="button"
+        ${!temProximaPagina ? 'disabled' : ''}
+      >
+        Próxima →
+      </button>
+    </div>
+  `;
+}
+
+function bindPaginacao() {
+  $('pagAnterior')?.addEventListener(
+    'click',
+    async () => {
+      if (paginaAtual <= 1) return;
+
+      paginaAtual -= 1;
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+
+      await exibir();
+    }
+  );
+
+  $('pagProxima')?.addEventListener(
+    'click',
+    async () => {
+      if (!temProximaPagina) return;
+
+      paginaAtual += 1;
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+
+      await exibir();
+    }
+  );
+}
 async function exibir() {
 
 $('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><div class="state-title">Carregando…</div></div>';
@@ -1180,7 +1350,7 @@ $('tableArea').innerHTML = '<div class="state-box"><div class="spinner"></div><d
 let boloesRaw = [];
 
 try {
-  boloesRaw = await carregarBoloesFiltrados();
+  boloesRaw = await carregarPaginaBoloes();
 } catch (error) {
   console.error('Erro ao carregar bolões:', error);
   boloesCache = [];
@@ -1189,12 +1359,34 @@ try {
 }
 
 if (!boloesRaw?.length) {
+  /*
+   * Pode acontecer após excluir o último registro
+   * existente na última página.
+   */
+  if (paginaAtual > 1) {
+    paginaAtual -= 1;
+    await exibir();
+    return;
+  }
+
   boloesCache = [];
-  $('tableArea').innerHTML = '<div class="state-box"><div class="state-title">Nenhum resultado</div><div class="state-sub">Tente ajustar os filtros.</div></div>';
+
+  $('tableArea').innerHTML = `
+    <div class="state-box">
+      <div class="state-title">
+        Nenhum resultado
+      </div>
+
+      <div class="state-sub">
+        Tente ajustar os filtros.
+      </div>
+    </div>
+  `;
+
   return;
 }
 
-const boloes = ordenarBoloes(boloesRaw);
+const boloes = boloesRaw;
 boloesCache = boloes;
 renderResumoOrdenacao();
 
@@ -1608,16 +1800,28 @@ return `<tr>
 </tr>`;
   
 
-  wrap.innerHTML = `<table class="data-table">
-    <thead>${grpRow}${colRow}</thead>
-    <tbody>${rows}${totalRow}</tbody>
-  </table>`;
+  wrap.innerHTML = `
+  <table class="data-table">
+    <thead>
+      ${grpRow}
+      ${colRow}
+    </thead>
+
+    <tbody>
+      ${rows}
+      ${totalRow}
+    </tbody>
+  </table>
+
+  ${montarPaginacaoHtml()}
+`;
 
   $('tableArea').innerHTML = '';
   $('tableArea').appendChild(wrap);
 
   bindSelecaoBoloes();
 bindOrdenacaoCabecalho();
+ bindPaginacao();
 renderResumoOrdenacao();
 }
 
