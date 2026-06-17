@@ -1715,3 +1715,20 @@ body.modal-open { overflow: hidden; }
   min-width: 40px !important;
   max-width: 40px !important;
 }
+/* Estoque líquido */
+.data-table td.estoque-negativo {
+  color: #ff6b6b;
+  background: rgba(220, 38, 38, 0.14);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.28);
+}
+
+.data-table td.estoque-zerado {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.10);
+  font-weight: 700;
+}
+
+.data-table td.estoque-positivo {
+  font-weight: 600;
+}
