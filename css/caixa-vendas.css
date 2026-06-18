@@ -261,9 +261,53 @@
       height:34px;display:flex;align-items:center;white-space:nowrap;min-width:128px;justify-content:center;
       background:transparent;cursor:pointer;-webkit-appearance:none;appearance:none}
     .date-display:hover{background:rgba(37,211,102,0.07);color:var(--green)}
-    .date-picker-hidden{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;
-      border:0;padding:0;margin:0;background:transparent;color:transparent;-webkit-appearance:none;appearance:none}
-    .date-picker-hidden::-webkit-calendar-picker-indicator{opacity:0}
+.date-stepper{
+  position:relative;
+  display:flex;
+  align-items:center;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:8px;
+  overflow:hidden;
+}
+
+#dateDisplayCaixa,
+#dateDisplayFederal,
+#dateDisplayProdutos{
+  pointer-events:none;
+}
+
+#datePickerCaixa,
+#datePickerFederal,
+#datePickerProdutos{
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:34px;
+  right:34px;
+  width:auto;
+  height:auto;
+  opacity:0;
+  pointer-events:auto;
+  cursor:pointer;
+  border:0;
+  margin:0;
+  padding:0;
+  background:transparent;
+  -webkit-appearance:none;
+  appearance:none;
+  z-index:3;
+}
+
+#datePickerCaixa::-webkit-calendar-picker-indicator,
+#datePickerFederal::-webkit-calendar-picker-indicator,
+#datePickerProdutos::-webkit-calendar-picker-indicator{
+  opacity:0;
+  display:block;
+  width:100%;
+  height:100%;
+  cursor:pointer;
+}
     .btn-hoje{background:transparent;border:1px solid rgba(37,211,102,0.2);border-radius:6px;
       padding:5px 11px;cursor:pointer;font-family:var(--mono);font-size:9px;font-weight:500;
       letter-spacing:.1em;text-transform:uppercase;color:var(--green);transition:var(--tr)}
