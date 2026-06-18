@@ -298,6 +298,31 @@ async function init() {
   await buscarBoloes();
 }
 
+async function mudarData(deltaDias) {
+  lerFiltrosAvancados();
+
+  if (!usarDataReferencia) return;
+
+  const base = dataAtual instanceof Date ? dataAtual : hojeSaoPauloDate();
+  const novaData = new Date(
+    base.getFullYear(),
+    base.getMonth(),
+    base.getDate() + Number(deltaDias || 0)
+  );
+
+  if (Number.isNaN(novaData.getTime())) return;
+
+  dataAtual = novaData;
+
+  atualizarDateDisplay();
+  atualizarEstadoFiltroData();
+  fecharPanel();
+
+  await carregarOrigens();
+  await carregarModalidades();
+  await buscarBoloes();
+}
+
 function atualizarDateDisplay() {
   const display = $('dateDisplay');
   const inputData = $('inputDataReferencia');
@@ -345,14 +370,22 @@ async function selecionarDataReferencia(valor) {
   await buscarBoloes();
 }
 async function carregarOrigens() {
-  const iso = isoDate(dataAtual);
-  const { data, error } = await sb
+  lerFiltrosAvancados();
+
+  let q = sb
     .from('view_boloes_apuracao_marketplace')
     .select('origem_loteria_id, origem_nome, origem_cod_loterico')
-    .eq('status', 'ATIVO')
-    .lte('dt_inicial', iso)
-    .gte('dt_concurso', iso);
+    .eq('status', 'ATIVO');
 
+  q = aplicarFiltrosBase(q, {
+    usarFiltroData: true,
+    usarFiltroOrigem: false,
+    usarFiltroModalidade: true,
+    usarFiltroConcurso: true,
+    usarFiltroPendencia: false
+  });
+
+  const { data, error } = await q;
   if (error) return;
 
   const mapa = new Map();
@@ -363,8 +396,9 @@ async function carregarOrigens() {
   const sel = $('selOrigem');
   const atual = origemFiltro;
   sel.innerHTML = '<option value="">Todas as origens</option>';
+
   [...mapa.values()]
-    .sort((a,b) => String(a.origem_nome || '').localeCompare(String(b.origem_nome || ''), 'pt-BR'))
+    .sort((a, b) => String(a.origem_nome || '').localeCompare(String(b.origem_nome || ''), 'pt-BR'))
     .forEach(r => {
       const op = document.createElement('option');
       op.value = r.origem_loteria_id;
@@ -373,7 +407,6 @@ async function carregarOrigens() {
       sel.appendChild(op);
     });
 }
-
 async function buscarBoloes() {
   lerFiltrosAvancados();
 
@@ -780,20 +813,13 @@ document.addEventListener('DOMContentLoaded', () => {
     await mudarData(1);
   });
 
-  btnHoje?.addEventListener('click', async event => {
-    event.preventDefault();
-    event.stopPropagation();
+ btnHoje?.addEventListener('click', async event => {
+  event.preventDefault();
+  event.stopPropagation();
 
-    dataAtual = hojeSaoPauloDate();
-
-    atualizarDateDisplay();
-    atualizarEstadoFiltroData();
-    fecharPanel();
-
-    await carregarOrigens();
-    await carregarModalidades();
-    await buscarBoloes();
-  });
+  dataAtual = hojeSaoPauloDate();
+  await mudarData(0);
+});
 
   inputData?.addEventListener('change', async event => {
     const valorSelecionado = event.target.value;
