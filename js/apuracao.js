@@ -72,15 +72,6 @@ function lerFiltrosAvancados() {
 }
 
 function validarRangeConcurso() {
-  if (
-    concursoIniFiltro !== null &&
-    concursoFimFiltro !== null &&
-    concursoFimFiltro < concursoIniFiltro
-  ) {
-    setStatus('O concurso final não pode ser menor que o concurso inicial.', 'err');
-    return false;
-  }
-
   return true;
 }
 
