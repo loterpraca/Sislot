@@ -598,104 +598,143 @@ function onMovimentar() {
     if (confirmOverlay) confirmOverlay.classList.add('show');
 }
 
-async function doMovimentar
-
-    try {
-const operacoes = [];
-
-for (const [slug, qtdRaw] of Object.entries(deltas)) {
-    const qtd = Number(qtdRaw || 0);
-
-    if (qtd === 0) continue;
-
-    const destId = lojaIdPorSlug[slug];
-
-    if (!destId) {
-        throw new Error(`Loja não encontrada: ${slug}`);
+async function doMovimentar(b, deltas) {
+    if (movimentacaoEmAndamento) {
+        return;
     }
 
-    operacoes.push({
-        loteria_destino: destId,
-        delta: qtd
-    });
-}
+    movimentacaoEmAndamento = true;
 
-if (!operacoes.length) {
-    throw new Error('Nenhuma movimentação válida.');
-}
-
-const { data, error } = await sb.rpc(
-    'rpc_movimentar_cotas_bolao',
-    {
-        p_bolao_id: b.id,
-        p_data_referencia: dataAtualISO(),
-        p_operacoes: operacoes,
-        p_observacao: null
-    }
-);
-
-if (error) {
-    throw new Error(error.message);
-}
-
-if (!data?.ok) {
-    throw new Error(
-        data?.motivo || 'Não foi possível registrar a movimentação.'
-    );
-}
-
-        const bolaoIdAtual = bolaoSelecionado?.id;
-
-        if (bolaoSelecionado) {
-            const origemId = bolaoSelecionado.loteria_id;
-            Object.entries(deltas).forEach(([slug, qtdRaw]) => {
-                const qtd    = Number(qtdRaw || 0);
-                const destId = lojaIdPorSlug[slug];
-                if (!destId || qtd === 0) return;
-                if (saldosPorLoja[destId] == null) saldosPorLoja[destId] = 0;
-                saldosPorLoja[destId]  += qtd;
-                saldosPorLoja[origemId] -= qtd;
-                if (!historicoPorLoja[destId])   historicoPorLoja[destId]   = [];
-                historicoPorLoja[destId].push(qtd);
-                if (!historicoPorLoja[origemId]) historicoPorLoja[origemId] = [];
-                historicoPorLoja[origemId].push(-qtd);
-            });
-            if (saldosPorLoja[origemId] < 0) saldosPorLoja[origemId] = 0;
-            abrirPanel(bolaoSelecionado);
-        }
-
-        setStatus('statusBar', '✓ Movimentação registrada com sucesso!', 'ok');
-        zerarMov(false);
-        await buscarBoloes();
-
-        if (bolaoIdAtual) {
-            const card = document.querySelector(`.bolao-card[data-id="${bolaoIdAtual}"]`);
-            if (card) card.classList.add('selected');
-        }
-    } catch (e) {
-        setStatus('statusBar', e.message, 'err');
-   } finally {
-    movimentacaoEmAndamento = false;
+    const btn = $('btnMovimentar');
+    const confirmOk = $('confirmOk');
 
     if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
-                <polyline points="17 1 21 5 17 9"/>
-                <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-                <polyline points="7 23 3 19 7 15"/>
-                <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-            </svg>
-            Movimentar`;
+        btn.disabled = true;
+        btn.textContent = 'Registrando…';
     }
 
     if (confirmOk) {
-        confirmOk.disabled = false;
-        confirmOk.textContent = 'Confirmar';
+        confirmOk.disabled = true;
+        confirmOk.textContent = 'Registrando…';
+    }
+
+    setStatus(
+        'statusBar',
+        'Registrando movimentação…',
+        'info'
+    );
+
+    try {
+        const operacoes = [];
+
+        for (const [slug, qtdRaw] of Object.entries(deltas)) {
+            const qtd = Number(qtdRaw || 0);
+
+            if (qtd === 0) {
+                continue;
+            }
+
+            const destId = lojaIdPorSlug[slug];
+
+            if (!destId) {
+                throw new Error(
+                    `Loja não encontrada: ${slug}`
+                );
+            }
+
+            operacoes.push({
+                loteria_destino: destId,
+                delta: qtd
+            });
+        }
+
+        if (!operacoes.length) {
+            throw new Error(
+                'Nenhuma movimentação válida.'
+            );
+        }
+
+        const { data, error } = await sb.rpc(
+            'rpc_movimentar_cotas_bolao',
+            {
+                p_bolao_id: b.id,
+                p_data_referencia: dataAtualISO(),
+                p_operacoes: operacoes,
+                p_observacao: null
+            }
+        );
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        if (!data?.ok) {
+            throw new Error(
+                data?.motivo
+                || 'Não foi possível registrar a movimentação.'
+            );
+        }
+
+        const bolaoIdAtual = b.id;
+
+        setStatus(
+            'statusBar',
+            '✓ Movimentação registrada com sucesso!',
+            'ok'
+        );
+
+        zerarMov(false);
+
+        await buscarBoloes();
+
+        if (bolaoIdAtual) {
+            const card = document.querySelector(
+                `.bolao-card[data-id="${bolaoIdAtual}"]`
+            );
+
+            if (card) {
+                card.classList.add('selected');
+            }
+        }
+
+    } catch (e) {
+        setStatus(
+            'statusBar',
+            e?.message || 'Erro ao registrar movimentação.',
+            'err'
+        );
+
+    } finally {
+        movimentacaoEmAndamento = false;
+
+        if (btn) {
+            btn.disabled = false;
+
+            btn.innerHTML = `
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="width:16px;height:16px;"
+                >
+                    <polyline points="17 1 21 5 17 9"/>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <polyline points="7 23 3 19 7 15"/>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
+                Movimentar
+            `;
+        }
+
+        if (confirmOk) {
+            confirmOk.disabled = false;
+            confirmOk.textContent = 'Confirmar';
+        }
     }
 }
-}
-
 function bind() {
     const btnMenu        = $('btnMenu');
     const btnLogout      = $('btnLogout');
