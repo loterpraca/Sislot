@@ -61,6 +61,7 @@ let dataAtual = new Date();
 let bolaoSelecionado = null;
 let saldosPorLoja = {};
 let historicoPorLoja = {};
+let movimentacaoEmAndamento = false;
 
 // =====================================================
 // FORMATAÇÃO DE DATA
