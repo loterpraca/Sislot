@@ -598,10 +598,7 @@ function onMovimentar() {
     if (confirmOverlay) confirmOverlay.classList.add('show');
 }
 
-async function doMovimentar(b, deltas) {
-    const btn = $('btnMovimentar');
-    if (btn) { btn.disabled = true; btn.textContent = 'Registrando…'; }
-    setStatus('statusBar', 'Registrando movimentação…', 'info');
+async function doMovimentar
 
     try {
 const operacoes = [];
@@ -677,17 +674,26 @@ if (!data?.ok) {
         }
     } catch (e) {
         setStatus('statusBar', e.message, 'err');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
-                    <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-                    <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-                </svg>
-                Movimentar`;
-        }
+   } finally {
+    movimentacaoEmAndamento = false;
+
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;">
+                <polyline points="17 1 21 5 17 9"/>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                <polyline points="7 23 3 19 7 15"/>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+            </svg>
+            Movimentar`;
     }
+
+    if (confirmOk) {
+        confirmOk.disabled = false;
+        confirmOk.textContent = 'Confirmar';
+    }
+}
 }
 
 function bind() {
@@ -750,8 +756,17 @@ function bind() {
         if (e.target === confirmOverlay) confirmOverlay.classList.remove('show');
     });
     if (confirmOk) confirmOk.addEventListener('click', async () => {
-        if (confirmOverlay) confirmOverlay.classList.remove('show');
-        if (!bolaoSelecionado) return;
+    if (movimentacaoEmAndamento) {
+        return;
+    }
+
+    if (!bolaoSelecionado) {
+        return;
+    }
+
+    if (confirmOverlay) {
+        confirmOverlay.classList.remove('show');
+    }
         const deltas = {};
         LOJAS.forEach(l => {
             const inp = $(`dest-${l.slug}`);
