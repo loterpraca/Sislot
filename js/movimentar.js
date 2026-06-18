@@ -196,10 +196,42 @@ async function buscarBoloes() {
 
     const ids = boloes.map(b => b.id);
 
-    const { data: posicoes } = await sb
-        .from('view_posicao_bolao_lojas')
-        .select('*')
-        .in('bolao_id', ids);
+   const { data: saldoRows, error: saldoError } = await sb
+    .from('view_boloes_saldo_operacional_loja')
+    .select(`
+        bolao_id,
+        tipo,
+        loteria_id_exibicao,
+        loja_exibicao_nome,
+        saldo_atual
+    `)
+    .in('bolao_id', ids);
+
+if (saldoError) {
+    if (vazioEl) {
+        const vazioSub = $('stVazioSub');
+
+        if (vazioSub) {
+            vazioSub.textContent =
+                'Erro ao carregar o saldo operacional: '
+                + saldoError.message;
+        }
+
+        vazioEl.style.display = 'flex';
+    }
+
+    return;
+}
+
+const posicoes = (saldoRows || []).map(r => ({
+    bolao_id: Number(r.bolao_id),
+    loteria_id: Number(r.loteria_id_exibicao),
+    loteria_nome: r.loja_exibicao_nome || '—',
+    loteria_slug:
+        lojaSlugPorId[Number(r.loteria_id_exibicao)] || '',
+    eh_origem: r.tipo === 'INTERNO',
+    qtd_cotas_posicao: Number(r.saldo_atual || 0)
+}));
 
     const { data: movs } = await sb
         .from('movimentacoes_cotas')
@@ -572,25 +604,48 @@ async function doMovimentar(b, deltas) {
     setStatus('statusBar', 'Registrando movimentação…', 'info');
 
     try {
-        const inserts = [];
-        for (const [slug, qtd] of Object.entries(deltas)) {
-            if (qtd === 0) continue;
-            const destId = lojaIdPorSlug[slug];
-            if (!destId) throw new Error(`Loja não encontrada: ${slug}`);
-            inserts.push({
-                bolao_id:        b.id,
-                loteria_origem:  b.loteria_id,
-                loteria_destino: destId,
-                qtd_cotas:       qtd,
-                valor_unitario:  b.valor_cota,
-                status:          'ATIVO',
-                criado_por:      usuario.id,
-            });
-        }
-        if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
+const operacoes = [];
 
-        const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
-        if (error) throw new Error(error.message);
+for (const [slug, qtdRaw] of Object.entries(deltas)) {
+    const qtd = Number(qtdRaw || 0);
+
+    if (qtd === 0) continue;
+
+    const destId = lojaIdPorSlug[slug];
+
+    if (!destId) {
+        throw new Error(`Loja não encontrada: ${slug}`);
+    }
+
+    operacoes.push({
+        loteria_destino: destId,
+        delta: qtd
+    });
+}
+
+if (!operacoes.length) {
+    throw new Error('Nenhuma movimentação válida.');
+}
+
+const { data, error } = await sb.rpc(
+    'rpc_movimentar_cotas_bolao',
+    {
+        p_bolao_id: b.id,
+        p_data_referencia: dataAtualISO(),
+        p_operacoes: operacoes,
+        p_observacao: null
+    }
+);
+
+if (error) {
+    throw new Error(error.message);
+}
+
+if (!data?.ok) {
+    throw new Error(
+        data?.motivo || 'Não foi possível registrar a movimentação.'
+    );
+}
 
         const bolaoIdAtual = bolaoSelecionado?.id;
 
