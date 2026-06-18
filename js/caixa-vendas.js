@@ -2254,10 +2254,6 @@ function bindEventos(){
   if (nextCaixa) nextCaixa.onclick = () => alterarDataCaixa(1);
   if (hojeCaixa) hojeCaixa.onclick = () => setDataCaixaPorISO(isoDate(hojeLocal()));
 
-  if (displayCaixa && pickerCaixa) {
-    displayCaixa.onclick = () => pickerCaixa.showPicker ? pickerCaixa.showPicker() : pickerCaixa.click();
-  }
-
   if (pickerCaixa) {
     pickerCaixa.onchange = () => setDataCaixaPorISO(pickerCaixa.value);
   }
@@ -2301,11 +2297,7 @@ if (hojeFederal) {
   };
 }
 
-if (displayFederal && pickerFederal) {
-  displayFederal.onclick = () => pickerFederal.showPicker
-    ? pickerFederal.showPicker()
-    : pickerFederal.click();
-}
+
 
 if (pickerFederal) {
   pickerFederal.onchange = async () => {
@@ -2361,12 +2353,6 @@ if (hojeProdutos) {
     await setDataOperacionalCaixa(hojeLocal());
     await buscarProdutosCaixa();
   };
-}
-
-if (displayProdutos && pickerProdutos) {
-  displayProdutos.onclick = () => pickerProdutos.showPicker
-    ? pickerProdutos.showPicker()
-    : pickerProdutos.click();
 }
 
 if (pickerProdutos) {
