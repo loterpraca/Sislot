@@ -7,8 +7,7 @@ let todosBoloes = [];
 let origemFiltro = '';
 let pendenciaFiltro = 'TODOS';
 let modalidadeFiltro = '';
-let concursoIniFiltro = null;
-let concursoFimFiltro = null;
+let concursoFiltro = null;
 let usarDataReferencia = true;
 let filtroAtivoTimer = null;
 
@@ -68,8 +67,7 @@ function numOrNull(v) {
 }
 function lerFiltrosAvancados() {
   modalidadeFiltro = $('selModalidade')?.value || '';
-  concursoIniFiltro = intOrNull($('inputConcursoIni')?.value);
-  concursoFimFiltro = intOrNull($('inputConcursoFim')?.value);
+  concursoFiltro = intOrNull($('inputConcurso')?.value);
   usarDataReferencia = $('chkUsarData') ? $('chkUsarData').checked : true;
 }
 
@@ -111,15 +109,9 @@ function aplicarFiltrosBase(q, opts = {}) {
     q = q.eq('modalidade', modalidadeFiltro);
   }
 
-  if (usarFiltroConcurso) {
-    if (concursoIniFiltro !== null && concursoFimFiltro !== null) {
-      q = q.gte('concurso', concursoIniFiltro).lte('concurso', concursoFimFiltro);
-    } else if (concursoIniFiltro !== null) {
-      q = q.eq('concurso', concursoIniFiltro);
-    } else if (concursoFimFiltro !== null) {
-      q = q.lte('concurso', concursoFimFiltro);
-    }
-  }
+  if (usarFiltroConcurso && concursoFiltro !== null) {
+  q = q.eq('concurso', concursoFiltro);
+}
 
   if (usarFiltroPendencia) {
     if (pendenciaFiltro === 'SIM') q = q.eq('pendencia_apuracao', true);
@@ -276,17 +268,11 @@ async function init() {
     });
   }
 
-  if ($('inputConcursoIni')) {
-    $('inputConcursoIni').addEventListener('input', () => {
-      agendarFiltroAtivo(450);
-    });
-  }
-
-  if ($('inputConcursoFim')) {
-    $('inputConcursoFim').addEventListener('input', () => {
-      agendarFiltroAtivo(450);
-    });
-  }
+  if ($('inputConcurso')) {
+  $('inputConcurso').addEventListener('input', () => {
+    agendarFiltroAtivo(450);
+  });
+}
 
   dataAtual = hojeSaoPauloDate();
 
