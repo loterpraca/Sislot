@@ -905,18 +905,29 @@ function coletarTela2() {
 function coletarTela3() {
     const coleta = tipo => allBoloes
         .filter(b => b.tipo === tipo)
-        .map(({ data, idx }) => ({
-            bolao_id: data.bolao_id,
-            modalidade: data.modalidade,
-            concurso: data.concurso,
-            valorCota: Number(data.valorCota || 0),
-            qtdVendida: parseInt($(`qtd-${idx}`)?.value) || 0,
-            subtotal: (parseInt($(`qtd-${idx}`)?.value) || 0) * Number(data.valorCota || 0)
-        }));
+        .map(({ data, idx }) => {
+            const qtdVendida = parseInt($(`qtd-${idx}`)?.value) || 0;
 
-    ESTADO.tela3 = { internos: coleta('INTERNO'), externos: coleta('EXTERNO') };
+            return {
+                bolao_id: data.bolao_id,
+                tipo: data.tipo || tipo,
+                origem: data.origem || '',
+                origemCodLoterico: data.origemCodLoterico || '',
+                modalidade: data.modalidade,
+                concurso: data.concurso,
+                qtdJogos: Number(data.qtdJogos || 0),
+                qtdDezenas: Number(data.qtdDezenas || 0),
+                valorCota: Number(data.valorCota || 0),
+                qtdVendida,
+                subtotal: qtdVendida * Number(data.valorCota || 0)
+            };
+        });
+
+    ESTADO.tela3 = {
+        internos: coleta('INTERNO'),
+        externos: coleta('EXTERNO')
+    };
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // FEDERAIS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1810,19 +1821,80 @@ async function salvarSnapshotBoloesDoFechamento(fechId, boloesVendidos) {
     if (error) throw error;
 }
 
+function montarResumoBolaoErro(b) {
+    if (!b) return {};
+
+    return {
+        bolao_id: Number(b.bolao_id || 0) || null,
+        origem: [b.origem || '', b.origemCodLoterico || ''].filter(Boolean).join(' · ') || '—',
+        modalidade: b.modalidade || '—',
+        concurso: b.concurso || '—',
+        qtd_jogos: Number(b.qtdJogos || 0) || 0,
+        qtd_dezenas: Number(b.qtdDezenas || 0) || 0,
+        valor_cota: Number(b.valorCota || 0) || 0,
+        qtd_vendida: Number(b.qtdVendida || 0) || 0,
+        subtotal: Number(b.subtotal || 0) || 0,
+        tipo: b.tipo || '—'
+    };
+}
+
+function logErroBolaoFechamento(b, error, contexto = {}) {
+    const resumo = montarResumoBolaoErro(b);
+
+    console.groupCollapsed(
+        `[FECHAMENTO][ERRO_BOLAO] #${resumo.bolao_id || '—'} · ${resumo.modalidade} · conc ${resumo.concurso}`
+    );
+
+    console.error('Resumo do bolão:', resumo);
+    console.error('Contexto:', {
+        loteria_ativa_id: Number(loteriaAtiva?.id || 0) || null,
+        loteria_ativa_nome: loteriaAtiva?.nome || null,
+        funcionario_id: Number(contexto.funcionario_id || 0) || null,
+        data_ref: contexto.data_ref || null,
+        fechamento_id: contexto.fechamento_id || null
+    });
+    console.error('Erro RPC:', {
+        message: error?.message || String(error),
+        details: error?.details || null,
+        hint: error?.hint || null,
+        code: error?.code || null
+    });
+
+    console.groupEnd();
+}
+
 async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     if (!boloesVendidos.length) return;
+
     try {
         for (const b of boloesVendidos) {
             const { error } = await sb.rpc('registrar_venda_bolao', {
                 p_bolao_id: Number(b.bolao_id),
                 p_loteria_vendedora_id: Number(loteriaAtiva.id),
                 p_usuario_id: Number(t1.funcionario_id),
-                p_canal: 'FECHAMENTO', p_origem_lancamento: 'FECHAMENTO_CAIXA',
-                p_qtd_vendida: Number(b.qtdVendida || 0), p_data_referencia: t1.data_ref,
-                p_observacao: 'Lançado no fechamento', p_fechamento_id: fechId, p_fechamento_keyid: null
+                p_canal: 'FECHAMENTO',
+                p_origem_lancamento: 'FECHAMENTO_CAIXA',
+                p_qtd_vendida: Number(b.qtdVendida || 0),
+                p_data_referencia: t1.data_ref,
+                p_observacao: 'Lançado no fechamento',
+                p_fechamento_id: fechId,
+                p_fechamento_keyid: null
             });
-            if (error) throw error;
+
+            if (error) {
+                logErroBolaoFechamento(b, error, {
+                    funcionario_id: t1.funcionario_id,
+                    data_ref: t1.data_ref,
+                    fechamento_id: fechId
+                });
+
+                const err = new Error(
+                    `Falha ao salvar bolão ${b.modalidade} concurso ${b.concurso} (ID ${b.bolao_id})`
+                );
+                err.cause = error;
+                err.bolao = montarResumoBolaoErro(b);
+                throw err;
+            }
         }
     } catch (e) {
         await estornarBoloesDoFechamento(fechId);
