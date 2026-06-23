@@ -219,73 +219,6 @@
   </div>
 </div>
 
-<!-- Detalhamento do encalhe físico por loja -->
-<div
-  class="encalhe-detalhe"
-  id="encalheDetalhe"
-  aria-hidden="true"
->
-  <div class="encalhe-detalhe-header">
-    <div>
-      <div class="encalhe-detalhe-title">
-        Encalhe físico por loja
-      </div>
-
-      <div class="encalhe-detalhe-sub">
-        Informe onde as cotas encalharam. A quantidade máxima será limitada pelo saldo operacional de cada loja.
-      </div>
-    </div>
-
-    <button
-      type="button"
-      class="btn-fechar-encalhe"
-      id="btnFecharEncalhe"
-      title="Fechar detalhamento"
-      aria-label="Fechar detalhamento do encalhe"
-    >
-      ×
-    </button>
-  </div>
-
-  <div
-    class="encalhe-loading"
-    id="encalheLoading"
-    style="display:none;"
-  >
-    <div class="spinner"></div>
-    <span>Consultando saldos das lojas…</span>
-  </div>
-
-  <div
-    class="encalhe-lojas-lista"
-    id="encalheLojasLista"
-  ></div>
-
-  <div
-    class="encalhe-alerta"
-    id="encalheAlerta"
-  ></div>
-
-  <div class="encalhe-detalhe-footer">
-    <div>
-      <span class="encalhe-total-label">
-        Encalhe físico total:
-      </span>
-
-      <span
-        class="encalhe-total-valor"
-        id="encalheTotalValor"
-      >
-        0
-      </span>
-    </div>
-
-    <div class="encalhe-total-label">
-      O total será levado automaticamente para a apuração.
-    </div>
-  </div>
-</div>
-
 <button
   type="button"
   class="btn-registrar btn-salvar-apu"
@@ -311,8 +244,389 @@
         Marketplace, encalhes e prêmio por cota são gravados no próprio bolão da origem. Os valores são absolutos e sobrescrevem o estado atual.
       </div>
     </div>
+  ```html
   </div>
 </div>
+<!-- FIM DO PAINEL PRINCIPAL DE APURAÇÃO -->
+
+
+<!-- =====================================================
+     PAINEL EXPANDIDO DE ENCALHE FÍSICO
+===================================================== -->
+<div
+  class="encalhe-overlay"
+  id="encalheOverlay"
+  aria-hidden="true"
+>
+  <section
+    class="encalhe-panel-expandido"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="encalhePanelTitulo"
+  >
+    <div class="encalhe-panel-header">
+      <div class="venda-resumo">
+        <div
+          class="venda-resumo-title"
+          id="encalhePanelTitulo"
+        >
+          Lançamento de Encalhe Físico
+        </div>
+
+        <div
+          class="venda-resumo-nome"
+          id="encalhePanelNome"
+        >
+          —
+        </div>
+
+        <div
+          class="venda-resumo-tags"
+          id="encalhePanelTags"
+        ></div>
+      </div>
+
+      <button
+        type="button"
+        class="btn-fechar-panel"
+        id="btnFecharEncalhe"
+        aria-label="Fechar lançamento de encalhe"
+      >
+        ×
+      </button>
+    </div>
+
+    <div
+      class="status-bar"
+      id="encalheStatusBar"
+    ></div>
+
+    <!-- Resumo do bolão -->
+    <div class="encalhe-indicadores">
+      <div class="encalhe-indicador">
+        <span>Total de cotas</span>
+        <strong id="encalheTotalCotas">0</strong>
+      </div>
+
+      <div class="encalhe-indicador">
+        <span>Encalhe físico total</span>
+        <strong id="encalheTotalValor">0</strong>
+      </div>
+
+      <div class="encalhe-indicador">
+        <span>Origem</span>
+        <strong id="encalheOrigemNome">—</strong>
+      </div>
+
+      <div class="encalhe-indicador">
+        <span>Valor da cota</span>
+        <strong id="encalheValorCota">R$ 0,00</strong>
+      </div>
+    </div>
+
+    <!-- Carregamento -->
+    <div
+      class="encalhe-loading"
+      id="encalheLoading"
+      style="display:none;"
+    >
+      <div class="spinner"></div>
+      <span>Consultando saldos e históricos…</span>
+    </div>
+
+    <div class="encalhe-layout">
+
+      <!-- COLUNA ESQUERDA: LOJAS -->
+      <div class="encalhe-coluna-lojas">
+        <div class="encalhe-section-header">
+          <div>
+            <div class="encalhe-section-title">
+              Saldo atual por loja
+            </div>
+
+            <div class="encalhe-section-sub">
+              Selecione a loja onde o encalhe será lançado.
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="encalhe-lojas-lista"
+          id="encalheLojasLista"
+        ></div>
+      </div>
+
+
+      <!-- COLUNA DIREITA: LANÇAMENTO -->
+      <div
+        class="encalhe-edicao-area"
+        id="encalheEdicaoArea"
+      >
+        <!-- Estado inicial -->
+        <div
+          class="encalhe-edicao-vazia"
+          id="encalheEdicaoVazia"
+        >
+          <div class="encalhe-edicao-vazia-icon">
+            ↗
+          </div>
+
+          <div class="encalhe-section-title">
+            Selecione uma loja
+          </div>
+
+          <div class="encalhe-section-sub">
+            Clique em uma loja para visualizar saldo,
+            movimentações e histórico de encalhes.
+          </div>
+        </div>
+
+        <!-- Conteúdo da loja selecionada -->
+        <div
+          class="encalhe-edicao-conteudo"
+          id="encalheEdicaoConteudo"
+          style="display:none;"
+        >
+          <div class="encalhe-loja-selecionada-header">
+            <div>
+              <div
+                class="encalhe-loja-selecionada-nome"
+                id="encalheLojaNome"
+              >
+                —
+              </div>
+
+              <div
+                class="encalhe-loja-selecionada-meta"
+                id="encalheLojaMeta"
+              >
+                —
+              </div>
+            </div>
+
+            <span
+              class="encalhe-origem-badge"
+              id="encalheLojaOrigemBadge"
+              style="display:none;"
+            >
+              Origem
+            </span>
+          </div>
+
+          <!-- Saldos -->
+          <div class="encalhe-loja-numeros">
+            <div class="encalhe-numero-card">
+              <span>Saldo operacional</span>
+              <strong id="encalheSaldoAtualValor">0</strong>
+            </div>
+
+            <div class="encalhe-numero-card">
+              <span>Encalhe atual</span>
+              <strong id="encalheAtualValor">0</strong>
+            </div>
+
+            <div class="encalhe-numero-card destaque">
+              <span>Saldo + encalhe</span>
+              <strong id="encalheDisponivelTotal">0</strong>
+            </div>
+          </div>
+
+          <!-- Novo valor -->
+          <div class="field encalhe-novo-field">
+            <label for="inputNovoEncalhe">
+              Novo total de encalhe da loja
+            </label>
+
+            <input
+              type="number"
+              id="inputNovoEncalhe"
+              min="0"
+              inputmode="numeric"
+              placeholder="0"
+              autocomplete="off"
+            />
+
+            <div class="encalhe-field-ajuda">
+              Informe o total exato do encalhe desta loja.
+            </div>
+          </div>
+
+          <!-- Conferência -->
+          <div class="encalhe-conferencia-grid">
+
+            <!-- Movimentação de cotas -->
+            <div class="encalhe-conferencia-card movimentacao">
+              <div class="encalhe-conferencia-titulo">
+                Movimentação de cotas
+              </div>
+
+              <div class="encalhe-conferencia-linha">
+                <span>Histórico</span>
+                <strong id="movHistoricoResumo">—</strong>
+              </div>
+
+              <div class="encalhe-conferencia-linha">
+                <span>Operação automática</span>
+                <strong id="movOperacaoResumo">—</strong>
+              </div>
+
+              <div class="encalhe-conferencia-resultado">
+                <span>Saldo projetado</span>
+                <strong id="movSaldoProjetado">—</strong>
+              </div>
+            </div>
+
+            <!-- Encalhe físico -->
+            <div class="encalhe-conferencia-card encalhe">
+              <div class="encalhe-conferencia-titulo">
+                Encalhe físico
+              </div>
+
+              <div class="encalhe-conferencia-linha">
+                <span>Histórico</span>
+                <strong id="encHistoricoResumo">—</strong>
+              </div>
+
+              <div class="encalhe-conferencia-linha">
+                <span>Alteração</span>
+                <strong id="encAlteracaoResumo">—</strong>
+              </div>
+
+              <div class="encalhe-conferencia-resultado">
+                <span>Novo encalhe</span>
+                <strong id="encNovoTotalResumo">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Históricos detalhados -->
+          <div class="encalhe-historicos-grid">
+            <div class="encalhe-historico-box">
+              <div class="hist-recente-label">
+                Histórico de movimentações
+              </div>
+
+              <div
+                class="encalhe-historico-lista"
+                id="movHistoricoLista"
+              >
+                Nenhuma movimentação.
+              </div>
+            </div>
+
+            <div class="encalhe-historico-box">
+              <div class="hist-recente-label">
+                Histórico de encalhes
+              </div>
+
+              <div
+                class="encalhe-historico-lista"
+                id="encHistoricoLista"
+              >
+                Nenhum encalhe registrado.
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="encalhe-alerta"
+            id="encalheAlerta"
+          ></div>
+
+          <div class="encalhe-edicao-acoes">
+            <button
+              type="button"
+              class="btn-secundario"
+              id="btnCancelarEdicaoEncalhe"
+            >
+              Limpar
+            </button>
+
+            <button
+              type="button"
+              class="btn-registrar"
+              id="btnRevisarEncalhe"
+            >
+              Revisar encalhe
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="encalhe-panel-footer">
+      <button
+        type="button"
+        class="btn-secundario"
+        id="btnCancelarEncalhePanel"
+      >
+        Voltar para apuração
+      </button>
+    </div>
+  </section>
+</div>
+
+
+<!-- =====================================================
+     CONFIRMAÇÃO FINAL DO ENCALHE
+===================================================== -->
+<div
+  class="encalhe-confirm-overlay"
+  id="encalheConfirmOverlay"
+  aria-hidden="true"
+>
+  <div class="encalhe-confirm-card">
+    <div class="encalhe-confirm-header">
+      <div>
+        <div class="venda-resumo-title">
+          Confirmar encalhe
+        </div>
+
+        <div
+          class="venda-resumo-nome"
+          id="encalheConfirmTitulo"
+        >
+          —
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="btn-fechar-panel"
+        id="btnFecharConfirmacaoEncalhe"
+        aria-label="Fechar confirmação"
+      >
+        ×
+      </button>
+    </div>
+
+    <div
+      class="encalhe-confirm-resumo"
+      id="encalheConfirmResumo"
+    ></div>
+
+    <div class="encalhe-confirm-acoes">
+      <button
+        type="button"
+        class="btn-secundario"
+        id="btnCancelarConfirmacaoEncalhe"
+      >
+        Cancelar
+      </button>
+
+      <button
+        type="button"
+        class="btn-registrar"
+        id="btnConfirmarEncalhe"
+      >
+        Confirmar encalhe
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sislot-config.js"></script>
 <script src="./sislot-security.js"></script>
