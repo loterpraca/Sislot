@@ -808,3 +808,643 @@ document.addEventListener('DOMContentLoaded', () => {
 
   init();
 });
+/* =========================================================
+ENCALHE FÍSICO POR LOJA - PAINEL EXPANDIDO
+Etapa 1: abrir, listar lojas e simular alteração
+========================================================= */
+
+const encalheState = {
+aberto: false,
+carregando: false,
+bolaoId: null,
+bolao: null,
+lojas: [],
+lojaSelecionada: null,
+previewAtual: null
+};
+
+function encEl(id) {
+return document.getElementById(id);
+}
+
+function encInt(v) {
+const n = Number(v);
+return Number.isFinite(n) ? Math.trunc(n) : 0;
+}
+
+function encFmtQtd(v) {
+return String(encInt(v));
+}
+
+function encFmtMoney(v) {
+if (typeof fmtMoney === 'function') {
+return fmtMoney(v || 0);
+}
+
+if (typeof fmtBRL === 'function') {
+return fmtBRL(v || 0);
+}
+
+return Number(v || 0).toLocaleString('pt-BR', {
+style: 'currency',
+currency: 'BRL'
+});
+}
+
+function encFmtDataHora(v) {
+if (!v) return '—';
+
+try {
+const d = new Date(v);
+
+```
+if (Number.isNaN(d.getTime())) {
+  return String(v);
+}
+
+return d.toLocaleString('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit'
+});
+```
+
+} catch (_) {
+return String(v);
+}
+}
+
+function encGetBolaoSelecionado() {
+if (typeof bolaoSel !== 'undefined' && bolaoSel) {
+return bolaoSel;
+}
+
+if (window.bolaoSel) {
+return window.bolaoSel;
+}
+
+return null;
+}
+
+function encGetBolaoId() {
+const b = encGetBolaoSelecionado();
+
+if (!b) return null;
+
+return b.bolao_id || b.id || null;
+}
+
+function encGetDataReferencia() {
+const input = encEl('inputDataReferencia');
+
+if (input && input.value) {
+return input.value;
+}
+
+const hoje = new Date();
+const yyyy = hoje.getFullYear();
+const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+const dd = String(hoje.getDate()).padStart(2, '0');
+
+return `${yyyy}-${mm}-${dd}`;
+}
+
+function encShowStatus(msg, tipo = 'info') {
+const bar = encEl('encalheStatusBar');
+
+if (!bar) return;
+
+bar.className = `status-bar show ${tipo}`;
+bar.textContent = msg || '';
+}
+
+function encClearStatus() {
+const bar = encEl('encalheStatusBar');
+
+if (!bar) return;
+
+bar.className = 'status-bar';
+bar.textContent = '';
+}
+
+function encShowAlerta(msg, tipo = 'info') {
+const box = encEl('encalheAlerta');
+
+if (!box) return;
+
+if (!msg) {
+box.className = 'encalhe-alerta';
+box.textContent = '';
+return;
+}
+
+box.className = `encalhe-alerta show ${tipo}`;
+box.textContent = msg;
+}
+
+function encSetLoading(ativo) {
+encalheState.carregando = !!ativo;
+
+const loading = encEl('encalheLoading');
+
+if (loading) {
+loading.style.display = ativo ? 'flex' : 'none';
+}
+}
+
+function encResetEditor() {
+encalheState.lojaSelecionada = null;
+encalheState.previewAtual = null;
+
+const vazia = encEl('encalheEdicaoVazia');
+const conteudo = encEl('encalheEdicaoConteudo');
+
+if (vazia) vazia.style.display = 'flex';
+if (conteudo) conteudo.style.display = 'none';
+
+const input = encEl('inputNovoEncalhe');
+if (input) input.value = '';
+
+encShowAlerta('', 'info');
+}
+
+function encAbrirPainel() {
+const bolao = encGetBolaoSelecionado();
+const bolaoId = encGetBolaoId();
+
+if (!bolao || !bolaoId) {
+if (typeof showToast === 'function') {
+showToast('Selecione um bolão antes de detalhar o encalhe físico.', 'err');
+} else {
+alert('Selecione um bolão antes de detalhar o encalhe físico.');
+}
+
+```
+return;
+```
+
+}
+
+encalheState.aberto = true;
+encalheState.bolaoId = bolaoId;
+encalheState.bolao = bolao;
+
+const overlay = encEl('encalheOverlay');
+
+if (overlay) {
+overlay.classList.add('open');
+overlay.setAttribute('aria-hidden', 'false');
+}
+
+encClearStatus();
+encResetEditor();
+
+encEl('encalhePanelNome').textContent =
+`${bolao.modalidade || 'Bolão'} ${bolao.concurso ? '• Concurso ' + bolao.concurso : ''}`;
+
+encEl('encalhePanelTags').innerHTML = `     <span class="rtag rtag-accent">${encFmtMoney(bolao.valor_cota || 0)}</span>     <span class="rtag">${encFmtQtd(bolao.qtd_cotas_total || 0)} cotas</span>
+  `;
+
+encCarregarLojas();
+}
+
+function encFecharPainel() {
+const overlay = encEl('encalheOverlay');
+
+if (overlay) {
+overlay.classList.remove('open');
+overlay.setAttribute('aria-hidden', 'true');
+}
+
+encalheState.aberto = false;
+encalheState.bolaoId = null;
+encalheState.bolao = null;
+encalheState.lojas = [];
+encResetEditor();
+encClearStatus();
+}
+
+async function encCarregarLojas() {
+const bolaoId = encalheState.bolaoId;
+
+if (!bolaoId) return;
+
+encSetLoading(true);
+encShowStatus('Consultando lojas e saldos do bolão...', 'info');
+
+const lista = encEl('encalheLojasLista');
+
+if (lista) {
+lista.innerHTML = '';
+}
+
+try {
+const { data, error } = await sb.rpc(
+'rpc_listar_lojas_encalhe_bolao',
+{
+p_bolao_id: bolaoId
+}
+);
+
+```
+if (error) throw error;
+
+const payload = data || {};
+
+encalheState.bolao = payload.bolao || encalheState.bolao;
+encalheState.lojas = Array.isArray(payload.lojas)
+  ? payload.lojas
+  : [];
+
+encRenderResumoTopo(payload);
+encRenderLojas();
+
+encClearStatus();
+
+if (!encalheState.lojas.length) {
+  encShowStatus('Nenhuma loja encontrada para este bolão.', 'info');
+}
+```
+
+} catch (err) {
+console.error('Erro ao carregar lojas do encalhe:', err);
+
+```
+encShowStatus(
+  err?.message || 'Erro ao carregar lojas do encalhe.',
+  'err'
+);
+```
+
+} finally {
+encSetLoading(false);
+}
+}
+
+function encRenderResumoTopo(payload) {
+const bolao = payload?.bolao || encalheState.bolao || {};
+
+const totalCotas = encEl('encalheTotalCotas');
+const totalValor = encEl('encalheTotalValor');
+const origemNome = encEl('encalheOrigemNome');
+const valorCota = encEl('encalheValorCota');
+
+if (totalCotas) {
+totalCotas.textContent = encFmtQtd(bolao.qtd_cotas_total || 0);
+}
+
+if (totalValor) {
+totalValor.textContent = encFmtQtd(bolao.enc_fisico_total || 0);
+}
+
+if (origemNome) {
+origemNome.textContent = bolao.origem_nome || '—';
+}
+
+if (valorCota) {
+valorCota.textContent = encFmtMoney(bolao.valor_cota || 0);
+}
+
+const tags = encEl('encalhePanelTags');
+
+if (tags) {
+const semDetalhe = encInt(bolao.enc_fisico_sem_detalhamento || 0);
+
+```
+tags.innerHTML = `
+  <span class="rtag rtag-accent">${encFmtMoney(bolao.valor_cota || 0)}</span>
+  <span class="rtag">${encFmtQtd(bolao.qtd_cotas_total || 0)} cotas</span>
+  ${
+    semDetalhe > 0
+      ? `<span class="rtag rtag-blue">${semDetalhe} sem detalhar</span>`
+      : ''
+  }
+`;
+```
+
+}
+}
+
+function encRenderLojas() {
+const lista = encEl('encalheLojasLista');
+
+if (!lista) return;
+
+if (!encalheState.lojas.length) {
+lista.innerHTML = `       <div class="apu-hint">
+        Nenhuma loja encontrada para este bolão.       </div>
+    `;
+return;
+}
+
+lista.innerHTML = encalheState.lojas.map(loja => {
+const selected =
+encalheState.lojaSelecionada &&
+Number(encalheState.lojaSelecionada.loteria_id) === Number(loja.loteria_id);
+
+```
+return `
+  <button
+    type="button"
+    class="encalhe-loja-card ${selected ? 'selected' : ''}"
+    data-loteria-id="${loja.loteria_id}"
+  >
+    <div class="encalhe-loja-card-top">
+      <div class="encalhe-loja-card-nome">
+        ${loja.loja_nome || 'Loja'}
+      </div>
+
+      ${
+        loja.eh_origem
+          ? '<div class="encalhe-loja-card-origem">Origem</div>'
+          : ''
+      }
+    </div>
+
+    <div class="encalhe-loja-card-valores">
+      <div class="encalhe-loja-card-valor">
+        <span>Saldo</span>
+        <strong>${encFmtQtd(loja.saldo_atual || 0)}</strong>
+      </div>
+
+      <div class="encalhe-loja-card-valor">
+        <span>Encalhe</span>
+        <strong>${encFmtQtd(loja.encalhe_atual || 0)}</strong>
+      </div>
+
+      <div class="encalhe-loja-card-valor">
+        <span>Total</span>
+        <strong>${encFmtQtd(loja.total_disponivel || 0)}</strong>
+      </div>
+    </div>
+  </button>
+`;
+```
+
+}).join('');
+
+lista.querySelectorAll('.encalhe-loja-card').forEach(btn => {
+btn.addEventListener('click', () => {
+const id = Number(btn.dataset.loteriaId);
+const loja = encalheState.lojas.find(
+item => Number(item.loteria_id) === id
+);
+
+```
+  if (loja) {
+    encSelecionarLoja(loja);
+  }
+});
+```
+
+});
+}
+
+async function encSelecionarLoja(loja) {
+encalheState.lojaSelecionada = loja;
+encRenderLojas();
+
+const vazia = encEl('encalheEdicaoVazia');
+const conteudo = encEl('encalheEdicaoConteudo');
+
+if (vazia) vazia.style.display = 'none';
+if (conteudo) conteudo.style.display = 'block';
+
+const input = encEl('inputNovoEncalhe');
+if (input) {
+input.value = encInt(loja.encalhe_atual || 0);
+}
+
+await encAtualizarPreview();
+}
+
+async function encAtualizarPreview() {
+const loja = encalheState.lojaSelecionada;
+
+if (!loja || !encalheState.bolaoId) return;
+
+const input = encEl('inputNovoEncalhe');
+const novo = encInt(input ? input.value : loja.encalhe_atual);
+
+encShowAlerta('', 'info');
+
+try {
+const { data, error } = await sb.rpc(
+'rpc_preview_encalhe_loja',
+{
+p_bolao_id: encalheState.bolaoId,
+p_loteria_id: loja.loteria_id,
+p_novo_encalhe: novo
+}
+);
+
+```
+if (error) throw error;
+
+encalheState.previewAtual = data || null;
+
+encRenderPreview(data);
+```
+
+} catch (err) {
+console.error('Erro no preview do encalhe:', err);
+
+```
+encShowAlerta(
+  err?.message || 'Erro ao simular encalhe.',
+  'err'
+);
+```
+
+}
+}
+
+function encRenderPreview(payload) {
+if (!payload) return;
+
+const loja = payload.loja || {};
+const valores = payload.valores || {};
+const validacao = payload.validacao || {};
+const movimentacoes = payload.movimentacoes || {};
+const encalhes = payload.encalhes || {};
+
+encEl('encalheLojaNome').textContent =
+loja.nome || '—';
+
+encEl('encalheLojaMeta').textContent =
+[
+loja.codigo ? `Código ${loja.codigo}` : null,
+loja.eh_origem ? 'Loja de origem' : 'Loja destino'
+].filter(Boolean).join(' • ');
+
+const origemBadge = encEl('encalheLojaOrigemBadge');
+
+if (origemBadge) {
+origemBadge.style.display = loja.eh_origem ? 'inline-flex' : 'none';
+}
+
+encEl('encalheSaldoAtualValor').textContent =
+encFmtQtd(valores.saldo_atual || 0);
+
+encEl('encalheAtualValor').textContent =
+encFmtQtd(valores.encalhe_atual || 0);
+
+encEl('encalheDisponivelTotal').textContent =
+encFmtQtd(valores.maximo_encalhe || 0);
+
+const deltaEnc = encInt(valores.delta_encalhe || 0);
+const movDelta = encInt(valores.movimento_delta || 0);
+
+encEl('movHistoricoResumo').textContent =
+movimentacoes.resumo || '0';
+
+encEl('movOperacaoResumo').textContent =
+movDelta === 0
+? 'Sem movimentação'
+: movDelta > 0
+? `+${movDelta}`
+: `[${movDelta}]`;
+
+encEl('movSaldoProjetado').textContent =
+encFmtQtd(valores.saldo_projetado || 0);
+
+encEl('encHistoricoResumo').textContent =
+encalhes.resumo || '[0]';
+
+encEl('encAlteracaoResumo').textContent =
+`[${encFmtQtd(valores.encalhe_atual || 0)}] → [${encFmtQtd(valores.novo_encalhe || 0)}]`;
+
+encEl('encNovoTotalResumo').textContent =
+encFmtQtd(valores.novo_encalhe || 0);
+
+encRenderMovHistorico(movimentacoes.lista || []);
+encRenderEncHistorico(encalhes.lista || []);
+
+if (!validacao.valido) {
+encShowAlerta(
+validacao.mensagem || 'Alteração inválida.',
+'err'
+);
+} else if (deltaEnc === 0) {
+encShowAlerta(
+'Informe um novo total diferente do encalhe atual para revisar.',
+'info'
+);
+} else if (movDelta < 0) {
+encShowAlerta(
+'Esta alteração criará uma movimentação negativa automática para retornar cotas à origem.',
+'info'
+);
+} else if (movDelta > 0) {
+encShowAlerta(
+'Esta alteração criará uma movimentação positiva automática para devolver cotas à loja.',
+'info'
+);
+} else {
+encShowAlerta(
+'Esta alteração atualiza apenas o encalhe da loja de origem, sem movimentar cotas.',
+'info'
+);
+}
+}
+
+function encRenderMovHistorico(lista) {
+const box = encEl('movHistoricoLista');
+
+if (!box) return;
+
+if (!lista.length) {
+box.textContent = 'Nenhuma movimentação.';
+return;
+}
+
+box.innerHTML = lista.map(item => {
+const efeito = encInt(item.efeito_loja || 0);
+const efeitoTxt =
+efeito < 0 ? `[${efeito}]` : `+${efeito}`;
+
+```
+return `
+  <div class="encalhe-historico-item">
+    <strong>${efeitoTxt}</strong>
+    • ${item.origem_nome || 'Origem'} → ${item.destino_nome || 'Destino'}
+    <br>
+    ${encFmtDataHora(item.created_at)}
+  </div>
+`;
+```
+
+}).join('');
+}
+
+function encRenderEncHistorico(lista) {
+const box = encEl('encHistoricoLista');
+
+if (!box) return;
+
+if (!lista.length) {
+box.textContent = 'Nenhum encalhe registrado.';
+return;
+}
+
+box.innerHTML = lista.map(item => {
+return `       <div class="encalhe-historico-item">         <strong>[${encFmtQtd(item.qtd_anterior)}] → [${encFmtQtd(item.qtd_nova)}]</strong>         <br>
+        ${encFmtDataHora(item.created_at)}       </div>
+    `;
+}).join('');
+}
+
+function encInitEventos() {
+const btnAbrir = encEl('btnDetalharEncFisico');
+
+if (btnAbrir) {
+btnAbrir.addEventListener('click', encAbrirPainel);
+}
+
+[
+'btnFecharEncalhe',
+'btnCancelarEncalhePanel'
+].forEach(id => {
+const btn = encEl(id);
+
+```
+if (btn) {
+  btn.addEventListener('click', encFecharPainel);
+}
+```
+
+});
+
+const input = encEl('inputNovoEncalhe');
+
+if (input) {
+input.addEventListener('input', () => {
+encAtualizarPreview();
+});
+}
+
+const btnLimpar = encEl('btnCancelarEdicaoEncalhe');
+
+if (btnLimpar) {
+btnLimpar.addEventListener('click', () => {
+if (!encalheState.lojaSelecionada) return;
+
+```
+  const inputNovo = encEl('inputNovoEncalhe');
+
+  if (inputNovo) {
+    inputNovo.value = encInt(
+      encalheState.lojaSelecionada.encalhe_atual || 0
+    );
+  }
+
+  encAtualizarPreview();
+});
+```
+
+}
+}
+
+document.addEventListener('DOMContentLoaded', encInitEventos);
