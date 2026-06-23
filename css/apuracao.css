@@ -520,3 +520,32 @@
     width: 100%;
   }
 }
+.enc-fisico-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.enc-fisico-label-row label {
+  margin: 0;
+}
+
+.enc-fisico-label-row .btn-detalhar-encalhe {
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  min-width: 25px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.enc-fisico-field > input {
+  width: 100%;
+}
