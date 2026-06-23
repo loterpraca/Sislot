@@ -543,3 +543,196 @@ textarea#justificativa::placeholder{color:var(--dim)}
   .btn-menu span{display:none}
   #relogio{display:none}
 }
+.erro-bolao-fechamento {
+position: relative;
+display: flex;
+gap: 14px;
+align-items: flex-start;
+
+
+margin-bottom: 20px;
+padding: 18px;
+
+border: 1px solid rgba(239, 68, 68, .55);
+border-radius: 14px;
+
+background:
+    linear-gradient(
+        135deg,
+        rgba(127, 29, 29, .28),
+        rgba(69, 10, 10, .12)
+    );
+
+box-shadow:
+    0 12px 35px rgba(0, 0, 0, .20),
+    inset 0 0 0 1px rgba(255, 255, 255, .025);
+
+animation: erroBolaoEntrada .25s ease-out;
+
+
+}
+
+.erro-bolao-icone {
+width: 38px;
+height: 38px;
+flex: 0 0 38px;
+
+
+display: flex;
+align-items: center;
+justify-content: center;
+
+border-radius: 50%;
+
+background: rgba(239, 68, 68, .20);
+border: 1px solid rgba(239, 68, 68, .45);
+
+color: #fca5a5;
+font-size: 21px;
+font-weight: 800;
+
+
+}
+
+.erro-bolao-conteudo {
+flex: 1;
+min-width: 0;
+}
+
+.erro-bolao-titulo {
+color: #fecaca;
+font-size: 16px;
+font-weight: 800;
+}
+
+.erro-bolao-subtitulo {
+margin-top: 4px;
+color: var(--muted);
+font-size: 12px;
+}
+
+.erro-bolao-grid {
+display: grid;
+grid-template-columns:
+repeat(auto-fit, minmax(145px, 1fr));
+
+
+gap: 10px;
+margin-top: 15px;
+
+
+}
+
+.erro-bolao-grid > div,
+.erro-bolao-rpc {
+padding: 10px 12px;
+
+
+border-radius: 9px;
+border: 1px solid rgba(255, 255, 255, .07);
+
+background: rgba(0, 0, 0, .16);
+
+
+}
+
+.erro-bolao-grid span,
+.erro-bolao-rpc span {
+display: block;
+
+
+margin-bottom: 4px;
+
+color: var(--muted);
+font-size: 9px;
+text-transform: uppercase;
+letter-spacing: .07em;
+```
+
+}
+
+.erro-bolao-grid strong {
+color: var(--text);
+font-size: 12px;
+}
+
+.erro-bolao-rpc {
+margin-top: 10px;
+}
+
+.erro-bolao-rpc strong {
+color: #fca5a5;
+font-size: 11px;
+word-break: break-word;
+}
+
+.erro-bolao-fechar {
+width: 30px;
+height: 30px;
+flex: 0 0 30px;
+
+```
+border: 0;
+border-radius: 8px;
+
+background: rgba(255, 255, 255, .06);
+color: var(--muted);
+
+font-size: 20px;
+cursor: pointer;
+```
+
+}
+
+.erro-bolao-fechar:hover {
+color: #fff;
+background: rgba(239, 68, 68, .18);
+}
+
+.bolao-card.erro-estoque {
+border-color: rgba(239, 68, 68, .85) !important;
+
+```
+box-shadow:
+    0 0 0 2px rgba(239, 68, 68, .18),
+    0 14px 35px rgba(127, 29, 29, .24) !important;
+
+animation: erroBolaoPulso 1.2s ease-in-out 2;
+```
+
+}
+
+@keyframes erroBolaoEntrada {
+from {
+opacity: 0;
+transform: translateY(-8px);
+}
+
+
+to {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+
+}
+
+@keyframes erroBolaoPulso {
+0%,
+100% {
+transform: scale(1);
+}
+
+
+50% {
+    transform: scale(1.008);
+}
+
+
+}
+
+@media (max-width: 600px) {
+.erro-bolao-grid {
+grid-template-columns: 1fr 1fr;
+}
+}
