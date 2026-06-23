@@ -1250,19 +1250,67 @@ async function salvarEncalheBox() {
 
   try {
     for (const alteracao of analise.alteracoes) {
-      const { error } = await sb.rpc(
-        'rpc_confirmar_encalhe_loja',
-        {
-          p_bolao_id: estadoEncalheBox.bolaoId,
-          p_loteria_id: alteracao.loteriaId,
-          p_novo_encalhe: alteracao.novo,
-          p_data_referencia: isoDate(dataAtual),
-          p_observacao:
-            'Lançamento de encalhe físico pela apuração'
-        }
-      );
+     const parametrosRpc = {
+p_bolao_id: Number(estadoEncalheBox.bolaoId),
+p_loteria_id: Number(alteracao.loteriaId),
+p_novo_encalhe: Number(alteracao.novo),
+p_data_referencia: isoDate(dataAtual),
+p_observacao:
+'Lançamento de encalhe físico pela apuração'
+};
 
-      if (error) throw error;
+console.log(
+'[ENCALHE] Enviando para rpc_confirmar_encalhe_loja:',
+parametrosRpc
+);
+
+const {
+data: resultadoRpc,
+error,
+status,
+statusText
+} = await sb.rpc(
+'rpc_confirmar_encalhe_loja',
+parametrosRpc
+);
+
+if (error) {
+const mensagemCompleta = [
+error.message,
+error.details,
+error.hint,
+error.code ? `Código: ${error.code}` : null,
+status ? `HTTP: ${status}` : null,
+statusText || null
+]
+.filter(Boolean)
+.join(' | ');
+
+console.error(
+'[ENCALHE] Falha completa na RPC:',
+{
+parametros: parametrosRpc,
+status,
+statusText,
+code: error.code,
+message: error.message,
+details: error.details,
+hint: error.hint,
+error
+}
+);
+
+throw new Error(
+mensagemCompleta ||
+'Erro desconhecido ao confirmar o encalhe.'
+);
+}
+
+console.log(
+'[ENCALHE] Resultado da confirmação:',
+resultadoRpc
+);
+
 
       quantidadeSalva += 1;
     }
