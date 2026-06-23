@@ -1182,19 +1182,63 @@ function setB3(s) {
 function chaveBolaoItem(item) { return `${String(item.tipo || '').toUpperCase()}|${Number(item.bolao_id || 0)}`; }
 
 function aplicarContextoEdicaoBoloes(lista) {
-    const salvos = [
-        ...(ESTADO.tela3?.internos || []).map(b => ({ ...b, tipo: 'INTERNO' })),
-        ...(ESTADO.tela3?.externos || []).map(b => ({ ...b, tipo: 'EXTERNO' }))
-    ];
-    const mapa = {};
-    salvos.forEach(b => { mapa[chaveBolaoItem(b)] = Number(b.qtdVendida || 0); });
+const emEdicao =
+fechamentoOriginalId !== null &&
+fechamentoOriginalId !== undefined;
 
-    return (lista || []).map(item => {
-        const qtdSalva = Number(mapa[chaveBolaoItem(item)] || 0);
-        const saldoAtual = Number(item.saldo_atual || 0);
-        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
-    });
+
+const salvos = [
+    ...(ESTADO.tela3?.internos || []).map(b => ({
+        ...b,
+        tipo: 'INTERNO'
+    })),
+
+    ...(ESTADO.tela3?.externos || []).map(b => ({
+        ...b,
+        tipo: 'EXTERNO'
+    }))
+];
+
+const mapa = {};
+
+salvos.forEach(b => {
+    mapa[chaveBolaoItem(b)] =
+        Number(b.qtdVendida || 0);
+});
+
+return (lista || []).map(item => {
+    const saldoAtual =
+        Number(item.saldo_atual || 0);
+
+    const qtdSalva =
+        Number(
+            mapa[chaveBolaoItem(item)] || 0
+        );
+
+    /*
+     * Em fechamento existente, a venda já está
+     * descontada na view. Ela é devolvida apenas
+     * para permitir editar aquele fechamento.
+     *
+     * Em fechamento novo, a quantidade guardada
+     * no ESTADO ainda não foi abatida do banco e
+     * não pode ser somada ao saldo.
+     */
+    const saldoEditavel = emEdicao
+        ? saldoAtual + qtdSalva
+        : saldoAtual;
+
+    return {
+        ...item,
+        saldo_real: saldoAtual,
+        qtd_salva_edicao: qtdSalva,
+        saldo_editavel: saldoEditavel,
+        em_edicao: emEdicao
+    };
+});
+
 }
+
 
 function boloesVisiveis() {
     const todos = [
@@ -1372,8 +1416,10 @@ function renderBoloes() {
                 const saldoBase = Number(b.saldo_base || 0);
                 const qtdVendidaTotal = Number(b.qtd_vendida_total || 0);
                 const qtdSalva = Number(b.qtd_salva_edicao || 0);
-                const saldo = getSaldoBolao(b);
-                const semSaldo = saldo <= 0;
+               const saldoReal =Number(b.saldo_real ?? b.saldo_atual ?? 0);
+                const saldo =getSaldoBolao(b);
+                const semSaldo =saldo <= 0;
+
 
                 allBoloes.push({ tipo: b.tipo, data: b, idx: gi, grupo: tituloBloco, modalidade: mod });
 
@@ -1381,7 +1427,9 @@ function renderBoloes() {
                 if (b.qtdJogos) metas.push(`<span class="meta-tag">${b.qtdJogos} jogo(s)</span>`);
                 if (b.qtdDezenas) metas.push(`<span class="meta-tag">${b.qtdDezenas} dez.</span>`);
                 metas.push(`<span class="meta-tag" style="color:var(--accent);border-color:rgba(0,200,150,.2)">R$ ${Number(b.valorCota).toFixed(2).replace('.', ',')} / cota</span>`);
-                metas.push(`<span class="meta-tag meta-saldo">saldo ${saldo}</span>`);
+                metas.push(`<span class="meta-tag meta-saldo">saldo real ${saldoReal} </span>`);
+                if (b.em_edicao && Number(b.qtd_salva_edicao || 0) > 0) {
+                metas.push(`<span class="meta-tag"> disponível para edição ${saldo} </span> `);}
                 if (b.tipo === 'EXTERNO') {
                     const origemTxt = [b.origem, b.origemCodLoterico].filter(Boolean).join(' · ');
                     metas.push(`<span class="meta-tag meta-dest">externo${origemTxt ? ' · ' + origemTxt : ''}</span>`);
