@@ -1919,6 +1919,7 @@ return String(valor ?? '')
 .replaceAll("'", ''');
 }
 
+
 function mostrarErroBolaoNaTela(error) {
 const b = error?.bolao;
 
