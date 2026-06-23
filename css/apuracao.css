@@ -631,4 +631,815 @@
     grid-template-columns: 1fr !important;
   }
 }
+/* =====================================================
+PAINEL EXPANDIDO DE ENCALHE FÍSICO
+===================================================== */
+
+.encalhe-overlay {
+position: fixed;
+inset: 0;
+z-index: 220;
+
+display: flex;
+align-items: flex-end;
+justify-content: center;
+
+padding: 16px;
+
+background: rgba(3, 10, 22, 0.78);
+backdrop-filter: blur(7px);
+
+opacity: 0;
+visibility: hidden;
+pointer-events: none;
+
+transition:
+opacity 0.22s ease,
+visibility 0.22s ease;
+}
+
+.encalhe-overlay.open {
+opacity: 1;
+visibility: visible;
+pointer-events: auto;
+}
+
+.encalhe-panel-expandido {
+width: min(1180px, 100%);
+max-height: calc(100vh - 32px);
+
+padding: 20px;
+
+overflow-y: auto;
+overscroll-behavior: contain;
+
+background: rgba(10, 22, 40, 0.99);
+border: 1px solid rgba(245, 166, 35, 0.32);
+border-radius: 16px;
+
+box-shadow:
+0 -20px 60px rgba(0, 0, 0, 0.42),
+0 0 45px rgba(245, 166, 35, 0.08);
+
+transform: translateY(28px);
+transition: transform 0.25s ease;
+}
+
+.encalhe-overlay.open .encalhe-panel-expandido {
+transform: translateY(0);
+}
+
+.encalhe-panel-header,
+.encalhe-confirm-header {
+display: flex;
+align-items: flex-start;
+justify-content: space-between;
+gap: 18px;
+
+padding-bottom: 16px;
+margin-bottom: 14px;
+
+border-bottom: 1px solid var(--blue-border);
+}
+
+/* =====================================================
+INDICADORES SUPERIORES
+===================================================== */
+
+.encalhe-indicadores {
+display: grid;
+grid-template-columns: repeat(4, minmax(0, 1fr));
+gap: 10px;
+
+margin-bottom: 16px;
+}
+
+.encalhe-indicador {
+min-width: 0;
+padding: 11px 12px;
+
+background: var(--blue-panel);
+border: 1px solid var(--blue-border);
+border-radius: 9px;
+}
+
+.encalhe-indicador span {
+display: block;
+margin-bottom: 5px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 9px;
+letter-spacing: 0.08em;
+text-transform: uppercase;
+color: var(--text-dim);
+}
+
+.encalhe-indicador strong {
+display: block;
+overflow: hidden;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 15px;
+color: var(--text-bright);
+
+white-space: nowrap;
+text-overflow: ellipsis;
+}
+
+/* =====================================================
+CARREGAMENTO
+===================================================== */
+
+.encalhe-loading {
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 12px;
+
+min-height: 110px;
+margin-bottom: 16px;
+
+color: var(--text-mid);
+font-size: 13px;
+
+background: rgba(19, 41, 82, 0.55);
+border: 1px dashed var(--blue-border);
+border-radius: 10px;
+}
+
+.encalhe-loading .spinner {
+width: 24px;
+height: 24px;
+}
+
+/* =====================================================
+ESTRUTURA PRINCIPAL
+===================================================== */
+
+.encalhe-layout {
+display: grid;
+grid-template-columns: minmax(270px, 330px) minmax(0, 1fr);
+gap: 14px;
+align-items: stretch;
+}
+
+.encalhe-coluna-lojas,
+.encalhe-edicao-area {
+min-width: 0;
+
+background: rgba(13, 30, 58, 0.64);
+border: 1px solid var(--blue-border);
+border-radius: 12px;
+}
+
+.encalhe-coluna-lojas {
+padding: 14px;
+}
+
+.encalhe-edicao-area {
+padding: 16px;
+}
+
+.encalhe-section-header {
+display: flex;
+align-items: flex-start;
+justify-content: space-between;
+gap: 12px;
+
+margin-bottom: 12px;
+}
+
+.encalhe-section-title {
+font-size: 13px;
+font-weight: 600;
+color: var(--text-bright);
+}
+
+.encalhe-section-sub {
+margin-top: 4px;
+
+font-size: 11px;
+line-height: 1.45;
+color: var(--text-dim);
+}
+
+/* =====================================================
+LISTA DE LOJAS
+===================================================== */
+
+.encalhe-lojas-lista {
+display: flex;
+flex-direction: column;
+gap: 8px;
+
+max-height: 530px;
+overflow-y: auto;
+padding-right: 3px;
+}
+
+.encalhe-loja-card {
+width: 100%;
+padding: 11px 12px;
+
+text-align: left;
+cursor: pointer;
+
+color: var(--text-bright);
+background: var(--blue-panel);
+
+border: 1px solid var(--blue-border);
+border-left: 3px solid transparent;
+border-radius: 9px;
+
+transition:
+border-color 0.16s ease,
+background 0.16s ease,
+transform 0.16s ease;
+}
+
+.encalhe-loja-card:hover {
+border-color: rgba(245, 166, 35, 0.42);
+background: rgba(245, 166, 35, 0.05);
+transform: translateY(-1px);
+}
+
+.encalhe-loja-card.selected {
+border-color: var(--accent);
+border-left-color: var(--accent);
+background: rgba(245, 166, 35, 0.08);
+}
+
+.encalhe-loja-card-top {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 8px;
+
+margin-bottom: 8px;
+}
+
+.encalhe-loja-card-nome {
+overflow: hidden;
+
+font-size: 12px;
+font-weight: 600;
+
+white-space: nowrap;
+text-overflow: ellipsis;
+}
+
+.encalhe-loja-card-origem {
+flex: 0 0 auto;
+
+padding: 2px 6px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 8px;
+text-transform: uppercase;
+color: var(--accent);
+
+background: rgba(245, 166, 35, 0.09);
+border: 1px solid rgba(245, 166, 35, 0.25);
+border-radius: 4px;
+}
+
+.encalhe-loja-card-valores {
+display: grid;
+grid-template-columns: repeat(3, minmax(0, 1fr));
+gap: 6px;
+}
+
+.encalhe-loja-card-valor {
+min-width: 0;
+}
+
+.encalhe-loja-card-valor span {
+display: block;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 8px;
+text-transform: uppercase;
+color: var(--text-dim);
+}
+
+.encalhe-loja-card-valor strong {
+display: block;
+margin-top: 2px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 13px;
+color: var(--text-bright);
+}
+
+/* =====================================================
+ÁREA DE EDIÇÃO
+===================================================== */
+
+.encalhe-edicao-vazia {
+min-height: 330px;
+
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+
+padding: 30px;
+text-align: center;
+}
+
+.encalhe-edicao-vazia-icon {
+width: 42px;
+height: 42px;
+
+display: flex;
+align-items: center;
+justify-content: center;
+
+margin-bottom: 12px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 22px;
+color: var(--accent);
+
+background: rgba(245, 166, 35, 0.09);
+border: 1px solid rgba(245, 166, 35, 0.25);
+border-radius: 50%;
+}
+
+.encalhe-edicao-conteudo {
+min-width: 0;
+}
+
+.encalhe-loja-selecionada-header {
+display: flex;
+align-items: flex-start;
+justify-content: space-between;
+gap: 12px;
+
+padding-bottom: 12px;
+margin-bottom: 12px;
+
+border-bottom: 1px solid var(--blue-border);
+}
+
+.encalhe-loja-selecionada-nome {
+font-size: 15px;
+font-weight: 600;
+color: var(--text-bright);
+}
+
+.encalhe-loja-selecionada-meta {
+margin-top: 3px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 10px;
+color: var(--text-dim);
+}
+
+.encalhe-origem-badge {
+padding: 4px 8px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 9px;
+text-transform: uppercase;
+color: var(--accent);
+
+background: rgba(245, 166, 35, 0.09);
+border: 1px solid rgba(245, 166, 35, 0.25);
+border-radius: 5px;
+}
+
+/* =====================================================
+SALDOS DA LOJA
+===================================================== */
+
+.encalhe-loja-numeros {
+display: grid;
+grid-template-columns: repeat(3, minmax(0, 1fr));
+gap: 9px;
+
+margin-bottom: 14px;
+}
+
+.encalhe-numero-card {
+min-width: 0;
+padding: 10px 11px;
+
+background: var(--blue-panel);
+border: 1px solid var(--blue-border);
+border-radius: 8px;
+}
+
+.encalhe-numero-card.destaque {
+background: rgba(245, 166, 35, 0.07);
+border-color: rgba(245, 166, 35, 0.3);
+}
+
+.encalhe-numero-card span {
+display: block;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 8px;
+text-transform: uppercase;
+color: var(--text-dim);
+}
+
+.encalhe-numero-card strong {
+display: block;
+margin-top: 4px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 18px;
+color: var(--text-bright);
+}
+
+.encalhe-numero-card.destaque strong {
+color: var(--accent);
+}
+
+/* =====================================================
+NOVO ENCALHE
+===================================================== */
+
+.encalhe-novo-field {
+margin-bottom: 14px;
+}
+
+.encalhe-novo-field input {
+width: 100%;
+height: 48px;
+
+text-align: left;
+font-size: 22px;
+}
+
+.encalhe-field-ajuda {
+margin-top: 2px;
+
+font-size: 10px;
+color: var(--text-dim);
+}
+
+/* =====================================================
+CONFERÊNCIA
+===================================================== */
+
+.encalhe-conferencia-grid {
+display: grid;
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 10px;
+
+margin-bottom: 12px;
+}
+
+.encalhe-conferencia-card {
+min-width: 0;
+padding: 12px;
+
+background: var(--blue-panel);
+border: 1px solid var(--blue-border);
+border-radius: 9px;
+}
+
+.encalhe-conferencia-card.movimentacao {
+border-top: 2px solid #38bdf8;
+}
+
+.encalhe-conferencia-card.encalhe {
+border-top: 2px solid var(--accent);
+}
+
+.encalhe-conferencia-titulo {
+margin-bottom: 10px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 10px;
+font-weight: 600;
+letter-spacing: 0.08em;
+text-transform: uppercase;
+color: var(--text-mid);
+}
+
+.encalhe-conferencia-linha,
+.encalhe-conferencia-resultado {
+display: flex;
+align-items: flex-start;
+justify-content: space-between;
+gap: 12px;
+
+padding: 7px 0;
+
+border-bottom: 1px solid rgba(30, 58, 110, 0.6);
+}
+
+.encalhe-conferencia-linha span,
+.encalhe-conferencia-resultado span {
+flex: 0 0 auto;
+
+font-size: 10px;
+color: var(--text-dim);
+}
+
+.encalhe-conferencia-linha strong,
+.encalhe-conferencia-resultado strong {
+min-width: 0;
+
+text-align: right;
+overflow-wrap: anywhere;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 11px;
+color: var(--text-bright);
+}
+
+.encalhe-conferencia-resultado {
+margin-top: 2px;
+border-bottom: 0;
+}
+
+.encalhe-conferencia-resultado strong {
+color: var(--accent);
+}
+
+/* =====================================================
+HISTÓRICOS
+===================================================== */
+
+.encalhe-historicos-grid {
+display: grid;
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 10px;
+
+margin-bottom: 12px;
+}
+
+.encalhe-historico-box {
+min-width: 0;
+padding: 11px;
+
+background: rgba(19, 41, 82, 0.55);
+border: 1px solid var(--blue-border);
+border-radius: 9px;
+}
+
+.encalhe-historico-lista {
+display: flex;
+flex-direction: column;
+gap: 6px;
+
+max-height: 145px;
+overflow-y: auto;
+
+font-size: 10px;
+color: var(--text-dim);
+}
+
+.encalhe-historico-item {
+padding: 7px 8px;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 10px;
+line-height: 1.45;
+color: var(--text-mid);
+
+background: rgba(10, 22, 40, 0.65);
+border: 1px solid rgba(30, 58, 110, 0.7);
+border-radius: 6px;
+}
+
+/* =====================================================
+ALERTAS E AÇÕES
+===================================================== */
+
+.encalhe-alerta {
+display: none;
+
+margin-bottom: 12px;
+padding: 10px 12px;
+
+font-size: 11px;
+line-height: 1.45;
+
+border-radius: 8px;
+}
+
+.encalhe-alerta.show {
+display: block;
+}
+
+.encalhe-alerta.info {
+color: #b9dbff;
+background: rgba(56, 189, 248, 0.08);
+border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.encalhe-alerta.err {
+color: #ffb3b3;
+background: rgba(255, 82, 82, 0.08);
+border: 1px solid rgba(255, 82, 82, 0.28);
+}
+
+.encalhe-edicao-acoes,
+.encalhe-confirm-acoes {
+display: flex;
+align-items: center;
+justify-content: flex-end;
+gap: 9px;
+}
+
+.encalhe-panel-footer {
+display: flex;
+justify-content: flex-start;
+
+padding-top: 14px;
+margin-top: 14px;
+
+border-top: 1px solid var(--blue-border);
+}
+
+.btn-secundario {
+min-height: 40px;
+padding: 9px 16px;
+
+cursor: pointer;
+
+font-family: 'IBM Plex Sans', sans-serif;
+font-size: 12px;
+font-weight: 600;
+color: var(--text-mid);
+
+background: transparent;
+border: 1px solid var(--blue-border);
+border-radius: 8px;
+
+transition:
+color 0.16s ease,
+border-color 0.16s ease,
+background 0.16s ease;
+}
+
+.btn-secundario:hover {
+color: var(--text-bright);
+border-color: rgba(245, 166, 35, 0.42);
+background: rgba(245, 166, 35, 0.05);
+}
+
+/* =====================================================
+CONFIRMAÇÃO FINAL
+===================================================== */
+
+.encalhe-confirm-overlay {
+position: fixed;
+inset: 0;
+z-index: 240;
+
+display: flex;
+align-items: center;
+justify-content: center;
+
+padding: 18px;
+
+background: rgba(3, 10, 22, 0.84);
+backdrop-filter: blur(7px);
+
+opacity: 0;
+visibility: hidden;
+pointer-events: none;
+
+transition:
+opacity 0.2s ease,
+visibility 0.2s ease;
+}
+
+.encalhe-confirm-overlay.open {
+opacity: 1;
+visibility: visible;
+pointer-events: auto;
+}
+
+.encalhe-confirm-card {
+width: min(620px, 100%);
+max-height: calc(100vh - 36px);
+
+padding: 18px;
+overflow-y: auto;
+
+background: var(--blue-deep);
+border: 1px solid rgba(245, 166, 35, 0.36);
+border-radius: 14px;
+
+box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5);
+}
+
+.encalhe-confirm-resumo {
+display: flex;
+flex-direction: column;
+gap: 8px;
+
+margin-bottom: 16px;
+}
+
+.encalhe-confirm-linha {
+display: flex;
+align-items: flex-start;
+justify-content: space-between;
+gap: 15px;
+
+padding: 10px 11px;
+
+background: var(--blue-panel);
+border: 1px solid var(--blue-border);
+border-radius: 8px;
+}
+
+.encalhe-confirm-linha span {
+font-size: 11px;
+color: var(--text-dim);
+}
+
+.encalhe-confirm-linha strong {
+text-align: right;
+
+font-family: 'IBM Plex Mono', monospace;
+font-size: 12px;
+color: var(--text-bright);
+}
+
+.encalhe-confirm-linha.destaque {
+border-color: rgba(245, 166, 35, 0.32);
+background: rgba(245, 166, 35, 0.07);
+}
+
+.encalhe-confirm-linha.destaque strong {
+color: var(--accent);
+}
+
+/* =====================================================
+RESPONSIVO
+===================================================== */
+
+@media (max-width: 900px) {
+.encalhe-indicadores {
+grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.encalhe-layout {
+grid-template-columns: 1fr;
+}
+
+.encalhe-lojas-lista {
+max-height: 250px;
+}
+}
+
+@media (max-width: 650px) {
+.encalhe-overlay {
+padding: 0;
+align-items: stretch;
+}
+
+.encalhe-panel-expandido {
+width: 100%;
+max-height: 100vh;
+min-height: 100vh;
+
+```
+padding: 15px;
+
+border-left: 0;
+border-right: 0;
+border-bottom: 0;
+border-radius: 0;
+```
+
+}
+
+.encalhe-indicadores,
+.encalhe-loja-numeros,
+.encalhe-conferencia-grid,
+.encalhe-historicos-grid {
+grid-template-columns: 1fr;
+}
+
+.encalhe-loja-card-valores {
+grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.encalhe-edicao-acoes,
+.encalhe-confirm-acoes {
+flex-direction: column-reverse;
+align-items: stretch;
+}
+
+.encalhe-edicao-acoes button,
+.encalhe-confirm-acoes button,
+.encalhe-panel-footer button {
+width: 100%;
+justify-content: center;
+}
+
+.encalhe-panel-footer {
+display: block;
+}
+}
 
