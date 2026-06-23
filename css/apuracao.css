@@ -549,3 +549,86 @@
 .enc-fisico-field > input {
   width: 100%;
 }
+
+/* =====================================================
+   CORREÇÃO DO FORMULÁRIO DA APURAÇÃO
+   Desktop: quatro campos na mesma linha
+===================================================== */
+
+.venda-panel .form-grid-apu {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: end !important;
+  gap: 12px !important;
+  width: 100%;
+}
+
+/* Impede que campos individuais ocupem a linha inteira */
+.venda-panel .form-grid-apu > .field-apu {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  width: auto !important;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Mantém todos os campos com a mesma largura */
+.venda-panel .form-grid-apu .field-apu input {
+  display: block;
+  width: 100% !important;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Labels comuns alinhados com o label do encalhe físico */
+.venda-panel .form-grid-apu .field-apu > label {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  margin: 0 0 7px;
+}
+
+/* Label e botão + na mesma linha */
+.venda-panel .enc-fisico-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  min-height: 26px;
+  margin: 0 0 7px;
+}
+
+.venda-panel .enc-fisico-label-row label {
+  margin: 0;
+}
+
+/* Botão compacto imediatamente ao lado do label */
+.venda-panel .enc-fisico-label-row .btn-detalhar-encalhe {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .venda-panel .form-grid-apu {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Celular */
+@media (max-width: 560px) {
+  .venda-panel .form-grid-apu {
+    grid-template-columns: 1fr !important;
+  }
+}
+
