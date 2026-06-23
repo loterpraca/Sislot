@@ -1910,6 +1910,178 @@ function logErroBolaoFechamento(b, error, contexto = {}) {
 
     console.groupEnd();
 }
+function escapeHtml(valor) {
+return String(valor ?? '')
+.replaceAll('&', '&')
+.replaceAll('<', '<')
+.replaceAll('>', '>')
+.replaceAll('"', '"')
+.replaceAll("'", ''');
+}
+
+function mostrarErroBolaoNaTela(error) {
+const b = error?.bolao;
+
+
+if (!b?.bolao_id) {
+    return false;
+}
+
+const erroRpc =
+    error?.cause?.message ||
+    error?.message ||
+    'Não foi possível registrar a venda deste bolão.';
+
+const erroEstoque =
+    /estoque|saldo|cota|quantidade|insuficiente|disponível|disponivel/i
+        .test(erroRpc);
+
+// Volta para a etapa dos bolões.
+showStep(3);
+
+const wrap = $('boloes-wrap');
+
+if (!wrap) {
+    alert(
+        `Falha ao salvar o bolão #${b.bolao_id}\n\n` +
+        `${b.modalidade} — Concurso ${b.concurso}\n` +
+        `Quantidade informada: ${b.qtd_vendida}\n\n` +
+        erroRpc
+    );
+
+    return true;
+}
+
+// Remove aviso anterior.
+$('erro-bolao-fechamento')?.remove();
+
+const painel = document.createElement('div');
+
+painel.id = 'erro-bolao-fechamento';
+painel.className = 'erro-bolao-fechamento';
+
+painel.innerHTML = `
+    <div class="erro-bolao-icone">!</div>
+
+    <div class="erro-bolao-conteudo">
+        <div class="erro-bolao-titulo">
+            ${
+                erroEstoque
+                    ? 'Bolão sem saldo suficiente'
+                    : 'Falha ao registrar bolão'
+            }
+        </div>
+
+        <div class="erro-bolao-subtitulo">
+            O fechamento não foi salvo porque ocorreu um erro
+            no bolão abaixo.
+        </div>
+
+        <div class="erro-bolao-grid">
+            <div>
+                <span>ID do bolão</span>
+                <strong>#${escapeHtml(b.bolao_id)}</strong>
+            </div>
+
+            <div>
+                <span>Tipo</span>
+                <strong>${escapeHtml(b.tipo)}</strong>
+            </div>
+
+            <div>
+                <span>Modalidade</span>
+                <strong>${escapeHtml(b.modalidade)}</strong>
+            </div>
+
+            <div>
+                <span>Concurso</span>
+                <strong>${escapeHtml(b.concurso)}</strong>
+            </div>
+
+            <div>
+                <span>Origem</span>
+                <strong>${escapeHtml(b.origem)}</strong>
+            </div>
+
+            <div>
+                <span>Quantidade vendida</span>
+                <strong>${escapeHtml(b.qtd_vendida)}</strong>
+            </div>
+
+            <div>
+                <span>Quantidade de jogos</span>
+                <strong>${escapeHtml(b.qtd_jogos)}</strong>
+            </div>
+
+            <div>
+                <span>Quantidade de dezenas</span>
+                <strong>${escapeHtml(b.qtd_dezenas)}</strong>
+            </div>
+
+            <div>
+                <span>Valor da cota</span>
+                <strong>${fmtBRL(b.valor_cota)}</strong>
+            </div>
+
+            <div>
+                <span>Valor informado</span>
+                <strong>${fmtBRL(b.subtotal)}</strong>
+            </div>
+        </div>
+
+        <div class="erro-bolao-rpc">
+            <span>Mensagem do sistema</span>
+            <strong>${escapeHtml(erroRpc)}</strong>
+        </div>
+    </div>
+
+    <button
+        type="button"
+        class="erro-bolao-fechar"
+        aria-label="Fechar"
+        onclick="document.getElementById('erro-bolao-fechamento')?.remove()"
+    >
+        ×
+    </button>
+`;
+
+wrap.prepend(painel);
+
+// Localiza e destaca o cartão exato.
+const itemErro = allBoloes.find(item =>
+    Number(item?.data?.bolao_id) === Number(b.bolao_id) &&
+    String(item?.tipo || '') === String(b.tipo || '')
+);
+
+if (itemErro) {
+    const input = $(`qtd-${itemErro.idx}`);
+    const card = input?.closest('.bolao-card');
+
+    if (card) {
+        document
+            .querySelectorAll('.bolao-card.erro-estoque')
+            .forEach(el => el.classList.remove('erro-estoque'));
+
+        card.classList.add('erro-estoque');
+
+        card.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+        });
+
+        input?.focus();
+    }
+} else {
+    painel.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+    });
+}
+
+return true;
+
+
+}
 
 async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     if (!boloesVendidos.length) return;
@@ -2152,9 +2324,19 @@ console.log('PAYLOAD FECHAMENTO', payload);
             carregarBoloes()
         ]);
 
-    } catch (e) {
-        console.error('Erro ao gravar fechamento:', e);
-        toast('Erro ao gravar: ' + (e.message || e), false);
+   } catch (e) {
+console.error('Erro ao gravar fechamento:', e);
+const mostrouBolao =
+    mostrarErroBolaoNaTela(e);
+if (!mostrouBolao) {
+    alert(
+        'Erro ao gravar o fechamento:\n\n' +
+        (e?.message || String(e))
+    );
+}
+
+}
+
     } finally {
         hideGravando();
         btn.disabled = false;
