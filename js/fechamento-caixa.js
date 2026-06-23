@@ -2325,24 +2325,32 @@ console.log('PAYLOAD FECHAMENTO', payload);
             carregarBoloes()
         ]);
 
-   } catch (e) {
-console.error('Erro ao gravar fechamento:', e);
-const mostrouBolao =
-    mostrarErroBolaoNaTela(e);
-if (!mostrouBolao) {
-    alert(
-        'Erro ao gravar o fechamento:\n\n' +
-        (e?.message || String(e))
-    );
-}
+  
+} catch (e) {
+    console.error('Erro ao gravar fechamento:', e);
 
-}
+    const mostrouBolao =
+        mostrarErroBolaoNaTela(e);
 
-    } finally {
-        hideGravando();
-        btn.disabled = false;
-        if (salvouComSucesso) abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
+    if (!mostrouBolao) {
+        alert(
+            'Erro ao gravar o fechamento:\n\n' +
+            (e?.message || String(e))
+        );
     }
+
+} finally {
+    hideGravando();
+    btn.disabled = false;
+
+    if (salvouComSucesso) {
+        abrirModalSucessoFechamento(
+            'Fechamento salvo com sucesso.'
+        );
+    }
+}
+
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
