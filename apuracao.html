@@ -166,31 +166,35 @@
     />
   </div>
 
-  <div class="field field-apu enc-fisico-field">
-    <label for="inputEncFisico">Encalhe Físico Total</label>
 
-    <div class="enc-fisico-actions">
-      <input
-        type="number"
-        id="inputEncFisico"
-        min="0"
-        inputmode="numeric"
-        placeholder="0"
-        readonly
-        aria-readonly="true"
-        title="Valor calculado pela soma dos encalhes informados por loja"
-      />
+<div class="field field-apu enc-fisico-field">
+  <div class="enc-fisico-label-row">
+    <label for="inputEncFisico">
+      Encalhe Físico Total
+    </label>
 
-      <button
-        type="button"
-        class="btn-detalhar-encalhe"
-        id="btnDetalharEncFisico"
-        title="Detalhar encalhe físico por loja"
-        aria-label="Detalhar encalhe físico por loja"
-      >
-        +
-      </button>
-    </div>
+    <button
+      type="button"
+      class="btn-detalhar-encalhe"
+      id="btnDetalharEncFisico"
+      title="Detalhar encalhe físico por loja"
+      aria-label="Detalhar encalhe físico por loja"
+    >
+      +
+    </button>
+  </div>
+
+  <input
+    type="number"
+    id="inputEncFisico"
+    min="0"
+    inputmode="numeric"
+    placeholder="0"
+    readonly
+    aria-readonly="true"
+    title="Valor calculado pela soma dos encalhes informados por loja"
+  />
+</div>
   </div>
 
   <div class="field field-apu">
