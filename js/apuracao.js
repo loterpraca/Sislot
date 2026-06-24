@@ -1299,23 +1299,9 @@ function atualizarBolaoNaTelaAposEncalhe(totalAtualizado) {
 }
 
 function resolverDataReferenciaEncalhe() {
-  const dataSelecionada = isoDate(dataAtual);
-  const dataInicial = isoDate(bolaoSel?.dt_inicial);
-  const dataConcurso = isoDate(bolaoSel?.dt_concurso);
-
-  if (!dataInicial || !dataConcurso) {
-    return dataSelecionada;
-  }
-
-  if (!dataSelecionada || dataSelecionada < dataInicial) {
-    return dataInicial;
-  }
-
-  if (dataSelecionada > dataConcurso) {
-    return dataConcurso;
-  }
-
-  return dataSelecionada;
+  // O encalhe pode ser lançado em qualquer data posterior ao início do bolão,
+  // inclusive depois da data do concurso. A RPC valida apenas o limite inferior.
+  return isoDate(dataAtual);
 }
 
 async function salvarEncalheBox() {
