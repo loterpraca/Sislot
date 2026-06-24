@@ -1911,12 +1911,18 @@ function logErroBolaoFechamento(b, error, contexto = {}) {
     console.groupEnd();
 }
 function escapeHtml(valor) {
-return String(valor ?? '')
-.replaceAll('&', '&')
-.replaceAll('<', '<')
-.replaceAll('>', '>')
-.replaceAll('"', '"')
-.replaceAll("'", ''');
+    const mapa = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+
+    return String(valor ?? '').replace(
+        /[&<>"']/g,
+        caractere => mapa[caractere]
+    );
 }
 
 
@@ -1928,10 +1934,15 @@ if (!b?.bolao_id) {
     return false;
 }
 
-const erroRpc =
-    error?.cause?.message ||
-    error?.message ||
-    'Não foi possível registrar a venda deste bolão.';
+const erroRpc = [
+    error?.cause?.message,
+    error?.cause?.details,
+    error?.cause?.hint
+]
+    .filter(Boolean)
+    .join(' — ')
+    || error?.message
+    || 'Não foi possível registrar a venda deste bolão.';
 
 const erroEstoque =
     /estoque|saldo|cota|quantidade|insuficiente|disponível|disponivel/i
@@ -2118,10 +2129,27 @@ async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
             }
         }
     } catch (e) {
+    try {
         await estornarBoloesDoFechamento(fechId);
-        await apagarSnapshotBoloesDoFechamento(fechId);
-        throw e;
+    } catch (erroEstorno) {
+        console.error(
+            '[FECHAMENTO] Falha ao estornar vendas de bolões após erro:',
+            erroEstorno
+        );
     }
+
+    try {
+        await apagarSnapshotBoloesDoFechamento(fechId);
+    } catch (erroSnapshot) {
+        console.error(
+            '[FECHAMENTO] Falha ao apagar o snapshot de bolões após erro:',
+            erroSnapshot
+        );
+    }
+
+    // Mantém o erro original, que contém o bolão exato.
+    throw e;
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
