@@ -691,6 +691,10 @@ function renderResumoApuracao() {
 function fecharPanel(limparStatus = true) {
   const panel = $('vendaPanel');
 
+  if ($('encalheBoxOverlay')?.classList.contains('show')) {
+    fecharEncalheBox();
+  }
+
   if (panel) {
     panel.classList.remove('open');
   }
@@ -750,7 +754,6 @@ if (saldoFinal < 0) {
   const { error } = await sb.from('boloes')
     .update({
       qtd_marketplace,
-      enc_fisico,
       enc_virtual,
       vlr_premio
     })
@@ -767,6 +770,648 @@ fecharPanel();
 await buscarBoloes();
 
 mostrarToast('Apuração salva com sucesso.', 'ok');
+}
+
+/* =========================================================
+   CAIXA COMPACTA DE ENCALHE FÍSICO POR LOJA
+========================================================= */
+
+const estadoEncalheBox = {
+  bolaoId: null,
+  bolao: null,
+  lojas: [],
+  salvando: false,
+  bloqueadoPorMigracao: false,
+  diferencaMigracao: 0
+};
+
+function encalheBoxEscape(valor) {
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function encalheBoxInteiro(valor) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? Math.trunc(numero) : 0;
+}
+
+function mostrarStatusEncalheBox(mensagem, tipo = 'info') {
+  const barra = $('encalheBoxStatus');
+  if (!barra) return;
+
+  if (!mensagem) {
+    barra.textContent = '';
+    barra.className = 'status-bar';
+    return;
+  }
+
+  barra.textContent = mensagem;
+  barra.className = `status-bar show ${tipo}`;
+}
+
+function abrirOverlayEncalheBox() {
+  const overlay = $('encalheBoxOverlay');
+  if (!overlay) return false;
+
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('encalhe-box-open');
+
+  return true;
+}
+
+function resetarEstadoEncalheBox() {
+  estadoEncalheBox.bolaoId = null;
+  estadoEncalheBox.bolao = null;
+  estadoEncalheBox.lojas = [];
+  estadoEncalheBox.salvando = false;
+  estadoEncalheBox.bloqueadoPorMigracao = false;
+  estadoEncalheBox.diferencaMigracao = 0;
+}
+
+function fecharEncalheBox() {
+  const overlay = $('encalheBoxOverlay');
+
+  if (overlay) {
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  document.body.classList.remove('encalhe-box-open');
+  resetarEstadoEncalheBox();
+  mostrarStatusEncalheBox('');
+}
+
+async function abrirEncalheBox() {
+  if (!bolaoSel || !bolaoSel.bolao_id) {
+    mostrarToast(
+      'Selecione um bolão antes de lançar o encalhe físico.',
+      'err'
+    );
+    return;
+  }
+
+  if (!abrirOverlayEncalheBox()) {
+    mostrarToast(
+      'A caixa compacta de encalhe não foi encontrada no HTML.',
+      'err'
+    );
+    return;
+  }
+
+  resetarEstadoEncalheBox();
+  estadoEncalheBox.bolaoId = Number(bolaoSel.bolao_id);
+  estadoEncalheBox.bolao = bolaoSel;
+
+  const nome = $('encalheBoxNome');
+  const tags = $('encalheBoxTags');
+  const saldos = $('encalheSaldosGrid');
+  const inputs = $('encalheInputsGrid');
+  const total = $('encalheBoxTotal');
+  const salvar = $('btnSalvarEncalheBox');
+
+  if (nome) {
+    nome.textContent =
+      `${bolaoSel.modalidade || 'Bolão'} — Concurso ${bolaoSel.concurso || '—'}`;
+  }
+
+  if (tags) {
+    tags.innerHTML = `
+      <span class="btag">
+        ${encalheBoxEscape(bolaoSel.origem_nome || 'Origem')}
+      </span>
+      <span class="btag">${fmtBRL(bolaoSel.valor_cota || 0)}/cota</span>
+      <span class="btag">${encalheBoxInteiro(bolaoSel.qtd_jogos)} jogos</span>
+      <span class="btag">${encalheBoxInteiro(bolaoSel.qtd_dezenas)} dez.</span>
+      <span class="btag">${encalheBoxInteiro(bolaoSel.qtd_cotas_total)} cotas total</span>
+    `;
+  }
+
+  if (saldos) {
+    saldos.innerHTML = '<div class="apu-hint">Carregando saldos...</div>';
+  }
+
+  if (inputs) inputs.innerHTML = '';
+  if (total) total.textContent = '0';
+  if (salvar) salvar.disabled = true;
+
+  mostrarStatusEncalheBox(
+    'Consultando o saldo atual das lojas...',
+    'info'
+  );
+
+  await carregarEncalheBox();
+}
+
+function calcularTotalDetalhado(lojas = estadoEncalheBox.lojas) {
+  return (lojas || []).reduce(
+    (soma, loja) => soma + encalheBoxInteiro(loja.encalhe_atual),
+    0
+  );
+}
+
+async function carregarEncalheBox() {
+  if (!estadoEncalheBox.bolaoId) return;
+
+  try {
+    const { data, error } = await sb.rpc(
+      'rpc_listar_lojas_encalhe_bolao',
+      { p_bolao_id: estadoEncalheBox.bolaoId }
+    );
+
+    if (error) throw error;
+
+    const resultado = data || {};
+    const bolao = resultado.bolao || {};
+    const lojas = Array.isArray(resultado.lojas)
+      ? resultado.lojas
+      : [];
+
+    estadoEncalheBox.bolao = bolao;
+    estadoEncalheBox.lojas = lojas;
+
+    const totalGlobal = encalheBoxInteiro(bolao.enc_fisico_total);
+    const totalDetalhado = bolao.enc_fisico_detalhado == null
+      ? calcularTotalDetalhado(lojas)
+      : encalheBoxInteiro(bolao.enc_fisico_detalhado);
+
+    estadoEncalheBox.diferencaMigracao = totalGlobal - totalDetalhado;
+    estadoEncalheBox.bloqueadoPorMigracao =
+      estadoEncalheBox.diferencaMigracao !== 0;
+
+    renderizarEncalheBox();
+
+    if (estadoEncalheBox.bloqueadoPorMigracao) {
+      mostrarStatusEncalheBox(
+        `Este bolão possui ${Math.abs(estadoEncalheBox.diferencaMigracao)} ` +
+        'cota(s) de encalhe físico ainda não vinculadas corretamente às lojas. ' +
+        'Migre o encalhe atual para a origem antes de editar.',
+        'err'
+      );
+    } else {
+      mostrarStatusEncalheBox('');
+    }
+  } catch (erro) {
+    console.error('Erro ao carregar a caixa de encalhe:', erro);
+
+    mostrarStatusEncalheBox(
+      erro?.message || 'Não foi possível carregar os saldos das lojas.',
+      'err'
+    );
+  }
+}
+
+function renderizarEncalheBox() {
+  const bolao = estadoEncalheBox.bolao || {};
+  const lojas = estadoEncalheBox.lojas || [];
+  const saldos = $('encalheSaldosGrid');
+  const inputs = $('encalheInputsGrid');
+  const tags = $('encalheBoxTags');
+
+  if (tags) {
+    tags.innerHTML = `
+      <span class="btag">
+        ${encalheBoxEscape(bolao.origem_nome || 'Origem')}
+      </span>
+      <span class="btag">${fmtBRL(bolao.valor_cota || 0)}/cota</span>
+      <span class="btag">${encalheBoxInteiro(bolao.qtd_jogos)} jogos</span>
+      <span class="btag">${encalheBoxInteiro(bolao.qtd_dezenas)} dez.</span>
+      <span class="btag">${encalheBoxInteiro(bolao.qtd_cotas_total)} cotas total</span>
+      ${
+        estadoEncalheBox.bloqueadoPorMigracao
+          ? '<span class="btag btag-warning">Migração necessária</span>'
+          : ''
+      }
+    `;
+  }
+
+  if (!lojas.length) {
+    if (saldos) {
+      saldos.innerHTML = `
+        <div class="apu-hint">
+          Nenhuma loja relacionada ao bolão foi encontrada.
+        </div>
+      `;
+    }
+
+    if (inputs) inputs.innerHTML = '';
+    atualizarTotalEncalheBox();
+    return;
+  }
+
+  if (saldos) {
+    saldos.innerHTML = lojas
+      .map(loja => `
+        <div class="encalhe-saldo-card ${loja.eh_origem ? 'origem' : ''}">
+          <div class="encalhe-card-top">
+            <div class="encalhe-card-loja">
+              ${encalheBoxEscape(loja.loja_nome || 'Loja')}
+            </div>
+            ${
+              loja.eh_origem
+                ? '<span class="encalhe-card-badge">Origem</span>'
+                : ''
+            }
+          </div>
+
+          <div class="encalhe-card-valor">
+            ${encalheBoxInteiro(loja.saldo_atual)}
+          </div>
+
+          <div class="encalhe-card-sub">
+            Encalhe atual: ${encalheBoxInteiro(loja.encalhe_atual)}
+            · Máximo absoluto: ${encalheBoxInteiro(loja.total_disponivel)}
+          </div>
+        </div>
+      `)
+      .join('');
+  }
+
+  if (inputs) {
+    inputs.innerHTML = lojas
+      .map(loja => {
+        const loteriaId = Number(loja.loteria_id);
+        const atual = encalheBoxInteiro(loja.encalhe_atual);
+        const maximo = encalheBoxInteiro(loja.total_disponivel);
+
+        return `
+          <div class="encalhe-input-card" data-card-loteria-id="${loteriaId}">
+            <label for="encalheLoja_${loteriaId}">
+              ${encalheBoxEscape(loja.loja_nome || 'Loja')}
+              ${loja.eh_origem ? ' · origem' : ''}
+            </label>
+
+            <input
+              type="number"
+              id="encalheLoja_${loteriaId}"
+              class="encalhe-loja-input"
+              min="0"
+              max="${maximo}"
+              step="1"
+              inputmode="numeric"
+              value="${atual}"
+              data-loteria-id="${loteriaId}"
+              data-atual="${atual}"
+              data-maximo="${maximo}"
+              ${estadoEncalheBox.bloqueadoPorMigracao ? 'disabled' : ''}
+              aria-label="Encalhe físico de ${encalheBoxEscape(loja.loja_nome || 'Loja')}"
+            />
+
+            <div class="encalhe-card-sub">
+              Atual: ${atual} · Máximo: ${maximo}
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    inputs
+      .querySelectorAll('.encalhe-loja-input')
+      .forEach(input => {
+        input.addEventListener('input', atualizarTotalEncalheBox);
+      });
+  }
+
+  atualizarTotalEncalheBox();
+}
+
+function analisarEncalheBox() {
+  const inputs = [
+    ...document.querySelectorAll(
+      '#encalheInputsGrid .encalhe-loja-input'
+    )
+  ];
+
+  const alteracoes = [];
+  let total = 0;
+
+  if (estadoEncalheBox.bloqueadoPorMigracao) {
+    return {
+      valido: false,
+      erro:
+        'O encalhe físico atual precisa ser migrado para a origem antes de qualquer edição por loja.',
+      alteracoes: [],
+      total: calcularTotalDetalhado()
+    };
+  }
+
+  for (const input of inputs) {
+    const loteriaId = Number(input.dataset.loteriaId);
+    const atual = encalheBoxInteiro(input.dataset.atual);
+    const maximo = encalheBoxInteiro(input.dataset.maximo);
+    const texto = input.value.trim();
+
+    if (texto === '') {
+      return {
+        valido: false,
+        erro: 'Preencha o encalhe de todas as lojas.',
+        alteracoes: [],
+        total: 0
+      };
+    }
+
+    const novo = Number(texto);
+
+    if (!Number.isInteger(novo) || novo < 0) {
+      return {
+        valido: false,
+        erro: 'Os encalhes devem ser números inteiros iguais ou maiores que zero.',
+        alteracoes: [],
+        total: 0
+      };
+    }
+
+    if (novo > maximo) {
+      const loja = estadoEncalheBox.lojas.find(
+        item => Number(item.loteria_id) === loteriaId
+      );
+
+      return {
+        valido: false,
+        erro:
+          `${loja?.loja_nome || 'A loja'} possui no máximo ` +
+          `${maximo} cota(s) disponíveis para encalhe.`,
+        alteracoes: [],
+        total: 0
+      };
+    }
+
+    total += novo;
+
+    if (novo !== atual) {
+      const loja = estadoEncalheBox.lojas.find(
+        item => Number(item.loteria_id) === loteriaId
+      );
+
+      alteracoes.push({
+        loteriaId,
+        lojaNome: loja?.loja_nome || 'Loja',
+        ehOrigem: Boolean(loja?.eh_origem),
+        atual,
+        novo,
+        delta: novo - atual
+      });
+    }
+  }
+
+  const totalCotas = encalheBoxInteiro(
+    estadoEncalheBox.bolao?.qtd_cotas_total
+  );
+
+  if (total > totalCotas) {
+    return {
+      valido: false,
+      erro: `O encalhe total excede as ${totalCotas} cotas do bolão.`,
+      alteracoes: [],
+      total
+    };
+  }
+
+  if (alteracoes.length > 1) {
+    return {
+      valido: false,
+      erro: 'Altere somente uma loja por vez e salve antes de editar outra.',
+      alteracoes,
+      total
+    };
+  }
+
+  return {
+    valido: true,
+    erro: '',
+    alteracoes,
+    total
+  };
+}
+
+function destacarAlteracoesEncalheBox() {
+  document
+    .querySelectorAll('#encalheInputsGrid .encalhe-loja-input')
+    .forEach(input => {
+      const atual = encalheBoxInteiro(input.dataset.atual);
+      const novo = encalheBoxInteiro(input.value);
+      const card = input.closest('.encalhe-input-card');
+
+      card?.classList.toggle('alterado', novo !== atual);
+    });
+}
+
+function atualizarTotalEncalheBox() {
+  destacarAlteracoesEncalheBox();
+
+  const analise = analisarEncalheBox();
+  const total = $('encalheBoxTotal');
+  const salvar = $('btnSalvarEncalheBox');
+
+  if (total) {
+    total.textContent = String(encalheBoxInteiro(analise.total));
+  }
+
+  if (salvar) {
+    salvar.disabled =
+      estadoEncalheBox.salvando ||
+      !analise.valido ||
+      analise.alteracoes.length !== 1;
+  }
+
+  if (!analise.valido) {
+    mostrarStatusEncalheBox(analise.erro, 'err');
+    return analise;
+  }
+
+  if (analise.alteracoes.length === 1) {
+    const alteracao = analise.alteracoes[0];
+    const deltaMovimentacao = alteracao.ehOrigem
+      ? 0
+      : -alteracao.delta;
+
+    let efeito = 'sem movimentação de cotas';
+
+    if (deltaMovimentacao < 0) {
+      efeito = `movimentação ${deltaMovimentacao} para retornar cota(s) à origem`;
+    } else if (deltaMovimentacao > 0) {
+      efeito = `movimentação +${deltaMovimentacao} para devolver cota(s) à loja`;
+    }
+
+    mostrarStatusEncalheBox(
+      `${alteracao.lojaNome}: ${alteracao.atual} → ${alteracao.novo}; ${efeito}.`,
+      'info'
+    );
+  } else {
+    mostrarStatusEncalheBox('');
+  }
+
+  return analise;
+}
+
+function limparAlteracoesEncalheBox() {
+  document
+    .querySelectorAll('#encalheInputsGrid .encalhe-loja-input')
+    .forEach(input => {
+      input.value = String(encalheBoxInteiro(input.dataset.atual));
+    });
+
+  atualizarTotalEncalheBox();
+}
+
+function atualizarBolaoNaTelaAposEncalhe(totalAtualizado) {
+  if ($('inputEncFisico')) {
+    $('inputEncFisico').value = String(totalAtualizado);
+  }
+
+  if (bolaoSel) {
+    bolaoSel.enc_fisico = totalAtualizado;
+  }
+
+  const registroLista = todosBoloes.find(
+    item => Number(item.bolao_id) === Number(estadoEncalheBox.bolaoId)
+  );
+
+  if (registroLista) {
+    registroLista.enc_fisico = totalAtualizado;
+  }
+
+  if ($('panelNome') && bolaoSel) {
+    $('panelNome').innerHTML = resumoBolaoHTML(bolaoSel, true);
+  }
+
+  const card = document.querySelector(
+    `.bolao-card[data-id="${estadoEncalheBox.bolaoId}"]`
+  );
+
+  if (card && registroLista) {
+    card.innerHTML = `
+      ${resumoBolaoHTML(registroLista)}
+      <div class="bolao-select-ind">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="2 6 5 9 10 3"/>
+        </svg>
+      </div>
+    `;
+    card.classList.add('selected');
+  }
+
+  renderResumoApuracao();
+}
+
+async function salvarEncalheBox() {
+  if (estadoEncalheBox.salvando || !estadoEncalheBox.bolaoId) {
+    return;
+  }
+
+  const analise = atualizarTotalEncalheBox();
+
+  if (!analise.valido) return;
+
+  if (analise.alteracoes.length !== 1) {
+    mostrarStatusEncalheBox(
+      analise.alteracoes.length
+        ? 'Altere somente uma loja por vez.'
+        : 'Nenhuma alteração de encalhe foi informada.',
+      analise.alteracoes.length ? 'err' : 'info'
+    );
+    return;
+  }
+
+  const alteracao = analise.alteracoes[0];
+  const botao = $('btnSalvarEncalheBox');
+  estadoEncalheBox.salvando = true;
+
+  if (botao) {
+    botao.disabled = true;
+    botao.textContent = 'Salvando...';
+  }
+
+  mostrarStatusEncalheBox(
+    `Salvando o encalhe de ${alteracao.lojaNome}...`,
+    'info'
+  );
+
+  try {
+    const { error: erroConfirmacao } = await sb.rpc(
+      'rpc_confirmar_encalhe_loja',
+      {
+        p_bolao_id: estadoEncalheBox.bolaoId,
+        p_loteria_id: alteracao.loteriaId,
+        p_novo_encalhe: alteracao.novo,
+        p_data_referencia: isoDate(dataAtual),
+        p_observacao: 'Lançamento de encalhe físico pela apuração'
+      }
+    );
+
+    if (erroConfirmacao) throw erroConfirmacao;
+
+    const { data, error: erroRecarga } = await sb.rpc(
+      'rpc_listar_lojas_encalhe_bolao',
+      { p_bolao_id: estadoEncalheBox.bolaoId }
+    );
+
+    if (erroRecarga) throw erroRecarga;
+
+    const totalAtualizado = encalheBoxInteiro(
+      data?.bolao?.enc_fisico_total
+    );
+
+    atualizarBolaoNaTelaAposEncalhe(totalAtualizado);
+    fecharEncalheBox();
+
+    mostrarToast(
+      `Encalhe de ${alteracao.lojaNome} salvo com sucesso.`,
+      'ok'
+    );
+  } catch (erro) {
+    console.error('Erro ao salvar encalhe físico:', erro);
+
+    mostrarStatusEncalheBox(
+      erro?.message || 'Não foi possível salvar o encalhe físico.',
+      'err'
+    );
+  } finally {
+    estadoEncalheBox.salvando = false;
+
+    if (botao) {
+      botao.textContent = 'Salvar Encalhe';
+    }
+
+    if ($('encalheBoxOverlay')?.classList.contains('show')) {
+      atualizarTotalEncalheBox();
+    }
+  }
+}
+
+function inicializarCaixaEncalhe() {
+  const btnAbrir = $('btnDetalharEncFisico');
+  const btnFechar = $('btnFecharEncalheBox');
+  const btnLimpar = $('btnLimparEncalheBox');
+  const btnSalvar = $('btnSalvarEncalheBox');
+  const overlay = $('encalheBoxOverlay');
+
+  btnAbrir?.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    abrirEncalheBox();
+  });
+
+  btnFechar?.addEventListener('click', fecharEncalheBox);
+  btnLimpar?.addEventListener('click', limparAlteracoesEncalheBox);
+  btnSalvar?.addEventListener('click', salvarEncalheBox);
+
+  overlay?.addEventListener('click', event => {
+    if (event.target === overlay) fecharEncalheBox();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (
+      event.key === 'Escape' &&
+      overlay?.classList.contains('show')
+    ) {
+      fecharEncalheBox();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -790,13 +1435,13 @@ document.addEventListener('DOMContentLoaded', () => {
     await mudarData(1);
   });
 
- btnHoje?.addEventListener('click', async event => {
-  event.preventDefault();
-  event.stopPropagation();
+  btnHoje?.addEventListener('click', async event => {
+    event.preventDefault();
+    event.stopPropagation();
 
-  dataAtual = hojeSaoPauloDate();
-  await mudarData(0);
-});
+    dataAtual = hojeSaoPauloDate();
+    await mudarData(0);
+  });
 
   inputData?.addEventListener('change', async event => {
     const valorSelecionado = event.target.value;
@@ -804,7 +1449,11 @@ document.addEventListener('DOMContentLoaded', () => {
     await selecionarDataReferencia(valorSelecionado);
   });
 
-  btnFecharPanel?.addEventListener('click', fecharPanel);
+  btnFecharPanel?.addEventListener(
+    'click',
+    fecharPanel
+  );
 
+  inicializarCaixaEncalhe();
   init();
 });
