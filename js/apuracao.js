@@ -1298,6 +1298,26 @@ function atualizarBolaoNaTelaAposEncalhe(totalAtualizado) {
   renderResumoApuracao();
 }
 
+function resolverDataReferenciaEncalhe() {
+  const dataSelecionada = isoDate(dataAtual);
+  const dataInicial = isoDate(bolaoSel?.dt_inicial);
+  const dataConcurso = isoDate(bolaoSel?.dt_concurso);
+
+  if (!dataInicial || !dataConcurso) {
+    return dataSelecionada;
+  }
+
+  if (!dataSelecionada || dataSelecionada < dataInicial) {
+    return dataInicial;
+  }
+
+  if (dataSelecionada > dataConcurso) {
+    return dataConcurso;
+  }
+
+  return dataSelecionada;
+}
+
 async function salvarEncalheBox() {
   if (estadoEncalheBox.salvando || !estadoEncalheBox.bolaoId) {
     return;
@@ -1338,7 +1358,7 @@ async function salvarEncalheBox() {
         p_bolao_id: estadoEncalheBox.bolaoId,
         p_loteria_id: alteracao.loteriaId,
         p_novo_encalhe: alteracao.novo,
-        p_data_referencia: isoDate(dataAtual),
+        p_data_referencia: resolverDataReferenciaEncalhe(),
         p_observacao: 'Lançamento de encalhe físico pela apuração'
       }
     );
@@ -1364,10 +1384,26 @@ async function salvarEncalheBox() {
       'ok'
     );
   } catch (erro) {
-    console.error('Erro ao salvar encalhe físico:', erro);
+    console.error('Erro ao salvar encalhe físico:', {
+      bolao_id: estadoEncalheBox.bolaoId,
+      loja_id: alteracao.loteriaId,
+      encalhe_anterior: alteracao.atual,
+      encalhe_novo: alteracao.novo,
+      data_referencia: resolverDataReferenciaEncalhe(),
+      message: erro?.message || String(erro),
+      details: erro?.details || null,
+      hint: erro?.hint || null,
+      code: erro?.code || null
+    });
+
+    const mensagemErro = [
+      erro?.message,
+      erro?.details,
+      erro?.hint
+    ].filter(Boolean).join(' — ');
 
     mostrarStatusEncalheBox(
-      erro?.message || 'Não foi possível salvar o encalhe físico.',
+      mensagemErro || 'Não foi possível salvar o encalhe físico.',
       'err'
     );
   } finally {
