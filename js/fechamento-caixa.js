@@ -905,29 +905,18 @@ function coletarTela2() {
 function coletarTela3() {
     const coleta = tipo => allBoloes
         .filter(b => b.tipo === tipo)
-        .map(({ data, idx }) => {
-            const qtdVendida = parseInt($(`qtd-${idx}`)?.value) || 0;
+        .map(({ data, idx }) => ({
+            bolao_id: data.bolao_id,
+            modalidade: data.modalidade,
+            concurso: data.concurso,
+            valorCota: Number(data.valorCota || 0),
+            qtdVendida: parseInt($(`qtd-${idx}`)?.value) || 0,
+            subtotal: (parseInt($(`qtd-${idx}`)?.value) || 0) * Number(data.valorCota || 0)
+        }));
 
-            return {
-                bolao_id: data.bolao_id,
-                tipo: data.tipo || tipo,
-                origem: data.origem || '',
-                origemCodLoterico: data.origemCodLoterico || '',
-                modalidade: data.modalidade,
-                concurso: data.concurso,
-                qtdJogos: Number(data.qtdJogos || 0),
-                qtdDezenas: Number(data.qtdDezenas || 0),
-                valorCota: Number(data.valorCota || 0),
-                qtdVendida,
-                subtotal: qtdVendida * Number(data.valorCota || 0)
-            };
-        });
-
-    ESTADO.tela3 = {
-        internos: coleta('INTERNO'),
-        externos: coleta('EXTERNO')
-    };
+    ESTADO.tela3 = { internos: coleta('INTERNO'), externos: coleta('EXTERNO') };
 }
+
 // ─────────────────────────────────────────────────────────────────────────────
 // FEDERAIS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1182,63 +1171,19 @@ function setB3(s) {
 function chaveBolaoItem(item) { return `${String(item.tipo || '').toUpperCase()}|${Number(item.bolao_id || 0)}`; }
 
 function aplicarContextoEdicaoBoloes(lista) {
-const emEdicao =
-fechamentoOriginalId !== null &&
-fechamentoOriginalId !== undefined;
+    const salvos = [
+        ...(ESTADO.tela3?.internos || []).map(b => ({ ...b, tipo: 'INTERNO' })),
+        ...(ESTADO.tela3?.externos || []).map(b => ({ ...b, tipo: 'EXTERNO' }))
+    ];
+    const mapa = {};
+    salvos.forEach(b => { mapa[chaveBolaoItem(b)] = Number(b.qtdVendida || 0); });
 
-
-const salvos = [
-    ...(ESTADO.tela3?.internos || []).map(b => ({
-        ...b,
-        tipo: 'INTERNO'
-    })),
-
-    ...(ESTADO.tela3?.externos || []).map(b => ({
-        ...b,
-        tipo: 'EXTERNO'
-    }))
-];
-
-const mapa = {};
-
-salvos.forEach(b => {
-    mapa[chaveBolaoItem(b)] =
-        Number(b.qtdVendida || 0);
-});
-
-return (lista || []).map(item => {
-    const saldoAtual =
-        Number(item.saldo_atual || 0);
-
-    const qtdSalva =
-        Number(
-            mapa[chaveBolaoItem(item)] || 0
-        );
-
-    /*
-     * Em fechamento existente, a venda já está
-     * descontada na view. Ela é devolvida apenas
-     * para permitir editar aquele fechamento.
-     *
-     * Em fechamento novo, a quantidade guardada
-     * no ESTADO ainda não foi abatida do banco e
-     * não pode ser somada ao saldo.
-     */
-    const saldoEditavel = emEdicao
-        ? saldoAtual + qtdSalva
-        : saldoAtual;
-
-    return {
-        ...item,
-        saldo_real: saldoAtual,
-        qtd_salva_edicao: qtdSalva,
-        saldo_editavel: saldoEditavel,
-        em_edicao: emEdicao
-    };
-});
-
+    return (lista || []).map(item => {
+        const qtdSalva = Number(mapa[chaveBolaoItem(item)] || 0);
+        const saldoAtual = Number(item.saldo_atual || 0);
+        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
+    });
 }
-
 
 function boloesVisiveis() {
     const todos = [
@@ -1416,10 +1361,8 @@ function renderBoloes() {
                 const saldoBase = Number(b.saldo_base || 0);
                 const qtdVendidaTotal = Number(b.qtd_vendida_total || 0);
                 const qtdSalva = Number(b.qtd_salva_edicao || 0);
-               const saldoReal =Number(b.saldo_real ?? b.saldo_atual ?? 0);
-                const saldo =getSaldoBolao(b);
-                const semSaldo =saldo <= 0;
-
+                const saldo = getSaldoBolao(b);
+                const semSaldo = saldo <= 0;
 
                 allBoloes.push({ tipo: b.tipo, data: b, idx: gi, grupo: tituloBloco, modalidade: mod });
 
@@ -1427,9 +1370,7 @@ function renderBoloes() {
                 if (b.qtdJogos) metas.push(`<span class="meta-tag">${b.qtdJogos} jogo(s)</span>`);
                 if (b.qtdDezenas) metas.push(`<span class="meta-tag">${b.qtdDezenas} dez.</span>`);
                 metas.push(`<span class="meta-tag" style="color:var(--accent);border-color:rgba(0,200,150,.2)">R$ ${Number(b.valorCota).toFixed(2).replace('.', ',')} / cota</span>`);
-                metas.push(`<span class="meta-tag meta-saldo">saldo real ${saldoReal} </span>`);
-                if (b.em_edicao && Number(b.qtd_salva_edicao || 0) > 0) {
-                metas.push(`<span class="meta-tag"> disponível para edição ${saldo} </span> `);}
+                metas.push(`<span class="meta-tag meta-saldo">saldo ${saldo}</span>`);
                 if (b.tipo === 'EXTERNO') {
                     const origemTxt = [b.origem, b.origemCodLoterico].filter(Boolean).join(' · ');
                     metas.push(`<span class="meta-tag meta-dest">externo${origemTxt ? ' · ' + origemTxt : ''}</span>`);
@@ -1869,287 +1810,25 @@ async function salvarSnapshotBoloesDoFechamento(fechId, boloesVendidos) {
     if (error) throw error;
 }
 
-function montarResumoBolaoErro(b) {
-    if (!b) return {};
-
-    return {
-        bolao_id: Number(b.bolao_id || 0) || null,
-        origem: [b.origem || '', b.origemCodLoterico || ''].filter(Boolean).join(' · ') || '—',
-        modalidade: b.modalidade || '—',
-        concurso: b.concurso || '—',
-        qtd_jogos: Number(b.qtdJogos || 0) || 0,
-        qtd_dezenas: Number(b.qtdDezenas || 0) || 0,
-        valor_cota: Number(b.valorCota || 0) || 0,
-        qtd_vendida: Number(b.qtdVendida || 0) || 0,
-        subtotal: Number(b.subtotal || 0) || 0,
-        tipo: b.tipo || '—'
-    };
-}
-
-function logErroBolaoFechamento(b, error, contexto = {}) {
-    const resumo = montarResumoBolaoErro(b);
-
-    console.groupCollapsed(
-        `[FECHAMENTO][ERRO_BOLAO] #${resumo.bolao_id || '—'} · ${resumo.modalidade} · conc ${resumo.concurso}`
-    );
-
-    console.error('Resumo do bolão:', resumo);
-    console.error('Contexto:', {
-        loteria_ativa_id: Number(loteriaAtiva?.id || 0) || null,
-        loteria_ativa_nome: loteriaAtiva?.nome || null,
-        funcionario_id: Number(contexto.funcionario_id || 0) || null,
-        data_ref: contexto.data_ref || null,
-        fechamento_id: contexto.fechamento_id || null
-    });
-    console.error('Erro RPC:', {
-        message: error?.message || String(error),
-        details: error?.details || null,
-        hint: error?.hint || null,
-        code: error?.code || null
-    });
-
-    console.groupEnd();
-}
-function escapeHtml(valor) {
-    const mapa = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-
-    return String(valor ?? '').replace(
-        /[&<>"']/g,
-        caractere => mapa[caractere]
-    );
-}
-
-
-function mostrarErroBolaoNaTela(error) {
-const b = error?.bolao;
-
-
-if (!b?.bolao_id) {
-    return false;
-}
-
-const erroRpc = [
-    error?.cause?.message,
-    error?.cause?.details,
-    error?.cause?.hint
-]
-    .filter(Boolean)
-    .join(' — ')
-    || error?.message
-    || 'Não foi possível registrar a venda deste bolão.';
-
-const erroEstoque =
-    /estoque|saldo|cota|quantidade|insuficiente|disponível|disponivel/i
-        .test(erroRpc);
-
-// Volta para a etapa dos bolões.
-showStep(3);
-
-const wrap = $('boloes-wrap');
-
-if (!wrap) {
-    alert(
-        `Falha ao salvar o bolão #${b.bolao_id}\n\n` +
-        `${b.modalidade} — Concurso ${b.concurso}\n` +
-        `Quantidade informada: ${b.qtd_vendida}\n\n` +
-        erroRpc
-    );
-
-    return true;
-}
-
-// Remove aviso anterior.
-$('erro-bolao-fechamento')?.remove();
-
-const painel = document.createElement('div');
-
-painel.id = 'erro-bolao-fechamento';
-painel.className = 'erro-bolao-fechamento';
-
-painel.innerHTML = `
-    <div class="erro-bolao-icone">!</div>
-
-    <div class="erro-bolao-conteudo">
-        <div class="erro-bolao-titulo">
-            ${
-                erroEstoque
-                    ? 'Bolão sem saldo suficiente'
-                    : 'Falha ao registrar bolão'
-            }
-        </div>
-
-        <div class="erro-bolao-subtitulo">
-            O fechamento não foi salvo porque ocorreu um erro
-            no bolão abaixo.
-        </div>
-
-        <div class="erro-bolao-grid">
-            <div>
-                <span>ID do bolão</span>
-                <strong>#${escapeHtml(b.bolao_id)}</strong>
-            </div>
-
-            <div>
-                <span>Tipo</span>
-                <strong>${escapeHtml(b.tipo)}</strong>
-            </div>
-
-            <div>
-                <span>Modalidade</span>
-                <strong>${escapeHtml(b.modalidade)}</strong>
-            </div>
-
-            <div>
-                <span>Concurso</span>
-                <strong>${escapeHtml(b.concurso)}</strong>
-            </div>
-
-            <div>
-                <span>Origem</span>
-                <strong>${escapeHtml(b.origem)}</strong>
-            </div>
-
-            <div>
-                <span>Quantidade vendida</span>
-                <strong>${escapeHtml(b.qtd_vendida)}</strong>
-            </div>
-
-            <div>
-                <span>Quantidade de jogos</span>
-                <strong>${escapeHtml(b.qtd_jogos)}</strong>
-            </div>
-
-            <div>
-                <span>Quantidade de dezenas</span>
-                <strong>${escapeHtml(b.qtd_dezenas)}</strong>
-            </div>
-
-            <div>
-                <span>Valor da cota</span>
-                <strong>${fmtBRL(b.valor_cota)}</strong>
-            </div>
-
-            <div>
-                <span>Valor informado</span>
-                <strong>${fmtBRL(b.subtotal)}</strong>
-            </div>
-        </div>
-
-        <div class="erro-bolao-rpc">
-            <span>Mensagem do sistema</span>
-            <strong>${escapeHtml(erroRpc)}</strong>
-        </div>
-    </div>
-
-    <button
-        type="button"
-        class="erro-bolao-fechar"
-        aria-label="Fechar"
-        onclick="document.getElementById('erro-bolao-fechamento')?.remove()"
-    >
-        ×
-    </button>
-`;
-
-wrap.prepend(painel);
-
-// Localiza e destaca o cartão exato.
-const itemErro = allBoloes.find(item =>
-    Number(item?.data?.bolao_id) === Number(b.bolao_id) &&
-    String(item?.tipo || '') === String(b.tipo || '')
-);
-
-if (itemErro) {
-    const input = $(`qtd-${itemErro.idx}`);
-    const card = input?.closest('.bolao-card');
-
-    if (card) {
-        document
-            .querySelectorAll('.bolao-card.erro-estoque')
-            .forEach(el => el.classList.remove('erro-estoque'));
-
-        card.classList.add('erro-estoque');
-
-        card.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-        });
-
-        input?.focus();
-    }
-} else {
-    painel.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-    });
-}
-
-return true;
-
-
-}
-
 async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     if (!boloesVendidos.length) return;
-
     try {
         for (const b of boloesVendidos) {
             const { error } = await sb.rpc('registrar_venda_bolao', {
                 p_bolao_id: Number(b.bolao_id),
                 p_loteria_vendedora_id: Number(loteriaAtiva.id),
                 p_usuario_id: Number(t1.funcionario_id),
-                p_canal: 'FECHAMENTO',
-                p_origem_lancamento: 'FECHAMENTO_CAIXA',
-                p_qtd_vendida: Number(b.qtdVendida || 0),
-                p_data_referencia: t1.data_ref,
-                p_observacao: 'Lançado no fechamento',
-                p_fechamento_id: fechId,
-                p_fechamento_keyid: null
+                p_canal: 'FECHAMENTO', p_origem_lancamento: 'FECHAMENTO_CAIXA',
+                p_qtd_vendida: Number(b.qtdVendida || 0), p_data_referencia: t1.data_ref,
+                p_observacao: 'Lançado no fechamento', p_fechamento_id: fechId, p_fechamento_keyid: null
             });
-
-            if (error) {
-                logErroBolaoFechamento(b, error, {
-                    funcionario_id: t1.funcionario_id,
-                    data_ref: t1.data_ref,
-                    fechamento_id: fechId
-                });
-
-                const err = new Error(
-                    `Falha ao salvar bolão ${b.modalidade} concurso ${b.concurso} (ID ${b.bolao_id})`
-                );
-                err.cause = error;
-                err.bolao = montarResumoBolaoErro(b);
-                throw err;
-            }
+            if (error) throw error;
         }
     } catch (e) {
-    try {
         await estornarBoloesDoFechamento(fechId);
-    } catch (erroEstorno) {
-        console.error(
-            '[FECHAMENTO] Falha ao estornar vendas de bolões após erro:',
-            erroEstorno
-        );
-    }
-
-    try {
         await apagarSnapshotBoloesDoFechamento(fechId);
-    } catch (erroSnapshot) {
-        console.error(
-            '[FECHAMENTO] Falha ao apagar o snapshot de bolões após erro:',
-            erroSnapshot
-        );
+        throw e;
     }
-
-    // Mantém o erro original, que contém o bolão exato.
-    throw e;
-}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2353,32 +2032,14 @@ console.log('PAYLOAD FECHAMENTO', payload);
             carregarBoloes()
         ]);
 
-  
-} catch (e) {
-    console.error('Erro ao gravar fechamento:', e);
-
-    const mostrouBolao =
-        mostrarErroBolaoNaTela(e);
-
-    if (!mostrouBolao) {
-        alert(
-            'Erro ao gravar o fechamento:\n\n' +
-            (e?.message || String(e))
-        );
+    } catch (e) {
+        console.error('Erro ao gravar fechamento:', e);
+        toast('Erro ao gravar: ' + (e.message || e), false);
+    } finally {
+        hideGravando();
+        btn.disabled = false;
+        if (salvouComSucesso) abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
     }
-
-} finally {
-    hideGravando();
-    btn.disabled = false;
-
-    if (salvouComSucesso) {
-        abrirModalSucessoFechamento(
-            'Fechamento salvo com sucesso.'
-        );
-    }
-}
-
-
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
