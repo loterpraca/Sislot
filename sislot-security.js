@@ -4,11 +4,21 @@
  */
 
 (function () {
-    const sb = supabase.createClient(
-        window.SISLOT_CONFIG.url,
-        window.SISLOT_CONFIG.anonKey
-    );
+    window.SISLOT_SB =
+        window.SISLOT_SB ||
+        supabase.createClient(
+            window.SISLOT_CONFIG.url,
+            window.SISLOT_CONFIG.anonKey,
+            {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            }
+        );
 
+    const sb = window.SISLOT_SB;
     // Usa utils se disponível
     const utils = window.SISLOT_UTILS || {};
 
