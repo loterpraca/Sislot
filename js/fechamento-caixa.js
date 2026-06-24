@@ -1968,14 +1968,7 @@ async function finalizar() {
             if (errDelFed) throw errDelFed;
         } else {
             setProgress(30);
-            const { data: authData, error: authErr } = await sb.auth.getUser();
-
-console.log('AUTH USER', authData?.user || null);
-console.log('AUTH ERROR', authErr || null);
-console.log('USUARIO FRONT', usuario);
-console.log('LOTERIA ATIVA', loteriaAtiva?.id);
-console.log('FUNCIONARIO SELECIONADO', t1.funcionario_id);
-console.log('PAYLOAD FECHAMENTO', payload);
+           
             
             const { data: ins, error: errIns } = await sb
                 .from('fechamentos').insert(payload).select('id').single();
