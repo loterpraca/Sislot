@@ -3,10 +3,14 @@
  * Versão integrada com módulo Área do Cliente (CF)
  */
 
-const sb = supabase.createClient(
-    window.SISLOT_CONFIG.url,
-    window.SISLOT_CONFIG.anonKey
-);
+const sb = window.SISLOT_SB;
+
+if (!sb) {
+    throw new Error(
+        'Cliente Supabase global não foi inicializado. ' +
+        'Carregue sislot-security.js antes de fechamento-caixa.js.'
+    );
+}
 
 // Importa funções do utils com fallbacks
 const utils = window.SISLOT_UTILS || {};
