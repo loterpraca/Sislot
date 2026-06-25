@@ -12,6 +12,8 @@ const $ = (id) => document.getElementById(id);
 
 const PERFIS_EDITOR = ['ADMIN', 'SOCIO', 'GERENTE'];
 const MAX_ATALHOS = 15;
+const MAX_JOGOS = 15;
+const MAX_DEZENAS = 26;
 
 const MODALIDADES = [
     'Mega Sena',
@@ -143,6 +145,7 @@ async function init() {
 
         preencherFiltros();
         preencherOrdens();
+        preencherSeletoresModelo();
         bind();
 
         await carregarAtalhos();
@@ -194,6 +197,65 @@ function preencherOrdens() {
         option.textContent = `Posição ${ordem}`;
         select.appendChild(option);
     }
+}
+
+function preencherSeletoresModelo() {
+    preencherSelectNumerico(
+        $('atalhoJogos'),
+        MAX_JOGOS,
+        'Selecione os jogos'
+    );
+
+    preencherSelectNumerico(
+        $('atalhoDezenas'),
+        MAX_DEZENAS,
+        'Selecione as dezenas'
+    );
+
+    atualizarNomeAtalho();
+}
+
+function preencherSelectNumerico(select, limite, placeholder) {
+    select.innerHTML = '';
+
+    const optionInicial = document.createElement('option');
+    optionInicial.value = '';
+    optionInicial.textContent = placeholder;
+    select.appendChild(optionInicial);
+
+    for (let numero = 1; numero <= limite; numero += 1) {
+        const option = document.createElement('option');
+        option.value = String(numero);
+        option.textContent = String(numero).padStart(2, '0');
+        select.appendChild(option);
+    }
+}
+
+function montarNomeAtalho(qtdJogos, qtdDezenas) {
+    const jogos = Number.parseInt(qtdJogos, 10);
+    const dezenas = Number.parseInt(qtdDezenas, 10);
+
+    if (
+        !Number.isInteger(jogos) ||
+        jogos < 1 ||
+        jogos > MAX_JOGOS ||
+        !Number.isInteger(dezenas) ||
+        dezenas < 1 ||
+        dezenas > MAX_DEZENAS
+    ) {
+        return '';
+    }
+
+    return `[${String(jogos).padStart(2, '0')}x${String(dezenas).padStart(2, '0')}]`;
+}
+
+function atualizarNomeAtalho() {
+    const nome = montarNomeAtalho(
+        $('atalhoJogos')?.value,
+        $('atalhoDezenas')?.value
+    );
+
+    $('atalhoNome').value = nome;
 }
 
 async function carregarAtalhos() {
@@ -353,19 +415,20 @@ function abrirNovo(ordemSugerida = null) {
     $('atalhoId').value = '';
     $('atalhoOrdem').value = String(ordem);
     $('atalhoAtivo').checked = true;
+    atualizarNomeAtalho();
     $('editorTitle').textContent = 'Novo atalho';
     $('btnExcluir').classList.add('hidden');
 
     atualizarContextoEditor();
     abrirOverlay('editorOverlay');
-    setTimeout(() => $('atalhoNome').focus(), 80);
+    setTimeout(() => $('atalhoJogos').focus(), 80);
 }
 
 function abrirEdicao(item) {
     $('atalhoId').value = String(item.id);
-    $('atalhoNome').value = item.nome || '';
-    $('atalhoJogos').value = item.qtd_jogos ?? '';
-    $('atalhoDezenas').value = item.qtd_dezenas ?? '';
+    $('atalhoJogos').value = String(item.qtd_jogos ?? '');
+    $('atalhoDezenas').value = String(item.qtd_dezenas ?? '');
+    atualizarNomeAtalho();
     $('atalhoValor').value = formatarDecimalBR(item.valor_cota);
     $('atalhoCotas').value = item.qtd_cotas ?? '';
     $('atalhoOrdem').value = String(item.ordem);
@@ -376,7 +439,7 @@ function abrirEdicao(item) {
 
     atualizarContextoEditor();
     abrirOverlay('editorOverlay');
-    setTimeout(() => $('atalhoNome').focus(), 80);
+    setTimeout(() => $('atalhoJogos').focus(), 80);
 }
 
 function atualizarContextoEditor() {
@@ -404,20 +467,22 @@ function fecharOverlay(id) {
 
 function validarFormulario() {
     const id = Number($('atalhoId').value || 0);
-    const nome = $('atalhoNome').value.trim();
     const qtdJogos = Number.parseInt($('atalhoJogos').value, 10);
     const qtdDezenas = Number.parseInt($('atalhoDezenas').value, 10);
+    const nome = montarNomeAtalho(qtdJogos, qtdDezenas);
     const valorCota = parseDecimalBR($('atalhoValor').value);
     const qtdCotas = Number.parseInt($('atalhoCotas').value, 10);
     const ordem = Number.parseInt($('atalhoOrdem').value, 10);
     const ativo = $('atalhoAtivo').checked;
 
-    if (!nome) throw new Error('Informe o nome exibido do atalho.');
-    if (!Number.isInteger(qtdJogos) || qtdJogos < 0) {
-        throw new Error('Quantidade de jogos inválida.');
+    if (!Number.isInteger(qtdJogos) || qtdJogos < 1 || qtdJogos > MAX_JOGOS) {
+        throw new Error(`Escolha a quantidade de jogos entre 1 e ${MAX_JOGOS}.`);
     }
-    if (!Number.isInteger(qtdDezenas) || qtdDezenas < 0) {
-        throw new Error('Quantidade de dezenas inválida.');
+    if (!Number.isInteger(qtdDezenas) || qtdDezenas < 1 || qtdDezenas > MAX_DEZENAS) {
+        throw new Error(`Escolha a quantidade de dezenas entre 1 e ${MAX_DEZENAS}.`);
+    }
+    if (!nome) {
+        throw new Error('Não foi possível montar o nome do atalho.');
     }
     if (!Number.isFinite(valorCota) || valorCota <= 0) {
         throw new Error('O valor da cota deve ser maior que zero.');
@@ -735,6 +800,9 @@ function bind() {
     });
 
     $('btnCopiar').addEventListener('click', abrirCopia);
+
+    $('atalhoJogos').addEventListener('change', atualizarNomeAtalho);
+    $('atalhoDezenas').addEventListener('change', atualizarNomeAtalho);
 
     $('formAtalho').addEventListener('submit', salvarAtalho);
     $('btnExcluir').addEventListener('click', excluirAtalho);
