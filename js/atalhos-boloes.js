@@ -1,6 +1,6 @@
 /**
  * SISLOT — Painel de Atalhos de Bolões
- * CRUD da tabela public.modelos_boloes
+ * CRUD das tabelas public.modelos_boloes e public.modelos_boloes_especiais
  */
 
 const sb = supabase.createClient(
@@ -31,6 +31,8 @@ const MODALIDADES = [
     'São João'
 ];
 
+const MODALIDADES_ESPECIAIS = ['Páscoa', 'São João', 'Independência', 'Virada'];
+
 const LOJA_TEMA = {
     boulevard: 'boulevard',
     centro: 'centro',
@@ -43,8 +45,10 @@ const state = {
     usuario: null,
     lojas: [],
     atalhos: [],
+    especiais: [],
     salvando: false,
-    copiando: false
+    copiando: false,
+    salvandoEspecial: false
 };
 
 function setStatus(mensagem, tipo = 'muted', icone = 'info-circle') {
@@ -52,6 +56,15 @@ function setStatus(mensagem, tipo = 'muted', icone = 'info-circle') {
     if (!el) return;
 
     el.className = `status ${tipo}`;
+    el.innerHTML = `<i class="fas fa-${icone}"></i><span>${escapeHtml(mensagem)}</span>`;
+}
+
+
+function setSpecialStatus(mensagem, tipo = 'muted', icone = 'info-circle') {
+    const el = $('specialStatus');
+    if (!el) return;
+
+    el.className = `status ${tipo} special-status`;
     el.innerHTML = `<i class="fas fa-${icone}"></i><span>${escapeHtml(mensagem)}</span>`;
 }
 
@@ -148,9 +161,10 @@ async function init() {
         preencherSeletoresModelo();
         bind();
 
-        await carregarAtalhos();
+        await Promise.all([carregarAtalhos(), carregarEspeciais()]);
 
         setStatus('Atalhos carregados.', 'ok', 'check-circle');
+        setSpecialStatus('Concursos especiais carregados.', 'ok', 'check-circle');
     } catch (erro) {
         console.error('Erro na inicialização:', erro);
         setStatus(
@@ -785,7 +799,403 @@ async function confirmarCopia() {
     }
 }
 
+
+function preencherModalidadesEspeciais() {
+    const select = $('especialModalidade');
+    if (!select) return;
+
+    select.innerHTML = '';
+    MODALIDADES_ESPECIAIS.forEach(modalidade => {
+        const option = document.createElement('option');
+        option.value = modalidade;
+        option.textContent = modalidade;
+        select.appendChild(option);
+    });
+}
+
+function formatarDataBR(dataIso) {
+    if (!dataIso) return '—';
+
+    const partes = String(dataIso).slice(0, 10).split('-');
+    if (partes.length !== 3) return '—';
+
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+function compararEspeciaisMaisRecentes(a, b) {
+    const dataA = String(a.dt_concurso || '');
+    const dataB = String(b.dt_concurso || '');
+
+    if (dataA !== dataB) return dataB.localeCompare(dataA);
+    return Number(b.concurso || 0) - Number(a.concurso || 0);
+}
+
+async function carregarEspeciais() {
+    setSpecialStatus('Carregando concursos especiais...', 'muted', 'spinner fa-spin');
+
+    const { data, error } = await sb
+        .from('modelos_boloes_especiais')
+        .select('id, modalidade, concurso, dt_inicial, dt_concurso, ativo')
+        .order('modalidade', { ascending: true })
+        .order('dt_concurso', { ascending: false });
+
+    if (error) {
+        throw new Error(`Erro ao carregar concursos especiais: ${error.message}`);
+    }
+
+    state.especiais = data || [];
+    renderEspeciais();
+}
+
+function especiaisDaModalidade(modalidade) {
+    return state.especiais
+        .filter(item => item.modalidade === modalidade)
+        .sort(compararEspeciaisMaisRecentes);
+}
+
+function especialAtivoDaModalidade(modalidade) {
+    return especiaisDaModalidade(modalidade).find(item => item.ativo) || null;
+}
+
+function renderEspeciais() {
+    const grid = $('specialsGrid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    let totalAtivos = 0;
+    let conflitoAtivos = false;
+
+    MODALIDADES_ESPECIAIS.forEach(modalidade => {
+        const registros = especiaisDaModalidade(modalidade);
+        const ativos = registros.filter(item => item.ativo);
+        const atual = ativos[0] || null;
+
+        if (atual) totalAtivos += 1;
+        if (ativos.length > 1) conflitoAtivos = true;
+
+        grid.appendChild(criarCardEspecial(modalidade, atual, registros));
+    });
+
+    if (conflitoAtivos) {
+        setSpecialStatus(
+            'Atenção: existe modalidade com mais de um concurso ativo. Edite o concurso correto para normalizar.',
+            'err',
+            'triangle-exclamation'
+        );
+        return;
+    }
+
+    setSpecialStatus(
+        `${totalAtivos} de ${MODALIDADES_ESPECIAIS.length} modalidades especiais configuradas.`,
+        totalAtivos === MODALIDADES_ESPECIAIS.length ? 'ok' : 'muted',
+        totalAtivos === MODALIDADES_ESPECIAIS.length ? 'check-circle' : 'info-circle'
+    );
+}
+
+function criarCardEspecial(modalidade, atual, registros) {
+    const card = document.createElement('article');
+    card.className = `special-card${atual ? '' : ' special-empty'}`;
+
+    const historico = registros.filter(item => !atual || Number(item.id) !== Number(atual.id));
+
+    card.innerHTML = `
+        <div class="special-card-top">
+          <div>
+            <div class="special-kicker">Modalidade especial</div>
+            <h3 class="special-name">${escapeHtml(modalidade)}</h3>
+          </div>
+          <span class="slot-status ${atual ? 'active' : 'off'}">
+            ${atual ? 'Vigente' : 'Sem concurso'}
+          </span>
+        </div>
+
+        ${atual ? `
+          <div class="special-current">
+            <div class="special-concurso">
+              <span>Concurso</span>
+              <strong>${escapeHtml(atual.concurso)}</strong>
+            </div>
+            <div class="special-dates">
+              <span><i class="fas fa-calendar-plus"></i>Início: ${formatarDataBR(atual.dt_inicial)}</span>
+              <span><i class="fas fa-calendar-check"></i>Sorteio: ${formatarDataBR(atual.dt_concurso)}</span>
+            </div>
+          </div>
+        ` : `
+          <div class="special-placeholder">
+            <i class="fas fa-calendar-xmark"></i>
+            <span>Nenhum concurso vigente cadastrado.</span>
+          </div>
+        `}
+
+        <div class="special-actions">
+          <button type="button" class="btn-primary btn-special-new">
+            <i class="fas fa-plus"></i> ${atual ? 'Novo concurso' : 'Cadastrar'}
+          </button>
+          ${atual ? `
+            <button type="button" class="btn-dark btn-special-edit">
+              <i class="fas fa-pen"></i> Editar atual
+            </button>
+          ` : ''}
+        </div>
+
+        ${historico.length ? `
+          <details class="special-history">
+            <summary>
+              <span><i class="fas fa-clock-rotate-left"></i> Histórico</span>
+              <span>${historico.length}</span>
+            </summary>
+            <div class="special-history-list"></div>
+          </details>
+        ` : ''}
+    `;
+
+    card.querySelector('.btn-special-new').addEventListener('click', () => {
+        abrirNovoEspecial(modalidade);
+    });
+
+    card.querySelector('.btn-special-edit')?.addEventListener('click', () => {
+        abrirEdicaoEspecial(atual);
+    });
+
+    const listaHistorico = card.querySelector('.special-history-list');
+    if (listaHistorico) {
+        historico.forEach(item => {
+            const linha = document.createElement('button');
+            linha.type = 'button';
+            linha.className = 'special-history-item';
+            linha.innerHTML = `
+              <span>
+                <strong>#${escapeHtml(item.concurso)}</strong>
+                <small>${formatarDataBR(item.dt_concurso)}</small>
+              </span>
+              <span class="history-edit"><i class="fas fa-pen"></i></span>
+            `;
+            linha.addEventListener('click', () => abrirEdicaoEspecial(item));
+            listaHistorico.appendChild(linha);
+        });
+    }
+
+    return card;
+}
+
+function abrirNovoEspecial(modalidade = MODALIDADES_ESPECIAIS[0]) {
+    $('formEspecial').reset();
+    $('especialId').value = '';
+    $('especialModalidade').disabled = false;
+    $('especialModalidade').value = modalidade;
+    $('especialAtivo').checked = true;
+    $('specialEditorTitle').textContent = 'Novo concurso especial';
+    $('btnExcluirEspecial').classList.add('hidden');
+
+    abrirOverlay('specialOverlay');
+    setTimeout(() => $('especialConcurso').focus(), 80);
+}
+
+function abrirEdicaoEspecial(item) {
+    $('formEspecial').reset();
+    $('especialId').value = String(item.id);
+    $('especialModalidade').value = item.modalidade;
+    $('especialModalidade').disabled = true;
+    $('especialConcurso').value = item.concurso ?? '';
+    $('especialDataInicial').value = String(item.dt_inicial || '').slice(0, 10);
+    $('especialDataConcurso').value = String(item.dt_concurso || '').slice(0, 10);
+    $('especialAtivo').checked = Boolean(item.ativo);
+    $('specialEditorTitle').textContent = item.ativo
+        ? 'Editar concurso vigente'
+        : 'Editar concurso do histórico';
+    $('btnExcluirEspecial').classList.remove('hidden');
+
+    abrirOverlay('specialOverlay');
+    setTimeout(() => $('especialConcurso').focus(), 80);
+}
+
+function validarFormularioEspecial() {
+    const id = Number($('especialId').value || 0);
+    const modalidade = $('especialModalidade').value;
+    const concurso = Number.parseInt($('especialConcurso').value, 10);
+    const dtInicial = $('especialDataInicial').value;
+    const dtConcurso = $('especialDataConcurso').value;
+    const ativo = $('especialAtivo').checked;
+
+    if (!MODALIDADES_ESPECIAIS.includes(modalidade)) {
+        throw new Error('Modalidade especial inválida.');
+    }
+    if (!Number.isInteger(concurso) || concurso <= 0) {
+        throw new Error('Informe um número de concurso válido.');
+    }
+    if (!dtInicial) {
+        throw new Error('Informe a data inicial.');
+    }
+    if (!dtConcurso) {
+        throw new Error('Informe a data do concurso.');
+    }
+    if (dtInicial > dtConcurso) {
+        throw new Error('A data inicial não pode ser posterior à data do concurso.');
+    }
+
+    const duplicado = state.especiais.find(item =>
+        item.modalidade === modalidade &&
+        Number(item.concurso) === concurso &&
+        Number(item.id) !== id
+    );
+
+    if (duplicado) {
+        throw new Error(
+            `O concurso ${concurso} de ${modalidade} já existe no histórico. Edite esse registro.`
+        );
+    }
+
+    return {
+        id,
+        modalidade,
+        concurso,
+        dt_inicial: dtInicial,
+        dt_concurso: dtConcurso,
+        ativo
+    };
+}
+
+async function restaurarAtivosEspeciais(ids) {
+    if (!ids.length) return;
+
+    await sb
+        .from('modelos_boloes_especiais')
+        .update({ ativo: true })
+        .in('id', ids);
+}
+
+async function salvarEspecial(event) {
+    event.preventDefault();
+    if (state.salvandoEspecial) return;
+
+    const btn = $('btnSalvarEspecial');
+    let ativosAnteriores = [];
+
+    try {
+        const payload = validarFormularioEspecial();
+
+        state.salvandoEspecial = true;
+        setLoading(btn, true);
+
+        if (payload.ativo) {
+            ativosAnteriores = state.especiais
+                .filter(item =>
+                    item.modalidade === payload.modalidade &&
+                    item.ativo &&
+                    Number(item.id) !== payload.id
+                )
+                .map(item => Number(item.id));
+
+            let desativar = sb
+                .from('modelos_boloes_especiais')
+                .update({ ativo: false })
+                .eq('modalidade', payload.modalidade)
+                .eq('ativo', true);
+
+            if (payload.id) {
+                desativar = desativar.neq('id', payload.id);
+            }
+
+            const { error: erroDesativar } = await desativar;
+            if (erroDesativar) {
+                throw new Error(`Erro ao encerrar o concurso anterior: ${erroDesativar.message}`);
+            }
+        }
+
+        const dados = {
+            modalidade: payload.modalidade,
+            concurso: payload.concurso,
+            dt_inicial: payload.dt_inicial,
+            dt_concurso: payload.dt_concurso,
+            ativo: payload.ativo
+        };
+
+        let error;
+        if (payload.id) {
+            ({ error } = await sb
+                .from('modelos_boloes_especiais')
+                .update(dados)
+                .eq('id', payload.id));
+        } else {
+            ({ error } = await sb
+                .from('modelos_boloes_especiais')
+                .insert(dados));
+        }
+
+        if (error) {
+            await restaurarAtivosEspeciais(ativosAnteriores);
+
+            if (error.code === '23505') {
+                throw new Error('Esse concurso já está cadastrado para a modalidade escolhida.');
+            }
+            throw new Error(error.message);
+        }
+
+        fecharOverlay('specialOverlay');
+        await carregarEspeciais();
+
+        setSpecialStatus(
+            payload.ativo
+                ? `${payload.modalidade} ${payload.concurso} definido como concurso vigente.`
+                : 'Concurso especial salvo como inativo.',
+            'ok',
+            'check-circle'
+        );
+    } catch (erro) {
+        console.error('Erro ao salvar concurso especial:', erro);
+        setSpecialStatus(
+            erro?.message || 'Erro ao salvar o concurso especial.',
+            'err',
+            'exclamation-circle'
+        );
+    } finally {
+        state.salvandoEspecial = false;
+        setLoading(btn, false);
+    }
+}
+
+async function excluirEspecial() {
+    const id = Number($('especialId').value || 0);
+    const item = state.especiais.find(registro => Number(registro.id) === id);
+    if (!item) return;
+
+    if (!confirm(
+        `Excluir definitivamente ${item.modalidade} — concurso ${item.concurso}?\n\n` +
+        'Use esta opção apenas para corrigir cadastros incorretos.'
+    )) {
+        return;
+    }
+
+    const btn = $('btnExcluirEspecial');
+    setLoading(btn, true);
+
+    try {
+        const { error } = await sb
+            .from('modelos_boloes_especiais')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw new Error(error.message);
+
+        fecharOverlay('specialOverlay');
+        await carregarEspeciais();
+        setSpecialStatus('Concurso especial excluído.', 'ok', 'check-circle');
+    } catch (erro) {
+        setSpecialStatus(
+            erro?.message || 'Erro ao excluir o concurso especial.',
+            'err',
+            'exclamation-circle'
+        );
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+
 function bind() {
+    preencherModalidadesEspeciais();
+
     $('filtroLoja').addEventListener('change', render);
     $('filtroModalidade').addEventListener('change', render);
 
@@ -813,6 +1223,13 @@ function bind() {
     $('btnFecharCopy').addEventListener('click', () => fecharOverlay('copyOverlay'));
     $('btnCancelarCopy').addEventListener('click', () => fecharOverlay('copyOverlay'));
     $('btnConfirmarCopy').addEventListener('click', confirmarCopia);
+
+    $('btnNovoEspecial').addEventListener('click', () => abrirNovoEspecial());
+    $('formEspecial').addEventListener('submit', salvarEspecial);
+    $('btnExcluirEspecial').addEventListener('click', excluirEspecial);
+    $('btnFecharEspecial').addEventListener('click', () => fecharOverlay('specialOverlay'));
+    $('btnCancelarEspecial').addEventListener('click', () => fecharOverlay('specialOverlay'));
+
 
     $('btnVoltarBoloes').addEventListener('click', () => {
         window.location.href = './boloes.html';
