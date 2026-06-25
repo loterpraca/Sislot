@@ -125,24 +125,24 @@
       <div class="form-grid">
         <div class="field span-2">
           <label for="atalhoNome">
-            <i class="fas fa-tag"></i> Nome exibido
+            <i class="fas fa-tag"></i> Nome do atalho
           </label>
-          <input id="atalhoNome" maxlength="30" placeholder="Ex.: [01x12]" autocomplete="off"/>
-          <small>Esse texto aparece sobre o ícone do atalho.</small>
+          <input id="atalhoNome" placeholder="[--x--]" readonly tabindex="-1"/>
+          <small>Gerado automaticamente no padrão [01x12].</small>
         </div>
 
         <div class="field">
           <label for="atalhoJogos">
             <i class="fas fa-list-ol"></i> Qtd. jogos
           </label>
-          <input id="atalhoJogos" type="number" min="0" step="1" inputmode="numeric"/>
+          <select id="atalhoJogos"></select>
         </div>
 
         <div class="field">
           <label for="atalhoDezenas">
             <i class="fas fa-dice"></i> Dezenas
           </label>
-          <input id="atalhoDezenas" type="number" min="0" step="1" inputmode="numeric"/>
+          <select id="atalhoDezenas"></select>
         </div>
 
         <div class="field">
