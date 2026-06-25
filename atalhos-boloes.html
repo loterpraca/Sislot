@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>SISLOT — Atalhos de Bolões</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="./css/atalhos-boloes.css"/>
+</head>
+
+<body data-loja="centro">
+<header class="header">
+  <div class="header-inner">
+    <div class="brand-icon">
+      <i class="fas fa-bolt"></i>
+    </div>
+
+    <div class="header-info">
+      <div class="header-title">Atalhos</div>
+      <div class="header-sub">Configuração rápida de bolões</div>
+    </div>
+
+    <button type="button" class="btn-menu" id="btnVoltarBoloes">
+      <i class="fas fa-ticket-alt"></i>
+      <span>Bolões</span>
+    </button>
+
+    <button type="button" class="btn-menu" id="btnInicio">
+      <i class="fas fa-home"></i>
+      <span>Início</span>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card filter-card">
+    <div class="section-header">
+      <div class="section-icon"><i class="fas fa-sliders"></i></div>
+      <div>
+        <h1 class="section-title">Configuração</h1>
+        <p class="section-subtitle">Cada loja e modalidade pode ter até 15 atalhos.</p>
+      </div>
+    </div>
+
+    <div class="filters-grid">
+      <div class="field">
+        <label for="filtroLoja">
+          <i class="fas fa-store"></i> Loja
+        </label>
+        <select id="filtroLoja"></select>
+      </div>
+
+      <div class="field">
+        <label for="filtroModalidade">
+          <i class="fas fa-clover"></i> Modalidade
+        </label>
+        <select id="filtroModalidade"></select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="button" class="btn-primary" id="btnNovo">
+          <i class="fas fa-plus"></i> Novo atalho
+        </button>
+
+        <button type="button" class="btn-dark" id="btnCopiar">
+          <i class="fas fa-copy"></i> Copiar para lojas
+        </button>
+
+        <button type="button" class="btn-ghost" id="btnAtualizar">
+          <i class="fas fa-rotate"></i> Atualizar
+        </button>
+      </div>
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-pill">
+        <i class="fas fa-bolt"></i>
+        <span id="resumoAtivos">0 ativos</span>
+      </div>
+
+      <div class="summary-pill muted">
+        <i class="fas fa-layer-group"></i>
+        <span id="resumoVagas">15 vagas disponíveis</span>
+      </div>
+    </div>
+
+    <div id="status" class="status muted">
+      <i class="fas fa-info-circle"></i>
+      <span>Carregando...</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-header list-header">
+      <div class="section-icon"><i class="fas fa-list-ol"></i></div>
+      <div class="list-title-wrap">
+        <h2 class="section-title">Atalhos cadastrados</h2>
+        <p class="section-subtitle" id="listaContexto">Selecione loja e modalidade.</p>
+      </div>
+    </div>
+
+    <div class="slots-grid" id="slotsGrid"></div>
+  </section>
+</main>
+
+<!-- MODAL DE EDIÇÃO -->
+<div class="modal-overlay" id="editorOverlay" aria-hidden="true">
+  <div class="modal modal-editor" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+    <div class="modal-header">
+      <div class="modal-icon"><i class="fas fa-bolt"></i></div>
+      <div>
+        <h3 class="modal-title" id="editorTitle">Novo atalho</h3>
+        <p class="modal-subtitle" id="editorContexto"></p>
+      </div>
+      <button type="button" class="modal-close" id="btnFecharEditor" aria-label="Fechar">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form id="formAtalho" novalidate>
+      <input type="hidden" id="atalhoId"/>
+
+      <div class="form-grid">
+        <div class="field span-2">
+          <label for="atalhoNome">
+            <i class="fas fa-tag"></i> Nome exibido
+          </label>
+          <input id="atalhoNome" maxlength="30" placeholder="Ex.: [01x12]" autocomplete="off"/>
+          <small>Esse texto aparece sobre o ícone do atalho.</small>
+        </div>
+
+        <div class="field">
+          <label for="atalhoJogos">
+            <i class="fas fa-list-ol"></i> Qtd. jogos
+          </label>
+          <input id="atalhoJogos" type="number" min="0" step="1" inputmode="numeric"/>
+        </div>
+
+        <div class="field">
+          <label for="atalhoDezenas">
+            <i class="fas fa-dice"></i> Dezenas
+          </label>
+          <input id="atalhoDezenas" type="number" min="0" step="1" inputmode="numeric"/>
+        </div>
+
+        <div class="field">
+          <label for="atalhoValor">
+            <i class="fas fa-money-bill-wave"></i> Valor da cota
+          </label>
+          <input id="atalhoValor" inputmode="decimal" placeholder="Ex.: 37,42"/>
+        </div>
+
+        <div class="field">
+          <label for="atalhoCotas">
+            <i class="fas fa-users"></i> Qtd. cotas
+          </label>
+          <input id="atalhoCotas" type="number" min="1" step="1" inputmode="numeric"/>
+        </div>
+
+        <div class="field">
+          <label for="atalhoOrdem">
+            <i class="fas fa-arrow-down-1-9"></i> Posição
+          </label>
+          <select id="atalhoOrdem"></select>
+        </div>
+
+        <div class="field switch-field">
+          <label>Status</label>
+          <label class="switch-row" for="atalhoAtivo">
+            <input id="atalhoAtivo" type="checkbox" checked/>
+            <span class="switch-control"></span>
+            <span class="switch-label">Atalho ativo</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-actions editor-actions">
+        <button type="button" class="btn-danger hidden" id="btnExcluir">
+          <i class="fas fa-trash"></i> Excluir
+        </button>
+
+        <span class="actions-spacer"></span>
+
+        <button type="button" class="btn-ghost" id="btnCancelarEditor">
+          Cancelar
+        </button>
+
+        <button type="submit" class="btn-primary" id="btnSalvar">
+          <i class="fas fa-check"></i> Salvar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL DE CÓPIA -->
+<div class="modal-overlay" id="copyOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="copyTitle">
+    <div class="modal-header">
+      <div class="modal-icon"><i class="fas fa-copy"></i></div>
+      <div>
+        <h3 class="modal-title" id="copyTitle">Copiar configuração</h3>
+        <p class="modal-subtitle" id="copyContexto"></p>
+      </div>
+      <button type="button" class="modal-close" id="btnFecharCopy" aria-label="Fechar">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="copy-warning">
+      <i class="fas fa-triangle-exclamation"></i>
+      <span>Os atalhos atuais da modalidade nas lojas selecionadas serão substituídos.</span>
+    </div>
+
+    <div class="copy-list" id="copyLojas"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="btnCancelarCopy">Cancelar</button>
+      <button type="button" class="btn-primary" id="btnConfirmarCopy">
+        <i class="fas fa-copy"></i> Copiar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="./sislot-config.js"></script>
+<script src="./sislot-security.js"></script>
+<script src="./js/sislot-utils.js"></script>
+<script src="./js/atalhos-boloes.js"></script>
+</body>
+</html>
