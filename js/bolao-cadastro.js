@@ -246,29 +246,64 @@ function aplicarModeloEspecial(modalidade, force = false) {
 }
 
 async function carregarModelos() {
-    const { data } = await sb
+    const { data, error } = await sb
         .from('modelos_boloes')
-        .select('loteria_id, modalidade, nome, qtd_jogos, qtd_dezenas, valor_cota, qtd_cotas, ordem')
+        .select(`
+            id,
+            loteria_id,
+            modalidade,
+            nome,
+            qtd_jogos,
+            qtd_dezenas,
+            valor_cota,
+            qtd_cotas,
+            ordem,
+            ativo
+        `)
         .eq('ativo', true)
-        .order('ordem');
+        .order('loteria_id', { ascending: true })
+        .order('modalidade', { ascending: true })
+        .order('ordem', { ascending: true });
+
+    if (error) {
+        console.error('ERRO carregarModelos:', error);
+
+        SHORTCUTS = {};
+
+        setStatus(
+            'status',
+            `Erro ao carregar atalhos: ${error.message}`,
+            'err',
+            'exclamation-circle'
+        );
+
+        return;
+    }
 
     SHORTCUTS = {};
-    if (!data) return;
 
     const idParaSlug = {};
+
     Object.entries(lojaIdPorSlug).forEach(([slug, id]) => {
-        idParaSlug[id] = slug;
+        idParaSlug[Number(id)] = slug;
     });
 
-    data.forEach(m => {
-        const slug = idParaSlug[m.loteria_id];
+    (data || []).forEach(modelo => {
+        const slug = idParaSlug[Number(modelo.loteria_id)];
+
         if (!slug) return;
-        if (!SHORTCUTS[slug]) SHORTCUTS[slug] = {};
-        if (!SHORTCUTS[slug][m.modalidade]) SHORTCUTS[slug][m.modalidade] = [];
-        SHORTCUTS[slug][m.modalidade].push(m);
+
+        if (!SHORTCUTS[slug]) {
+            SHORTCUTS[slug] = {};
+        }
+
+        if (!SHORTCUTS[slug][modelo.modalidade]) {
+            SHORTCUTS[slug][modelo.modalidade] = [];
+        }
+
+        SHORTCUTS[slug][modelo.modalidade].push(modelo);
     });
 }
-
 /************************************************************
  * TEMA / VISUAL
  ************************************************************/
@@ -439,6 +474,7 @@ function renderChips(modKey) {
     if (!wrap || !row) return;
 
     row.innerHTML = '';
+    row.scrollLeft = 0;
     if (!chips.length) {
         wrap.classList.remove('active');
         return;
@@ -1436,7 +1472,18 @@ if (modGrid) {
         }
     }, { passive: false });
 }
-}
 
+const chipsRow = $('chipsRow');
+
+if (chipsRow) {
+    chipsRow.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            e.preventDefault();
+            chipsRow.scrollLeft += e.deltaY;
+        }
+    }, { passive: false });
+}
+    
+}
 // Inicialização
 init();
