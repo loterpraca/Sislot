@@ -61,6 +61,10 @@ let todasLojas = [];
 let lojaIdPorSlug = {};
 let SHORTCUTS = {};
 let ESPECIAIS = {};
+// Impede abertura de mais de uma confirmação
+let confirmacaoMovimentacaoAberta = false;
+// Impede mais de uma gravação simultânea
+let movimentacaoEmAndamento = false;
 
 const CAMPOS_FORM = ['modalidade', 'concurso', 'dataInicial', 'dataConcurso', 'qtdJogos', 'qtdDezenas', 'valorCota', 'cotas'];
 const CAMPOS_MOV  = ['deltaBoulevard', 'deltaCentro', 'deltaLotobel', 'deltaSantaTereza', 'deltaViaBrasil'];
@@ -906,27 +910,80 @@ async function onMovimentar() {
     const btn = $('btnMovimentar');
     if (!btn) return;
 
+    /*
+     * Primeira proteção:
+     * impede duplo clique enquanto consulta o bolão,
+     * monta a confirmação ou registra no banco.
+     */
+    if (
+        confirmacaoMovimentacaoAberta ||
+        movimentacaoEmAndamento
+    ) {
+        setStatus(
+            'status',
+            'Uma movimentação já está sendo conferida ou registrada.',
+            'muted',
+            'clock'
+        );
+        return;
+    }
+
+    confirmacaoMovimentacaoAberta = true;
+    setBtnLoading(btn, true);
+
+    const liberarConfirmacao = () => {
+        confirmacaoMovimentacaoAberta = false;
+
+        if (!movimentacaoEmAndamento) {
+            setBtnLoading(btn, false);
+        }
+    };
+
     try {
         const modal = $('modalidade')?.value?.trim() || '';
         const concurso = $('concurso')?.value?.trim() || '';
         const cota = parseCota($('valorCota')?.value);
 
+        if (!loteriaAtiva?.loteria_id) {
+            throw new Error('Nenhuma loja de origem selecionada.');
+        }
+
         if (!modal || !concurso || !cota) {
-            throw new Error('Preencha modalidade, concurso e valor da cota.');
+            throw new Error(
+                'Preencha modalidade, concurso e valor da cota.'
+            );
         }
 
         const mapaDeltas = {
-            'boulevard':    parseInt($('deltaBoulevard')?.value)   || 0,
-            'centro':       parseInt($('deltaCentro')?.value)      || 0,
-            'lotobel':      parseInt($('deltaLotobel')?.value)     || 0,
-            'santa-tereza': parseInt($('deltaSantaTereza')?.value) || 0,
-            'via-brasil':   parseInt($('deltaViaBrasil')?.value)   || 0,
+            boulevard:
+                parseInt($('deltaBoulevard')?.value, 10) || 0,
+
+            centro:
+                parseInt($('deltaCentro')?.value, 10) || 0,
+
+            lotobel:
+                parseInt($('deltaLotobel')?.value, 10) || 0,
+
+            'santa-tereza':
+                parseInt($('deltaSantaTereza')?.value, 10) || 0,
+
+            'via-brasil':
+                parseInt($('deltaViaBrasil')?.value, 10) || 0,
         };
 
-        const temDelta = Object.values(mapaDeltas).some(v => v !== 0);
-        if (!temDelta) throw new Error('Informe ao menos um valor de destino.');
+        const temDelta = Object.entries(mapaDeltas).some(
+            ([slug, valor]) =>
+                slug !== loteriaAtiva.loteria_slug &&
+                valor !== 0
+        );
 
-        const { data: bolao } = await sb
+        if (!temDelta) {
+            throw new Error(
+                'Informe ao menos um valor de destino.'
+            );
+        }
+
+        const { data: bolao, error: bolaoError } = await sb
             .from('boloes')
             .select('id, valor_cota, qtd_cotas_total')
             .eq('loteria_id', loteriaAtiva.loteria_id)
@@ -936,128 +993,350 @@ async function onMovimentar() {
             .neq('status', 'CANCELADO')
             .maybeSingle();
 
-        if (!bolao) throw new Error('Bolão não encontrado. Cadastre antes de movimentar.');
+        if (bolaoError) {
+            throw new Error(
+                `Erro ao localizar o bolão: ${bolaoError.message}`
+            );
+        }
 
-        const { data: movs } = await sb
+        if (!bolao) {
+            throw new Error(
+                'Bolão não encontrado. Cadastre antes de movimentar.'
+            );
+        }
+
+        const { data: movs, error: movsError } = await sb
             .from('movimentacoes_cotas')
-            .select('loteria_destino, loteria_origem, qtd_cotas')
+            .select(
+                'loteria_destino, loteria_origem, qtd_cotas'
+            )
             .eq('bolao_id', bolao.id)
             .eq('status', 'ATIVO');
+
+        if (movsError) {
+            throw new Error(
+                `Erro ao carregar movimentações: ${movsError.message}`
+            );
+        }
 
         const saldoPorId = {};
         const historicoDetalhePorId = {};
 
-        if (movs) {
-            movs.forEach(m => {
-                const destId = m.loteria_destino;
-                const origemId = m.loteria_origem;
+        (movs || []).forEach(m => {
+            const destId = Number(m.loteria_destino);
+            const origemId = Number(m.loteria_origem);
+            const qtd = Number(m.qtd_cotas || 0);
 
-                if (origemId === loteriaAtiva.loteria_id) {
-                    if (!saldoPorId[destId]) saldoPorId[destId] = 0;
-                    if (!historicoDetalhePorId[destId]) historicoDetalhePorId[destId] = [];
-                    saldoPorId[destId] += m.qtd_cotas;
-                    historicoDetalhePorId[destId].push(m.qtd_cotas);
+            if (origemId === Number(loteriaAtiva.loteria_id)) {
+                saldoPorId[destId] =
+                    Number(saldoPorId[destId] || 0) + qtd;
+
+                if (!historicoDetalhePorId[destId]) {
+                    historicoDetalhePorId[destId] = [];
                 }
 
-                if (destId === loteriaAtiva.loteria_id) {
-                    if (!saldoPorId[origemId]) saldoPorId[origemId] = 0;
-                    if (!historicoDetalhePorId[origemId]) historicoDetalhePorId[origemId] = [];
-                    saldoPorId[origemId] -= m.qtd_cotas;
-                    historicoDetalhePorId[origemId].push(-m.qtd_cotas);
+                historicoDetalhePorId[destId].push(qtd);
+            }
+
+            if (destId === Number(loteriaAtiva.loteria_id)) {
+                saldoPorId[origemId] =
+                    Number(saldoPorId[origemId] || 0) - qtd;
+
+                if (!historicoDetalhePorId[origemId]) {
+                    historicoDetalhePorId[origemId] = [];
                 }
-            });
-        }
+
+                historicoDetalhePorId[origemId].push(-qtd);
+            }
+        });
 
         const linhas = [
             `📍 Origem: ${loteriaAtiva.loteria_nome}`,
             `🎯 ${modal} — Concurso ${concurso}`,
-            `🎫 Cota: ${fmtBRL(cota)}`, '',
+            `🎫 Cota: ${fmtBRL(cota)}`,
+            '',
             '📊 CONFERÊNCIA DE MOVIMENTAÇÃO:',
             '(Histórico [Mov] → Final)',
         ];
 
-        const slugsDestino = ['boulevard', 'centro', 'lotobel', 'santa-tereza', 'via-brasil'];
+        const slugsDestino = [
+            'boulevard',
+            'centro',
+            'lotobel',
+            'santa-tereza',
+            'via-brasil',
+        ];
+
         const icones = {
-            'boulevard': '🏢',
-            'centro': '🏙️',
-            'lotobel': '🏛️',
+            boulevard: '🏢',
+            centro: '🏙️',
+            lotobel: '🏛️',
             'santa-tereza': '⛪',
             'via-brasil': '🛣️',
         };
 
         slugsDestino.forEach(slug => {
-            const delta = mapaDeltas[slug] || 0;
-            const destId = lojaIdPorSlug[slug];
-            const nome = LOJA_CONFIG[slug]?.nome || slug;
-            const icone = icones[slug] || '📍';
-            const hist = historicoDetalhePorId[destId] || [];
-            const saldo = saldoPorId[destId] || 0;
-            const final = saldo + delta;
+            const delta = Number(mapaDeltas[slug] || 0);
+            const destId = Number(lojaIdPorSlug[slug]);
 
-            if (delta === 0 && hist.length === 0) {
-                linhas.push(`${icone} ${nome}: 0 (sem alteração)`);
+            const nome =
+                LOJA_CONFIG[slug]?.nome || slug;
+
+            const icone =
+                icones[slug] || '📍';
+
+            const hist =
+                historicoDetalhePorId[destId] || [];
+
+            const saldo =
+                Number(saldoPorId[destId] || 0);
+
+            const final =
+                saldo + delta;
+
+            if (
+                slug === loteriaAtiva.loteria_slug
+            ) {
                 return;
             }
+
+            if (
+                delta === 0 &&
+                hist.length === 0
+            ) {
+                linhas.push(
+                    `${icone} ${nome}: 0 (sem alteração)`
+                );
+                return;
+            }
+
+            const histStr = hist.length
+                ? hist
+                    .map(v =>
+                        v < 0
+                            ? `[${v}]`
+                            : String(v)
+                    )
+                    .join(' + ')
+                : '0';
 
             if (delta === 0) {
-                const histStr = hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ');
-                linhas.push(`${icone} ${nome}: ${histStr} → ${saldo} (sem alteração)`);
+                linhas.push(
+                    `${icone} ${nome}: ${histStr} → ${saldo} (sem alteração)`
+                );
                 return;
             }
 
-            const histStr = hist.length ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ') : '0';
-            const deltaStr = delta > 0 ? `[+${delta}]` : `[${delta}]`;
-            linhas.push(`${icone} ${nome}: ${histStr} ${deltaStr} → ${final}`);
+            const deltaStr =
+                delta > 0
+                    ? `[+${delta}]`
+                    : `[${delta}]`;
+
+            linhas.push(
+                `${icone} ${nome}: ${histStr} ${deltaStr} → ${final}`
+            );
         });
 
-        linhas.push('', '⚠️ Confirma a atualização desses valores?');
+        linhas.push(
+            '',
+            '⚠️ Confirma a atualização desses valores?'
+        );
+
+        /*
+         * Segunda proteção:
+         * cada confirmação só pode ser consumida uma vez.
+         */
+        let confirmacaoConsumida = false;
 
         showModal({
             title: 'Confirmar Movimentação',
             body: linhas.join('\n'),
+
             onConfirm: async () => {
-                setBtnLoading(btn, true);
-                setStatus('status', 'Registrando…', 'muted', 'spinner fa-spin');
+                if (
+                    confirmacaoConsumida ||
+                    movimentacaoEmAndamento
+                ) {
+                    return;
+                }
+
+                confirmacaoConsumida = true;
+
+                setStatus(
+                    'status',
+                    'Registrando movimentação…',
+                    'muted',
+                    'spinner fa-spin'
+                );
+
                 try {
-                    await doMovimentar(bolao, mapaDeltas);
-                    setStatus('status', '✓ Movimentação registrada!', 'ok', 'check-double');
+                    await doMovimentar(
+                        bolao,
+                        mapaDeltas
+                    );
+
+                    setStatus(
+                        'status',
+                        '✓ Movimentação registrada!',
+                        'ok',
+                        'check-double'
+                    );
+
                     limparMov();
+
                 } catch (e) {
-                    setStatus('status', e.message, 'err', 'exclamation-circle');
+                    setStatus(
+                        'status',
+                        e?.message ||
+                            'Erro ao registrar movimentação.',
+                        'err',
+                        'exclamation-circle'
+                    );
+
                 } finally {
+                    confirmacaoMovimentacaoAberta = false;
                     setBtnLoading(btn, false);
                 }
+            },
+
+            onCancel: () => {
+                if (confirmacaoConsumida) {
+                    return;
+                }
+
+                confirmacaoConsumida = true;
+                liberarConfirmacao();
+
+                setStatus(
+                    'status',
+                    'Movimentação cancelada.',
+                    'muted',
+                    'ban'
+                );
             }
         });
+
     } catch (e) {
-        setStatus('status', e.message, 'err', 'exclamation-circle');
+        liberarConfirmacao();
+
+        setStatus(
+            'status',
+            e?.message ||
+                'Erro ao preparar movimentação.',
+            'err',
+            'exclamation-circle'
+        );
     }
 }
 
 async function doMovimentar(bolao, mapaDeltas) {
-    const inserts = [];
-
-    for (const [slug, qtd] of Object.entries(mapaDeltas)) {
-        if (qtd === 0 || slug === loteriaAtiva.loteria_slug) continue;
-
-        const destId = lojaIdPorSlug[slug];
-        if (!destId) throw new Error(`Loja destino não encontrada: ${slug}`);
-
-        inserts.push({
-            bolao_id: bolao.id,
-            loteria_origem: loteriaAtiva.loteria_id,
-            loteria_destino: destId,
-            qtd_cotas: qtd,
-            valor_unitario: bolao.valor_cota,
-            status: 'ATIVO',
-            criado_por: usuario.id,
-        });
+    /*
+     * Terceira proteção:
+     * mesmo que o callback seja disparado novamente,
+     * uma segunda gravação não começa.
+     */
+    if (movimentacaoEmAndamento) {
+        throw new Error(
+            'A movimentação já está sendo registrada.'
+        );
     }
 
-    if (!inserts.length) throw new Error('Nenhuma movimentação válida.');
+    movimentacaoEmAndamento = true;
 
-    const { error } = await sb.from('movimentacoes_cotas').insert(inserts);
-    if (error) throw new Error(error.message);
+    try {
+        if (!bolao?.id) {
+            throw new Error(
+                'Bolão inválido para movimentação.'
+            );
+        }
+
+        if (!loteriaAtiva?.loteria_id) {
+            throw new Error(
+                'Loja de origem não identificada.'
+            );
+        }
+
+        if (!usuario?.id) {
+            throw new Error(
+                'Usuário não identificado.'
+            );
+        }
+
+        const inserts = [];
+
+        for (
+            const [slug, qtdRaw]
+            of Object.entries(mapaDeltas || {})
+        ) {
+            const qtd = Number(qtdRaw || 0);
+
+            if (
+                qtd === 0 ||
+                slug === loteriaAtiva.loteria_slug
+            ) {
+                continue;
+            }
+
+            const destId =
+                Number(lojaIdPorSlug[slug]);
+
+            if (!destId) {
+                throw new Error(
+                    `Loja destino não encontrada: ${slug}`
+                );
+            }
+
+            if (
+                destId ===
+                Number(loteriaAtiva.loteria_id)
+            ) {
+                continue;
+            }
+
+            inserts.push({
+                bolao_id:
+                    bolao.id,
+
+                loteria_origem:
+                    loteriaAtiva.loteria_id,
+
+                loteria_destino:
+                    destId,
+
+                qtd_cotas:
+                    qtd,
+
+                valor_unitario:
+                    bolao.valor_cota,
+
+                status:
+                    'ATIVO',
+
+                criado_por:
+                    usuario.id,
+            });
+        }
+
+        if (!inserts.length) {
+            throw new Error(
+                'Nenhuma movimentação válida.'
+            );
+        }
+
+        const { error } = await sb
+            .from('movimentacoes_cotas')
+            .insert(inserts);
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+    } finally {
+        /*
+         * A trava sempre é liberada, inclusive em caso de erro.
+         */
+        movimentacaoEmAndamento = false;
+    }
 }
 
 /************************************************************
