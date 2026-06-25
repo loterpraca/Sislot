@@ -19,7 +19,7 @@
 
     <div class="header-info">
       <div class="header-title">Atalhos</div>
-      <div class="header-sub">Configuração rápida de bolões</div>
+      <div class="header-sub">Atalhos e concursos especiais</div>
     </div>
 
     <button type="button" class="btn-menu" id="btnVoltarBoloes">
@@ -103,6 +103,29 @@
 
     <div class="slots-grid" id="slotsGrid"></div>
   </section>
+
+  <!-- CONCURSOS ESPECIAIS -->
+  <section class="card special-section">
+    <div class="section-header special-section-header">
+      <div class="section-icon"><i class="fas fa-star"></i></div>
+      <div class="list-title-wrap">
+        <h2 class="section-title">Concursos especiais</h2>
+        <p class="section-subtitle">Configuração global. Apenas um concurso ativo por modalidade.</p>
+      </div>
+
+      <button type="button" class="btn-primary special-new-button" id="btnNovoEspecial">
+        <i class="fas fa-plus"></i> Novo concurso
+      </button>
+    </div>
+
+    <div id="specialStatus" class="status muted special-status">
+      <i class="fas fa-info-circle"></i>
+      <span>Carregando concursos especiais...</span>
+    </div>
+
+    <div class="specials-grid" id="specialsGrid"></div>
+  </section>
+
 </main>
 
 <!-- MODAL DE EDIÇÃO -->
@@ -194,6 +217,85 @@
     </form>
   </div>
 </div>
+
+
+<!-- MODAL DE CONCURSO ESPECIAL -->
+<div class="modal-overlay" id="specialOverlay" aria-hidden="true">
+  <div class="modal modal-editor" role="dialog" aria-modal="true" aria-labelledby="specialEditorTitle">
+    <div class="modal-header">
+      <div class="modal-icon"><i class="fas fa-star"></i></div>
+      <div>
+        <h3 class="modal-title" id="specialEditorTitle">Novo concurso especial</h3>
+        <p class="modal-subtitle">As datas serão preenchidas automaticamente no cadastro do bolão.</p>
+      </div>
+      <button type="button" class="modal-close" id="btnFecharEspecial" aria-label="Fechar">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form id="formEspecial" novalidate>
+      <input type="hidden" id="especialId"/>
+
+      <div class="form-grid">
+        <div class="field span-2">
+          <label for="especialModalidade">
+            <i class="fas fa-clover"></i> Modalidade especial
+          </label>
+          <select id="especialModalidade"></select>
+        </div>
+
+        <div class="field span-2">
+          <label for="especialConcurso">
+            <i class="fas fa-hashtag"></i> Concurso
+          </label>
+          <input id="especialConcurso" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex.: 6800"/>
+        </div>
+
+        <div class="field">
+          <label for="especialDataInicial">
+            <i class="fas fa-calendar-plus"></i> Data inicial
+          </label>
+          <input id="especialDataInicial" type="date"/>
+          <small>Primeiro dia em que o concurso poderá ser cadastrado.</small>
+        </div>
+
+        <div class="field">
+          <label for="especialDataConcurso">
+            <i class="fas fa-calendar-check"></i> Data do concurso
+          </label>
+          <input id="especialDataConcurso" type="date"/>
+          <small>Data oficial do sorteio especial.</small>
+        </div>
+
+        <div class="field span-2 switch-field">
+          <label>Status</label>
+          <label class="switch-row" for="especialAtivo">
+            <input id="especialAtivo" type="checkbox" checked/>
+            <span class="switch-control"></span>
+            <span class="switch-label">Concurso vigente</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-actions editor-actions">
+        <button type="button" class="btn-danger hidden" id="btnExcluirEspecial">
+          <i class="fas fa-trash"></i> Excluir
+        </button>
+
+        <span class="actions-spacer"></span>
+
+        <button type="button" class="btn-ghost" id="btnCancelarEspecial">
+          Cancelar
+        </button>
+
+        <button type="submit" class="btn-primary" id="btnSalvarEspecial">
+          <i class="fas fa-check"></i> Salvar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 
 <!-- MODAL DE CÓPIA -->
 <div class="modal-overlay" id="copyOverlay" aria-hidden="true">
