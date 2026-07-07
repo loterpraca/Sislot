@@ -1,8 +1,12 @@
 (function () {
-  const sb = supabase.createClient(
-    window.SISLOT_CONFIG.url,
-    window.SISLOT_CONFIG.anonKey
-  );
+  const sb = window.SISLOT_SB;
+
+  if (!sb) {
+    throw new Error(
+      'Cliente Supabase global não inicializado. ' +
+      'Carregue sislot-security.js antes de fechamento-rules.js.'
+    );
+  }
 
   function perfilNorm(usuario) {
     return String(usuario?.perfil || '').trim().toUpperCase();
