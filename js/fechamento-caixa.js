@@ -1835,8 +1835,216 @@ async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     }
 }
 
+function _cfTexto(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).trim();
+}
+
+function _cfNumero(v, padrao = 0) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : padrao;
+}
+
+function _cfTipoOrigem(item = {}) {
+    const bruto = _cfTexto(item.tipo_origem || item.tipo).toUpperCase();
+
+    if (['BOLAO', 'FEDERAL', 'RASPADINHA', 'TELESENA', 'CONTA'].includes(bruto)) {
+        return bruto;
+    }
+
+    if (bruto === 'PRODUTO') {
+        if (item.raspadinha_id) return 'RASPADINHA';
+        if (item.telesena_item_id) return 'TELESENA';
+
+        const produto = _cfTexto(item.produto || item.produto_tipo || item.descricao)
+            .toUpperCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+        if (produto.includes('RASPADINHA')) return 'RASPADINHA';
+        if (produto.includes('TELESENA') || produto.includes('TELE SENA')) return 'TELESENA';
+    }
+
+    return bruto;
+}
+
+function _cfItemParaRPC(item = {}, dataRef) {
+    const tipo = _cfTipoOrigem(item);
+    const qtd = Math.trunc(_cfNumero(item.qtd_vendida ?? item.qtd, 1));
+    const valorUnitario = _cfNumero(
+        item.valor_unitario ?? item.valorUnit ?? item.valor,
+        0
+    );
+    const valorTotal = _cfNumero(
+        item.valor_total ?? item.subtotal,
+        qtd * valorUnitario
+    );
+
+    if (!['BOLAO', 'FEDERAL', 'RASPADINHA', 'TELESENA', 'CONTA'].includes(tipo)) {
+        throw new Error(
+            `Item da Área do Cliente com tipo inválido: ${tipo || 'não informado'}.`
+        );
+    }
+
+    if (qtd <= 0) {
+        throw new Error('Item da Área do Cliente com quantidade inválida.');
+    }
+
+    const origemId = item.origem_id ?? null;
+
+    const rpcItem = {
+        tipo_origem: tipo,
+        data_venda: item.data_venda || dataRef,
+        descricao: item.descricao || null,
+        modalidade: item.modalidade || null,
+        concurso: item.concurso !== null && item.concurso !== undefined
+            ? String(item.concurso)
+            : null,
+        produto: item.produto || null,
+        qtd_jogos: item.qtd_jogos ?? item.qtdJogos ?? null,
+        qtd_dezenas: item.qtd_dezenas ?? item.qtdDezenas ?? null,
+        valor_unitario: valorUnitario,
+        qtd_vendida: qtd,
+        valor_total: valorTotal,
+        bolao_id: null,
+        federal_id: null,
+        raspadinha_id: null,
+        telesena_item_id: null
+    };
+
+    if (tipo === 'BOLAO') {
+        rpcItem.bolao_id = item.bolao_id ?? origemId;
+        if (!rpcItem.bolao_id) {
+            throw new Error('Item de bolão da Área do Cliente sem bolao_id.');
+        }
+    } else if (tipo === 'FEDERAL') {
+        rpcItem.federal_id = item.federal_id ?? origemId;
+        if (!rpcItem.federal_id) {
+            throw new Error('Item de Federal da Área do Cliente sem federal_id.');
+        }
+    } else if (tipo === 'RASPADINHA') {
+        rpcItem.raspadinha_id = item.raspadinha_id ?? origemId;
+        rpcItem.produto = rpcItem.produto || 'RASPADINHA';
+        if (!rpcItem.raspadinha_id) {
+            throw new Error('Item de raspadinha da Área do Cliente sem raspadinha_id.');
+        }
+    } else if (tipo === 'TELESENA') {
+        rpcItem.telesena_item_id = item.telesena_item_id ?? origemId;
+        rpcItem.produto = rpcItem.produto || 'TELESENA';
+        if (!rpcItem.telesena_item_id) {
+            throw new Error('Item de Tele Sena da Área do Cliente sem telesena_item_id.');
+        }
+    }
+
+    return rpcItem;
+}
+
+function montarClientesParaRPC(t1) {
+    const cf = ESTADO.tela1?.clienteFechamento || {};
+    const lancamentos = Array.isArray(cf.lancamentos) ? cf.lancamentos : [];
+
+    return lancamentos
+        .filter(l => String(l?.tipo_movimento || 'DEBITO').toUpperCase() === 'DEBITO')
+        .map((lanc, indice) => {
+            const clienteId = _cfTexto(
+                lanc.cliente_id ?? cf.clienteSelecionado?.id
+            );
+
+            if (!clienteId || clienteId === 'NaN') {
+                throw new Error(
+                    `Lançamento ${indice + 1} da Área do Cliente sem cliente válido.`
+                );
+            }
+
+            const itensBrutos = Array.isArray(lanc.itens)
+                ? lanc.itens
+                : Array.isArray(lanc.lancamentos)
+                    ? lanc.lancamentos
+                    : [];
+
+            if (!itensBrutos.length) {
+                throw new Error(
+                    `Lançamento ${indice + 1} da Área do Cliente não possui itens.`
+                );
+            }
+
+            const itens = itensBrutos.map(item =>
+                _cfItemParaRPC(item, lanc.data_movimento || t1.data_ref)
+            );
+
+            const valorCalculado = itens.reduce(
+                (acc, item) => acc + _cfNumero(item.valor_total),
+                0
+            );
+
+            return {
+                cliente_id: clienteId,
+                tipo_movimento: 'DEBITO',
+                valor_total: _cfNumero(
+                    lanc.valor_total ?? lanc.valor,
+                    valorCalculado
+                ),
+                observacao: lanc.observacao || null,
+                itens
+            };
+        });
+}
+
+function montarPayloadRPCFechamento({
+    t1,
+    t2,
+    t3,
+    fechamentoId
+}) {
+    const produtos = (t2.produtos || [])
+        .filter(p => _cfNumero(p.qtd) > 0)
+        .map(p => ({
+            produto_id: p.produto_id || null,
+            produto: String(p.produto || '').toUpperCase(),
+            descricao: p.descricao || '',
+            qtd: Math.trunc(_cfNumero(p.qtd)),
+            raspadinha_id: p.raspadinha_id || null,
+            telesena_item_id: p.telesena_item_id || null
+        }));
+
+    const federaisPayload = (t2.federais || [])
+        .filter(f => _cfNumero(f.qtdVendida) > 0)
+        .map(f => ({
+            federal_id: f.federal_id,
+            qtdVendida: Math.trunc(_cfNumero(f.qtdVendida))
+        }));
+
+    const boloes = getBoloesVendidosTela3(t3).map(b => ({
+        bolao_id: Number(b.bolao_id),
+        qtdVendida: Math.trunc(_cfNumero(b.qtdVendida))
+    }));
+
+    return {
+        fechamento: {
+            fechamento_id: fechamentoId || null,
+            loteria_id: Number(loteriaAtiva.id),
+            usuario_id: Number(t1.funcionario_id),
+            data_ref: t1.data_ref,
+            troco_inicial: _cfNumero(t1.troco_inicial),
+            troco_sobra: _cfNumero(t1.troco_sobra),
+            relatorio: _cfNumero(t1.relatorio),
+            deposito: _cfNumero(t1.deposito),
+            pix_cnpj: _cfNumero(t1.pix_cnpj),
+            diferenca_pix: _cfNumero(t1.diferenca_pix),
+            boloes_terminal: _cfNumero(t1.boloes_terminal),
+            premio_raspadinha: _cfNumero(t1.premio_raspadinha),
+            resgate_telesena: _cfNumero(t1.resgate_telesena),
+            justificativa: $('justificativa')?.value?.trim() || null
+        },
+        produtos,
+        federais: federaisPayload,
+        boloes,
+        clientes: montarClientesParaRPC(t1)
+    };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// FINALIZAR / GRAVAR — integrado com módulo CF
+// FINALIZAR / GRAVAR — uma única chamada transacional
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function finalizar() {
@@ -1855,7 +2063,8 @@ async function finalizar() {
     const t3 = ESTADO.tela3;
 
     const btn = $('btn-final');
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
+
     let salvouComSucesso = false;
 
     try {
@@ -1863,11 +2072,13 @@ async function finalizar() {
 
         if (!existeId) {
             const { data: existe, error: errExiste } = await sb
-                .from('fechamentos').select('id')
-                .eq('loteria_id', loteriaAtiva.id)
-                .eq('usuario_id', t1.funcionario_id)
+                .from('fechamentos')
+                .select('id')
+                .eq('loteria_id', Number(loteriaAtiva.id))
+                .eq('usuario_id', Number(t1.funcionario_id))
                 .eq('data_ref', t1.data_ref)
                 .maybeSingle();
+
             if (errExiste) throw errExiste;
             if (existe?.id) existeId = existe.id;
         }
@@ -1879,147 +2090,59 @@ async function finalizar() {
         });
 
         if (!permissao.permitido) {
-            btn.disabled = false;
-            alert(permissao.motivo || 'Sem permissão para gravar.');
-            return;
+            throw new Error(
+                permissao.motivo || 'Sem permissão para gravar este fechamento.'
+            );
         }
 
-        let tokenAutorizado = null;
+        let tokenCodigo = null;
+
         if (permissao.exigeToken) {
-            tokenAutorizado = await FECHAMENTO_RULES.abrirModalToken();
-            if (!tokenAutorizado) { btn.disabled = false; return; }
+            const autorizacao = await FECHAMENTO_RULES.abrirModalToken();
+
+            if (!autorizacao) return;
+
+            tokenCodigo = String(
+                typeof autorizacao === 'string'
+                    ? autorizacao
+                    : autorizacao.codigo || ''
+            )
+                .replace(/\D/g, '')
+                .slice(0, 6);
+
+            if (!tokenCodigo) {
+                throw new Error('O código do token não foi retornado pelo modal.');
+            }
         }
 
-        const sobrescrever = !!permissao.sobrescrevendo;
+        const payloadRPC = montarPayloadRPCFechamento({
+            t1,
+            t2,
+            t3,
+            fechamentoId: existeId || null
+        });
 
-        showGravando('Gravando fechamento de ' + t1.funcionario_nome + '...');
-        setProgress(10);
+        showGravando(
+            'Gravando fechamento de ' + (t1.funcionario_nome || 'funcionário') + '...'
+        );
+        setProgress(20);
 
-        // Totais base
-        const totalProd = (t2.produtos || []).reduce((a, p) => a + Number(p.sub || 0), 0);
-        const totalFed  = (t2.federais || []).reduce((a, f) => a + Number(f.subtotal || 0), 0);
-        const totalBol  = [...(t3.internos || []), ...(t3.externos || [])].reduce((a, b) => a + Number(b.subtotal || 0), 0);
+        const { data: resultado, error } = await sb.rpc(
+            'rpc_salvar_fechamento_completo',
+            {
+                p_payload: payloadRPC,
+                p_token: tokenCodigo
+            }
+        );
 
-        const totCFCredito = getCFOrThrow().getTotalCredito();
-
-        const totDeb = Number(t1.troco_inicial || 0)
-            + totalProd
-            + totalFed
-            + totalBol
-            + Number(t1.relatorio || 0);
-
-        const totCred = Number(t1.troco_sobra || 0)
-            + Number(t1.deposito || 0)
-            + Number(t1.pix_cnpj || 0)
-            + Number(t1.diferenca_pix || 0)
-            + Number(t1.boloes_terminal || 0)
-            + Number(t1.premio_raspadinha || 0)
-            + Number(t1.resgate_telesena || 0)
-            + totCFCredito;
-            
-
-        const quebra = totCred - totDeb;
-        const justif = $('justificativa')?.value || '';
-
-        const payload = {
-            loteria_id:         Number(loteriaAtiva.id),
-            usuario_id:         Number(t1.funcionario_id),
-            funcionario_nome:   t1.funcionario_nome || '',
-            data_ref:           t1.data_ref,
-            troco_inicial:      Number(t1.troco_inicial || 0),
-            troco_sobra:        Number(t1.troco_sobra || 0),
-            relatorio:          Number(t1.relatorio || 0),
-            deposito:           Number(t1.deposito || 0),
-            pix_cnpj:           Number(t1.pix_cnpj || 0),
-            diferenca_pix:      Number(t1.diferenca_pix || 0),
-            boloes_terminal:    Number(t1.boloes_terminal || 0),
-            premio_raspadinha:  Number(t1.premio_raspadinha || 0),
-            resgate_telesena:   Number(t1.resgate_telesena || 0),
-            total_produtos:     Number(totalProd || 0),
-            total_federais:     Number(totalFed || 0),
-            total_boloes:       Number(totalBol || 0),
-            // total_fiado mantém compatibilidade com a coluna existente
-            total_fiado:        Number(totCFCredito || 0),
-            total_debitos:      Number(totDeb || 0),
-            total_creditos:     Number(totCred || 0),
-            quebra:             Number(quebra || 0),
-            justificativa:      justif || null,
-            criado_por:         Number(usuario?.id || 0),
-            sobrescrito_por:    tokenAutorizado?.gerado_por ? Number(tokenAutorizado.gerado_por) : null,
-            updated_at:         new Date().toISOString()
-        };
-
-        let fechId = existeId;
-
-        if (sobrescrever && existeId) {
-            setProgress(20);
-
-            const { error: errUpd } = await sb.from('fechamentos').update(payload).eq('id', existeId);
-            if (errUpd) throw errUpd;
-
-            // Estorna CF anterior do fechamento
-            await getCFOrThrow().estornarDoFechamento(existeId);
-
-            await estornarProdutosDoFechamento(existeId);
-            await apagarSnapshotProdutosDoFechamento(existeId);
-
-            await estornarBoloesDoFechamento(existeId);
-            await apagarSnapshotBoloesDoFechamento(existeId);
-
-            const { error: errDelFed } = await sb
-                .from('federal_vendas').delete()
-                .eq('fechamento_id', existeId).eq('canal', 'FECHAMENTO');
-            if (errDelFed) throw errDelFed;
-        } else {
-            setProgress(30);
-           
-            
-            const { data: ins, error: errIns } = await sb
-                .from('fechamentos').insert(payload).select('id').single();
-            if (errIns) throw errIns;
-            fechId = ins.id;
+        if (error) throw error;
+        if (!resultado?.ok || !resultado?.fechamento_id) {
+            throw new Error('A RPC não confirmou a gravação do fechamento.');
         }
 
-        setProgress(55);
+        setProgress(85);
 
-        const produtosVendidos = getProdutosVendidosTela2(t2);
-        await salvarSnapshotProdutosDoFechamento(fechId, produtosVendidos);
-        await registrarVendasProdutosDoFechamento(fechId, t1, produtosVendidos);
-
-        setProgress(70);
-
-        const federaisVendidas = (t2.federais || []).filter(f => Number(f.qtdVendida || 0) > 0);
-        for (const f of federaisVendidas) {
-            const { error } = await sb.rpc('registrar_venda_federal', {
-                p_federal_id: f.federal_id, p_loteria_vendedora_id: loteriaAtiva.id,
-                p_usuario_id: Number(t1.funcionario_id), p_canal: 'FECHAMENTO',
-                p_qtd_vendida: Number(f.qtdVendida), p_data_referencia: t1.data_ref,
-                p_desconto: 0, p_observacao: 'Lançado no fechamento', p_fechamento_id: fechId
-            });
-            if (error) throw error;
-        }
-
-        setProgress(82);
-
-        const boloesVendidos = getBoloesVendidosTela3(t3);
-        await salvarSnapshotBoloesDoFechamento(fechId, boloesVendidos);
-        await registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos);
-
-        setProgress(93);
-
-        // ── Grava módulo CF (extrato clientes) ────────────────────────────
-        await getCFOrThrow().gravarNoSupabase(fechId, t1);
-        if (sobrescrever && tokenAutorizado?.id) {
-        await FECHAMENTO_RULES.consumirTokenSobrescrita({
-        tokenId: tokenAutorizado.id,
-        fechamentoId: fechId
-          });
-        }
-
-        
-        setProgress(100);
-
-        fechamentoOriginalId = fechId;
+        fechamentoOriginalId = resultado.fechamento_id;
         modoAtual = 'edicao';
         salvouComSucesso = true;
 
@@ -2029,13 +2152,22 @@ async function finalizar() {
             carregarBoloes()
         ]);
 
+        setProgress(100);
     } catch (e) {
-        console.error('Erro ao gravar fechamento:', e);
-        toast('Erro ao gravar: ' + (e.message || e), false);
+        console.error('Erro ao gravar fechamento transacional:', e);
+
+        const mensagem = e?.message || String(e);
+        toast('Erro ao gravar: ' + mensagem, false);
+        alert('Erro ao gravar o fechamento:\n\n' + mensagem);
     } finally {
         hideGravando();
-        btn.disabled = false;
-        if (salvouComSucesso) abrirModalSucessoFechamento('Fechamento salvo com sucesso.');
+        if (btn) btn.disabled = false;
+
+        if (salvouComSucesso) {
+            abrirModalSucessoFechamento(
+                'Fechamento salvo integralmente com sucesso.'
+            );
+        }
     }
 }
 
