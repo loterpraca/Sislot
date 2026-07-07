@@ -32,8 +32,15 @@
     return isAdmin(usuario) || isSocio(usuario) || isGerente(usuario);
   }
 
-  function podeGravarFechamento({ usuarioLogado, funcionarioSelecionadoId }) {
-    if (isAdmin(usuarioLogado) || isSocio(usuarioLogado) || isGerente(usuarioLogado)) {
+  function podeGravarFechamento({
+    usuarioLogado,
+    funcionarioSelecionadoId
+  }) {
+    if (
+      isAdmin(usuarioLogado) ||
+      isSocio(usuarioLogado) ||
+      isGerente(usuarioLogado)
+    ) {
       return true;
     }
 
@@ -46,7 +53,6 @@
 
   function exigeTokenParaSobrescrever({ usuarioLogado }) {
     if (isAdmin(usuarioLogado) || isSocio(usuarioLogado)) return false;
-    if (isGerente(usuarioLogado) || isOperador(usuarioLogado)) return true;
     return true;
   }
 
@@ -55,12 +61,12 @@
     funcionarioSelecionadoId,
     existeFechamento
   }) {
-    const podeGravar = podeGravarFechamento({
+    const permitido = podeGravarFechamento({
       usuarioLogado,
       funcionarioSelecionadoId
     });
 
-    if (!podeGravar) {
+    if (!permitido) {
       return {
         permitido: false,
         exigeToken: false,
@@ -69,75 +75,68 @@
       };
     }
 
-    const sobrescrevendo = !!existeFechamento;
-    const exigeToken = sobrescrevendo
-      ? exigeTokenParaSobrescrever({ usuarioLogado })
-      : false;
+    const sobrescrevendo = Boolean(existeFechamento);
 
     return {
       permitido: true,
-      exigeToken,
+      exigeToken: sobrescrevendo
+        ? exigeTokenParaSobrescrever({ usuarioLogado })
+        : false,
       sobrescrevendo,
       motivo: ''
     };
   }
 
-  
+  async function gerarTokenSobrescrita({
+    loteriaId,
+    funcionarioId,
+    dataRef,
+    minutos = 3,
+    observacao = ''
+  }) {
+    const { data, error } = await sb.rpc('rpc_gerar_token_sobrescrita', {
+      p_loteria_id: Number(loteriaId),
+      p_alvo_usuario_id: Number(funcionarioId),
+      p_alvo_data_ref: dataRef,
+      p_minutos: Number(minutos) || 3,
+      p_observacao: observacao || null
+    });
 
-async function gerarTokenSobrescrita({
-  loteriaId,
-  funcionarioId,
-  dataRef,
-  minutos = 3,
-  observacao = ''
-}) {
-  const { data, error } = await sb.rpc('rpc_gerar_token_sobrescrita', {
-    p_loteria_id: Number(loteriaId),
-    p_alvo_usuario_id: Number(funcionarioId),
-    p_alvo_data_ref: dataRef,
-    p_minutos: 3,
-    p_observacao: observacao || null
-  });
-
-  if (error) throw new Error(error.message);
-  return data;
-}
-async function validarTokenSobrescrita({
-  token,
-  loteriaId,
-  funcionarioId,
-  dataRef
-}) {
-  const codigo = String(token || '').trim().replace(/\D/g, '').slice(0, 6);
-
-  if (!codigo) {
-    throw new Error('Informe o token.');
+    if (error) throw new Error(error.message);
+    return data;
   }
 
-  const { data, error } = await sb.rpc('rpc_validar_token_sobrescrita', {
-    p_token: codigo,
-    p_loteria_id: Number(loteriaId),
-    p_alvo_usuario_id: Number(funcionarioId),
-    p_alvo_data_ref: dataRef
-  });
+  async function validarTokenSobrescrita({
+    token,
+    loteriaId,
+    funcionarioId,
+    dataRef
+  }) {
+    const codigo = String(token || '')
+      .trim()
+      .replace(/\D/g, '')
+      .slice(0, 6);
 
-  if (error) throw new Error(error.message);
-  return data;
-}
+    if (!codigo) throw new Error('Informe o token.');
 
-async function consumirTokenSobrescrita({
-  tokenId,
-  fechamentoId = null
-}) {
-  const { data, error } = await sb.rpc('rpc_consumir_token_sobrescrita', {
-    p_token_id: Number(tokenId),
-    p_fechamento_id: fechamentoId ? Number(fechamentoId) : null
-  });
+    const { data, error } = await sb.rpc('rpc_validar_token_sobrescrita', {
+      p_token: codigo,
+      p_loteria_id: Number(loteriaId),
+      p_alvo_usuario_id: Number(funcionarioId),
+      p_alvo_data_ref: dataRef
+    });
 
-  if (error) throw new Error(error.message);
-  return data;
-}
-  async function abrirModalToken() {
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async function consumirTokenSobrescrita() {
+    throw new Error(
+      'O token deve ser consumido somente pela RPC transacional do fechamento.'
+    );
+  }
+
+  function abrirModalToken() {
     return new Promise(resolve => {
       const modal = document.getElementById('m-token');
       const input = document.getElementById('token-autorizacao');
@@ -160,43 +159,52 @@ async function consumirTokenSobrescrita({
   }
 
   function fecharModalToken() {
-    const modal = document.getElementById('m-token');
-    if (modal) modal.classList.remove('show');
+    document.getElementById('m-token')?.classList.remove('show');
   }
 
- async function confirmarToken({ loteriaId, funcionarioId, dataRef }) {
-  const input = document.getElementById('token-autorizacao');
-  const erro = document.getElementById('token-err');
+  async function confirmarToken({
+    loteriaId,
+    funcionarioId,
+    dataRef
+  }) {
+    const input = document.getElementById('token-autorizacao');
+    const erro = document.getElementById('token-err');
 
-  if (!input || !erro) return;
+    if (!input || !erro) return;
 
-  const codigo = input.value.replace(/\D/g, '').slice(0, 6);
-  console.log('CONFIRMANDO TOKEN VIA ARQUIVO NOVO');
-  if (!codigo) {
-    erro.textContent = 'Informe o token.';
-    erro.style.display = 'block';
-    return;
-  }
+    const codigo = String(input.value || '')
+      .replace(/\D/g, '')
+      .slice(0, 6);
 
-  try {
-    const tokenValido = await validarTokenSobrescrita({
-      token: codigo,
-      loteriaId,
-      funcionarioId,
-      dataRef
-    });
-
-    fecharModalToken();
-    console.log('VALIDANDO TOKEN VIA RPC');
-    if (window.__fechamentoTokenResolver) {
-      window.__fechamentoTokenResolver(tokenValido);
-      window.__fechamentoTokenResolver = null;
+    if (!codigo) {
+      erro.textContent = 'Informe o token.';
+      erro.style.display = 'block';
+      return;
     }
-  } catch (e) {
-    erro.textContent = e.message || 'Token inválido.';
-    erro.style.display = 'block';
+
+    try {
+      const tokenValido = await validarTokenSobrescrita({
+        token: codigo,
+        loteriaId,
+        funcionarioId,
+        dataRef
+      });
+
+      fecharModalToken();
+
+      if (window.__fechamentoTokenResolver) {
+        window.__fechamentoTokenResolver({
+          ...(tokenValido || {}),
+          codigo
+        });
+        window.__fechamentoTokenResolver = null;
+      }
+    } catch (e) {
+      erro.textContent = e.message || 'Token inválido.';
+      erro.style.display = 'block';
+    }
   }
-}
+
   function cancelarToken() {
     fecharModalToken();
 
