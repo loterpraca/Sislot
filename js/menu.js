@@ -90,6 +90,9 @@ function aplicarPermissoesMenu(perfil) {
     setAdminWrapVisible(false);
     esconder('.card-config');
 
+    // garante que o Marketplace CAIXA apareça para perfis autorizados
+    showSelector('.card-marketplace-caixa');
+
     if (p === 'GERENTE' || p === 'OPERADOR') {
         esconder('.card-cadastro');
         esconder('.card-movimentacao');
@@ -98,6 +101,7 @@ function aplicarPermissoesMenu(perfil) {
         esconder('.card-produtos');
         esconder('.card-whatsapp');
         esconder('.card-marketplace');
+        esconder('.card-marketplace-caixa');
         esconder('.card-caixa');
         esconder('.card-config');
         esconder('.card-controle-fechamento');
@@ -107,11 +111,13 @@ function aplicarPermissoesMenu(perfil) {
 
     if (p === 'SOCIO') {
         esconder('.card-config');
+        showSelector('.card-marketplace-caixa');
         return;
     }
 
     if (p === 'ADMIN') {
         showSelector('.card-config');
+        showSelector('.card-marketplace-caixa');
         setAdminWrapVisible(true);
         return;
     }
