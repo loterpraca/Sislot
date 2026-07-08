@@ -910,3 +910,11 @@ footer {
     font-size: 28px;
   }
 }
+.card-marketplace-caixa {
+  display: flex;
+  --card-color: #f97316;
+}
+
+.card-marketplace-caixa .card-icon {
+  color: #f97316;
+}
