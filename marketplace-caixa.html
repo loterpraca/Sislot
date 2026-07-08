@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SISLOT · Marketplace CAIXA</title>
+
+  <!-- Ajuste os caminhos abaixo conforme a estrutura atual do SISLOT -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
+  <link rel="stylesheet" href="./css/marketplace-caixa.css" />
+</head>
+<body>
+  <main class="mp-page">
+    <header class="mp-header">
+      <div>
+        <p class="mp-kicker">SISLOT · Coletor público</p>
+        <h1>Marketplace CAIXA</h1>
+        <p class="mp-subtitle">Acompanhe os bolões capturados da rota pública da CAIXA por lotérica, modalidade, concurso e disponibilidade.</p>
+      </div>
+
+      <div class="mp-actions">
+        <button id="btnAtualizar" class="mp-btn mp-btn-primary">Atualizar dados</button>
+        <button id="btnComandoColetor" class="mp-btn mp-btn-soft">Comando do coletor</button>
+        <a class="mp-btn mp-btn-ghost" href="./menu.html">Voltar</a>
+      </div>
+    </header>
+
+    <section id="mpAviso" class="mp-alert" hidden></section>
+
+    <section class="mp-stats" aria-label="Resumo do marketplace">
+      <article class="mp-stat-card">
+        <span>Bolões ativos</span>
+        <strong id="statBoloes">—</strong>
+      </article>
+      <article class="mp-stat-card">
+        <span>Lotéricas</span>
+        <strong id="statLojas">—</strong>
+      </article>
+      <article class="mp-stat-card">
+        <span>Cotas disponíveis</span>
+        <strong id="statDisponiveis">—</strong>
+      </article>
+      <article class="mp-stat-card">
+        <span>Indisponíveis no digital</span>
+        <strong id="statIndisponiveis">—</strong>
+      </article>
+      <article class="mp-stat-card">
+        <span>Última coleta</span>
+        <strong id="statUltimaColeta">—</strong>
+      </article>
+    </section>
+
+    <section class="mp-panel mp-coletor-panel">
+      <div class="mp-panel-title">
+        <div>
+          <h2>Coletor Playwright</h2>
+          <p>Use este painel para conferir se as coletas estão rodando e quais lojas foram atualizadas.</p>
+        </div>
+        <span id="statusColetor" class="mp-pill">Carregando</span>
+      </div>
+      <div id="listaColetas" class="mp-coletas"></div>
+    </section>
+
+    <section class="mp-panel">
+      <div class="mp-filtros">
+        <label>
+          Loja
+          <select id="filtroLoja">
+            <option value="">Todas</option>
+          </select>
+        </label>
+
+        <label>
+          Modalidade
+          <select id="filtroModalidade">
+            <option value="">Todas</option>
+          </select>
+        </label>
+
+        <label>
+          Concurso
+          <input id="filtroConcurso" type="number" inputmode="numeric" placeholder="Ex.: 3730" />
+        </label>
+
+        <label>
+          Disponibilidade
+          <select id="filtroDisponibilidade">
+            <option value="">Todas</option>
+            <option value="disponivel">Com cotas disponíveis</option>
+            <option value="esgotado">Esgotado no digital</option>
+            <option value="baixo">Baixa disponibilidade</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="mp-panel">
+      <div class="mp-panel-title">
+        <div>
+          <h2>Bolões capturados</h2>
+          <p id="resultadoResumo">—</p>
+        </div>
+        <button id="btnExportarCsv" class="mp-btn mp-btn-soft">Exportar CSV</button>
+      </div>
+
+      <div id="gridBoloes" class="mp-grid"></div>
+    </section>
+  </main>
+
+  <dialog id="modalComando" class="mp-modal">
+    <form method="dialog">
+      <h2>Rodar coletas</h2>
+      <p>
+        Por segurança do navegador, uma página web do SISLOT não consegue executar diretamente um arquivo <strong>.bat</strong> no Windows.
+        Nesta primeira versão, mantenha o coletor rodando em paralelo com <strong>iniciar-coletor.bat</strong>.
+      </p>
+      <p>Configuração sugerida para o arquivo <strong>.env</strong> do coletor:</p>
+      <pre id="comandoColetor"></pre>
+      <div class="mp-modal-actions">
+        <button id="btnCopiarEnv" type="button" class="mp-btn mp-btn-primary">Copiar configuração</button>
+        <button class="mp-btn mp-btn-ghost">Fechar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./js/marketplace-caixa.js"></script>
+</body>
+</html>
