@@ -400,8 +400,8 @@
 
     const width = 560;
     const height = 62;
-    const padX = 12;
-    const padY = 8;
+    const padX = 14;
+    const padY = 11;
     const min = item.min;
     const max = item.max;
     const span = Math.max(max - min, 1);
@@ -410,7 +410,7 @@
     const coords = pontos.map((p, i) => {
       const x = padX + (i / denom) * (width - padX * 2);
       const y = padY + ((max - p.d) / span) * (height - padY * 2);
-      return { x, y, d: p.d, t: p.t };
+      return { x, y, d: p.d, t: p.t, idx: i };
     });
 
     let path = `M ${coords[0].x.toFixed(2)} ${coords[0].y.toFixed(2)}`;
@@ -419,7 +419,26 @@
     }
 
     const area = `${path} V ${height - padY} H ${coords[0].x.toFixed(2)} Z`;
-    const dots = coords.map((c, i) => `<circle class="spark-dot ${i === coords.length - 1 ? 'last' : ''}" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="3"><title>${fmtDataHora(c.t)} · ${c.d} disponíveis</title></circle>`).join('');
+    const labelIdx = selecionarLabelsInteligentes(pontos, min, max);
+
+    const dots = coords.map((c, i) => {
+      const extra = i === coords.length - 1 ? 'last' : '';
+      return `<circle class="spark-dot ${extra}" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="${i === coords.length - 1 ? '3.2' : '2.5'}"><title>${fmtDataHora(c.t)} · ${c.d} disponíveis</title></circle>`;
+    }).join('');
+
+    const labels = coords
+      .filter(c => labelIdx.has(c.idx))
+      .map(c => {
+        const left = Math.max(4, Math.min(96, (c.x / width) * 100));
+        const top = Math.max(11, Math.min(57, 5 + (c.y / height) * 51 - 9));
+        const cls = [
+          'spark-label',
+          c.idx === coords.length - 1 ? 'last' : '',
+          c.d === min ? 'min' : '',
+          c.d === max ? 'max' : ''
+        ].filter(Boolean).join(' ');
+        return `<span class="${cls}" style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}px" title="${escapeHtml(fmtDataHora(c.t))}">${fmtInt(c.d)}</span>`;
+      }).join('');
 
     const segments = [];
     for (let i = 1; i < pontos.length; i++) {
@@ -435,6 +454,7 @@
           <path class="spark-line" d="${path}"></path>
           ${dots}
         </svg>
+        ${labels}
         <div class="segment-bar">${segments.join('')}</div>
       </div>
       <div class="series-scale">
@@ -443,6 +463,40 @@
         <span>${fmtHora(pontos[pontos.length - 1].t)}</span>
       </div>
     `;
+  }
+
+  function selecionarLabelsInteligentes(pontos, min, max) {
+    const set = new Set();
+    if (!pontos.length) return set;
+
+    const last = pontos.length - 1;
+    set.add(0);
+    set.add(last);
+
+    pontos.forEach((p, i) => {
+      if (p.d === min || p.d === max) set.add(i);
+    });
+
+    const mudancas = [];
+    for (let i = 1; i < pontos.length; i++) {
+      const delta = pontos[i].d - pontos[i - 1].d;
+      if (delta !== 0) mudancas.push({ i, peso: Math.abs(delta), delta });
+    }
+
+    mudancas
+      .sort((a, b) => b.peso - a.peso || b.i - a.i)
+      .slice(0, 5)
+      .forEach(m => set.add(m.i));
+
+    // Evita excesso de rótulos em séries muito densas.
+    if (set.size > 8) {
+      const essenciais = new Set([0, last]);
+      pontos.forEach((p, i) => { if (p.d === min || p.d === max) essenciais.add(i); });
+      mudancas.slice(0, Math.max(0, 8 - essenciais.size)).forEach(m => essenciais.add(m.i));
+      return essenciais;
+    }
+
+    return set;
   }
 
   function renderBoloes() {
