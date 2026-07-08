@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SISLOT · Marketplace CAIXA</title>
 
-  <!-- Ajuste os caminhos abaixo conforme a estrutura atual do SISLOT -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./sislot-config.js"></script>
+  <script src="./sislot-security.js"></script>
   <link rel="stylesheet" href="./css/marketplace-caixa.css" />
 </head>
 <body>
   <main class="mp-page">
-    <header class="mp-header">
+    <header class="mp-header mp-header-premium">
       <div>
-        <p class="mp-kicker">SISLOT · Coletor público</p>
+        <p class="mp-kicker">SISLOT · Inteligência Marketplace</p>
         <h1>Marketplace CAIXA</h1>
-        <p class="mp-subtitle">Acompanhe os bolões capturados da rota pública da CAIXA por lotérica, modalidade, concurso e disponibilidade.</p>
+        <p class="mp-subtitle">Monitore bolões online, disponibilidade digital, coletas e movimentações por bolão. A leitura correta é movimentação de disponibilidade, não venda confirmada.</p>
       </div>
 
       <div class="mp-actions">
@@ -28,7 +28,19 @@
 
     <section id="mpAviso" class="mp-alert" hidden></section>
 
-    <section class="mp-stats" aria-label="Resumo do marketplace">
+    <section class="mp-live-strip" aria-label="Status da coleta">
+      <div>
+        <span class="mp-live-dot"></span>
+        <strong id="liveStatusTitulo">Carregando marketplace</strong>
+        <small id="liveStatusSub">Conferindo sessão e últimas coletas...</small>
+      </div>
+      <div class="mp-live-right">
+        <span>Atualização automática</span>
+        <strong>60s</strong>
+      </div>
+    </section>
+
+    <section class="mp-stats mp-stats-premium" aria-label="Resumo do marketplace">
       <article class="mp-stat-card">
         <span>Bolões ativos</span>
         <strong id="statBoloes">—</strong>
@@ -45,66 +57,188 @@
         <span>Indisponíveis no digital</span>
         <strong id="statIndisponiveis">—</strong>
       </article>
+      <article class="mp-stat-card mp-stat-card-hot">
+        <span>Queda últimas 24h</span>
+        <strong id="statSaidas24h">—</strong>
+      </article>
+      <article class="mp-stat-card mp-stat-card-return">
+        <span>Liberações últimas 24h</span>
+        <strong id="statEntradas24h">—</strong>
+      </article>
+      <article class="mp-stat-card mp-stat-card-gold">
+        <span>Saldo líquido 24h</span>
+        <strong id="statSaldo24h">—</strong>
+      </article>
       <article class="mp-stat-card">
         <span>Última coleta</span>
         <strong id="statUltimaColeta">—</strong>
       </article>
     </section>
 
-    <section class="mp-panel mp-coletor-panel">
-      <div class="mp-panel-title">
-        <div>
-          <h2>Coletor Playwright</h2>
-          <p>Use este painel para conferir se as coletas estão rodando e quais lojas foram atualizadas.</p>
+    <nav class="mp-tabs" aria-label="Navegação do Marketplace CAIXA">
+      <button class="mp-tab active" data-tab="visao">Visão Geral</button>
+      <button class="mp-tab" data-tab="movimentos">Movimentação por Bolão</button>
+      <button class="mp-tab" data-tab="boloes">Bolões Ativos</button>
+      <button class="mp-tab" data-tab="coletas">Coletas</button>
+    </nav>
+
+    <section class="mp-tab-panel active" data-panel="visao">
+      <section class="mp-panel mp-premium-panel">
+        <div class="mp-panel-title">
+          <div>
+            <h2>Top movimentos recentes</h2>
+            <p>Maiores quedas e liberações detectadas nas últimas 24 horas, agrupadas por bolão.</p>
+          </div>
+          <span class="mp-pill warn">Disponibilidade, não venda confirmada</span>
         </div>
-        <span id="statusColetor" class="mp-pill">Carregando</span>
-      </div>
-      <div id="listaColetas" class="mp-coletas"></div>
+        <div id="topMovimentos" class="mp-premium-mov-grid"></div>
+      </section>
+
+      <section class="mp-panel mp-coletor-panel">
+        <div class="mp-panel-title">
+          <div>
+            <h2>Coletor Playwright</h2>
+            <p>Confira se as coletas estão rodando e quais lojas foram atualizadas.</p>
+          </div>
+          <span id="statusColetor" class="mp-pill">Carregando</span>
+        </div>
+        <div id="listaColetas" class="mp-coletas"></div>
+      </section>
     </section>
 
-    <section class="mp-panel">
-      <div class="mp-filtros">
-        <label>
-          Loja
-          <select id="filtroLoja">
-            <option value="">Todas</option>
-          </select>
-        </label>
+    <section class="mp-tab-panel" data-panel="movimentos">
+      <section class="mp-panel mp-panel-filtros-premium">
+        <div class="mp-filtros mp-filtros-movimentos">
+          <label>
+            Loja
+            <select id="movFiltroLoja">
+              <option value="">Todas</option>
+            </select>
+          </label>
 
-        <label>
-          Modalidade
-          <select id="filtroModalidade">
-            <option value="">Todas</option>
-          </select>
-        </label>
+          <label>
+            Modalidade
+            <select id="movFiltroModalidade">
+              <option value="">Todas</option>
+            </select>
+          </label>
 
-        <label>
-          Concurso
-          <input id="filtroConcurso" type="number" inputmode="numeric" placeholder="Ex.: 3730" />
-        </label>
+          <label>
+            Concurso
+            <input id="movFiltroConcurso" type="number" inputmode="numeric" placeholder="Ex.: 3730" />
+          </label>
 
-        <label>
-          Disponibilidade
-          <select id="filtroDisponibilidade">
-            <option value="">Todas</option>
-            <option value="disponivel">Com cotas disponíveis</option>
-            <option value="esgotado">Esgotado no digital</option>
-            <option value="baixo">Baixa disponibilidade</option>
-          </select>
-        </label>
-      </div>
+          <label>
+            Período
+            <select id="movFiltroPeriodo">
+              <option value="6">Últimas 6h</option>
+              <option value="12">Últimas 12h</option>
+              <option value="24" selected>Últimas 24h</option>
+              <option value="48">Últimas 48h</option>
+              <option value="168">Últimos 7 dias</option>
+            </select>
+          </label>
+
+          <label>
+            Tipo
+            <select id="movFiltroTipo">
+              <option value="">Todos os movimentos</option>
+              <option value="saida">Queda de disponíveis</option>
+              <option value="entrada">Liberação/retorno</option>
+              <option value="saldo_pos">Saldo líquido positivo</option>
+              <option value="saldo_neg">Saldo líquido negativo</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="mp-panel">
+        <div class="mp-panel-title">
+          <div>
+            <h2>Evolução por bolão</h2>
+            <p id="movResumo">—</p>
+          </div>
+          <button id="btnExportarMovCsv" class="mp-btn mp-btn-soft">Exportar movimentos</button>
+        </div>
+
+        <div class="mp-table-wrap">
+          <table class="mp-table mp-mov-table">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Loja</th>
+                <th>Bolão</th>
+                <th>Composição</th>
+                <th>Disponível</th>
+                <th>Movimento</th>
+                <th>Valor estimado</th>
+                <th>Leitura</th>
+              </tr>
+            </thead>
+            <tbody id="movimentosTabela"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section class="mp-panel">
-      <div class="mp-panel-title">
-        <div>
-          <h2>Bolões capturados</h2>
-          <p id="resultadoResumo">—</p>
-        </div>
-        <button id="btnExportarCsv" class="mp-btn mp-btn-soft">Exportar CSV</button>
-      </div>
+    <section class="mp-tab-panel" data-panel="boloes">
+      <section class="mp-panel">
+        <div class="mp-filtros">
+          <label>
+            Loja
+            <select id="filtroLoja">
+              <option value="">Todas</option>
+            </select>
+          </label>
 
-      <div id="gridBoloes" class="mp-grid"></div>
+          <label>
+            Modalidade
+            <select id="filtroModalidade">
+              <option value="">Todas</option>
+            </select>
+          </label>
+
+          <label>
+            Concurso
+            <input id="filtroConcurso" type="number" inputmode="numeric" placeholder="Ex.: 3730" />
+          </label>
+
+          <label>
+            Disponibilidade
+            <select id="filtroDisponibilidade">
+              <option value="">Todas</option>
+              <option value="disponivel">Com cotas disponíveis</option>
+              <option value="esgotado">Esgotado no digital</option>
+              <option value="baixo">Baixa disponibilidade</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="mp-panel">
+        <div class="mp-panel-title">
+          <div>
+            <h2>Bolões capturados</h2>
+            <p id="resultadoResumo">—</p>
+          </div>
+          <button id="btnExportarCsv" class="mp-btn mp-btn-soft">Exportar CSV</button>
+        </div>
+
+        <div id="gridBoloes" class="mp-grid"></div>
+      </section>
+    </section>
+
+    <section class="mp-tab-panel" data-panel="coletas">
+      <section class="mp-panel mp-coletor-panel">
+        <div class="mp-panel-title">
+          <div>
+            <h2>Histórico de coletas</h2>
+            <p>Últimas execuções registradas pelo coletor Playwright.</p>
+          </div>
+          <span id="statusColetorColetas" class="mp-pill">Carregando</span>
+        </div>
+        <div id="listaColetasCompleta" class="mp-coletas"></div>
+      </section>
     </section>
   </main>
 
@@ -113,7 +247,7 @@
       <h2>Rodar coletas</h2>
       <p>
         Por segurança do navegador, uma página web do SISLOT não consegue executar diretamente um arquivo <strong>.bat</strong> no Windows.
-        Nesta primeira versão, mantenha o coletor rodando em paralelo com <strong>iniciar-coletor.bat</strong>.
+        Mantenha o coletor rodando em paralelo com <strong>iniciar-coletor.bat</strong>.
       </p>
       <p>Configuração sugerida para o arquivo <strong>.env</strong> do coletor:</p>
       <pre id="comandoColetor"></pre>
