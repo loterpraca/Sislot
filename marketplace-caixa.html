@@ -4,191 +4,154 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>SISLOT — Marketplace CAIXA</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
   <link rel="stylesheet" href="./css/marketplace-caixa.css" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="topbar-brand">
-      <div class="brand-icon">SL</div>
-      <div>
+<body data-loja="boulevard">
+  <header class="app-header">
+    <a class="header-brand" href="./menu.html" title="Voltar ao menu">
+      <img src="./icons/loterpraca.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'">
+      <div class="brand-text">
         <div class="brand-name">SISLOT</div>
         <div class="brand-sub">Marketplace CAIXA</div>
       </div>
+    </a>
+
+    <div class="loja-chip" title="Inteligência de disponibilidade">
+      <div class="loja-chip-dot"></div>
+      <span class="loja-chip-nome">MARKETPLACE</span>
+      <span class="loja-chip-hint">online</span>
     </div>
 
-    <div class="topbar-right">
-      <div class="clock" id="relogio">--:--:--</div>
-      <div class="user-pill">
-        <div class="user-avatar" id="userAvatar">?</div>
-        <div>
-          <div class="user-name" id="userName">Carregando…</div>
-          <div class="user-role" id="userRole">—</div>
-        </div>
+    <div class="header-filters">
+      <div class="filter-group">
+        <label class="filter-label">Loja</label>
+        <select id="filtroLoja" class="filter-sel"><option value="">Todas</option></select>
       </div>
-      <a class="btn-top" href="./menu.html">Menu</a>
-      <button class="btn-logout" id="btnLogout" type="button">Sair</button>
+      <div class="filter-group">
+        <label class="filter-label">Modalidade</label>
+        <select id="filtroModalidade" class="filter-sel"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Concurso</label>
+        <input id="filtroConcurso" class="filter-input" type="number" inputmode="numeric" placeholder="3730" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Página</label>
+        <select id="filtroPagina" class="filter-sel"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="filter-group">
+        <label class="filter-label">Período</label>
+        <select id="filtroPeriodo" class="filter-sel">
+          <option value="1">1h</option>
+          <option value="3">3h</option>
+          <option value="6" selected>6h</option>
+          <option value="12">12h</option>
+          <option value="24">24h</option>
+          <option value="48">48h</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Ordenar</label>
+        <select id="filtroOrdenacao" class="filter-sel">
+          <option value="movimento">Movimento</option>
+          <option value="queda">Saída</option>
+          <option value="entrada">Entrada</option>
+          <option value="atual">Menor atual</option>
+          <option value="pagina">Página</option>
+          <option value="loja">Loja</option>
+        </select>
+      </div>
+      <button id="btnAtualizar" class="btn-atualizar" type="button" title="Atualizar"><i class="fas fa-sync-alt"></i></button>
+    </div>
+
+    <div class="header-right">
+      <div class="periodo-info" id="liveStatusTitulo">Carregando</div>
+      <div class="app-clock" id="relogio">--:--:--</div>
+      <button class="hdr-btn" id="btnComandoColetor" type="button" title="Comando do coletor"><i class="fas fa-terminal"></i></button>
+      <a class="hdr-btn" href="./menu.html" title="Menu"><i class="fas fa-home"></i></a>
+      <button class="hdr-btn hdr-btn-exit" id="btnLogout" type="button" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
     </div>
   </header>
 
-  <main class="main">
-    <section class="hero">
-      <div class="hero-tag"><span class="hero-tag-dot"></span> Inteligência de disponibilidade</div>
-      <div class="hero-row">
-        <div>
-          <h1 class="hero-title">Marketplace CAIXA</h1>
-          <p class="hero-sub">Visual premium por bolão: uma linha temporal para acompanhar variação de cotas disponíveis, página CAIXA e última coleta.</p>
+  <div class="app-body">
+    <main class="mp-main">
+      <section class="mp-topline">
+        <div class="mp-title-wrap">
+          <div class="mp-eyebrow">Inteligência de disponibilidade</div>
+          <h1 class="mp-title">Evolução visual por bolão</h1>
+          <div class="mp-sub" id="liveStatusSub">Acompanhe a série temporal de cotas disponíveis, com Página CAIXA e rótulos inteligentes.</div>
         </div>
-        <div class="hero-actions">
-          <button id="btnAtualizar" class="btn-primary" type="button">Atualizar dados</button>
-          <button id="btnComandoColetor" class="btn-secondary" type="button">Comando do coletor</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="mpAviso" class="alert" hidden></section>
-
-    <section class="live-strip">
-      <div class="live-left">
-        <span class="live-dot" id="liveDot"></span>
-        <div>
-          <strong id="liveStatusTitulo">Carregando marketplace</strong>
-          <small id="liveStatusSub">Conferindo sessão, bolões ativos e snapshots...</small>
-        </div>
-      </div>
-      <div class="live-right">
-        <span>Auto refresh</span>
-        <strong>60s</strong>
-      </div>
-    </section>
-
-    <section class="stats-row">
-      <article class="stat-card">
-        <div class="stat-label">Bolões ativos</div>
-        <div class="stat-value" id="statBoloes">—</div>
-      </article>
-      <article class="stat-card">
-        <div class="stat-label">Lotéricas</div>
-        <div class="stat-value" id="statLojas">—</div>
-      </article>
-      <article class="stat-card">
-        <div class="stat-label">Disponíveis</div>
-        <div class="stat-value" id="statDisponiveis">—</div>
-      </article>
-      <article class="stat-card stat-card-hot">
-        <div class="stat-label">Saíram no período</div>
-        <div class="stat-value" id="statSaidasPeriodo">—</div>
-      </article>
-      <article class="stat-card stat-card-return">
-        <div class="stat-label">Entraram no período</div>
-        <div class="stat-value" id="statEntradasPeriodo">—</div>
-      </article>
-      <article class="stat-card stat-card-gold">
-        <div class="stat-label">Última coleta</div>
-        <div class="stat-value stat-date" id="statUltimaColeta">—</div>
-      </article>
-    </section>
-
-    <nav class="tabs" aria-label="Abas do Marketplace CAIXA">
-      <button class="tab active" type="button" data-tab="visual">Evolução Visual</button>
-      <button class="tab" type="button" data-tab="boloes">Bolões Capturados</button>
-      <button class="tab" type="button" data-tab="coletas">Coletas</button>
-    </nav>
-
-    <section class="tab-panel active" data-panel="visual">
-      <section class="panel filters-panel">
-        <div class="panel-title compact">
-          <div>
-            <h2>Variação por bolão</h2>
-            <p>Uma linha por bolão, com gráfico em degraus de cotas disponíveis no período.</p>
-          </div>
-          <span class="pill warn">Disponibilidade, não venda confirmada</span>
-        </div>
-
-        <div class="filters-grid visual-filters">
-          <label>Loja
-            <select id="filtroLoja"><option value="">Todas</option></select>
-          </label>
-          <label>Modalidade
-            <select id="filtroModalidade"><option value="">Todas</option></select>
-          </label>
-          <label>Concurso
-            <input id="filtroConcurso" type="number" inputmode="numeric" placeholder="Ex.: 3730" />
-          </label>
-          <label>Página CAIXA
-            <select id="filtroPagina"><option value="">Todas</option></select>
-          </label>
-          <label>Período
-            <select id="filtroPeriodo">
-              <option value="1">Última 1h</option>
-              <option value="3">Últimas 3h</option>
-              <option value="6" selected>Últimas 6h</option>
-              <option value="12">Últimas 12h</option>
-              <option value="24">Últimas 24h</option>
-              <option value="48">Últimas 48h</option>
-            </select>
-          </label>
-          <label>Ordenar por
-            <select id="filtroOrdenacao">
-              <option value="movimento">Maior movimento</option>
-              <option value="queda">Maior saída</option>
-              <option value="entrada">Maior entrada</option>
-              <option value="atual">Menor disponível atual</option>
-              <option value="pagina">Página CAIXA</option>
-              <option value="loja">Loja / modalidade</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="filter-actions">
-          <label class="checkline"><input id="filtroApenasMovimento" type="checkbox" checked /> Apenas bolões com variação</label>
-          <button id="btnExportarSerieCsv" class="btn-soft" type="button">Exportar série</button>
+        <div class="mp-actions">
+          <label class="checkline"><input id="filtroApenasMovimento" type="checkbox" checked /> Apenas com variação</label>
+          <button id="btnExportarSerieCsv" class="btn-soft" type="button"><i class="fas fa-file-export"></i> Série</button>
+          <button id="btnExportarBoloesCsv" class="btn-soft" type="button"><i class="fas fa-download"></i> Bolões</button>
         </div>
       </section>
 
-      <section class="panel timeline-panel">
-        <div class="panel-title compact">
-          <div>
-            <h2>Evolução visual</h2>
-            <p id="timelineResumo">—</p>
-          </div>
-          <div class="legend">
-            <span><i class="leg-line"></i> disponibilidade</span>
-            <span><i class="leg-down"></i> saiu</span>
-            <span><i class="leg-up"></i> entrou</span>
-          </div>
-        </div>
-        <div id="timelineList" class="timeline-list"></div>
-      </section>
-    </section>
+      <section id="mpAviso" class="alert" hidden></section>
 
-    <section class="tab-panel" data-panel="boloes">
-      <section class="panel">
-        <div class="panel-title compact">
-          <div>
-            <h2>Bolões capturados</h2>
-            <p>Cards ativos com página CAIXA, disponibilidade atual e composição do bolão.</p>
-          </div>
-          <button id="btnExportarBoloesCsv" class="btn-soft" type="button">Exportar bolões</button>
-        </div>
-        <div id="boloesGrid" class="boloes-grid"></div>
+      <section class="stats-row">
+        <article class="stat-card"><div class="stat-label">Bolões ativos</div><div class="stat-value" id="statBoloes">—</div></article>
+        <article class="stat-card"><div class="stat-label">Lotéricas</div><div class="stat-value" id="statLojas">—</div></article>
+        <article class="stat-card"><div class="stat-label">Disponíveis</div><div class="stat-value" id="statDisponiveis">—</div></article>
+        <article class="stat-card stat-card-hot"><div class="stat-label">Saíram</div><div class="stat-value" id="statSaidasPeriodo">—</div></article>
+        <article class="stat-card stat-card-return"><div class="stat-label">Entraram</div><div class="stat-value" id="statEntradasPeriodo">—</div></article>
+        <article class="stat-card stat-card-gold"><div class="stat-label">Última coleta</div><div class="stat-value stat-date" id="statUltimaColeta">—</div></article>
       </section>
-    </section>
 
-    <section class="tab-panel" data-panel="coletas">
-      <section class="panel">
-        <div class="panel-title compact">
-          <div>
-            <h2>Coletas Playwright</h2>
-            <p>Histórico recente de ciclos enviados ao SISLOT.</p>
+      <nav class="tabs" aria-label="Abas do Marketplace CAIXA">
+        <button class="tab active" type="button" data-tab="visual">Evolução visual</button>
+        <button class="tab" type="button" data-tab="boloes">Bolões capturados</button>
+        <button class="tab" type="button" data-tab="coletas">Coletas</button>
+      </nav>
+
+      <section class="tab-panel active" data-panel="visual">
+        <section class="panel timeline-panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>Disponibilidade no tempo</h2>
+              <p id="timelineResumo">—</p>
+            </div>
+            <div class="legend">
+              <span><i class="leg-line"></i> linha em degraus</span>
+              <span><i class="leg-down"></i> saiu</span>
+              <span><i class="leg-up"></i> entrou</span>
+              <span class="pill warn">não é venda confirmada</span>
+            </div>
           </div>
-          <span id="statusColetor" class="pill">Carregando</span>
-        </div>
-        <div id="coletasGrid" class="coletas-grid"></div>
+          <div id="timelineList" class="timeline-list"></div>
+        </section>
       </section>
-    </section>
-  </main>
+
+      <section class="tab-panel" data-panel="boloes">
+        <section class="panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>Bolões capturados</h2>
+              <p>Disponibilidade atual, composição e Página CAIXA de cada bolão ativo.</p>
+            </div>
+          </div>
+          <div id="boloesGrid" class="boloes-grid"></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="coletas">
+        <section class="panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>Coletas Playwright</h2>
+              <p>Histórico recente de ciclos enviados ao SISLOT.</p>
+            </div>
+            <span id="statusColetor" class="pill">Carregando</span>
+          </div>
+          <div id="coletasGrid" class="coletas-grid"></div>
+        </section>
+      </section>
+    </main>
+  </div>
 
   <div class="modal" id="modalColetor" hidden>
     <div class="modal-card">
