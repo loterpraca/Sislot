@@ -3,7 +3,7 @@
 
   const CONFIG = window.SISLOT_CONFIG || {};
   if (!window.supabase || !CONFIG.url || !CONFIG.anonKey) {
-    document.addEventListener('DOMContentLoaded', () => mostrarAviso('Configuração do Supabase não encontrada. Confira config.js e window.SISLOT_CONFIG.'));
+    document.addEventListener('DOMContentLoaded', () => mostrarAviso('Configuração do Supabase não encontrada. Confira se o arquivo sislot-config.js está carregando window.SISLOT_CONFIG.'));
     return;
   }
 
@@ -100,8 +100,6 @@
   }
 
   function montarFiltros() {
-    if (state.filtrosMontados) return;
-
     const lojas = new Map();
     const modalidades = new Set();
 
@@ -113,7 +111,6 @@
     preencherSelect($('filtroLoja'), [...lojas.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')));
     preencherSelect($('filtroModalidade'), [...modalidades].sort().map(m => [m, normalizarModalidade(m)]));
 
-    state.filtrosMontados = true;
   }
 
   function preencherSelect(select, entries) {
@@ -254,6 +251,7 @@
       const [boloes, coletas] = await Promise.all([buscarBoloes(), buscarColetas()]);
       state.boloes = boloes;
       state.coletas = coletas;
+      console.info('[Marketplace CAIXA] dados carregados', { boloes: boloes.length, coletas: coletas.length, atualizadoEm: new Date().toISOString() });
       montarFiltros();
       renderResumo();
       renderColetas();
@@ -271,8 +269,8 @@
     const lojas = [...new Set(state.boloes.map(b => String(b.codigo_loterica)).filter(Boolean))].sort((a,b) => Number(a)-Number(b));
     const env = [
       `CODIGOS_LOTERICAS=${lojas.join(',') || '518'}`,
-      'HEADLESS=true',
-      'INTERVALO_SEGUNDOS=120',
+      'HEADLESS=false',
+      'INTERVALO_SEGUNDOS=300',
       '',
       '# Depois execute no computador do coletor:',
       'iniciar-coletor.bat'
