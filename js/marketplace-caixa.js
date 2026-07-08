@@ -2,151 +2,153 @@
   'use strict';
 
   const CONFIG = window.SISLOT_CONFIG || {};
+  const PERFIL_LABEL = { ADMIN: 'Administrador', SOCIO: 'Sócio', GERENTE: 'Gerente', OPERADOR: 'Operador' };
+
   if (!window.supabase || !CONFIG.url || !CONFIG.anonKey) {
-    document.addEventListener('DOMContentLoaded', () => mostrarAviso('Configuração do Supabase não encontrada. Confira se o arquivo sislot-config.js está carregando window.SISLOT_CONFIG.'));
+    document.addEventListener('DOMContentLoaded', () => mostrarAviso('Configuração do Supabase não encontrada. Confira sislot-config.js.'));
     return;
   }
 
   const sb = window.supabase.createClient(CONFIG.url, CONFIG.anonKey);
-
-  const state = {
-    boloes: [],
-    coletas: [],
-    movimentos: []
-  };
-
   const $ = (id) => document.getElementById(id);
   const int = (v) => Number(v || 0);
 
-  function fmtInt(v) {
-    return int(v).toLocaleString('pt-BR');
-  }
+  const state = {
+    usuario: null,
+    boloes: [],
+    snapshots: [],
+    coletas: [],
+    series: [],
+    loading: false
+  };
 
-  function fmtBRL(v) {
-    if (v === null || v === undefined || v === '') return '—';
-    return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  }
+  init();
 
-  function fmtDataHora(v) {
-    if (!v) return '—';
-    const d = new Date(v);
-    if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  }
-
-  function fmtHora(v) {
-    if (!v) return '—';
-    const d = new Date(v);
-    if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString('pt-BR', {
-      timeZone: 'America/Sao_Paulo',
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+  function init() {
+    document.addEventListener('DOMContentLoaded', async () => {
+      bindUI();
+      startClock();
+      try {
+        await validarSessao();
+        await carregarTudo();
+        setInterval(() => carregarTudo(true), 60000);
+      } catch (err) {
+        console.error('[Marketplace CAIXA] erro inicial', err);
+        mostrarAviso(err.message || 'Erro ao iniciar Marketplace CAIXA.');
+        atualizarLive('Erro ao carregar', 'Confira permissões, sessão e console do navegador.', true);
+      }
     });
   }
 
-  function normalizarModalidade(mod) {
-    return String(mod || '—').replaceAll('_', ' ');
+  function bindUI() {
+    $('btnAtualizar')?.addEventListener('click', () => carregarTudo());
+    $('btnLogout')?.addEventListener('click', async () => window.SISLOT_SECURITY?.sair ? window.SISLOT_SECURITY.sair() : sb.auth.signOut());
+    $('btnComandoColetor')?.addEventListener('click', () => { $('modalColetor').hidden = false; });
+    $('btnFecharModal')?.addEventListener('click', () => { $('modalColetor').hidden = true; });
+    $('modalColetor')?.addEventListener('click', (e) => { if (e.target?.id === 'modalColetor') $('modalColetor').hidden = true; });
+    $('btnExportarSerieCsv')?.addEventListener('click', exportarSerieCsv);
+    $('btnExportarBoloesCsv')?.addEventListener('click', exportarBoloesCsv);
+
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => ativarAba(btn.dataset.tab));
+    });
+
+    ['filtroLoja', 'filtroModalidade', 'filtroConcurso', 'filtroPagina', 'filtroPeriodo', 'filtroOrdenacao', 'filtroApenasMovimento']
+      .forEach(id => $(id)?.addEventListener('input', () => {
+        montarSeries();
+        renderTudo(false);
+      }));
   }
 
-  function descricaoBolao(b) {
-    const mod = String(b.modalidade || '').toUpperCase();
-    if (mod === 'MAIS_MILIONARIA') {
-      const trevos = b.qtd_trevos ? ` e ${b.qtd_trevos} trevos` : '';
-      return `${fmtInt(b.qtd_apostas)} jogo(s) de ${fmtInt(b.qtd_numeros)} números${trevos}`;
-    }
-    if (mod === 'LOTECA') {
-      const simples = int(b.qtd_simples_loteca);
-      const duplos = int(b.qtd_duplos_loteca);
-      const triplos = int(b.qtd_triplos_loteca);
-      const partes = [];
-      if (simples) partes.push(`${simples} simples`);
-      if (duplos) partes.push(`${duplos} duplos`);
-      if (triplos) partes.push(`${triplos} triplos`);
-      return partes.length ? `Loteca com ${partes.join(', ')}` : `${fmtInt(b.qtd_apostas)} jogo(s) Loteca`;
-    }
-    return `${fmtInt(b.qtd_apostas)} jogo(s) de ${fmtInt(b.qtd_numeros)} dezenas`;
+  function startClock() {
+    const update = () => {
+      const el = $('relogio');
+      if (!el) return;
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR');
+    };
+    update();
+    setInterval(update, 1000);
   }
 
-  function descricaoMovimento(m) {
-    const mod = String(m.modalidade || '').toUpperCase();
-    if (mod === 'MAIS_MILIONARIA') {
-      const trevos = m.qtd_trevos ? ` + ${m.qtd_trevos} trevos` : '';
-      return `${fmtInt(m.qtd_apostas)}x ${fmtInt(m.qtd_numeros)} números${trevos}`;
-    }
-    if (mod === 'LOTECA') return `${fmtInt(m.qtd_apostas)} jogo(s) · Loteca ${fmtInt(m.qtd_numeros)} prognósticos`;
-    return `${fmtInt(m.qtd_apostas)}x ${fmtInt(m.qtd_numeros)} dezenas`;
-  }
-
-
-
-  function paginaOrigemBolao(b) {
-    const payload = b?.payload_caixa || {};
-    const candidatos = [
-      b?.pagina_origem,
-      b?.paginaOrigem,
-      payload?.paginaOrigem,
-      payload?.pagina_origem,
-      payload?.pagina,
-      payload?.paginaAtual
-    ];
-    for (const v of candidatos) {
-      if (v === null || v === undefined || v === '') continue;
-      const n = Number(v);
-      if (Number.isFinite(n) && n > 0) return String(n);
-      return String(v);
-    }
-    return '—';
-  }
-
-  function calcular(b) {
-    const total = int(b.qtd_cota_total);
-    const digital = int(b.qtd_cota_digital);
-    const disp = int(b.qtd_cota_disponivel);
-    const indisponivel = Math.max(digital - disp, 0);
-    const foraDigital = Math.max(total - digital, 0);
-    const percDisp = digital > 0 ? (disp / digital) * 100 : 0;
-    return { total, digital, disp, indisponivel, foraDigital, percDisp };
-  }
-
-  function mostrarAviso(msg) {
-    const aviso = $('mpAviso');
-    if (!aviso) return;
-    aviso.textContent = msg;
-    aviso.hidden = !msg;
-  }
-
-  async function validarSessaoMarketplace() {
+  async function validarSessao() {
     const { data: { session }, error } = await sb.auth.getSession();
-
-    if (error) throw new Error(error.message || 'Erro ao verificar sessão do SISLOT.');
-
+    if (error) throw new Error(error.message || 'Erro ao verificar sessão.');
     if (!session?.user?.id) {
-      mostrarAviso('Sessão do SISLOT não encontrada. Redirecionando para login...');
-      setTimeout(() => { location.href = './login.html'; }, 700);
-      throw new Error('Sessão do SISLOT não encontrada.');
+      setTimeout(() => { location.href = './login.html'; }, 600);
+      throw new Error('Sessão do SISLOT não encontrada. Redirecionando para login...');
     }
 
+    let usuario = null;
     if (window.SISLOT_SECURITY?.validarUsuarioLogavel) {
-      await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
+      usuario = await window.SISLOT_SECURITY.validarUsuarioLogavel(session.user.id);
     }
+    state.usuario = usuario || { nome: session.user.email || 'Usuário', perfil: '—' };
+    preencherUsuario(state.usuario);
+  }
 
-    console.info('[Marketplace CAIXA] sessão autenticada', { userId: session.user.id });
-    return session;
+  function preencherUsuario(usuario) {
+    const nome = String(usuario?.nome || usuario?.email || 'Usuário').trim();
+    const iniciais = nome.split(' ').filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
+    if ($('userName')) $('userName').textContent = nome;
+    if ($('userRole')) $('userRole').textContent = PERFIL_LABEL[usuario?.perfil] || usuario?.perfil || '—';
+    if ($('userAvatar')) $('userAvatar').textContent = iniciais;
+  }
+
+  async function carregarTudo(silencioso = false) {
+    if (state.loading) return;
+    state.loading = true;
+    if (!silencioso) atualizarLive('Atualizando dados', 'Buscando bolões, snapshots e últimas coletas...', false);
+    mostrarAviso('');
+
+    try {
+      const periodo = Number($('filtroPeriodo')?.value || 6);
+      const since = new Date(Date.now() - periodo * 60 * 60 * 1000).toISOString();
+
+      const [boloes, snapshots, coletas] = await Promise.all([
+        buscarBoloes(),
+        buscarSnapshots(since),
+        buscarColetas()
+      ]);
+
+      state.boloes = boloes;
+      state.snapshots = snapshots;
+      state.coletas = coletas;
+
+      montarFiltros();
+      montarSeries();
+      renderTudo(true);
+
+      const ultima = coletas[0]?.finalizado_em || coletas[0]?.iniciado_em || maiorData(boloes.map(b => b.ultima_coleta_em));
+      atualizarLive('Marketplace atualizado', `Última coleta: ${fmtDataHora(ultima)} · ${boloes.length} bolões ativos`, false);
+    } catch (err) {
+      console.error('[Marketplace CAIXA] falha ao carregar', err);
+      mostrarAviso(err.message || 'Erro ao carregar dados do marketplace.');
+      atualizarLive('Erro ao atualizar', err.message || 'Falha ao consultar Supabase.', true);
+    } finally {
+      state.loading = false;
+    }
   }
 
   async function buscarBoloes() {
     const { data, error } = await sb
       .from('marketplace_caixa_boloes')
-      .select('codigo_bolao_caixa,codigo_loterica,nome_loteria,modalidade,concurso,qtd_apostas,qtd_numeros,qtd_trevos,qtd_simples_loteca,qtd_duplos_loteca,qtd_triplos_loteca,qtd_cota_total,qtd_cota_digital,qtd_cota_disponivel,valor_cota,valor_cota_sem_tarifa,tarifa_servico,valor_ultima_cota,tarifa_ultima_cota,contem_residuo,premio_estimado,dt_sorteio,hora_sorteio,status_marketplace,ultima_coleta_em,payload_caixa')
+      .select('codigo_bolao_caixa,codigo_loterica,nome_loteria,modalidade,concurso,qtd_apostas,qtd_numeros,qtd_trevos,qtd_simples_loteca,qtd_duplos_loteca,qtd_triplos_loteca,qtd_cota_total,qtd_cota_digital,qtd_cota_disponivel,valor_cota,valor_cota_sem_tarifa,tarifa_servico,valor_ultima_cota,contem_residuo,status_marketplace,ultima_coleta_em,payload_caixa')
       .eq('status_marketplace', 'ATIVO')
       .order('codigo_loterica', { ascending: true })
       .order('modalidade', { ascending: true })
-      .order('concurso', { ascending: true })
-      .limit(2000);
+      .order('concurso', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
 
+  async function buscarSnapshots(sinceIso) {
+    const { data, error } = await sb
+      .from('marketplace_caixa_snapshots')
+      .select('codigo_bolao_caixa,codigo_loterica,modalidade,concurso,qtd_cota_total,qtd_cota_digital,qtd_cota_disponivel,qtd_cota_indisponivel,valor_cota,coletado_em,pagina_origem,payload_caixa')
+      .gte('coletado_em', sinceIso)
+      .order('coletado_em', { ascending: true })
+      .limit(20000);
     if (error) throw error;
     return data || [];
   }
@@ -157,402 +159,433 @@
       .select('id,origem,status,iniciado_em,finalizado_em,paginas_esperadas,paginas_capturadas,registros_informados,registros_capturados,registros_unicos,versao_caixa,versao_extensao,mensagem_erro,escopo')
       .order('iniciado_em', { ascending: false })
       .limit(24);
-
     if (error) throw error;
     return data || [];
   }
 
-  async function buscarMovimentos() {
-    const { data, error } = await sb
-      .from('vw_marketplace_caixa_movimentos_bolao')
-      .select('hora_brasilia,codigo_loterica,nome_loteria,codigo_bolao_caixa,modalidade,concurso,qtd_apostas,qtd_numeros,qtd_trevos,qtd_cota_total,qtd_cota_digital,valor_cota,coleta_anterior,coletado_em,minutos_desde_anterior,disponivel_anterior,disponivel_atual,delta_disponivel,cotas_que_sairam,cotas_que_entraram,classificacao_movimento,valor_saida_estimado,valor_entrada_estimado,valor_liquido_saida_estimado')
-      .neq('delta_disponivel', 0)
-      .order('coletado_em', { ascending: false })
-      .limit(2000);
-
-    if (error) {
-      console.warn('[Marketplace CAIXA] view de movimentos indisponível', error);
-      mostrarAviso('A view vw_marketplace_caixa_movimentos_bolao ainda não está disponível ou sem permissão. Rode o SQL 05_views_movimentacao_disponibilidade.sql para habilitar a aba de evolução por bolão.');
-      return [];
-    }
-    return data || [];
+  function montarFiltros() {
+    preencherSelect($('filtroLoja'), montarLojas());
+    preencherSelect($('filtroModalidade'), montarModalidades());
+    preencherSelect($('filtroPagina'), montarPaginas());
   }
 
-  function montarFiltros() {
+  function montarLojas() {
     const lojas = new Map();
-    const modalidades = new Set();
+    state.boloes.forEach(b => lojas.set(String(b.codigo_loterica), `${b.codigo_loterica} — ${b.nome_loteria || ''}`));
+    return [...lojas.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+  }
 
-    for (const b of state.boloes) {
-      lojas.set(String(b.codigo_loterica), `${b.codigo_loterica} — ${b.nome_loteria || ''}`.trim());
-      if (b.modalidade) modalidades.add(b.modalidade);
-    }
+  function montarModalidades() {
+    const mods = new Set(state.boloes.map(b => b.modalidade).filter(Boolean));
+    return [...mods].sort().map(m => [m, normalizarModalidade(m)]);
+  }
 
-    preencherSelect($('filtroLoja'), [...lojas.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')));
-    preencherSelect($('filtroModalidade'), [...modalidades].sort().map(m => [m, normalizarModalidade(m)]));
-    preencherSelect($('movFiltroLoja'), [...lojas.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')));
-    preencherSelect($('movFiltroModalidade'), [...modalidades].sort().map(m => [m, normalizarModalidade(m)]));
+  function montarPaginas() {
+    const pags = new Set(state.boloes.map(paginaOrigemBolao).filter(p => p && p !== '—'));
+    return [...pags].sort((a, b) => Number(a) - Number(b)).map(p => [p, `Pág. ${p}`]);
   }
 
   function preencherSelect(select, entries) {
     if (!select) return;
     const atual = select.value;
-    const primeira = select.querySelector('option')?.outerHTML || '<option value="">Todas</option>';
-    select.innerHTML = primeira + entries.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
-    select.value = atual;
+    const first = select.querySelector('option')?.outerHTML || '<option value="">Todos</option>';
+    select.innerHTML = first + entries.map(([v, label]) => `<option value="${escapeHtml(v)}">${escapeHtml(label)}</option>`).join('');
+    select.value = [...select.options].some(o => o.value === atual) ? atual : '';
   }
 
-  function aplicarFiltros() {
+  function montarSeries() {
+    const periodoHoras = Number($('filtroPeriodo')?.value || 6);
+    const sinceMs = Date.now() - periodoHoras * 60 * 60 * 1000;
+    const byBolao = new Map();
+
+    state.snapshots
+      .filter(s => new Date(s.coletado_em).getTime() >= sinceMs)
+      .forEach(s => {
+        const key = s.codigo_bolao_caixa;
+        if (!byBolao.has(key)) byBolao.set(key, []);
+        byBolao.get(key).push({
+          t: s.coletado_em,
+          d: int(s.qtd_cota_disponivel),
+          digital: int(s.qtd_cota_digital),
+          total: int(s.qtd_cota_total),
+          valor: Number(s.valor_cota || 0),
+          pagina: paginaOrigemSnapshot(s)
+        });
+      });
+
+    const series = state.boloes.map(b => {
+      const pontos = (byBolao.get(b.codigo_bolao_caixa) || [])
+        .sort((a, b) => new Date(a.t) - new Date(b.t));
+
+      if (!pontos.length && b.ultima_coleta_em) {
+        pontos.push({
+          t: b.ultima_coleta_em,
+          d: int(b.qtd_cota_disponivel),
+          digital: int(b.qtd_cota_digital),
+          total: int(b.qtd_cota_total),
+          valor: Number(b.valor_cota || 0),
+          pagina: paginaOrigemBolao(b)
+        });
+      }
+
+      const stats = calcularSerie(pontos);
+      return {
+        bolao: b,
+        pontos,
+        pagina: paginaOrigemBolao(b) !== '—' ? paginaOrigemBolao(b) : (pontos.find(p => p.pagina)?.pagina || '—'),
+        ...stats
+      };
+    });
+
+    state.series = aplicarFiltrosSeries(series);
+  }
+
+  function aplicarFiltrosSeries(series) {
     const loja = $('filtroLoja')?.value || '';
     const modalidade = $('filtroModalidade')?.value || '';
     const concurso = $('filtroConcurso')?.value || '';
-    const disponibilidade = $('filtroDisponibilidade')?.value || '';
+    const pagina = $('filtroPagina')?.value || '';
+    const apenasMovimento = $('filtroApenasMovimento')?.checked;
+    const ordenacao = $('filtroOrdenacao')?.value || 'movimento';
 
-    return state.boloes.filter(b => {
+    const filtradas = series.filter(item => {
+      const b = item.bolao;
       if (loja && String(b.codigo_loterica) !== loja) return false;
       if (modalidade && String(b.modalidade) !== modalidade) return false;
       if (concurso && String(b.concurso) !== concurso) return false;
-
-      const c = calcular(b);
-      if (disponibilidade === 'disponivel' && c.disp <= 0) return false;
-      if (disponibilidade === 'esgotado' && c.disp > 0) return false;
-      if (disponibilidade === 'baixo' && !(c.digital > 0 && c.disp > 0 && c.percDisp <= 20)) return false;
-
+      if (pagina && String(item.pagina) !== pagina) return false;
+      if (apenasMovimento && item.movimentoTotal === 0) return false;
       return true;
     });
-  }
 
-  function aplicarFiltrosMovimentos() {
-    const loja = $('movFiltroLoja')?.value || '';
-    const modalidade = $('movFiltroModalidade')?.value || '';
-    const concurso = $('movFiltroConcurso')?.value || '';
-    const periodoHoras = Number($('movFiltroPeriodo')?.value || 24);
-    const tipo = $('movFiltroTipo')?.value || '';
-    const limite = Date.now() - periodoHoras * 60 * 60 * 1000;
-
-    return state.movimentos.filter(m => {
-      if (loja && String(m.codigo_loterica) !== loja) return false;
-      if (modalidade && String(m.modalidade) !== modalidade) return false;
-      if (concurso && String(m.concurso) !== concurso) return false;
-      const t = new Date(m.coletado_em || m.hora_brasilia).getTime();
-      if (!Number.isNaN(t) && t < limite) return false;
-      const delta = Number(m.delta_disponivel || 0);
-      const saldo = -delta;
-      if (tipo === 'saida' && delta >= 0) return false;
-      if (tipo === 'entrada' && delta <= 0) return false;
-      if (tipo === 'saldo_pos' && saldo <= 0) return false;
-      if (tipo === 'saldo_neg' && saldo >= 0) return false;
-      return true;
+    filtradas.sort((a, b) => {
+      if (ordenacao === 'queda') return b.saidas - a.saidas || b.movimentoTotal - a.movimentoTotal;
+      if (ordenacao === 'entrada') return b.entradas - a.entradas || b.movimentoTotal - a.movimentoTotal;
+      if (ordenacao === 'atual') return a.atual - b.atual || b.movimentoTotal - a.movimentoTotal;
+      if (ordenacao === 'pagina') return Number(a.pagina || 999) - Number(b.pagina || 999) || ordenarIdentidade(a, b);
+      if (ordenacao === 'loja') return ordenarIdentidade(a, b);
+      return b.movimentoTotal - a.movimentoTotal || Math.abs(b.delta) - Math.abs(a.delta);
     });
+
+    return filtradas;
   }
 
-  function renderResumo() {
-    const lojas = new Set();
-    let disp = 0;
-    let indisponivel = 0;
-    let ultima = null;
+  function ordenarIdentidade(a, b) {
+    return String(a.bolao.codigo_loterica).localeCompare(String(b.bolao.codigo_loterica), 'pt-BR')
+      || String(a.bolao.modalidade).localeCompare(String(b.bolao.modalidade), 'pt-BR')
+      || Number(a.bolao.concurso || 0) - Number(b.bolao.concurso || 0)
+      || Number(a.pagina || 999) - Number(b.pagina || 999);
+  }
 
-    for (const b of state.boloes) {
-      lojas.add(String(b.codigo_loterica));
-      const c = calcular(b);
-      disp += c.disp;
-      indisponivel += c.indisponivel;
-      if (b.ultima_coleta_em && (!ultima || new Date(b.ultima_coleta_em) > new Date(ultima))) ultima = b.ultima_coleta_em;
+  function calcularSerie(pontos) {
+    if (!pontos.length) {
+      return { inicio: 0, atual: 0, min: 0, max: 0, delta: 0, saidas: 0, entradas: 0, movimentoTotal: 0, ultimoMovimento: null };
+    }
+    const valores = pontos.map(p => int(p.d));
+    let saidas = 0;
+    let entradas = 0;
+    let ultimoMovimento = null;
+
+    for (let i = 1; i < pontos.length; i++) {
+      const d = int(pontos[i].d) - int(pontos[i - 1].d);
+      if (d < 0) saidas += Math.abs(d);
+      if (d > 0) entradas += d;
+      if (d !== 0) ultimoMovimento = { delta: d, t: pontos[i].t, anterior: pontos[i - 1].d, atual: pontos[i].d };
     }
 
-    const movimentos24 = movimentosPorHoras(24);
-    const saidas = movimentos24.reduce((acc, m) => acc + int(m.cotas_que_sairam), 0);
-    const entradas = movimentos24.reduce((acc, m) => acc + int(m.cotas_que_entraram), 0);
-    const saldo = saidas - entradas;
+    const inicio = valores[0];
+    const atual = valores[valores.length - 1];
+    return {
+      inicio,
+      atual,
+      min: Math.min(...valores),
+      max: Math.max(...valores),
+      delta: atual - inicio,
+      saidas,
+      entradas,
+      movimentoTotal: saidas + entradas,
+      ultimoMovimento
+    };
+  }
+
+  function renderTudo(rebuildBoloes = false) {
+    renderStats();
+    renderTimeline();
+    if (rebuildBoloes) {
+      renderBoloes();
+      renderColetas();
+    }
+  }
+
+  function renderStats() {
+    const lojas = new Set(state.boloes.map(b => b.codigo_loterica));
+    const disponiveis = state.boloes.reduce((s, b) => s + int(b.qtd_cota_disponivel), 0);
+    const saidas = state.series.reduce((s, x) => s + x.saidas, 0);
+    const entradas = state.series.reduce((s, x) => s + x.entradas, 0);
+    const ultima = state.coletas[0]?.finalizado_em || state.coletas[0]?.iniciado_em || maiorData(state.boloes.map(b => b.ultima_coleta_em));
 
     setText('statBoloes', fmtInt(state.boloes.length));
     setText('statLojas', fmtInt(lojas.size));
-    setText('statDisponiveis', fmtInt(disp));
-    setText('statIndisponiveis', fmtInt(indisponivel));
-    setText('statUltimaColeta', fmtDataHora(ultima));
-    setText('statSaidas24h', fmtInt(saidas));
-    setText('statEntradas24h', fmtInt(entradas));
-    setText('statSaldo24h', `${saldo >= 0 ? '+' : ''}${fmtInt(saldo)}`);
-
-    const liveTitulo = ultima ? 'Coletas ativas no SISLOT' : 'Aguardando primeira coleta';
-    const liveSub = ultima ? `Última atualização: ${fmtDataHora(ultima)}` : 'Inicie o coletor Playwright para popular o marketplace.';
-    setText('liveStatusTitulo', liveTitulo);
-    setText('liveStatusSub', liveSub);
+    setText('statDisponiveis', fmtInt(disponiveis));
+    setText('statSaidasPeriodo', fmtInt(saidas));
+    setText('statEntradasPeriodo', fmtInt(entradas));
+    setText('statUltimaColeta', fmtDataCurta(ultima));
   }
 
-  function movimentosPorHoras(horas) {
-    const limite = Date.now() - horas * 60 * 60 * 1000;
-    return state.movimentos.filter(m => {
-      const t = new Date(m.coletado_em || m.hora_brasilia).getTime();
-      return Number.isNaN(t) ? true : t >= limite;
+  function renderTimeline() {
+    const box = $('timelineList');
+    if (!box) return;
+
+    const periodo = $('filtroPeriodo')?.value || 6;
+    setText('timelineResumo', `${state.series.length} bolão(ões) exibidos · período: últimas ${periodo}h`);
+
+    if (!state.series.length) {
+      box.innerHTML = `<div class="empty">Nenhum bolão com os filtros selecionados. Desmarque “apenas bolões com variação” ou aumente o período.</div>`;
+      return;
+    }
+
+    box.innerHTML = state.series.map(renderTimelineRow).join('');
+  }
+
+  function renderTimelineRow(item) {
+    const b = item.bolao;
+    const classeMov = item.delta < 0 ? 'movement-down' : item.delta > 0 ? 'movement-up' : 'movement-stable';
+    const deltaClass = item.delta < 0 ? 'negative' : item.delta > 0 ? 'positive' : '';
+    const ultimo = item.ultimoMovimento
+      ? `${item.ultimoMovimento.delta > 0 ? '+' : ''}${item.ultimoMovimento.delta} em ${fmtHora(item.ultimoMovimento.t)}`
+      : 'Sem variação no período';
+
+    return `
+      <article class="timeline-row ${classeMov}">
+        <div class="timeline-info">
+          <div class="timeline-head">
+            <span class="mod-chip">${escapeHtml(normalizarModalidade(b.modalidade))}</span>
+            <span class="page-chip">Pág. ${escapeHtml(item.pagina || '—')}</span>
+            <span class="code-chip" title="${escapeHtml(b.codigo_bolao_caixa || '')}">${escapeHtml(shortCode(b.codigo_bolao_caixa))}</span>
+          </div>
+          <h3 class="timeline-title">Conc. ${escapeHtml(b.concurso || '—')} · ${escapeHtml(b.nome_loteria || b.codigo_loterica || '—')}</h3>
+          <div class="timeline-meta">
+            <span><strong>${escapeHtml(descricaoBolao(b))}</strong></span>
+            <span>${fmtBRL(b.valor_cota)}</span>
+            <span>Total ${fmtInt(b.qtd_cota_total)} · Digital ${fmtInt(b.qtd_cota_digital)}</span>
+          </div>
+        </div>
+
+        <div class="series-box">
+          ${renderSparkline(item)}
+        </div>
+
+        <div class="timeline-summary">
+          <div class="current-box">
+            <span>Disponível atual</span>
+            <strong>${fmtInt(item.atual)}</strong>
+          </div>
+          <div class="summary-chips">
+            <div class="sum-chip down"><span>Saíram</span><strong>${fmtInt(item.saidas)}</strong></div>
+            <div class="sum-chip up"><span>Entraram</span><strong>${fmtInt(item.entradas)}</strong></div>
+            <div class="sum-chip delta ${deltaClass}"><span>Δ período</span><strong>${item.delta > 0 ? '+' : ''}${fmtInt(item.delta)}</strong></div>
+            <div class="sum-chip"><span>Mín/Máx</span><strong>${fmtInt(item.min)} / ${fmtInt(item.max)}</strong></div>
+          </div>
+          <div class="last-move">Último mov.: ${escapeHtml(ultimo)}</div>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderSparkline(item) {
+    const pontos = item.pontos;
+    if (!pontos.length) {
+      return `<div class="spark-wrap"><div class="empty">Sem snapshots no período.</div></div>`;
+    }
+
+    const width = 560;
+    const height = 62;
+    const padX = 12;
+    const padY = 8;
+    const min = item.min;
+    const max = item.max;
+    const span = Math.max(max - min, 1);
+    const denom = Math.max(pontos.length - 1, 1);
+
+    const coords = pontos.map((p, i) => {
+      const x = padX + (i / denom) * (width - padX * 2);
+      const y = padY + ((max - p.d) / span) * (height - padY * 2);
+      return { x, y, d: p.d, t: p.t };
     });
+
+    let path = `M ${coords[0].x.toFixed(2)} ${coords[0].y.toFixed(2)}`;
+    for (let i = 1; i < coords.length; i++) {
+      path += ` H ${coords[i].x.toFixed(2)} V ${coords[i].y.toFixed(2)}`;
+    }
+
+    const area = `${path} V ${height - padY} H ${coords[0].x.toFixed(2)} Z`;
+    const dots = coords.map((c, i) => `<circle class="spark-dot ${i === coords.length - 1 ? 'last' : ''}" cx="${c.x.toFixed(2)}" cy="${c.y.toFixed(2)}" r="3"><title>${fmtDataHora(c.t)} · ${c.d} disponíveis</title></circle>`).join('');
+
+    const segments = [];
+    for (let i = 1; i < pontos.length; i++) {
+      const d = pontos[i].d - pontos[i - 1].d;
+      segments.push(`<i class="segment ${d < 0 ? 'down' : d > 0 ? 'up' : 'same'}" title="${fmtDataHora(pontos[i].t)} · ${d > 0 ? '+' : ''}${d}"></i>`);
+    }
+    if (!segments.length) segments.push('<i class="segment same"></i>');
+
+    return `
+      <div class="spark-wrap">
+        <svg class="spark-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Série temporal de disponibilidade">
+          <path class="spark-area" d="${area}"></path>
+          <path class="spark-line" d="${path}"></path>
+          ${dots}
+        </svg>
+        <div class="segment-bar">${segments.join('')}</div>
+      </div>
+      <div class="series-scale">
+        <span>${fmtHora(pontos[0].t)}</span>
+        <span>${fmtInt(min)}–${fmtInt(max)} cotas</span>
+        <span>${fmtHora(pontos[pontos.length - 1].t)}</span>
+      </div>
+    `;
+  }
+
+  function renderBoloes() {
+    const box = $('boloesGrid');
+    if (!box) return;
+    if (!state.boloes.length) {
+      box.innerHTML = `<div class="empty">Nenhum bolão ativo capturado.</div>`;
+      return;
+    }
+    box.innerHTML = state.boloes.map(b => {
+      const c = calcularBolao(b);
+      const pagina = paginaOrigemBolao(b);
+      return `
+        <article class="bolao-card">
+          <div class="bolao-card-head">
+            <div>
+              <div class="timeline-head">
+                <span class="mod-chip">${escapeHtml(normalizarModalidade(b.modalidade))}</span>
+                <span class="page-chip">Pág. ${escapeHtml(pagina)}</span>
+              </div>
+              <h3>Conc. ${escapeHtml(b.concurso || '—')} · ${escapeHtml(b.nome_loteria || b.codigo_loterica || '—')}</h3>
+              <p>${escapeHtml(descricaoBolao(b))} · ${fmtBRL(b.valor_cota)}</p>
+            </div>
+            <span class="code-chip" title="${escapeHtml(b.codigo_bolao_caixa || '')}">${escapeHtml(shortCode(b.codigo_bolao_caixa))}</span>
+          </div>
+          <div class="disp-bar"><div class="disp-fill" style="width:${Math.max(0, Math.min(100, c.percDisp)).toFixed(2)}%"></div></div>
+          <div class="bolao-grid-mini">
+            <div class="mini-stat"><span>Total</span><strong>${fmtInt(c.total)}</strong></div>
+            <div class="mini-stat"><span>Digital</span><strong>${fmtInt(c.digital)}</strong></div>
+            <div class="mini-stat"><span>Disponível</span><strong>${fmtInt(c.disp)}</strong></div>
+            <div class="mini-stat"><span>Indisp.</span><strong>${fmtInt(c.indisponivel)}</strong></div>
+            <div class="mini-stat"><span>Fora digital</span><strong>${fmtInt(c.foraDigital)}</strong></div>
+            <div class="mini-stat"><span>Coleta</span><strong>${escapeHtml(fmtDataCurta(b.ultima_coleta_em))}</strong></div>
+          </div>
+        </article>
+      `;
+    }).join('');
   }
 
   function renderColetas() {
-    renderColetasNo('listaColetas', 6, 'statusColetor');
-    renderColetasNo('listaColetasCompleta', 24, 'statusColetorColetas');
-  }
-
-  function renderColetasNo(id, limite, statusId) {
-    const wrap = $(id);
-    if (!wrap) return;
-
-    const status = $(statusId);
+    const box = $('coletasGrid');
+    if (!box) return;
     if (!state.coletas.length) {
-      wrap.innerHTML = '<div class="mp-empty">Nenhuma coleta registrada ainda.</div>';
-      if (status) {
-        status.textContent = 'Sem coletas';
-        status.className = 'mp-pill warn';
-      }
+      box.innerHTML = `<div class="empty">Nenhuma coleta encontrada.</div>`;
+      setStatusColetor('Sem coletas', 'warn');
       return;
     }
 
     const ultima = state.coletas[0];
-    const ok = ultima.status === 'CONCLUIDA';
-    if (status) {
-      status.textContent = ok ? 'Última concluída' : `Última: ${ultima.status || '—'}`;
-      status.className = `mp-pill ${ok ? 'ok' : 'warn'}`;
-    }
+    const ok = String(ultima.status || '').toUpperCase() === 'CONCLUIDA';
+    setStatusColetor(ok ? 'Coletor OK' : 'Verificar coletor', ok ? 'ok' : 'err');
 
-    wrap.innerHTML = state.coletas.slice(0, limite).map(c => {
+    box.innerHTML = state.coletas.map(c => {
+      const status = String(c.status || '').toUpperCase();
+      const cls = status === 'CONCLUIDA' ? 'ok' : 'err';
       const escopo = c.escopo || {};
-      const loja = escopo.codigoLoterica ? `Lotérica ${escopo.codigoLoterica}` : (escopo.tipo || 'Escopo não informado');
-      const cls = c.status === 'CONCLUIDA' ? 'ok' : (c.status === 'ERRO' ? 'err' : 'warn');
+      const codigo = escopo.codigoLoterica || escopo.codigo_loterica || '—';
       return `
-        <article class="mp-coleta-item">
-          <strong>${escapeHtml(loja)} <span class="mp-pill ${cls}">${escapeHtml(c.status || '—')}</span></strong>
-          <span>Páginas: ${fmtInt(c.paginas_capturadas)} / ${fmtInt(c.paginas_esperadas)}</span>
-          <span>Registros: ${fmtInt(c.registros_unicos || c.registros_capturados)} únicos</span>
-          <span>CAIXA: ${escapeHtml(c.versao_caixa || '—')} · Coletor: ${escapeHtml(c.versao_extensao || '—')}</span>
-          <span>${fmtDataHora(c.finalizado_em || c.iniciado_em)}</span>
-          ${c.mensagem_erro ? `<span>Erro: ${escapeHtml(c.mensagem_erro)}</span>` : ''}
-        </article>`;
+        <article class="coleta-card ${cls}">
+          <div class="timeline-head">
+            <span class="pill ${cls}">${escapeHtml(status || '—')}</span>
+            <span class="code-chip">Coleta #${escapeHtml(c.id)}</span>
+          </div>
+          <h3>${escapeHtml(c.origem || '—')} · Lotérica ${escapeHtml(codigo)}</h3>
+          <p>${escapeHtml(c.mensagem_erro || 'Coleta registrada sem erro.')}</p>
+          <div class="coleta-meta">
+            <div class="mini-stat"><span>Páginas</span><strong>${fmtInt(c.paginas_capturadas)} / ${fmtInt(c.paginas_esperadas)}</strong></div>
+            <div class="mini-stat"><span>Registros</span><strong>${fmtInt(c.registros_unicos)}</strong></div>
+            <div class="mini-stat"><span>Versão CAIXA</span><strong>${escapeHtml(c.versao_caixa || '—')}</strong></div>
+            <div class="mini-stat"><span>Finalizada</span><strong>${escapeHtml(fmtDataCurta(c.finalizado_em || c.iniciado_em))}</strong></div>
+          </div>
+        </article>
+      `;
     }).join('');
   }
 
-  function renderTopMovimentos() {
-    const wrap = $('topMovimentos');
-    if (!wrap) return;
-
-    const top = movimentosPorHoras(24)
-      .filter(m => int(m.cotas_que_sairam) || int(m.cotas_que_entraram))
-      .sort((a, b) => {
-        const va = Math.max(Math.abs(Number(a.valor_liquido_saida_estimado || 0)), Number(a.valor_saida_estimado || 0), Number(a.valor_entrada_estimado || 0));
-        const vb = Math.max(Math.abs(Number(b.valor_liquido_saida_estimado || 0)), Number(b.valor_saida_estimado || 0), Number(b.valor_entrada_estimado || 0));
-        return vb - va;
-      })
-      .slice(0, 8);
-
-    if (!top.length) {
-      wrap.innerHTML = '<div class="mp-empty">Ainda não há movimentos recentes suficientes. Rode pelo menos duas coletas do mesmo bolão.</div>';
-      return;
-    }
-
-    wrap.innerHTML = top.map(m => {
-      const delta = Number(m.delta_disponivel || 0);
-      const saida = int(m.cotas_que_sairam);
-      const entrada = int(m.cotas_que_entraram);
-      const cls = delta < 0 ? 'saida' : 'entrada';
-      const titulo = delta < 0 ? 'Queda de disponíveis' : 'Liberação/retorno';
-      const qtd = delta < 0 ? saida : entrada;
-      const valor = delta < 0 ? m.valor_saida_estimado : m.valor_entrada_estimado;
-      return `
-        <article class="mp-mov-card ${cls}">
-          <div class="mp-mov-card-head">
-            <span class="mp-mov-badge">${escapeHtml(titulo)}</span>
-            <strong>${fmtInt(qtd)} cota(s)</strong>
-          </div>
-          <h3>${escapeHtml(normalizarModalidade(m.modalidade))} · Conc. ${escapeHtml(m.concurso || '—')}</h3>
-          <p>${escapeHtml(m.codigo_loterica)} · ${escapeHtml(m.nome_loteria || '—')}</p>
-          <div class="mp-mov-flow">
-            <span>${fmtInt(m.disponivel_anterior)}</span>
-            <i>→</i>
-            <span>${fmtInt(m.disponivel_atual)}</span>
-          </div>
-          <div class="mp-mov-card-foot">
-            <span>${escapeHtml(descricaoMovimento(m))}</span>
-            <strong>${fmtBRL(valor)}</strong>
-          </div>
-          <small>${fmtDataHora(m.coletado_em)}</small>
-        </article>`;
-    }).join('');
+  function ativarAba(tab) {
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
   }
 
-  function renderMovimentosTabela() {
-    const tbody = $('movimentosTabela');
-    const resumo = $('movResumo');
-    if (!tbody) return;
-
-    const lista = aplicarFiltrosMovimentos();
-    const saidas = lista.reduce((acc, m) => acc + int(m.cotas_que_sairam), 0);
-    const entradas = lista.reduce((acc, m) => acc + int(m.cotas_que_entraram), 0);
-    const saldo = saidas - entradas;
-    if (resumo) resumo.textContent = `${fmtInt(lista.length)} movimento(s) · ${fmtInt(saidas)} queda(s) · ${fmtInt(entradas)} liberação(ões) · saldo ${saldo >= 0 ? '+' : ''}${fmtInt(saldo)}.`;
-
-    if (!lista.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="mp-table-empty">Nenhum movimento encontrado com os filtros selecionados.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = lista.slice(0, 300).map(m => {
-      const delta = Number(m.delta_disponivel || 0);
-      const cls = delta < 0 ? 'saida' : 'entrada';
-      const label = delta < 0 ? 'Queda' : 'Liberação';
-      const qtd = delta < 0 ? int(m.cotas_que_sairam) : int(m.cotas_que_entraram);
-      const valor = delta < 0 ? Number(m.valor_saida_estimado || 0) : Number(m.valor_entrada_estimado || 0);
-      const codigo = m.codigo_bolao_caixa ? String(m.codigo_bolao_caixa).slice(0, 10) + '…' : '—';
-      return `
-        <tr>
-          <td><strong>${fmtHora(m.coletado_em)}</strong><small>${escapeHtml(String(m.minutos_desde_anterior || '—'))} min</small></td>
-          <td><strong>${escapeHtml(m.codigo_loterica || '—')}</strong><small>${escapeHtml(m.nome_loteria || '—')}</small></td>
-          <td><strong>${escapeHtml(normalizarModalidade(m.modalidade))}</strong><small>Conc. ${escapeHtml(m.concurso || '—')} · ${escapeHtml(codigo)}</small></td>
-          <td>${escapeHtml(descricaoMovimento(m))}</td>
-          <td><span class="mp-flow-inline">${fmtInt(m.disponivel_anterior)} <i>→</i> ${fmtInt(m.disponivel_atual)}</span></td>
-          <td><span class="mp-mov-label ${cls}">${escapeHtml(label)} ${fmtInt(qtd)}</span></td>
-          <td><strong>${fmtBRL(valor)}</strong></td>
-          <td><small>${escapeHtml(classificacaoAmigavel(m.classificacao_movimento))}</small></td>
-        </tr>`;
-    }).join('');
+  function setStatusColetor(txt, tipo) {
+    const el = $('statusColetor');
+    if (!el) return;
+    el.textContent = txt;
+    el.className = `pill ${tipo || ''}`;
   }
 
-  function classificacaoAmigavel(v) {
-    const s = String(v || '');
-    if (s.includes('QUEDA_GRANDE')) return 'queda forte: venda, reserva, baixa ou retirada';
-    if (s.includes('QUEDA')) return 'queda: venda, reserva, baixa ou retirada';
-    if (s.includes('RETORNO_RAPIDO')) return 'retorno rápido: reserva expirada ou liberação';
-    if (s.includes('ENTRADA')) return 'entrada: liberação manual ou retorno';
-    return s.replaceAll('_', ' ').toLowerCase() || '—';
+  function atualizarLive(titulo, sub, erro) {
+    setText('liveStatusTitulo', titulo);
+    setText('liveStatusSub', sub);
+    const dot = $('liveDot');
+    if (dot) dot.style.background = erro ? 'var(--red)' : 'var(--green)';
   }
 
-  function renderBoloes() {
-    const lista = aplicarFiltros();
-    const grid = $('gridBoloes');
-    const resumo = $('resultadoResumo');
-
-    if (resumo) resumo.textContent = `${fmtInt(lista.length)} bolão(ões) exibido(s) de ${fmtInt(state.boloes.length)} ativo(s).`;
-
-    if (!grid) return;
-    if (!lista.length) {
-      grid.innerHTML = '<div class="mp-empty">Nenhum bolão encontrado com os filtros selecionados.</div>';
-      return;
-    }
-
-    grid.innerHTML = lista.map(b => {
-      const c = calcular(b);
-      const perc = Math.max(0, Math.min(100, c.percDisp));
-      const codigo = b.codigo_bolao_caixa ? String(b.codigo_bolao_caixa).slice(0, 14) + '…' : '—';
-      const pagina = paginaOrigemBolao(b);
-      return `
-        <article class="mp-bolao-card">
-          <div class="mp-bolao-top">
-            <div>
-              <div class="mp-loja">${escapeHtml(b.codigo_loterica)} · ${escapeHtml(b.nome_loteria || '—')}</div>
-              <div class="mp-modalidade">${escapeHtml(normalizarModalidade(b.modalidade))}</div>
-            </div>
-            <div class="mp-top-badges">
-              <div class="mp-concurso">Conc. ${escapeHtml(b.concurso || '—')}</div>
-              <div class="mp-page-badge" title="Página em que o bolão apareceu na listagem capturada da CAIXA">Pág. ${escapeHtml(pagina)}</div>
-            </div>
-          </div>
-
-          <div class="mp-desc">${escapeHtml(descricaoBolao(b))}</div>
-
-          <div class="mp-metrics">
-            <div class="mp-metric"><span>Total</span><strong>${fmtInt(c.total)}</strong></div>
-            <div class="mp-metric"><span>Digital</span><strong>${fmtInt(c.digital)}</strong></div>
-            <div class="mp-metric"><span>Disponível</span><strong>${fmtInt(c.disp)}</strong></div>
-          </div>
-
-          <div class="mp-progress" title="${perc.toFixed(1)}% disponível no digital"><i style="width:${perc}%"></i></div>
-          <div class="mp-foot">
-            <div>
-              <div>Indisponível digital: ${fmtInt(c.indisponivel)}</div>
-              <div>Fora do digital: ${fmtInt(c.foraDigital)}</div>
-              <div>Cód. bolão: ${escapeHtml(codigo)}</div>
-              <div>Página CAIXA: ${escapeHtml(pagina)}</div>
-              <div>Atualizado: ${fmtDataHora(b.ultima_coleta_em)}</div>
-            </div>
-            <div class="mp-price">${fmtBRL(b.valor_cota)}</div>
-          </div>
-        </article>`;
-    }).join('');
+  function mostrarAviso(msg) {
+    const el = $('mpAviso');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.hidden = !msg;
   }
 
-  async function carregarTudo() {
-    try {
-      mostrarAviso('');
-      if ($('btnAtualizar')) {
-        $('btnAtualizar').disabled = true;
-        $('btnAtualizar').textContent = 'Atualizando...';
-      }
-      const [boloes, coletas, movimentos] = await Promise.all([buscarBoloes(), buscarColetas(), buscarMovimentos()]);
-      state.boloes = boloes;
-      state.coletas = coletas;
-      state.movimentos = movimentos;
-      console.info('[Marketplace CAIXA] dados carregados', { boloes: boloes.length, coletas: coletas.length, movimentos: movimentos.length, atualizadoEm: new Date().toISOString() });
-      montarFiltros();
-      renderResumo();
-      renderColetas();
-      renderTopMovimentos();
-      renderMovimentosTabela();
-      renderBoloes();
-    } catch (err) {
-      console.error(err);
-      mostrarAviso(err?.message || 'Erro ao carregar dados do marketplace.');
-    } finally {
-      if ($('btnAtualizar')) {
-        $('btnAtualizar').disabled = false;
-        $('btnAtualizar').textContent = 'Atualizar dados';
-      }
-    }
+  function exportarSerieCsv() {
+    const rows = state.series.flatMap(item => item.pontos.map(p => ({
+      codigo_loterica: item.bolao.codigo_loterica,
+      nome_loteria: item.bolao.nome_loteria,
+      modalidade: item.bolao.modalidade,
+      concurso: item.bolao.concurso,
+      pagina_caixa: item.pagina,
+      codigo_bolao_caixa: item.bolao.codigo_bolao_caixa,
+      coletado_em: p.t,
+      qtd_cota_disponivel: p.d,
+      valor_cota: item.bolao.valor_cota
+    })));
+    baixarCsv('marketplace-caixa-serie-bolao.csv', rows);
   }
 
-  function abrirComandoColetor() {
-    const lojas = [...new Set(state.boloes.map(b => String(b.codigo_loterica)).filter(Boolean))].sort((a,b) => Number(a)-Number(b));
-    const env = [
-      `CODIGOS_LOTERICAS=${lojas.join(',') || '518'}`,
-      'HEADLESS=false',
-      'INTERVALO_SEGUNDOS=300',
-      '',
-      '# Depois execute no computador do coletor:',
-      'iniciar-coletor.bat'
-    ].join('\n');
-    $('comandoColetor').textContent = env;
-    $('modalComando').showModal();
+  function exportarBoloesCsv() {
+    const rows = state.boloes.map(b => ({
+      codigo_loterica: b.codigo_loterica,
+      nome_loteria: b.nome_loteria,
+      modalidade: b.modalidade,
+      concurso: b.concurso,
+      pagina_caixa: paginaOrigemBolao(b),
+      codigo_bolao_caixa: b.codigo_bolao_caixa,
+      qtd_apostas: b.qtd_apostas,
+      qtd_numeros: b.qtd_numeros,
+      qtd_cota_total: b.qtd_cota_total,
+      qtd_cota_digital: b.qtd_cota_digital,
+      qtd_cota_disponivel: b.qtd_cota_disponivel,
+      valor_cota: b.valor_cota,
+      ultima_coleta_em: b.ultima_coleta_em
+    }));
+    baixarCsv('marketplace-caixa-boloes-capturados.csv', rows);
   }
 
-  async function copiarEnv() {
-    const txt = $('comandoColetor').textContent || '';
-    await navigator.clipboard.writeText(txt);
-    $('btnCopiarEnv').textContent = 'Copiado!';
-    setTimeout(() => $('btnCopiarEnv').textContent = 'Copiar configuração', 1500);
-  }
-
-  function exportarCsv() {
-    const lista = aplicarFiltros();
-    const cols = ['codigo_loterica','nome_loteria','codigo_bolao_caixa','pagina_caixa','modalidade','concurso','qtd_apostas','qtd_numeros','qtd_trevos','qtd_cota_total','qtd_cota_digital','qtd_cota_disponivel','qtd_cota_indisponivel','valor_cota','premio_estimado','ultima_coleta_em'];
-    const linhas = [cols.join(';')];
-    for (const b of lista) {
-      const c = calcular(b);
-      const row = cols.map(col => {
-        if (col === 'qtd_cota_indisponivel') return csvCell(c.indisponivel);
-        if (col === 'pagina_caixa') return csvCell(paginaOrigemBolao(b));
-        return csvCell(b[col]);
-      });
-      linhas.push(row.join(';'));
-    }
-    baixarCsv(`marketplace-caixa-boloes-${new Date().toISOString().slice(0,10)}.csv`, linhas);
-  }
-
-  function exportarMovCsv() {
-    const lista = aplicarFiltrosMovimentos();
-    const cols = ['hora_brasilia','codigo_loterica','nome_loteria','codigo_bolao_caixa','modalidade','concurso','qtd_apostas','qtd_numeros','valor_cota','disponivel_anterior','disponivel_atual','delta_disponivel','cotas_que_sairam','cotas_que_entraram','classificacao_movimento','valor_saida_estimado','valor_entrada_estimado','coletado_em'];
-    const linhas = [cols.join(';')];
-    for (const m of lista) linhas.push(cols.map(col => csvCell(m[col])).join(';'));
-    baixarCsv(`marketplace-caixa-movimentos-${new Date().toISOString().slice(0,10)}.csv`, linhas);
-  }
-
-  function baixarCsv(nome, linhas) {
-    const blob = new Blob([linhas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  function baixarCsv(nome, rows) {
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.join(';')]
+      .concat(rows.map(r => headers.map(h => csvCell(r[h])).join(';')))
+      .join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -566,56 +599,91 @@
     return `"${s}"`;
   }
 
-  function setText(id, value) {
-    const el = $(id);
-    if (el) el.textContent = value;
+  function calcularBolao(b) {
+    const total = int(b.qtd_cota_total);
+    const digital = int(b.qtd_cota_digital);
+    const disp = int(b.qtd_cota_disponivel);
+    return {
+      total,
+      digital,
+      disp,
+      indisponivel: Math.max(digital - disp, 0),
+      foraDigital: Math.max(total - digital, 0),
+      percDisp: digital > 0 ? disp / digital * 100 : 0
+    };
   }
 
-  function escapeHtml(v) {
-    return String(v ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
-
-  function ativarTabs() {
-    document.querySelectorAll('.mp-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tab = btn.dataset.tab;
-        document.querySelectorAll('.mp-tab').forEach(b => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.mp-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
-      });
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    try {
-      await validarSessaoMarketplace();
-      ativarTabs();
-
-      $('btnAtualizar')?.addEventListener('click', carregarTudo);
-      $('btnComandoColetor')?.addEventListener('click', abrirComandoColetor);
-      $('btnCopiarEnv')?.addEventListener('click', copiarEnv);
-      $('btnExportarCsv')?.addEventListener('click', exportarCsv);
-      $('btnExportarMovCsv')?.addEventListener('click', exportarMovCsv);
-
-      ['filtroLoja', 'filtroModalidade', 'filtroConcurso', 'filtroDisponibilidade'].forEach(id => {
-        $(id)?.addEventListener('input', renderBoloes);
-        $(id)?.addEventListener('change', renderBoloes);
-      });
-
-      ['movFiltroLoja', 'movFiltroModalidade', 'movFiltroConcurso', 'movFiltroPeriodo', 'movFiltroTipo'].forEach(id => {
-        $(id)?.addEventListener('input', renderMovimentosTabela);
-        $(id)?.addEventListener('change', renderMovimentosTabela);
-      });
-
-      await carregarTudo();
-      setInterval(carregarTudo, 60000);
-    } catch (err) {
-      console.error('[Marketplace CAIXA] erro ao iniciar tela', err);
-      mostrarAviso(err?.message || 'Erro ao iniciar a tela Marketplace CAIXA.');
+  function paginaOrigemBolao(b) {
+    const payload = b?.payload_caixa || {};
+    const candidatos = [b?.pagina_origem, b?.paginaOrigem, payload?.paginaOrigem, payload?.pagina_origem, payload?.pagina, payload?.paginaAtual];
+    for (const v of candidatos) {
+      if (v === null || v === undefined || v === '') continue;
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) return String(n);
+      return String(v);
     }
-  });
+    return '—';
+  }
+
+  function paginaOrigemSnapshot(s) {
+    const payload = s?.payload_caixa || {};
+    const candidatos = [s?.pagina_origem, s?.paginaOrigem, payload?.paginaOrigem, payload?.pagina_origem, payload?.pagina, payload?.paginaAtual];
+    for (const v of candidatos) {
+      if (v === null || v === undefined || v === '') continue;
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) return String(n);
+      return String(v);
+    }
+    return '';
+  }
+
+  function descricaoBolao(b) {
+    const mod = String(b.modalidade || '').toUpperCase();
+    if (mod === 'MAIS_MILIONARIA') {
+      const trevos = b.qtd_trevos ? ` e ${fmtInt(b.qtd_trevos)} trevos` : '';
+      return `${fmtInt(b.qtd_apostas)} jogo(s) de ${fmtInt(b.qtd_numeros)} números${trevos}`;
+    }
+    if (mod === 'LOTECA') {
+      const partes = [];
+      if (int(b.qtd_simples_loteca)) partes.push(`${fmtInt(b.qtd_simples_loteca)} simples`);
+      if (int(b.qtd_duplos_loteca)) partes.push(`${fmtInt(b.qtd_duplos_loteca)} duplos`);
+      if (int(b.qtd_triplos_loteca)) partes.push(`${fmtInt(b.qtd_triplos_loteca)} triplos`);
+      return partes.length ? `Loteca com ${partes.join(', ')}` : `${fmtInt(b.qtd_apostas)} jogo(s) Loteca`;
+    }
+    return `${fmtInt(b.qtd_apostas)} jogo(s) de ${fmtInt(b.qtd_numeros)} dezenas`;
+  }
+
+  function normalizarModalidade(mod) {
+    return String(mod || '—').replaceAll('_', ' ');
+  }
+
+  function fmtInt(v) { return int(v).toLocaleString('pt-BR'); }
+  function fmtBRL(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function fmtDataHora(v) {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  }
+  function fmtDataCurta(v) {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+  function fmtHora(v) {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+  }
+  function maiorData(datas) {
+    const nums = datas.map(d => d ? new Date(d).getTime() : NaN).filter(Number.isFinite);
+    return nums.length ? new Date(Math.max(...nums)).toISOString() : null;
+  }
+  function setText(id, txt) { const el = $(id); if (el) el.textContent = txt ?? '—'; }
+  function shortCode(s) { return s ? String(s).slice(0, 8) + '…' : '—'; }
+  function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  }
 })();
