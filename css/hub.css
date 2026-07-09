@@ -588,7 +588,11 @@ footer {
 
   .hero-title { font-size: 22px; }
 }
-/* ===== Card destaque: Resumo ===== */
+
+
+/* =========================================================
+   BOLÕES HUB — Ajustes Resumo + KPIs
+========================================================= */
 
 .resumo-card{
   position: relative;
@@ -678,8 +682,6 @@ footer {
   box-shadow:0 0 10px rgba(34,197,94,.55);
 }
 
-/* ===== KPIs com mais presença ===== */
-
 .hub-info-row{
   gap: 12px;
 }
@@ -726,7 +728,9 @@ footer {
   letter-spacing:-.03em;
 }
 
-/* ===== Responsivo corrigido ===== */
+.hub-card:nth-child(6) { animation: fadeUp var(--t-slow) var(--ease) 280ms both; }
+.hub-card:nth-child(7) { animation: fadeUp var(--t-slow) var(--ease) 320ms both; }
+.hub-card:nth-child(8) { animation: fadeUp var(--t-slow) var(--ease) 360ms both; }
 
 @media (max-width: 560px) {
   .hub-card:nth-child(5) {
