@@ -1,17 +1,14 @@
 const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
 
 const $ = (id) => document.getElementById(id);
-const fmtBRL = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtBRL = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
 const fmtData = (s) => {
   if (!s) return '—';
   const d = new Date(String(s).length === 10 ? `${s}T00:00:00` : s);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
-};
-const hojeISO = () => new Date().toISOString().slice(0, 10);
-const addDiasISO = (iso, delta) => {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + delta);
-  return d.toISOString().slice(0, 10);
 };
 
 let usuario = null;
@@ -38,10 +35,38 @@ function updateClock() {
   el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR');
 }
 
+function getCompetenciaAtual() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  return `${ano}-${mes}`;
+}
+
+function getRangeCompetencia(competencia) {
+  if (!competencia || !/^\d{4}-\d{2}$/.test(competencia)) return null;
+
+  const [ano, mes] = competencia.split('-').map(Number);
+  const inicio = new Date(ano, mes - 1, 1);
+  const fim = new Date(ano, mes, 0);
+
+  const fmtISO = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  return {
+    ano,
+    mes,
+    inicio: fmtISO(inicio),
+    fim: fmtISO(fim)
+  };
+}
+
 function getFiltros() {
   return {
-    dataIni: $('filtroDataIni')?.value || '',
-    dataFim: $('filtroDataFim')?.value || '',
+    competencia: $('filtroCompetencia')?.value || getCompetenciaAtual(),
     loja: $('filtroLoja')?.value || '',
     funcionario: $('filtroFuncionario')?.value || '',
     modalidade: $('filtroModalidade')?.value || '',
@@ -83,6 +108,8 @@ async function carregarLojas() {
   if (error) throw error;
 
   const sel = $('filtroLoja');
+  if (!sel) return;
+
   (data || []).forEach((l) => {
     const op = document.createElement('option');
     op.value = l.id;
@@ -102,6 +129,8 @@ async function carregarFuncionarios() {
   if (error) throw error;
 
   const sel = $('filtroFuncionario');
+  if (!sel) return;
+
   (data || []).forEach((u) => {
     const op = document.createElement('option');
     op.value = u.id;
@@ -118,8 +147,12 @@ async function carregarModalidades() {
 
   if (error) throw error;
 
-  const modalidades = [...new Set((data || []).map(r => r.modalidade).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const modalidades = [...new Set((data || []).map(r => r.modalidade).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
   const sel = $('filtroModalidade');
+  if (!sel) return;
+
   modalidades.forEach((m) => {
     const op = document.createElement('option');
     op.value = m;
@@ -131,12 +164,23 @@ async function carregarModalidades() {
 function linhaResumo(row) {
   const valorCota = Number(row.valor_cota || 0);
   const qtdVendida = Number(row.qtd_vendida || 0);
-  const totalVenda = Number(row.valor_total_venda ?? (valorCota * qtdVendida));
-  const perc = Number(row.percentual_comissao || 0);
-  const valorComissao = Number(row.valor_comissao ?? (totalVenda * perc / 100));
+  const totalVenda = Number(row.valor_total_venda || 0);
+
+  const valorComissao = Number(
+    row.valor_comissao ??
+    ((totalVenda - (totalVenda / 1.35)) * 0.15)
+  );
+
+  const perc = Number(
+    row.percentual_comissao ??
+    ((((1 - (1 / 1.35)) * 0.15) * 100))
+  );
 
   return {
     data_referencia: row.data_referencia,
+    competencia: row.competencia,
+    ano_ref: Number(row.ano_ref || 0),
+    mes_ref: Number(row.mes_ref || 0),
     loteria_vendedora_id: row.loteria_vendedora_id,
     loja_nome: row.loja_nome || '—',
     usuario_id: row.usuario_id,
@@ -150,22 +194,29 @@ function linhaResumo(row) {
     qtd_vendida: qtdVendida,
     valor_total_venda: totalVenda,
     percentual_comissao: perc,
-    valor_comissao: valorComissao
+    valor_comissao: Number(valorComissao.toFixed(2))
   };
 }
 
 async function buscarDados() {
   const filtros = getFiltros();
-  setStatus('Buscando resumo...', 'ok');
+  const range = getRangeCompetencia(filtros.competencia);
+
+  if (!range) {
+    setStatus('Competência inválida.', 'err');
+    return;
+  }
+
+  setStatus(`Buscando resumo de ${String(range.mes).padStart(2, '0')}/${range.ano}...`, 'ok');
 
   let q = sb
-    .from('view_comissao_boloes')
+    .from('view_resumo_boloes_vendas')
     .select('*')
+    .gte('data_referencia', range.inicio)
+    .lte('data_referencia', range.fim)
     .order('data_referencia', { ascending: true })
     .order('funcionario_nome', { ascending: true });
 
-  if (filtros.dataIni) q = q.gte('data_referencia', filtros.dataIni);
-  if (filtros.dataFim) q = q.lte('data_referencia', filtros.dataFim);
   if (filtros.loja) q = q.eq('loteria_vendedora_id', Number(filtros.loja));
   if (filtros.funcionario) q = q.eq('usuario_id', Number(filtros.funcionario));
   if (filtros.modalidade) q = q.eq('modalidade', filtros.modalidade);
@@ -220,7 +271,7 @@ function renderTabela() {
       <td>${fmtBRL(r.valor_cota)}</td>
       <td>${r.qtd_vendida}</td>
       <td>${fmtBRL(r.valor_total_venda)}</td>
-      <td>${Number(r.percentual_comissao || 0).toFixed(2)}%</td>
+      <td>${Number(r.percentual_comissao || 0).toFixed(4)}%</td>
       <td>${fmtBRL(r.valor_comissao)}</td>
     </tr>
   `).join('');
@@ -236,6 +287,7 @@ function renderGraficos() {
 
   const aggFunc = {};
   const aggDia = {};
+
   dadosResumo.forEach(r => {
     aggFunc[r.funcionario_nome] = (aggFunc[r.funcionario_nome] || 0) + Number(r.valor_comissao || 0);
     aggDia[r.data_referencia] = (aggDia[r.data_referencia] || 0) + Number(r.valor_total_venda || 0);
@@ -243,19 +295,32 @@ function renderGraficos() {
 
   const funcLabels = Object.keys(aggFunc);
   const funcVals = funcLabels.map(k => aggFunc[k]);
+
   const diaLabels = Object.keys(aggDia).sort();
   const diaVals = diaLabels.map(k => aggDia[k]);
 
   chartFuncionarios = new Chart($('graficoFuncionarios'), {
     type: 'bar',
-    data: { labels: funcLabels, datasets: [{ label: 'Comissão', data: funcVals }] },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+    data: {
+      labels: funcLabels,
+      datasets: [{ label: 'Comissão', data: funcVals }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
   });
 
   chartDiario = new Chart($('graficoDiario'), {
     type: 'line',
-    data: { labels: diaLabels.map(fmtData), datasets: [{ label: 'Venda diária', data: diaVals, tension: 0.25 }] },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+    data: {
+      labels: diaLabels.map(fmtData),
+      datasets: [{ label: 'Venda diária', data: diaVals, tension: 0.25 }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
   });
 }
 
@@ -266,8 +331,7 @@ function renderTudo() {
 }
 
 function limparFiltros() {
-  $('filtroDataIni').value = addDiasISO(hojeISO(), -7);
-  $('filtroDataFim').value = hojeISO();
+  $('filtroCompetencia').value = getCompetenciaAtual();
   $('filtroLoja').value = '';
   $('filtroFuncionario').value = '';
   $('filtroModalidade').value = '';
@@ -297,13 +361,25 @@ function bindView() {
 
 async function init() {
   if (!(await protegerPagina())) return;
+
   updateClock();
   setInterval(updateClock, 1000);
+
   bindView();
   limparFiltros();
+
   $('btnBuscarResumo').addEventListener('click', buscarDados);
-  $('btnLimparResumo').addEventListener('click', () => { limparFiltros(); setStatus('Filtros limpos.', 'ok'); });
-  await Promise.all([carregarLojas(), carregarFuncionarios(), carregarModalidades()]);
+  $('btnLimparResumo').addEventListener('click', () => {
+    limparFiltros();
+    setStatus('Filtros limpos.', 'ok');
+  });
+
+  await Promise.all([
+    carregarLojas(),
+    carregarFuncionarios(),
+    carregarModalidades()
+  ]);
+
   await buscarDados();
 }
 
