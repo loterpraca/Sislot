@@ -13,7 +13,6 @@
 </head>
 <body>
 
-  <!-- ===== TOPBAR ===== -->
   <header class="topbar">
     <div class="topbar-brand">
       <div class="brand-icon">SL</div>
@@ -35,23 +34,17 @@
     </div>
   </header>
 
-  <!-- ===== MAIN ===== -->
   <main class="main">
-
-    <!-- HERO -->
     <div class="hero">
       <div class="hero-tag">
         <div class="hero-tag-dot"></div>
         Módulo Bolões
       </div>
       <h1 class="hero-title">Gestão de <span>Bolões</span></h1>
-      <p class="hero-sub">Cadastre bolões, configure atalhos, distribua cotas entre lojas, acompanhe saldos e feche a operação com a visão mestra.</p>
+      <p class="hero-sub">Cadastre bolões, configure atalhos, distribua cotas entre lojas, acompanhe saldos, faça apuração e acesse o novo painel de resumo diário.</p>
     </div>
 
-    <!-- CARDS HUB -->
     <div class="hub-grid">
-
-      <!-- Cadastro -->
       <a class="hub-card" href="./bolao-cadastro.html" style="--hc-color:#00c896">
         <span class="hc-arrow">→</span>
         <div class="hc-icon">
@@ -69,7 +62,6 @@
         </div>
       </a>
 
-      <!-- Atalhos -->
       <a class="hub-card" href="./atalhos-boloes.html" style="--hc-color:#facc15">
         <span class="hc-arrow">→</span>
         <div class="hc-icon">
@@ -83,7 +75,6 @@
         </div>
       </a>
 
-      <!-- Movimentação -->
       <a class="hub-card" href="./movimentar.html" style="--hc-color:#38bdf8">
         <span class="hc-arrow">→</span>
         <div class="hc-icon">
@@ -100,7 +91,6 @@
         </div>
       </a>
 
-      <!-- Exibição -->
       <a class="hub-card" href="./exibir.html" style="--hc-color:#f5a623">
         <span class="hc-arrow">→</span>
         <div class="hc-icon">
@@ -115,7 +105,6 @@
         </div>
       </a>
 
-      <!-- Resultados / Apuração -->
       <a class="hub-card" href="./apuracao.html" style="--hc-color:#22c55e">
         <span class="hc-arrow">→</span>
         <div class="hc-icon">
@@ -134,7 +123,6 @@
         </div>
       </a>
 
-      <!-- Mestra -->
       <a class="hub-card" href="./boloes_mestra.html" style="--hc-color:#a78bfa">
         <span class="hc-arrow">→</span>
         <div class="hc-icon">
@@ -151,28 +139,26 @@
         </div>
       </a>
 
+      <a class="hub-card resumo-card" href="./resumo-boloes.html" style="--hc-color:#22c55e">
+        <span class="hc-arrow">→</span>
+        <div class="hc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/>
+            <path d="M7 14l3-3 3 2 4-5"/>
+            <circle cx="7" cy="14" r="1"/>
+            <circle cx="10" cy="11" r="1"/>
+            <circle cx="13" cy="13" r="1"/>
+            <circle cx="17" cy="8" r="1"/>
+          </svg>
+        </div>
+        <div class="hc-body">
+          <div class="hc-kicker">Novo painel</div>
+          <div class="hc-title">Resumo</div>
+          <div class="hc-desc">Vendas diárias, filtros, gráficos e leitura de comissão por funcionário.</div>
+        </div>
+      </a>
+    </div>
 
-     <a class="hub-card resumo-card" href="./resumo-boloes.html" style="--hc-color:#22c55e">
-  <span class="hc-arrow">→</span>
-  <div class="hc-icon">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 3v18h18"/>
-      <path d="M7 14l3-3 3 2 4-5"/>
-      <circle cx="7" cy="14" r="1"/>
-      <circle cx="10" cy="11" r="1"/>
-      <circle cx="13" cy="13" r="1"/>
-      <circle cx="17" cy="8" r="1"/>
-    </svg>
-  </div>
-  <div class="hc-body">
-    <div class="hc-kicker">Novo painel</div>
-    <div class="hc-title">Resumo</div>
-    <div class="hc-desc">Vendas diárias, filtros, gráficos e leitura de comissão por funcionário.</div>
-  </div>
-</a>
-    </div><!-- /hub-grid -->
-
-    <!-- SEÇÃO INDICADORES RÁPIDOS -->
     <div class="hub-section">
       <div class="sep">
         <span class="sep-label">Indicadores rápidos</span>
@@ -190,7 +176,7 @@
           </div>
           <div>
             <div class="hib-label">Bolões ativos</div>
-            <div class="hib-value" id="kpi-boloesAtivos">—</div>
+            <div class="hib-value" id="kpi-boloesAtivos">00</div>
           </div>
         </div>
 
@@ -205,7 +191,7 @@
           </div>
           <div>
             <div class="hib-label">Movimentações hoje</div>
-            <div class="hib-value" id="kpi-movsHoje">—</div>
+            <div class="hib-value" id="kpi-movsHoje">00</div>
           </div>
         </div>
 
@@ -216,86 +202,87 @@
             </svg>
           </div>
           <div>
-            <div class="hib-label">Vendas WPP hoje</div>
-            <div class="hib-value" id="kpi-wppHoje">—</div>
+            <div class="hib-label">Vendas WPP</div>
+            <div class="hib-value" id="kpi-wppHoje">00</div>
           </div>
         </div>
       </div>
     </div>
-
   </main>
 
   <footer>SISLOT v2.0 · Módulo Bolões · Sistema de Gestão de Lotéricas</footer>
 
- <script>
-  function tick() {
-    const el = document.getElementById('relogio');
-    if (!el) return;
-    const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-  }
-
-  tick();
-  setInterval(tick, 1000);
-
-  (async () => {
-    try {
-      const { createClient } = supabase;
-      const sb = createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
-
-      const hoje = new Date();
-      const yyyy = hoje.getFullYear();
-      const mm = String(hoje.getMonth() + 1).padStart(2, '0');
-      const dd = String(hoje.getDate()).padStart(2, '0');
-      const hojeIso = `${yyyy}-${mm}-${dd}`;
-
-      const elBoloes = document.getElementById('kpi-boloesAtivos');
-      const elMovs = document.getElementById('kpi-movsHoje');
-      const elWpp = document.getElementById('kpi-wppHoje');
-
-      if (elBoloes) elBoloes.textContent = '...';
-      if (elMovs) elMovs.textContent = '...';
-      if (elWpp) elWpp.textContent = '...';
-
-      const [{ count: cBoloes, error: eBoloes }, { count: cMovs, error: eMovs }, { count: cWpp, error: eWpp }] = await Promise.all([
-        sb
-          .from('boloes')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'ATIVO'),
-
-        sb
-          .from('movimentacoes_cotas')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', `${hojeIso}T00:00:00`)
-          .lt('created_at', `${hojeIso}T23:59:59.999`),
-
-        sb
-          .from('view_vendas_whatsapp')
-          .select('*', { count: 'exact', head: true })
-      ]);
-
-      if (eBoloes) console.error('Erro KPI bolões ativos:', eBoloes);
-      if (eMovs) console.error('Erro KPI movimentações hoje:', eMovs);
-      if (eWpp) console.error('Erro KPI WhatsApp:', eWpp);
-
-      if (elBoloes) elBoloes.textContent = eBoloes ? '—' : (cBoloes ?? '—');
-      if (elMovs) elMovs.textContent = eMovs ? '—' : (cMovs ?? '—');
-      if (elWpp) elWpp.textContent = eWpp ? '—' : (cWpp ?? '—');
-
-    } catch (err) {
-      console.error('Erro geral ao carregar KPIs do hub de bolões:', err);
-
-      const elBoloes = document.getElementById('kpi-boloesAtivos');
-      const elMovs = document.getElementById('kpi-movsHoje');
-      const elWpp = document.getElementById('kpi-wppHoje');
-
-      if (elBoloes) elBoloes.textContent = '—';
-      if (elMovs) elMovs.textContent = '—';
-      if (elWpp) elWpp.textContent = '—';
+  <script>
+    function tick() {
+      const el = document.getElementById('relogio');
+      if (!el) return;
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     }
-  })();
-</script>
+
+    tick();
+    setInterval(tick, 1000);
+
+    async function safeCount(builderFactory) {
+      try {
+        const result = await builderFactory();
+        return { count: result.count ?? null, error: result.error ?? null };
+      } catch (error) {
+        return { count: null, error };
+      }
+    }
+
+    (async () => {
+      const elBoloes = document.getElementById('kpi-boloesAtivos');
+      const elMovs = document.getElementById('kpi-movsHoje');
+      const elWpp = document.getElementById('kpi-wppHoje');
+
+      try {
+        const { createClient } = supabase;
+        const cfg = window.SISLOT_CONFIG || SISLOT_CONFIG;
+        const sb = createClient(cfg.url, cfg.anonKey);
+
+        const agora = new Date();
+        const yyyy = agora.getFullYear();
+        const mm = String(agora.getMonth() + 1).padStart(2, '0');
+        const dd = String(agora.getDate()).padStart(2, '0');
+        const hojeIso = `${yyyy}-${mm}-${dd}`;
+
+        const [boloesRes, movsRes, wppRes] = await Promise.all([
+          safeCount(() =>
+            sb.from('boloes')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'ATIVO')
+          ),
+          safeCount(() =>
+            sb.from('movimentacoes_cotas')
+              .select('*', { count: 'exact', head: true })
+              .gte('created_at', `${hojeIso}T00:00:00`)
+              .lt('created_at', `${hojeIso}T23:59:59.999`)
+          ),
+          safeCount(() =>
+            sb.from('view_vendas_whatsapp')
+              .select('*', { count: 'exact', head: true })
+          )
+        ]);
+
+        if (boloesRes.error) console.error('Erro KPI bolões ativos:', boloesRes.error);
+        if (movsRes.error) console.error('Erro KPI movimentações hoje:', movsRes.error);
+        if (wppRes.error) console.error('Erro KPI vendas WhatsApp:', wppRes.error);
+
+        if (elBoloes) elBoloes.textContent = boloesRes.error ? '—' : String(boloesRes.count ?? '—');
+        if (elMovs) elMovs.textContent = movsRes.error ? '—' : String(movsRes.count ?? '—');
+        if (elWpp) elWpp.textContent = wppRes.error ? '—' : String(wppRes.count ?? '—');
+
+      } catch (error) {
+        console.error('Erro geral ao carregar KPIs do hub de bolões:', error);
+        if (elBoloes) elBoloes.textContent = '—';
+        if (elMovs) elMovs.textContent = '—';
+        if (elWpp) elWpp.textContent = '—';
+      }
+    })();
+  </script>
 
 </body>
 </html>
