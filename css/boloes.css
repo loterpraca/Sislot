@@ -285,3 +285,153 @@
   letter-spacing: .04em;
   text-transform: uppercase;
 }
+/* ===== Upgrade visual do hub Bolões ===== */
+
+.resumo-card{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at top right, rgba(34,197,94,.16), transparent 38%),
+    linear-gradient(180deg, rgba(12,21,40,.96), rgba(8,15,30,.98));
+  border:1px solid rgba(34,197,94,.22);
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.resumo-card::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, rgba(34,197,94,.08), transparent 42%);
+  pointer-events:none;
+}
+
+.resumo-card::after{
+  content:'';
+  position:absolute;
+  left:18px;
+  right:18px;
+  top:0;
+  height:2px;
+  background:linear-gradient(90deg, rgba(34,197,94,.1), rgba(34,197,94,.9), rgba(34,197,94,.1));
+  opacity:.95;
+}
+
+.resumo-card:hover{
+  transform:translateY(-4px);
+  border-color:rgba(34,197,94,.38);
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.28),
+    0 0 0 1px rgba(34,197,94,.12);
+}
+
+.resumo-card .hc-icon{
+  background:rgba(34,197,94,.12);
+  border:1px solid rgba(34,197,94,.22);
+  color:#4ade80;
+}
+
+.resumo-card .hc-title{
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:-.02em;
+}
+
+.resumo-card .hc-desc{
+  max-width:30ch;
+  color:rgba(221,232,248,.78);
+  line-height:1.45;
+}
+
+.hc-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-bottom:6px;
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#4ade80;
+}
+
+.hc-kicker::before{
+  content:'';
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#22c55e;
+  box-shadow:0 0 10px rgba(34,197,94,.55);
+}
+
+.hub-info-row{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:14px;
+}
+
+.hub-info-box{
+  position:relative;
+  min-height:92px;
+  border-radius:16px;
+  border:1px solid rgba(26,48,96,.78);
+  background:
+    linear-gradient(180deg, rgba(16,31,56,.94), rgba(10,20,38,.96));
+  padding:16px 18px;
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.16),
+    inset 0 1px 0 rgba(255,255,255,.03);
+  transition:.25s ease;
+}
+
+.hub-info-box::before{
+  content:'';
+  position:absolute;
+  left:16px;
+  right:16px;
+  top:0;
+  height:2px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+  opacity:.5;
+}
+
+.hub-info-box:hover{
+  transform:translateY(-2px);
+  border-color:rgba(56,189,248,.24);
+}
+
+.hib-label{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#7a95c4;
+  margin-bottom:7px;
+}
+
+.hib-value{
+  font-size:26px;
+  font-weight:700;
+  line-height:1;
+  color:#dde8f8;
+  letter-spacing:-.03em;
+}
+
+.hib-icon{
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  flex:0 0 42px;
+}
+
+@media (max-width: 900px){
+  .hub-info-row{
+    grid-template-columns:1fr;
+  }
+
+  .resumo-card .hc-desc{
+    max-width:none;
+  }
+}
