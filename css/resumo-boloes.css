@@ -9,3 +9,15 @@
 .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.chart-card{background:rgba(7,13,26,.35);border:1px solid var(--border);border-radius:12px;padding:14px}.chart-title{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
 @media (max-width:1100px){.filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.actions-field{grid-column:span 3}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-grid{grid-template-columns:1fr}}
 @media (max-width:700px){.main{padding:14px}.page-head{flex-direction:column;align-items:flex-start}.filters-grid{grid-template-columns:1fr}.actions-field{grid-column:auto;flex-direction:column}.kpi-grid{grid-template-columns:1fr}.topbar-right .clock,.btn-top span{display:none}}
+.row-dia.active-day td{
+  background: rgba(34,197,94,.08);
+}
+
+.table-total-row td{
+  background: rgba(255,255,255,.04);
+  font-weight: 700;
+}
+
+#secDetalheDia{
+  margin-top: 14px;
+}
