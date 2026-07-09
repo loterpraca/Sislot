@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>SISLOT — Resumo de Bolões</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link rel="stylesheet" href="./css/resumo-boloes.css"/>
+</head>
+<body data-loja="centro">
+<header class="topbar">
+  <div class="topbar-inner">
+    <button type="button" class="btn-top" onclick="location.href='./boloes.html'">
+      <i class="fas fa-arrow-left"></i><span>Bolões</span>
+    </button>
+    <div class="topbar-brand">
+      <div class="brand-name" id="headerTitle">Resumo de Bolões</div>
+      <div class="brand-sub">Vendas diárias, filtros e comissão</div>
+    </div>
+    <div class="topbar-right">
+      <div class="clock" id="relogio">--:--:--</div>
+      <button class="btn-top" onclick="location.href='./menu.html'">
+        <i class="fas fa-home"></i><span>Menu</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <section class="page-head">
+    <div>
+      <div class="page-kicker">Módulo Bolões</div>
+      <h1>Resumo</h1>
+      <p>Leitura diária das vendas por loja, funcionário, modalidade e concurso, com visualização tabular, gráfica e cálculo de comissão.</p>
+    </div>
+    <div class="view-switch" role="tablist" aria-label="Modo de visualização">
+      <button type="button" class="view-btn active" id="btnViewTabela">Tabela</button>
+      <button type="button" class="view-btn" id="btnViewGrafico">Gráfico</button>
+    </div>
+  </section>
+
+  <section class="panel filters-panel">
+    <div class="panel-title">Filtros</div>
+    <div class="filters-grid">
+      <div class="field">
+        <label for="filtroDataIni">Data inicial</label>
+        <input type="date" id="filtroDataIni" />
+      </div>
+      <div class="field">
+        <label for="filtroDataFim">Data final</label>
+        <input type="date" id="filtroDataFim" />
+      </div>
+      <div class="field">
+        <label for="filtroLoja">Loja</label>
+        <select id="filtroLoja">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtroFuncionario">Funcionário</label>
+        <select id="filtroFuncionario">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtroModalidade">Modalidade</label>
+        <select id="filtroModalidade">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filtroConcurso">Concurso</label>
+        <input type="number" id="filtroConcurso" placeholder="Ex.: 3728" />
+      </div>
+      <div class="field actions-field">
+        <button type="button" class="btn btn-primary" id="btnBuscarResumo"><i class="fas fa-search"></i> Buscar</button>
+        <button type="button" class="btn" id="btnLimparResumo"><i class="fas fa-eraser"></i> Limpar</button>
+      </div>
+    </div>
+    <div class="status-bar" id="statusResumo"></div>
+  </section>
+
+  <section class="kpi-grid">
+    <article class="kpi-card">
+      <span>Total vendido</span>
+      <strong id="kpiTotalVendido">R$ 0,00</strong>
+      <small>Somatório das cotas vendidas</small>
+    </article>
+    <article class="kpi-card">
+      <span>Total de cotas</span>
+      <strong id="kpiQtdCotas">0</strong>
+      <small>Cotas lançadas no período</small>
+    </article>
+    <article class="kpi-card">
+      <span>Comissão total</span>
+      <strong id="kpiComissao">R$ 0,00</strong>
+      <small>Baseada na regra configurada</small>
+    </article>
+    <article class="kpi-card">
+      <span>Funcionário destaque</span>
+      <strong id="kpiDestaque">—</strong>
+      <small id="kpiDestaqueSub">Sem dados</small>
+    </article>
+  </section>
+
+  <section class="panel" id="secTabela">
+    <div class="panel-head">
+      <div class="panel-title">Tabela diária</div>
+      <div class="panel-subtitle" id="tableCount">0 registros</div>
+    </div>
+    <div class="table-wrap">
+      <table class="resumo-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Loja</th>
+            <th>Funcionário</th>
+            <th>Modalidade</th>
+            <th>Concurso</th>
+            <th>Jogos</th>
+            <th>Dezenas</th>
+            <th>Valor Cota</th>
+            <th>Qtd Vendida</th>
+            <th>Total Venda</th>
+            <th>% Comissão</th>
+            <th>Comissão</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyResumo">
+          <tr>
+            <td colspan="12" class="empty-row">Nenhum dado carregado.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel hidden" id="secGrafico">
+    <div class="panel-head">
+      <div class="panel-title">Visão gráfica</div>
+      <div class="panel-subtitle">Resumo por funcionário e por dia</div>
+    </div>
+    <div class="chart-grid">
+      <article class="chart-card">
+        <div class="chart-title">Comissão por funcionário</div>
+        <canvas id="graficoFuncionarios"></canvas>
+      </article>
+      <article class="chart-card">
+        <div class="chart-title">Venda por dia</div>
+        <canvas id="graficoDiario"></canvas>
+      </article>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="./sislot-config.js"></script>
+<script src="./js/resumo-boloes.js"></script>
+</body>
+</html>
