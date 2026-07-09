@@ -209,27 +209,43 @@ async function buscarDados() {
 
   setStatus(`Buscando resumo de ${String(range.mes).padStart(2, '0')}/${range.ano}...`, 'ok');
 
-  let q = sb
-    .from('view_resumo_boloes_vendas')
-    .select('*')
-    .gte('data_referencia', range.inicio)
-    .lte('data_referencia', range.fim)
-    .order('data_referencia', { ascending: true })
-    .order('funcionario_nome', { ascending: true });
+  const pageSize = 1000;
+  let from = 0;
+  let allRows = [];
+  let finished = false;
 
-  if (filtros.loja) q = q.eq('loteria_vendedora_id', Number(filtros.loja));
-  if (filtros.funcionario) q = q.eq('usuario_id', Number(filtros.funcionario));
-  if (filtros.modalidade) q = q.eq('modalidade', filtros.modalidade);
-  if (filtros.concurso) q = q.eq('concurso', String(filtros.concurso));
+  while (!finished) {
+    let q = sb
+      .from('view_resumo_boloes_vendas')
+      .select('*')
+      .gte('data_referencia', range.inicio)
+      .lte('data_referencia', range.fim)
+      .order('data_referencia', { ascending: true })
+      .order('funcionario_nome', { ascending: true })
+      .range(from, from + pageSize - 1);
 
-  const { data, error } = await q;
-  if (error) throw error;
+    if (filtros.loja) q = q.eq('loteria_vendedora_id', Number(filtros.loja));
+    if (filtros.funcionario) q = q.eq('usuario_id', Number(filtros.funcionario));
+    if (filtros.modalidade) q = q.eq('modalidade', filtros.modalidade);
+    if (filtros.concurso) q = q.eq('concurso', String(filtros.concurso));
 
-  dadosResumo = (data || []).map(linhaResumo);
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const chunk = data || [];
+    allRows = allRows.concat(chunk);
+
+    if (chunk.length < pageSize) {
+      finished = true;
+    } else {
+      from += pageSize;
+    }
+  }
+
+  dadosResumo = allRows.map(linhaResumo);
   renderTudo();
   setStatus(`${dadosResumo.length} registro(s) carregado(s).`, 'ok');
 }
-
 function renderKPIs() {
   const totalVendido = dadosResumo.reduce((s, r) => s + Number(r.valor_total_venda || 0), 0);
   const totalCotas = dadosResumo.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
