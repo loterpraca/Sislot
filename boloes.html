@@ -228,57 +228,75 @@
 
   <footer>SISLOT v2.0 · Módulo Bolões · Sistema de Gestão de Lotéricas</footer>
 
-  <script>
-    /* clock */
-    function tick() {
-      const el = document.getElementById('relogio');
-      if (!el) return;
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    }
-    tick();
-    setInterval(tick, 1000);
+ <script>
+  function tick() {
+    const el = document.getElementById('relogio');
+    if (!el) return;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  }
 
-    /* KPIs — integração Supabase (adapte conforme tabelas reais) */
-    (async () => {
-      try {
-        const { createClient } = supabase;
-        const sb = createClient(SISLOT_CONFIG.url, SISLOT_CONFIG.anonKey);
-        const hoje = new Date().toISOString().slice(0, 10);
+  tick();
+  setInterval(tick, 1000);
 
-        /* bolões ativos */
-        const { count: cBoloes } = await sb
+  (async () => {
+    try {
+      const { createClient } = supabase;
+      const sb = createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
+
+      const hoje = new Date();
+      const yyyy = hoje.getFullYear();
+      const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+      const dd = String(hoje.getDate()).padStart(2, '0');
+      const hojeIso = `${yyyy}-${mm}-${dd}`;
+
+      const elBoloes = document.getElementById('kpi-boloesAtivos');
+      const elMovs = document.getElementById('kpi-movsHoje');
+      const elWpp = document.getElementById('kpi-wppHoje');
+
+      if (elBoloes) elBoloes.textContent = '...';
+      if (elMovs) elMovs.textContent = '...';
+      if (elWpp) elWpp.textContent = '...';
+
+      const [{ count: cBoloes, error: eBoloes }, { count: cMovs, error: eMovs }, { count: cWpp, error: eWpp }] = await Promise.all([
+        sb
           .from('boloes')
           .select('*', { count: 'exact', head: true })
-          .eq('ativo', true);
+          .eq('status', 'ATIVO'),
 
-        document.getElementById('kpi-boloesAtivos').textContent =
-          cBoloes != null ? cBoloes : '—';
-
-        /* movimentações hoje — tabela de bolões */
-        const { count: cMovs } = await sb
-          .from('movimentacoes')
+        sb
+          .from('movimentacoes_cotas')
           .select('*', { count: 'exact', head: true })
-          .gte('created_at', hoje);
+          .gte('created_at', `${hojeIso}T00:00:00`)
+          .lt('created_at', `${hojeIso}T23:59:59.999`),
 
-        document.getElementById('kpi-movsHoje').textContent =
-          cMovs != null ? cMovs : '—';
-
-        /* vendas whatsapp hoje */
-        const { count: cWpp } = await sb
-          .from('vendas_whatsapp')
+        sb
+          .from('view_vendas_whatsapp')
           .select('*', { count: 'exact', head: true })
-          .gte('created_at', hoje);
+      ]);
 
-        document.getElementById('kpi-wppHoje').textContent =
-          cWpp != null ? cWpp : '—';
+      if (eBoloes) console.error('Erro KPI bolões ativos:', eBoloes);
+      if (eMovs) console.error('Erro KPI movimentações hoje:', eMovs);
+      if (eWpp) console.error('Erro KPI WhatsApp:', eWpp);
 
-      } catch (_) {
-        /* silencioso — página funciona sem dados */
-      }
-    })();
-  </script>
+      if (elBoloes) elBoloes.textContent = eBoloes ? '—' : (cBoloes ?? '—');
+      if (elMovs) elMovs.textContent = eMovs ? '—' : (cMovs ?? '—');
+      if (elWpp) elWpp.textContent = eWpp ? '—' : (cWpp ?? '—');
+
+    } catch (err) {
+      console.error('Erro geral ao carregar KPIs do hub de bolões:', err);
+
+      const elBoloes = document.getElementById('kpi-boloesAtivos');
+      const elMovs = document.getElementById('kpi-movsHoje');
+      const elWpp = document.getElementById('kpi-wppHoje');
+
+      if (elBoloes) elBoloes.textContent = '—';
+      if (elMovs) elMovs.textContent = '—';
+      if (elWpp) elWpp.textContent = '—';
+    }
+  })();
+</script>
 
 </body>
 </html>
