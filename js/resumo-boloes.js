@@ -250,20 +250,53 @@ function renderKPIs() {
   $('kpiDestaqueSub').textContent = destaque ? fmtBRL(destaque[1]) : 'Sem dados';
 }
 
-function renderTabela() {
-  const tbody = $('tbodyResumo');
-  $('tableCount').textContent = `${dadosResumo.length} registro(s)`;
+function agruparPorDia(linhas) {
+  const mapa = {};
 
-  if (!dadosResumo.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="empty-row">Nenhum dado encontrado.</td></tr>';
+  linhas.forEach(r => {
+    const dia = r.data_referencia;
+    if (!mapa[dia]) {
+      mapa[dia] = {
+        data_referencia: dia,
+        qtd_vendida: 0,
+        valor_total_venda: 0,
+        valor_comissao: 0,
+        registros: []
+      };
+    }
+
+    mapa[dia].qtd_vendida += Number(r.qtd_vendida || 0);
+    mapa[dia].valor_total_venda += Number(r.valor_total_venda || 0);
+    mapa[dia].valor_comissao += Number(r.valor_comissao || 0);
+    mapa[dia].registros.push(r);
+  });
+
+  return Object.values(mapa).sort((a, b) =>
+    String(a.data_referencia).localeCompare(String(b.data_referencia))
+  );
+}
+
+function renderDetalheDia(dataRef) {
+  const tbody = $('tbodyDetalheDia');
+  const titulo = $('detalheDiaTitulo');
+
+  const itens = dadosResumo
+    .filter(r => r.data_referencia === dataRef)
+    .sort((a, b) => {
+      const mod = String(a.modalidade || '').localeCompare(String(b.modalidade || ''), 'pt-BR');
+      if (mod !== 0) return mod;
+      return String(a.concurso || '').localeCompare(String(b.concurso || ''), 'pt-BR');
+    });
+
+  titulo.textContent = dataRef ? `Bolões vendidos em ${fmtData(dataRef)}` : 'Selecione uma data na tabela';
+
+  if (!itens.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-row">Nenhum bolão encontrado para esta data.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = dadosResumo.map(r => `
+  tbody.innerHTML = itens.map(r => `
     <tr>
-      <td>${fmtData(r.data_referencia)}</td>
-      <td>${r.loja_nome}</td>
-      <td>${r.funcionario_nome}</td>
       <td>${r.modalidade}</td>
       <td>${r.concurso}</td>
       <td>${r.qtd_jogos}</td>
@@ -271,10 +304,64 @@ function renderTabela() {
       <td>${fmtBRL(r.valor_cota)}</td>
       <td>${r.qtd_vendida}</td>
       <td>${fmtBRL(r.valor_total_venda)}</td>
-      <td>${Number(r.percentual_comissao || 0).toFixed(4)}%</td>
       <td>${fmtBRL(r.valor_comissao)}</td>
     </tr>
   `).join('');
+}
+
+function renderTabela() {
+  const tbody = $('tbodyResumo');
+  const agrupado = agruparPorDia(dadosResumo);
+
+  $('tableCount').textContent = `${agrupado.length} dia(s) com venda`;
+
+  if (!agrupado.length) {
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-row">Nenhum dado encontrado.</td></tr>';
+    renderDetalheDia(null);
+    return;
+  }
+
+  const totalMesCotas = agrupado.reduce((s, r) => s + Number(r.qtd_vendida || 0), 0);
+  const totalMesVenda = agrupado.reduce((s, r) => s + Number(r.valor_total_venda || 0), 0);
+  const totalMesComissao = agrupado.reduce((s, r) => s + Number(r.valor_comissao || 0), 0);
+
+  tbody.innerHTML = agrupado.map(r => `
+    <tr class="row-dia" data-dia="${r.data_referencia}" style="cursor:pointer">
+      <td>${fmtData(r.data_referencia)}</td>
+      <td colspan="2"><strong>Total do dia</strong></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>${r.qtd_vendida}</td>
+      <td>${fmtBRL(r.valor_total_venda)}</td>
+      <td>—</td>
+      <td>${fmtBRL(r.valor_comissao)}</td>
+    </tr>
+  `).join('') + `
+    <tr class="table-total-row">
+      <td><strong>Total do mês</strong></td>
+      <td colspan="7">Competência consolidada</td>
+      <td><strong>${totalMesCotas}</strong></td>
+      <td><strong>${fmtBRL(totalMesVenda)}</strong></td>
+      <td>—</td>
+      <td><strong>${fmtBRL(totalMesComissao)}</strong></td>
+    </tr>
+  `;
+
+  tbody.querySelectorAll('.row-dia').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const dia = tr.dataset.dia;
+      renderDetalheDia(dia);
+
+      tbody.querySelectorAll('.row-dia').forEach(x => x.classList.remove('active-day'));
+      tr.classList.add('active-day');
+    });
+  });
+
+  renderDetalheDia(agrupado[0].data_referencia);
+  tbody.querySelector('.row-dia')?.classList.add('active-day');
 }
 
 function destruirGraficos() {
@@ -290,14 +377,24 @@ function renderGraficos() {
 
   dadosResumo.forEach(r => {
     aggFunc[r.funcionario_nome] = (aggFunc[r.funcionario_nome] || 0) + Number(r.valor_comissao || 0);
-    aggDia[r.data_referencia] = (aggDia[r.data_referencia] || 0) + Number(r.valor_total_venda || 0);
+
+    if (!aggDia[r.data_referencia]) {
+      aggDia[r.data_referencia] = {
+        venda: 0,
+        comissao: 0
+      };
+    }
+
+    aggDia[r.data_referencia].venda += Number(r.valor_total_venda || 0);
+    aggDia[r.data_referencia].comissao += Number(r.valor_comissao || 0);
   });
 
   const funcLabels = Object.keys(aggFunc);
   const funcVals = funcLabels.map(k => aggFunc[k]);
 
   const diaLabels = Object.keys(aggDia).sort();
-  const diaVals = diaLabels.map(k => aggDia[k]);
+  const diaVendaVals = diaLabels.map(k => aggDia[k].venda);
+  const diaComVals = diaLabels.map(k => aggDia[k].comissao);
 
   chartFuncionarios = new Chart($('graficoFuncionarios'), {
     type: 'bar',
@@ -315,15 +412,16 @@ function renderGraficos() {
     type: 'line',
     data: {
       labels: diaLabels.map(fmtData),
-      datasets: [{ label: 'Venda diária', data: diaVals, tension: 0.25 }]
+      datasets: [
+        { label: 'Venda diária', data: diaVendaVals, tension: 0.25 },
+        { label: 'Comissão diária', data: diaComVals, tension: 0.25 }
+      ]
     },
     options: {
-      responsive: true,
-      plugins: { legend: { display: false } }
+      responsive: true
     }
   });
 }
-
 function renderTudo() {
   renderKPIs();
   renderTabela();
