@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>SISLOT — Histórico Marketplace</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link rel="stylesheet" href="./css/marketplace-caixa.css" />
+  <link rel="stylesheet" href="./css/marketplace-historico.css" />
+</head>
+<body data-loja="boulevard">
+  <header class="app-header">
+    <a class="header-brand" href="./marketplace.html" title="Voltar ao Marketplace">
+      <img src="./icons/loterpraca.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'">
+      <div class="brand-text">
+        <div class="brand-name">SISLOT</div>
+        <div class="brand-sub">Histórico Marketplace</div>
+      </div>
+    </a>
+
+    <div class="loja-chip" title="Consulta histórica">
+      <div class="loja-chip-dot history-dot-header"></div>
+      <span class="loja-chip-nome">HISTÓRICO</span>
+      <span class="loja-chip-hint">snapshots</span>
+    </div>
+
+    <div class="header-filters history-header-filters">
+      <div class="filter-group">
+        <label class="filter-label">Loja</label>
+        <select id="filtroLoja" class="filter-sel"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Modalidade</label>
+        <select id="filtroModalidade" class="filter-sel"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Concurso</label>
+        <input id="filtroConcurso" class="filter-input" type="number" inputmode="numeric" placeholder="Ex.: 3729" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">De</label>
+        <input id="filtroDataInicial" class="filter-input history-date" type="date" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Até</label>
+        <input id="filtroDataFinal" class="filter-input history-date" type="date" />
+      </div>
+      <button id="btnBuscar" class="btn-atualizar history-search" type="button" title="Buscar histórico"><i class="fas fa-search"></i></button>
+    </div>
+
+    <div class="header-right">
+      <div class="periodo-info" id="liveStatusTitulo">Aguardando busca</div>
+      <div class="app-clock" id="relogio">--:--:--</div>
+      <a class="hdr-btn" href="./marketplace.html" title="Marketplace"><i class="fas fa-layer-group"></i></a>
+      <a class="hdr-btn" href="./menu.html" title="Menu"><i class="fas fa-home"></i></a>
+      <button class="hdr-btn hdr-btn-exit" id="btnLogout" type="button" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <main class="mp-main">
+      <section class="mp-topline">
+        <div class="mp-title-wrap">
+          <div class="mp-eyebrow history-eyebrow">Inteligência histórica</div>
+          <h1 class="mp-title">Comportamento dos concursos anteriores</h1>
+          <div class="mp-sub" id="liveStatusSub">Escolha os filtros e busque os snapshots armazenados no SISLOT.</div>
+        </div>
+        <div class="mp-actions">
+          <button id="btnConcursoAnterior" class="btn-soft" type="button"><i class="fas fa-backward-step"></i> Concurso anterior</button>
+          <button id="btnLimpar" class="btn-soft" type="button"><i class="fas fa-eraser"></i> Limpar</button>
+          <button id="btnExportarCsv" class="btn-soft" type="button"><i class="fas fa-download"></i> Exportar</button>
+        </div>
+      </section>
+
+      <section id="mpAviso" class="alert" hidden></section>
+
+      <section class="stats-row">
+        <article class="stat-card"><div class="stat-label">Bolões encontrados</div><div class="stat-value" id="statBoloes">—</div></article>
+        <article class="stat-card"><div class="stat-label">Lotéricas</div><div class="stat-value" id="statLojas">—</div></article>
+        <article class="stat-card"><div class="stat-label">Snapshots</div><div class="stat-value" id="statSnapshots">—</div></article>
+        <article class="stat-card stat-card-hot"><div class="stat-label">Saídas observadas</div><div class="stat-value" id="statSaidas">—</div></article>
+        <article class="stat-card stat-card-return"><div class="stat-label">Reposições</div><div class="stat-value" id="statEntradas">—</div></article>
+        <article class="stat-card stat-card-gold"><div class="stat-label">Período observado</div><div class="stat-value stat-date" id="statPeriodo">—</div></article>
+      </section>
+
+      <section class="panel history-panel">
+        <div class="panel-title compact">
+          <div>
+            <h2>Resultados históricos</h2>
+            <p id="resultadoResumo">Selecione uma modalidade e um concurso, ou informe um período.</p>
+          </div>
+          <div class="legend">
+            <span><i class="leg-down"></i> saiu</span>
+            <span><i class="leg-up"></i> entrou</span>
+            <span class="pill warn">não é venda confirmada</span>
+          </div>
+        </div>
+        <div id="historyList" class="timeline-list">
+          <div class="empty history-empty">Use os filtros acima para consultar concursos antigos. A busca não depende do status atual do bolão.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./sislot-security.js"></script>
+  <script src="./js/marketplace-historico.js"></script>
+</body>
+</html>

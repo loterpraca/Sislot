@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>SISLOT — Marketplace</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/marketplace-hub.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-brand" href="./menu.html" title="Voltar ao menu">
+      <div class="brand-icon">SL</div>
+      <div><div class="brand-name">SISLOT</div><div class="brand-sub">Marketplace</div></div>
+    </a>
+    <div class="topbar-right">
+      <div class="status-chip"><span class="status-dot"></span> MARKETPLACE CAIXA</div>
+      <div class="clock" id="relogio">--:--:--</div>
+      <a href="./menu.html" class="btn-nav">← Menu principal</a>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="hero">
+      <div class="hero-tag"><span></span> Módulo Marketplace</div>
+      <h1>Inteligência do <em>Marketplace</em></h1>
+      <p>Monitore a disponibilidade atual e investigue o comportamento dos bolões em concursos anteriores.</p>
+    </section>
+
+    <section class="marketplace-grid">
+      <a class="marketplace-card card-live" href="./marketplace-caixa.html">
+        <span class="card-arrow">→</span>
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/><path d="M7 15l3-3 3 2 5-7"/>
+            <circle cx="7" cy="15" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="18" cy="7" r="1"/>
+          </svg>
+        </div>
+        <div class="card-kicker">Tempo real</div>
+        <h2>Monitor Real</h2>
+        <p>Acompanhe bolões ativos, disponibilidade atual, entradas, saídas e saúde do coletor.</p>
+        <div class="card-footer"><span><i class="live-dot"></i> Dados vigentes</span><strong>Abrir monitor</strong></div>
+      </a>
+
+      <a class="marketplace-card card-history" href="./marketplace-historico.html">
+        <span class="card-arrow">→</span>
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18"/><path d="M7 16l4-4 3 3 5-8"/>
+            <path d="M7 8v8"/><path d="M12 7v5"/><path d="M17 5v4"/>
+          </svg>
+        </div>
+        <div class="card-kicker">Análise histórica</div>
+        <h2>Histórico</h2>
+        <p>Consulte concursos antigos, compare lotéricas e analise saídas, reposições e evolução das cotas.</p>
+        <div class="card-footer"><span><i class="history-dot"></i> Snapshots armazenados</span><strong>Consultar histórico</strong></div>
+      </a>
+    </section>
+
+    <section class="info-strip">
+      <article><span>Monitor Real</span><strong>Fotografia atual</strong><p>Usa o estado vigente de cada bolão.</p></article>
+      <article><span>Histórico</span><strong>Comportamento no tempo</strong><p>Usa todos os snapshots coletados.</p></article>
+      <article><span>Classificação</span><strong>Grupo x concorrentes</strong><p>Permite separar suas lojas do mercado.</p></article>
+    </section>
+  </main>
+
+  <footer>SISLOT v2.0 · Marketplace CAIXA · Inteligência de disponibilidade</footer>
+  <script>
+    function tick() {
+      const el = document.getElementById('relogio');
+      if (!el) return;
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString('pt-BR') + ' — ' + now.toLocaleDateString('pt-BR');
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
