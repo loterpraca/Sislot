@@ -19,6 +19,12 @@
     snapshots: [],
     coletas: [],
     series: [],
+    detalhes: new Map(),
+    detalheDisponivel: true,
+    detalheAtual: null,
+    detalheCodigoAtual: '',
+    detalhePollingToken: 0,
+    detalheLoading: false,
     loading: false
   };
 
@@ -48,6 +54,23 @@
     $('modalColetor')?.addEventListener('click', (e) => { if (e.target?.id === 'modalColetor') $('modalColetor').hidden = true; });
     $('btnExportarSerieCsv')?.addEventListener('click', exportarSerieCsv);
     $('btnExportarBoloesCsv')?.addEventListener('click', exportarBoloesCsv);
+
+    $('btnFecharDetalhe')?.addEventListener('click', fecharDetalhamento);
+    $('btnAtualizarDetalhe')?.addEventListener('click', solicitarAtualizacaoDetalhe);
+    $('modalDetalheBolao')?.addEventListener('click', (e) => {
+      if (e.target?.id === 'modalDetalheBolao') fecharDetalhamento();
+    });
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-detalhe-bolao]');
+      if (!btn) return;
+      e.preventDefault();
+      abrirDetalhamento(btn.dataset.detalheBolao);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('modalDetalheBolao')?.hidden) fecharDetalhamento();
+    });
 
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => ativarAba(btn.dataset.tab));
@@ -105,15 +128,19 @@
       const periodo = Number($('filtroPeriodo')?.value || 6);
       const since = new Date(Date.now() - periodo * 60 * 60 * 1000).toISOString();
 
-      const [boloes, snapshots, coletas] = await Promise.all([
+      const [boloes, snapshots, coletas, detalhes] = await Promise.all([
         buscarBoloes(),
         buscarSnapshots(since),
-        buscarColetas()
+        buscarColetas(),
+        buscarDetalhesResumoSeguro()
       ]);
 
       state.boloes = boloes;
       state.snapshots = snapshots;
       state.coletas = coletas;
+      state.detalhes = new Map(
+        detalhes.map(d => [String(d.codigo_bolao_caixa), d])
+      );
 
       montarFiltros();
       montarSeries();
@@ -160,6 +187,23 @@
       .order('iniciado_em', { ascending: false })
       .limit(24);
     if (error) throw error;
+    return data || [];
+  }
+
+  async function buscarDetalhesResumoSeguro() {
+    const { data, error } = await sb
+      .from('marketplace_caixa_detalhes')
+      .select('codigo_bolao_caixa,qtd_cota_total,qtd_cota_disponivel,qtd_cota_fisica,qtd_cota_baixadas_impressas,qtd_cota_vendidas,qtd_cota_reservada,qtd_cota_baixadas,origem_ultima_coleta,ultima_coleta_em')
+      .order('ultima_coleta_em', { ascending: false })
+      .limit(5000);
+
+    if (error) {
+      state.detalheDisponivel = false;
+      console.warn('[Marketplace CAIXA] detalhamento ainda não disponível:', error);
+      return [];
+    }
+
+    state.detalheDisponivel = true;
     return data || [];
   }
 
@@ -387,6 +431,7 @@
             <div class="sum-chip"><span>Mín/Máx</span><strong>${fmtInt(item.min)} / ${fmtInt(item.max)}</strong></div>
           </div>
           <div class="last-move">Último mov.: ${escapeHtml(ultimo)}</div>
+          ${renderAcaoDetalheTimeline(b)}
         </div>
       </article>
     `;
@@ -509,6 +554,12 @@
     box.innerHTML = state.boloes.map(b => {
       const c = calcularBolao(b);
       const pagina = paginaOrigemBolao(b);
+      const detalhe = state.detalhes.get(String(b.codigo_bolao_caixa));
+      const detalheTexto = detalhe
+        ? `${fmtInt(detalhe.qtd_cota_vendidas)} vendidas · ${fmtInt(detalhe.qtd_cota_baixadas_impressas)} impressas`
+        : (state.detalheDisponivel ? 'Aguardando primeira coleta' : 'Detalhamento não instalado');
+      const detalheClasse = detalhe ? '' : 'pending';
+
       return `
         <article class="bolao-card">
           <div class="bolao-card-head">
@@ -531,9 +582,616 @@
             <div class="mini-stat"><span>Fora digital</span><strong>${fmtInt(c.foraDigital)}</strong></div>
             <div class="mini-stat"><span>Coleta</span><strong>${escapeHtml(fmtDataCurta(b.ultima_coleta_em))}</strong></div>
           </div>
+          <div class="bolao-card-footer">
+            <div class="bolao-detail-state">
+              <span>Detalhamento</span>
+              <strong class="${detalheClasse}">${escapeHtml(detalheTexto)}</strong>
+            </div>
+            ${botaoDetalheHtml(b.codigo_bolao_caixa, Boolean(detalhe))}
+          </div>
         </article>
       `;
     }).join('');
+  }
+
+
+  function renderAcaoDetalheTimeline(b) {
+    const detalhe = state.detalhes.get(String(b.codigo_bolao_caixa));
+    const resumo = detalhe
+      ? `<strong>${fmtInt(detalhe.qtd_cota_vendidas)}</strong> vendidas · <strong>${fmtInt(detalhe.qtd_cota_baixadas_impressas)}</strong> impressas`
+      : (state.detalheDisponivel ? 'Detalhe aguardando coleta' : 'Detalhamento não instalado');
+
+    return `
+      <div class="timeline-detail-actions">
+        <div class="detail-summary-inline">${resumo}</div>
+        ${botaoDetalheHtml(b.codigo_bolao_caixa, Boolean(detalhe), 'Ver')}
+      </div>
+    `;
+  }
+
+  function botaoDetalheHtml(codigoBolao, temDetalhe, label = 'Detalhamento') {
+    if (!codigoBolao) return '';
+    return `
+      <button
+        type="button"
+        class="btn-detail ${temDetalhe ? 'has-detail' : ''}"
+        data-detalhe-bolao="${escapeHtml(codigoBolao)}"
+        title="Ver situação real das cotas e atualizar este bolão"
+      >
+        <i class="fas fa-list-check"></i>
+        <span>${escapeHtml(label)}</span>
+      </button>
+    `;
+  }
+
+  async function abrirDetalhamento(codigoBolao) {
+    const codigo = String(codigoBolao || '').trim();
+    if (!codigo) return;
+
+    state.detalheCodigoAtual = codigo;
+    state.detalhePollingToken += 1;
+    $('modalDetalheBolao').hidden = false;
+    document.body.classList.add('detail-modal-open');
+
+    const bolao = state.boloes.find(b => String(b.codigo_bolao_caixa) === codigo);
+    setText(
+      'detalheTitulo',
+      bolao
+        ? `${normalizarModalidade(bolao.modalidade)} · Concurso ${bolao.concurso || '—'}`
+        : 'Detalhamento do bolão'
+    );
+    setText(
+      'detalheSubtitulo',
+      bolao
+        ? `${bolao.nome_loteria || `Lotérica ${bolao.codigo_loterica || '—'}`} · ${descricaoBolao(bolao)}`
+        : shortCode(codigo)
+    );
+
+    definirStatusDetalhe('Consultando o último detalhamento salvo...', 'loading');
+    setDetalheBodyLoading();
+    await carregarDetalhamento(codigo);
+  }
+
+  function fecharDetalhamento() {
+    const modal = $('modalDetalheBolao');
+    if (modal) modal.hidden = true;
+    document.body.classList.remove('detail-modal-open');
+    state.detalhePollingToken += 1;
+    state.detalheLoading = false;
+    state.detalheAtual = null;
+    state.detalheCodigoAtual = '';
+  }
+
+  async function carregarDetalhamento(codigoBolao, options = {}) {
+    const codigo = String(codigoBolao || '').trim();
+    if (!codigo || state.detalheLoading) return;
+
+    state.detalheLoading = true;
+    atualizarBotaoDetalhe(true, 'Carregando...');
+
+    try {
+      const [detalheResult, snapshotsResult, solicitacaoResult] = await Promise.all([
+        sb
+          .from('marketplace_caixa_detalhes')
+          .select('*')
+          .eq('codigo_bolao_caixa', codigo)
+          .maybeSingle(),
+
+        sb
+          .from('marketplace_caixa_detalhes_snapshots')
+          .select('id,codigo_bolao_caixa,qtd_cota_total,qtd_cota_disponivel,qtd_cota_fisica,qtd_cota_baixadas_impressas,qtd_cota_vendidas,qtd_cota_reservada,qtd_cota_baixadas,origem_coleta,coletado_em')
+          .eq('codigo_bolao_caixa', codigo)
+          .order('coletado_em', { ascending: false })
+          .limit(12),
+
+        sb
+          .from('marketplace_caixa_detalhe_solicitacoes')
+          .select('id,status,origem,solicitado_em,iniciado_em,concluido_em,erro,resultado')
+          .eq('codigo_bolao_caixa', codigo)
+          .order('solicitado_em', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
+
+      if (detalheResult.error) throw detalheResult.error;
+      if (snapshotsResult.error) throw snapshotsResult.error;
+      if (solicitacaoResult.error) throw solicitacaoResult.error;
+
+      const detalhe = detalheResult.data || null;
+      const snapshots = snapshotsResult.data || [];
+      const solicitacao = solicitacaoResult.data || null;
+
+      state.detalheAtual = detalhe;
+
+      if (detalhe) {
+        state.detalhes.set(codigo, detalhe);
+      }
+
+      renderDetalhamento(detalhe, snapshots, solicitacao);
+
+      if (!options.preservarStatus) {
+        atualizarStatusSolicitacao(detalhe, solicitacao);
+      }
+    } catch (err) {
+      console.error('[Marketplace CAIXA] falha no detalhamento:', err);
+      definirStatusDetalhe(err.message || 'Falha ao consultar o detalhamento.', 'error');
+      $('detalheBody').innerHTML = `
+        <div class="detail-error">
+          <i class="fas fa-triangle-exclamation"></i>
+          <strong>Não foi possível carregar o detalhamento</strong>
+          <span>${escapeHtml(err.message || 'Erro desconhecido.')}</span>
+        </div>
+      `;
+    } finally {
+      state.detalheLoading = false;
+      atualizarBotaoDetalhe(false, 'Atualizar agora');
+    }
+  }
+
+  function renderDetalhamento(detalhe, snapshots, solicitacao) {
+    const body = $('detalheBody');
+    if (!body) return;
+
+    if (!detalhe) {
+      body.innerHTML = `
+        <div class="detail-empty">
+          <i class="fas fa-hourglass-half"></i>
+          <strong>Aguardando a primeira coleta detalhada</strong>
+          <span>
+            O coletor inclui bolões novos automaticamente. Clique em
+            “Atualizar agora” para colocar este bolão no início da fila.
+          </span>
+          ${renderSolicitacaoDetalhe(solicitacao)}
+        </div>
+      `;
+      return;
+    }
+
+    const payload = obterPayloadDetalhe(detalhe);
+    const conferencia = calcularConferenciaDetalhe(detalhe);
+    const apostas = Array.isArray(payload.apostas) ? payload.apostas : [];
+
+    body.innerHTML = `
+      <section class="detail-section">
+        <div class="detail-section-head">
+          <div>
+            <h4>Situação atual das cotas</h4>
+            <p>Quantidades retornadas diretamente pelo endpoint detalhar-bolao.</p>
+          </div>
+          <div class="detail-updated">
+            <span>Última atualização</span>
+            <strong>${escapeHtml(fmtDataHora(detalhe.ultima_coleta_em))}</strong>
+            <em>${detalhe.origem_ultima_coleta === 'MANUAL' ? 'solicitação manual' : 'coleta automática'}</em>
+          </div>
+        </div>
+
+        <div class="detail-stat-grid">
+          ${detailStat('Disponíveis', detalhe.qtd_cota_disponivel, 'available')}
+          ${detailStat('Vendidas', detalhe.qtd_cota_vendidas, 'sold')}
+          ${detailStat('Impressas', detalhe.qtd_cota_baixadas_impressas, 'printed')}
+          ${detailStat('Reservadas', detalhe.qtd_cota_reservada, 'reserved')}
+          ${detailStat('Baixadas', detalhe.qtd_cota_baixadas, 'downloaded')}
+          ${detailStat('Físicas', detalhe.qtd_cota_fisica, 'physical')}
+        </div>
+
+        <div class="detail-conference ${conferencia.ok ? 'ok' : 'warn'}">
+          <span>
+            Conferência: disponíveis + vendidas + impressas + reservadas + baixadas + físicas
+          </span>
+          <strong>${fmtInt(conferencia.soma)} / ${fmtInt(conferencia.total)}</strong>
+        </div>
+
+        ${renderSolicitacaoDetalhe(solicitacao)}
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-head">
+          <div>
+            <h4>Valores e composição</h4>
+            <p>Valores do bolão e da cota informados pela CAIXA.</p>
+          </div>
+        </div>
+        <div class="detail-values-grid">
+          ${detailValue('Cota sem tarifa', fmtBRL(detalhe.vr_cota_sem_tarifa))}
+          ${detailValue('Cota com tarifa', fmtBRL(detalhe.vr_cota_com_tarifa))}
+          ${detailValue('Tarifa da cota', fmtBRL(detalhe.vr_tarifa_servico_cota))}
+          ${detailValue('Última cota', fmtBRL(detalhe.vr_ultima_cota_com_tarifa))}
+          ${detailValue('Total sem tarifa', fmtBRL(detalhe.vr_total_bolao_sem_tarifa))}
+          ${detailValue('Total com tarifa', fmtBRL(detalhe.vr_total_bolao_com_tarifa))}
+          ${detailValue('Tarifa total', fmtBRL(detalhe.vr_tarifa_bolao))}
+          ${detailValue('Apostas', fmtInt(detalhe.qtd_apostas))}
+        </div>
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-head">
+          <div>
+            <h4>Últimas coletas detalhadas</h4>
+            <p>Histórico horário e atualizações feitas pelo botão.</p>
+          </div>
+        </div>
+        ${renderHistoricoDetalhe(snapshots)}
+      </section>
+
+      <section class="detail-section">
+        <div class="detail-section-head">
+          <div>
+            <h4>Jogos do bolão</h4>
+            <p>${apostas.length ? `${apostas.length} aposta(s) retornada(s) pelo detalhamento.` : 'Nenhuma aposta retornada.'}</p>
+          </div>
+        </div>
+        ${renderApostasDetalhe(apostas)}
+      </section>
+    `;
+  }
+
+  function detailStat(label, value, classe) {
+    return `
+      <div class="detail-stat ${classe}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${fmtInt(value)}</strong>
+      </div>
+    `;
+  }
+
+  function detailValue(label, value) {
+    return `
+      <div class="detail-value">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `;
+  }
+
+  function calcularConferenciaDetalhe(detalhe) {
+    const total = int(detalhe.qtd_cota_total);
+    const soma =
+      int(detalhe.qtd_cota_disponivel) +
+      int(detalhe.qtd_cota_vendidas) +
+      int(detalhe.qtd_cota_baixadas_impressas) +
+      int(detalhe.qtd_cota_reservada) +
+      int(detalhe.qtd_cota_baixadas) +
+      int(detalhe.qtd_cota_fisica);
+
+    return { total, soma, ok: total === soma };
+  }
+
+  function obterPayloadDetalhe(detalhe) {
+    const documento = detalhe?.payload_detalhe;
+    if (!documento || typeof documento !== 'object') return {};
+    const payload = documento.payload;
+    return payload && typeof payload === 'object' ? payload : documento;
+  }
+
+  function renderSolicitacaoDetalhe(solicitacao) {
+    if (!solicitacao) return '';
+
+    const status = String(solicitacao.status || '').toUpperCase();
+    const mapa = {
+      PENDENTE: ['pending', 'Aguardando o coletor'],
+      PROCESSANDO: ['processing', 'Coletor consultando a CAIXA'],
+      CONCLUIDO: ['done', 'Atualização concluída'],
+      ERRO: ['error', 'Falha na atualização']
+    };
+    const [classe, titulo] = mapa[status] || ['', status || 'Solicitação'];
+
+    const data =
+      solicitacao.concluido_em ||
+      solicitacao.iniciado_em ||
+      solicitacao.solicitado_em;
+
+    return `
+      <div class="detail-request ${classe}">
+        <strong>${escapeHtml(titulo)}</strong>
+        · ${escapeHtml(fmtDataHora(data))}
+        ${solicitacao.origem === 'MANUAL' ? ' · atualização manual' : ''}
+        ${solicitacao.erro ? ` · ${escapeHtml(solicitacao.erro)}` : ''}
+      </div>
+    `;
+  }
+
+  function renderHistoricoDetalhe(snapshots) {
+    if (!snapshots?.length) {
+      return `<div class="empty">Ainda não existem snapshots detalhados deste bolão.</div>`;
+    }
+
+    return `
+      <div class="detail-history-wrap">
+        <table class="detail-history">
+          <thead>
+            <tr>
+              <th>Coletado em</th>
+              <th>Disp.</th>
+              <th>Vend.</th>
+              <th>Impr.</th>
+              <th>Reserv.</th>
+              <th>Baix.</th>
+              <th>Físicas</th>
+              <th>Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${snapshots.map(s => `
+              <tr>
+                <td>${escapeHtml(fmtDataHora(s.coletado_em))}</td>
+                <td>${fmtInt(s.qtd_cota_disponivel)}</td>
+                <td>${fmtInt(s.qtd_cota_vendidas)}</td>
+                <td>${fmtInt(s.qtd_cota_baixadas_impressas)}</td>
+                <td>${fmtInt(s.qtd_cota_reservada)}</td>
+                <td>${fmtInt(s.qtd_cota_baixadas)}</td>
+                <td>${fmtInt(s.qtd_cota_fisica)}</td>
+                <td>
+                  <span class="detail-origin ${s.origem_coleta === 'MANUAL' ? 'manual' : ''}">
+                    ${s.origem_coleta === 'MANUAL' ? 'Manual' : 'Automático'}
+                  </span>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderApostasDetalhe(apostas) {
+    if (!apostas.length) {
+      return `<div class="empty">A CAIXA não retornou a composição dos jogos neste detalhamento.</div>`;
+    }
+
+    return `
+      <div class="detail-bets">
+        ${apostas.map((aposta, index) => renderApostaDetalhe(aposta, index)).join('')}
+      </div>
+    `;
+  }
+
+  function renderApostaDetalhe(aposta, index) {
+    const dezenas = arrayNumerico(
+      aposta?.dezenas ||
+      aposta?.numeros ||
+      aposta?.numerosApostados
+    );
+    const trevos = arrayNumerico(
+      aposta?.trevos ||
+      aposta?.numerosTrevos
+    );
+
+    const extras = [];
+    if (aposta?.indicadorSurpresinha === true) extras.push('Surpresinha');
+    if (aposta?.timeCoracao) extras.push(`Time: ${aposta.timeCoracao}`);
+    if (aposta?.mesSorte) extras.push(`Mês: ${aposta.mesSorte}`);
+
+    const camposNaoExibidos = Object.entries(aposta || {})
+      .filter(([chave, valor]) =>
+        !['dezenas', 'numeros', 'numerosApostados', 'trevos', 'numerosTrevos', 'indicadorSurpresinha', 'timeCoracao', 'mesSorte'].includes(chave)
+        && valor !== null
+        && valor !== undefined
+        && typeof valor !== 'object'
+      )
+      .slice(0, 4)
+      .map(([chave, valor]) => `${normalizarCampo(chave)}: ${valor}`);
+
+    return `
+      <article class="detail-bet">
+        <div class="detail-bet-head">
+          <strong>Jogo ${index + 1}</strong>
+          <span>${extras.join(' · ') || 'Aposta registrada'}</span>
+        </div>
+        <div class="detail-number-list">
+          ${dezenas.length
+            ? dezenas.map(n => `<span class="detail-number">${escapeHtml(formatarNumeroAposta(n))}</span>`).join('')
+            : '<span class="detail-extra-line">Sem dezenas numéricas para exibir.</span>'
+          }
+          ${trevos.map(n => `<span class="detail-number trevo" title="Trevo">${escapeHtml(formatarNumeroAposta(n))}</span>`).join('')}
+        </div>
+        ${(camposNaoExibidos.length || extras.length)
+          ? `<div class="detail-extra-line">${escapeHtml([...extras, ...camposNaoExibidos].join(' · '))}</div>`
+          : ''
+        }
+      </article>
+    `;
+  }
+
+  function arrayNumerico(valor) {
+    if (!Array.isArray(valor)) return [];
+    return valor.filter(v => v !== null && v !== undefined && v !== '');
+  }
+
+  function formatarNumeroAposta(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? String(n).padStart(2, '0') : String(v);
+  }
+
+  function normalizarCampo(campo) {
+    return String(campo || '')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replaceAll('_', ' ')
+      .toLowerCase();
+  }
+
+  async function solicitarAtualizacaoDetalhe() {
+    const codigo = state.detalheCodigoAtual;
+    if (!codigo || state.detalheLoading) return;
+
+    const coletaAnterior = state.detalheAtual?.ultima_coleta_em || null;
+    atualizarBotaoDetalhe(true, 'Solicitando...');
+    definirStatusDetalhe('Enviando solicitação ao coletor...', 'loading');
+
+    try {
+      const { data, error } = await sb.rpc(
+        'marketplace_caixa_solicitar_detalhe',
+        { p_codigo_bolao_caixa: codigo }
+      );
+
+      if (error) throw error;
+
+      const resposta = data || {};
+      const status = String(resposta.status || '').toUpperCase();
+
+      if (status === 'ATUALIZADO_RECENTE') {
+        definirStatusDetalhe(
+          resposta.mensagem || 'Este bolão foi atualizado há menos de um minuto.',
+          'ok'
+        );
+        await carregarDetalhamento(codigo, { preservarStatus: true });
+        return;
+      }
+
+      definirStatusDetalhe(
+        resposta.mensagem || 'Atualização solicitada. Aguardando o coletor...',
+        status === 'PROCESSANDO' ? 'loading' : 'warn'
+      );
+
+      const token = ++state.detalhePollingToken;
+      await aguardarAtualizacaoDetalhe(codigo, coletaAnterior, token);
+    } catch (err) {
+      console.error('[Marketplace CAIXA] erro ao solicitar detalhe:', err);
+      definirStatusDetalhe(err.message || 'Não foi possível solicitar a atualização.', 'error');
+    } finally {
+      atualizarBotaoDetalhe(false, 'Atualizar agora');
+    }
+  }
+
+  async function aguardarAtualizacaoDetalhe(codigo, coletaAnterior, token) {
+    const limiteTentativas = 45;
+
+    for (let tentativa = 0; tentativa < limiteTentativas; tentativa += 1) {
+      await esperar(2000);
+
+      if (
+        token !== state.detalhePollingToken ||
+        codigo !== state.detalheCodigoAtual ||
+        $('modalDetalheBolao')?.hidden
+      ) {
+        return;
+      }
+
+      const [detalheResult, solicitacaoResult] = await Promise.all([
+        sb
+          .from('marketplace_caixa_detalhes')
+          .select('codigo_bolao_caixa,ultima_coleta_em')
+          .eq('codigo_bolao_caixa', codigo)
+          .maybeSingle(),
+
+        sb
+          .from('marketplace_caixa_detalhe_solicitacoes')
+          .select('status,erro,concluido_em')
+          .eq('codigo_bolao_caixa', codigo)
+          .order('solicitado_em', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ]);
+
+      if (detalheResult.error) throw detalheResult.error;
+      if (solicitacaoResult.error) throw solicitacaoResult.error;
+
+      const novaColeta = detalheResult.data?.ultima_coleta_em || null;
+      const status = String(solicitacaoResult.data?.status || '').toUpperCase();
+
+      if (status === 'ERRO') {
+        definirStatusDetalhe(
+          solicitacaoResult.data?.erro || 'O coletor não conseguiu atualizar este bolão.',
+          'error'
+        );
+        await carregarDetalhamento(codigo, { preservarStatus: true });
+        return;
+      }
+
+      if (
+        status === 'CONCLUIDO' ||
+        (novaColeta && (!coletaAnterior || new Date(novaColeta) > new Date(coletaAnterior)))
+      ) {
+        definirStatusDetalhe('Detalhamento atualizado com sucesso.', 'ok');
+        await carregarDetalhamento(codigo, { preservarStatus: true });
+
+        const detalhes = await buscarDetalhesResumoSeguro();
+        state.detalhes = new Map(
+          detalhes.map(d => [String(d.codigo_bolao_caixa), d])
+        );
+        renderTimeline();
+        renderBoloes();
+        return;
+      }
+
+      definirStatusDetalhe(
+        status === 'PROCESSANDO'
+          ? 'Coletor consultando a CAIXA...'
+          : 'Solicitação na fila. Aguardando o próximo ciclo do coletor...',
+        status === 'PROCESSANDO' ? 'loading' : 'warn'
+      );
+    }
+
+    definirStatusDetalhe(
+      'A solicitação continua na fila. Confirme se o coletor do Windows está aberto.',
+      'warn'
+    );
+    await carregarDetalhamento(codigo, { preservarStatus: true });
+  }
+
+  function atualizarStatusSolicitacao(detalhe, solicitacao) {
+    const status = String(solicitacao?.status || '').toUpperCase();
+
+    if (status === 'PENDENTE') {
+      definirStatusDetalhe('Atualização aguardando o coletor do Windows.', 'warn');
+      return;
+    }
+
+    if (status === 'PROCESSANDO') {
+      definirStatusDetalhe('Coletor consultando o detalhe deste bolão...', 'loading');
+      return;
+    }
+
+    if (status === 'ERRO') {
+      definirStatusDetalhe(solicitacao.erro || 'Última atualização falhou.', 'error');
+      return;
+    }
+
+    if (detalhe) {
+      definirStatusDetalhe(
+        `Último detalhe salvo em ${fmtDataHora(detalhe.ultima_coleta_em)}.`,
+        'ok'
+      );
+      return;
+    }
+
+    definirStatusDetalhe('Ainda não existe detalhamento salvo para este bolão.', 'warn');
+  }
+
+  function definirStatusDetalhe(texto, tipo = '') {
+    const el = $('detalheStatus');
+    if (!el) return;
+    el.textContent = texto || '';
+    el.className = `detail-status ${tipo}`.trim();
+  }
+
+  function atualizarBotaoDetalhe(loading, texto) {
+    const btn = $('btnAtualizarDetalhe');
+    if (!btn) return;
+    btn.disabled = Boolean(loading);
+    const span = btn.querySelector('span');
+    const icon = btn.querySelector('i');
+
+    if (span) span.textContent = texto || 'Atualizar agora';
+    if (icon) {
+      icon.className = loading
+        ? 'fas fa-circle-notch fa-spin'
+        : 'fas fa-rotate';
+    }
+  }
+
+  function setDetalheBodyLoading() {
+    const body = $('detalheBody');
+    if (!body) return;
+    body.innerHTML = `
+      <div class="detail-loading">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <span>Carregando detalhamento...</span>
+      </div>
+    `;
+  }
+
+  function esperar(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   function renderColetas() {
