@@ -93,51 +93,69 @@
   }
 
   async function carregarCadastroLoterias() {
-    const tentativas = [
-      'codigo_caixa,nome,ativo',
-      'codigo_caixa,nome'
-    ];
+  state.cadastroLoterias.clear();
 
-    for (const select of tentativas) {
-      const { data, error } = await sb
-        .from('marketplace_caixa_loterias')
-        .select(select)
-        .order('nome', { ascending: true });
+  // Primeiro tenta o cadastro oficial das lotéricas.
+  const { data: cadastro, error: erroCadastro } = await sb
+    .from('marketplace_caixa_loterias')
+    .select('codigo_caixa,nome')
+    .order('nome', { ascending: true });
 
-      if (!error) {
-        (data || []).forEach((loja) => {
-          const codigo = String(loja.codigo_caixa || '').trim();
-          if (!codigo) return;
-          state.cadastroLoterias.set(codigo, {
-            codigo,
-            nome: loja.nome || `Lotérica ${codigo}`
-          });
-        });
-        return;
-      }
-    }
-
-    console.warn('[Histórico Marketplace] cadastro de lotéricas indisponível; usando snapshots e lista local.');
+  if (!erroCadastro) {
+    (cadastro || []).forEach((loja) => {
+      registrarLoja(
+        loja.codigo_caixa,
+        loja.nome
+      );
+    });
+  } else {
+    console.warn(
+      '[Histórico Marketplace] não foi possível carregar marketplace_caixa_loterias:',
+      erroCadastro
+    );
   }
+
+  // Complementa com os nomes já existentes nos bolões coletados.
+  const { data: boloes, error: erroBoloes } = await sb
+    .from('marketplace_caixa_boloes')
+    .select(
+      'codigo_loterica,nome_loteria,payload_caixa'
+    )
+    .limit(5000);
+
+  if (!erroBoloes) {
+    (boloes || []).forEach((bolao) => {
+      registrarLoja(
+        bolao.codigo_loterica,
+        bolao.nome_loteria ||
+          nomeLoteriaPayload(
+            bolao.payload_caixa
+          )
+      );
+    });
+  } else {
+    console.warn(
+      '[Histórico Marketplace] não foi possível carregar nomes dos bolões:',
+      erroBoloes
+    );
+  }
+}
 
   async function carregarOpcoesIniciais() {
     atualizarLive('Preparando histórico', 'Buscando modalidades e lotéricas já coletadas...');
 
     const recentes = await buscarSnapshotsPaginados({
-      apenasColunas: 'codigo_loterica,modalidade,concurso,coletado_em',
+      apenasColunas:'codigo_loterica,modalidade,concurso,coletado_em,payload_caixa',
       dataInicial: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
       limiteMaximo: 8000
     });
 
-    recentes.forEach((row) => {
-      const codigo = String(row.codigo_loterica || '').trim();
-      if (codigo && !state.cadastroLoterias.has(codigo)) {
-        state.cadastroLoterias.set(codigo, {
-          codigo,
-          nome: `Lotérica ${codigo}`
-        });
-      }
-    });
+recentes.forEach((row) => {
+  registrarLoja(
+    row.codigo_loterica,
+    nomeLoteriaPayload(row.payload_caixa)
+  );
+});
 
     preencherSelect(
       $('filtroModalidade'),
@@ -334,7 +352,17 @@
 
         const stats = calcularSerie(pontos);
         const primeiro = pontos[0] || {};
-        const loja = obterLoja(primeiro.codigo_loterica);
+
+registrarLoja(
+  primeiro.codigo_loterica,
+  nomeLoteriaPayload(
+    primeiro.payload_caixa
+  )
+);
+
+const loja = obterLoja(
+  primeiro.codigo_loterica
+);
 
         return {
           codigoBolao,
@@ -599,7 +627,55 @@ const coords = pontos.map((ponto, index) => ({
 
     baixarCsv('historico-marketplace.csv', rows);
   }
+function registrarLoja(codigo, nome) {
+  const key = String(codigo || '').trim();
+  const nomeLimpo = String(nome || '').trim();
 
+  if (!key) return;
+
+  const atual =
+    state.cadastroLoterias.get(key);
+
+  const atualEhGenerico =
+    !atual?.nome ||
+    atual.nome === `Lotérica ${key}`;
+
+  if (
+    nomeLimpo &&
+    (
+      !atual ||
+      atualEhGenerico
+    )
+  ) {
+    state.cadastroLoterias.set(key, {
+      codigo: key,
+      nome: nomeLimpo
+    });
+
+    return;
+  }
+
+  if (!atual) {
+    state.cadastroLoterias.set(key, {
+      codigo: key,
+      nome: `Lotérica ${key}`
+    });
+  }
+}
+
+function nomeLoteriaPayload(payload) {
+  const dados = payload || {};
+
+  return String(
+    dados.nomeFantasia ||
+    dados.nome_fantasia ||
+    dados.nomeLoteria ||
+    dados.nome_loteria ||
+    dados.nomeRazaoSocial ||
+    dados.nome_razao_social ||
+    ''
+  ).trim();
+}
   function obterLoja(codigo) {
     const key = String(codigo || '').trim();
 
