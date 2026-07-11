@@ -93,7 +93,7 @@
           <div class="legend">
             <span><i class="leg-down"></i> saiu</span>
             <span><i class="leg-up"></i> entrou</span>
-            <span class="pill warn">não é venda confirmada</span>
+            <span class="pill warn">gráfico não confirma venda</span>
           </div>
         </div>
         <div id="historyList" class="timeline-list">
@@ -101,6 +101,36 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div class="modal" id="modalHistoricoDetalhe" hidden>
+    <div class="modal-card history-detail-card" role="dialog" aria-modal="true" aria-labelledby="historyDetailTitle">
+      <div class="modal-head history-detail-head">
+        <div>
+          <div class="mp-eyebrow history-eyebrow">Histórico real das cotas</div>
+          <h3 id="historyDetailTitle">Detalhamento do bolão</h3>
+          <p id="historyDetailSubtitle">Carregando informações...</p>
+        </div>
+        <button id="btnFecharHistoricoDetalhe" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="history-detail-toolbar">
+        <div id="historyDetailStatus" class="history-detail-status" aria-live="polite">
+          Consultando snapshots detalhados...
+        </div>
+        <button id="btnExportarHistoricoDetalhe" class="btn-soft" type="button" disabled>
+          <i class="fas fa-file-export"></i>
+          Exportar detalhes
+        </button>
+      </div>
+
+      <div id="historyDetailBody" class="modal-body history-detail-body">
+        <div class="history-detail-loading">
+          <i class="fas fa-circle-notch fa-spin"></i>
+          <span>Carregando histórico detalhado...</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
