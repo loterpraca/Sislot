@@ -477,28 +477,27 @@
     const padX = 14;
     const padY = 11;
     const span = Math.max(item.max - item.min, 1);
+const denom = Math.max(pontos.length - 1, 1);
 
-    const tempos = pontos.map((ponto) => {
-      const timestamp = new Date(ponto.coletado_em).getTime();
-      return Number.isFinite(timestamp) ? timestamp : 0;
-    });
+const coords = pontos.map((ponto, index) => ({
+  x:
+    padX +
+    (index / denom) *
+      (width - padX * 2),
 
-    const tempoInicial = Math.min(...tempos);
-    const tempoFinal = Math.max(...tempos);
-    const intervaloTempo = Math.max(tempoFinal - tempoInicial, 1);
+  y:
+    padY +
+    (
+      (
+        item.max -
+        int(ponto.qtd_cota_disponivel)
+      ) / span
+    ) *
+      (height - padY * 2),
 
-    const coords = pontos.map((ponto, index) => {
-      const proporcaoTempo = pontos.length === 1
-        ? 0.5
-        : (tempos[index] - tempoInicial) / intervaloTempo;
-
-      return {
-        x: padX + proporcaoTempo * (width - padX * 2),
-        y: padY + ((item.max - int(ponto.qtd_cota_disponivel)) / span) * (height - padY * 2),
-        d: int(ponto.qtd_cota_disponivel),
-        t: ponto.coletado_em
-      };
-    });
+  d: int(ponto.qtd_cota_disponivel),
+  t: ponto.coletado_em
+}));
 
     let path = `M ${coords[0].x.toFixed(2)} ${coords[0].y.toFixed(2)}`;
     for (let index = 1; index < coords.length; index += 1) {
