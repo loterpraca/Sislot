@@ -18,6 +18,11 @@
     snapshots: [],
     series: [],
     cadastroLoterias: new Map(),
+    detalheCodigoAtual: '',
+    detalheItemAtual: null,
+    detalheDocumentoAtual: null,
+    detalheSnapshotsAtuais: [],
+    detalheLoading: false,
     loading: false
   };
 
@@ -52,8 +57,25 @@
       }
     });
     $('filtroModalidade')?.addEventListener('change', carregarConcursosRecentesDaModalidade);
+    $('btnFecharHistoricoDetalhe')?.addEventListener('click', fecharHistoricoDetalhe);
+    $('btnExportarHistoricoDetalhe')?.addEventListener('click', exportarHistoricoDetalhe);
+
+    $('modalHistoricoDetalhe')?.addEventListener('click', (event) => {
+      if (event.target?.id === 'modalHistoricoDetalhe') fecharHistoricoDetalhe();
+    });
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-history-detail]');
+      if (!button) return;
+      abrirHistoricoDetalhe(button.dataset.historyDetail);
+    });
 
     document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !$('modalHistoricoDetalhe')?.hidden) {
+        fecharHistoricoDetalhe();
+        return;
+      }
+
       if (event.key === 'Enter' && event.target?.matches('input,select')) {
         buscarHistorico();
       }
@@ -490,7 +512,18 @@ const loja = obterLoja(
               <span>Δ líquido</span><strong>${item.delta > 0 ? '+' : ''}${fmtInt(item.delta)}</strong>
             </div>
           </div>
-          <div class="history-snapshot-count">${fmtInt(item.pontos.length)} snapshots</div>
+          <div class="history-snapshot-count">${fmtInt(item.pontos.length)} snapshots de disponibilidade</div>
+          <div class="history-detail-action">
+            <button
+              class="btn-history-detail"
+              type="button"
+              data-history-detail="${escapeHtml(item.codigoBolao)}"
+              title="Ver vendas, impressões, reservas e baixas coletadas para este bolão"
+            >
+              <i class="fas fa-list-check"></i>
+              Detalhes reais
+            </button>
+          </div>
         </div>
       </article>
     `;
@@ -588,6 +621,580 @@ const coords = pontos.map((ponto, index) => ({
       .map((index) => coords[index]);
   }
 
+
+  async function abrirHistoricoDetalhe(codigoBolao) {
+    const codigo = String(codigoBolao || '').trim();
+    if (!codigo || state.detalheLoading) return;
+
+    const item = state.series.find((serie) => serie.codigoBolao === codigo) || null;
+
+    state.detalheCodigoAtual = codigo;
+    state.detalheItemAtual = item;
+    state.detalheDocumentoAtual = null;
+    state.detalheSnapshotsAtuais = [];
+
+    $('modalHistoricoDetalhe').hidden = false;
+    document.body.classList.add('history-detail-open');
+
+    setText(
+      'historyDetailTitle',
+      item
+        ? `${normalizarModalidade(item.modalidade)} · Concurso ${item.concurso || '—'}`
+        : 'Detalhamento histórico do bolão'
+    );
+
+    setText(
+      'historyDetailSubtitle',
+      item
+        ? `${item.loja.nome || item.loja.codigo} · Lotérica ${item.loja.codigo} · ${shortCode(codigo)}`
+        : shortCode(codigo)
+    );
+
+    definirStatusHistoricoDetalhe('Consultando snapshots detalhados...', 'loading');
+    definirCorpoHistoricoDetalheLoading();
+    atualizarBotaoExportarHistoricoDetalhe(false);
+
+    state.detalheLoading = true;
+
+    try {
+      const filtros = obterFiltros();
+
+      const [documentoResult, snapshotsDetalhados] = await Promise.all([
+        sb
+          .from('marketplace_caixa_detalhes')
+          .select('*')
+          .eq('codigo_bolao_caixa', codigo)
+          .maybeSingle(),
+
+        buscarDetalhesSnapshotsPaginados({
+          codigoBolao: codigo,
+          dataInicial: filtros.dataInicial,
+          dataFinal: filtros.dataFinal
+        })
+      ]);
+
+      if (documentoResult.error) throw documentoResult.error;
+
+      state.detalheDocumentoAtual = documentoResult.data || null;
+      state.detalheSnapshotsAtuais = snapshotsDetalhados;
+
+      renderHistoricoDetalhe(
+        state.detalheDocumentoAtual,
+        snapshotsDetalhados,
+        filtros
+      );
+
+      atualizarBotaoExportarHistoricoDetalhe(snapshotsDetalhados.length > 0);
+
+      if (snapshotsDetalhados.length) {
+        definirStatusHistoricoDetalhe(
+          `${fmtInt(snapshotsDetalhados.length)} coleta(s) detalhada(s) no período selecionado.`,
+          'ok'
+        );
+      } else if (state.detalheDocumentoAtual) {
+        definirStatusHistoricoDetalhe(
+          'Existe um detalhamento salvo, mas não há snapshots detalhados dentro do período selecionado.',
+          'warn'
+        );
+      } else {
+        definirStatusHistoricoDetalhe(
+          'Este bolão ainda não possui coleta detalhada salva.',
+          'warn'
+        );
+      }
+    } catch (error) {
+      console.error('[Histórico Marketplace] falha ao carregar detalhes', error);
+      definirStatusHistoricoDetalhe(
+        error.message || 'Falha ao consultar o histórico detalhado.',
+        'err'
+      );
+
+      $('historyDetailBody').innerHTML = `
+        <div class="history-detail-error">
+          <i class="fas fa-triangle-exclamation"></i>
+          <strong>Não foi possível carregar o histórico detalhado</strong>
+          <span>${escapeHtml(error.message || 'Erro desconhecido.')}</span>
+        </div>
+      `;
+    } finally {
+      state.detalheLoading = false;
+    }
+  }
+
+  function fecharHistoricoDetalhe() {
+    const modal = $('modalHistoricoDetalhe');
+    if (modal) modal.hidden = true;
+
+    document.body.classList.remove('history-detail-open');
+
+    state.detalheCodigoAtual = '';
+    state.detalheItemAtual = null;
+    state.detalheDocumentoAtual = null;
+    state.detalheSnapshotsAtuais = [];
+    state.detalheLoading = false;
+
+    atualizarBotaoExportarHistoricoDetalhe(false);
+  }
+
+  async function buscarDetalhesSnapshotsPaginados({
+    codigoBolao,
+    dataInicial = '',
+    dataFinal = '',
+    limiteMaximo = 10000
+  }) {
+    const rows = [];
+
+    for (let from = 0; from < limiteMaximo; from += PAGE_SIZE) {
+      let query = sb
+        .from('marketplace_caixa_detalhes_snapshots')
+        .select(
+          'id,codigo_bolao_caixa,codigo_loterica,modalidade,concurso,' +
+          'qtd_cota_digital,qtd_cota_total,qtd_cota_disponivel,' +
+          'qtd_cota_fisica,qtd_cota_baixadas_impressas,qtd_cota_vendidas,' +
+          'qtd_cota_reservada,qtd_cota_baixadas,origem_coleta,' +
+          'solicitacao_id,coletor_id,coletado_em'
+        )
+        .eq('codigo_bolao_caixa', codigoBolao)
+        .order('coletado_em', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (dataInicial) query = query.gte('coletado_em', dataInicial);
+      if (dataFinal) query = query.lte('coletado_em', dataFinal);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const page = data || [];
+      rows.push(...page);
+
+      if (page.length < PAGE_SIZE) break;
+    }
+
+    return rows;
+  }
+
+  function renderHistoricoDetalhe(documento, snapshots, filtros) {
+    const body = $('historyDetailBody');
+    if (!body) return;
+
+    if (!documento && !snapshots.length) {
+      body.innerHTML = `
+        <div class="history-detail-empty">
+          <i class="fas fa-database"></i>
+          <strong>Nenhum detalhamento coletado</strong>
+          <span>
+            A coleta detalhada começou após a instalação do novo coletor.
+            Concursos anteriores a essa data continuarão apenas com o histórico
+            de disponibilidade.
+          </span>
+        </div>
+      `;
+      return;
+    }
+
+    const primeiro = snapshots[0] || documento;
+    const ultimo = snapshots[snapshots.length - 1] || documento;
+    const payload = obterPayloadHistoricoDetalhe(documento);
+    const apostas = Array.isArray(payload.apostas) ? payload.apostas : [];
+
+    const inicioTexto = snapshots.length
+      ? fmtDataHora(snapshots[0].coletado_em)
+      : fmtDataHora(documento?.primeira_coleta_em);
+
+    const fimTexto = snapshots.length
+      ? fmtDataHora(snapshots[snapshots.length - 1].coletado_em)
+      : fmtDataHora(documento?.ultima_coleta_em);
+
+    const conferencia = calcularConferenciaHistoricoDetalhe(ultimo);
+    const dataFiltroInicio = filtros.dataInicial ? fmtDataHora(filtros.dataInicial) : 'sem limite';
+    const dataFiltroFim = filtros.dataFinal ? fmtDataHora(filtros.dataFinal) : 'sem limite';
+
+    body.innerHTML = `
+      <section class="history-detail-section">
+        <div class="history-detail-section-head">
+          <div>
+            <h4>Evolução real das cotas</h4>
+            <p>
+              Diferencia vendas, impressões, reservas e baixas.
+              Os valores abaixo representam a última coleta do período.
+            </p>
+          </div>
+          <div class="history-detail-period">
+            <span>Período detalhado encontrado</span>
+            <strong>${escapeHtml(inicioTexto)} → ${escapeHtml(fimTexto)}</strong>
+          </div>
+        </div>
+
+        <div class="history-detail-current-grid">
+          ${historicoDetalheStat(
+            'Disponíveis',
+            ultimo?.qtd_cota_disponivel,
+            diferencaDetalhe(ultimo, primeiro, 'qtd_cota_disponivel'),
+            'available'
+          )}
+          ${historicoDetalheStat(
+            'Vendidas',
+            ultimo?.qtd_cota_vendidas,
+            diferencaDetalhe(ultimo, primeiro, 'qtd_cota_vendidas'),
+            'sold'
+          )}
+          ${historicoDetalheStat(
+            'Impressas',
+            ultimo?.qtd_cota_baixadas_impressas,
+            diferencaDetalhe(ultimo, primeiro, 'qtd_cota_baixadas_impressas'),
+            'printed'
+          )}
+          ${historicoDetalheStat(
+            'Reservadas',
+            ultimo?.qtd_cota_reservada,
+            diferencaDetalhe(ultimo, primeiro, 'qtd_cota_reservada'),
+            'reserved'
+          )}
+          ${historicoDetalheStat(
+            'Baixadas',
+            ultimo?.qtd_cota_baixadas,
+            diferencaDetalhe(ultimo, primeiro, 'qtd_cota_baixadas'),
+            'downloaded'
+          )}
+          ${historicoDetalheStat(
+            'Físicas',
+            ultimo?.qtd_cota_fisica,
+            diferencaDetalhe(ultimo, primeiro, 'qtd_cota_fisica'),
+            'physical'
+          )}
+        </div>
+
+        <div class="history-detail-conference ${conferencia.ok ? 'ok' : 'warn'}">
+          <span>
+            Conferência da última coleta:
+            disponíveis + vendidas + impressas + reservadas + baixadas + físicas
+          </span>
+          <strong>${fmtInt(conferencia.soma)} / ${fmtInt(conferencia.total)}</strong>
+        </div>
+
+        <div class="history-detail-comparison">
+          ${historicoComparacaoCard(
+            'Primeira coleta detalhada',
+            snapshots.length ? fmtDataHora(primeiro.coletado_em) : fmtDataHora(documento?.primeira_coleta_em)
+          )}
+          ${historicoComparacaoCard(
+            'Última coleta detalhada',
+            snapshots.length ? fmtDataHora(ultimo.coletado_em) : fmtDataHora(documento?.ultima_coleta_em)
+          )}
+          ${historicoComparacaoCard(
+            'Filtro solicitado',
+            `${dataFiltroInicio} → ${dataFiltroFim}`
+          )}
+        </div>
+      </section>
+
+      <section class="history-detail-section">
+        <div class="history-detail-section-head">
+          <div>
+            <h4>Coletas detalhadas</h4>
+            <p>
+              Cada linha corresponde a uma consulta automática de hora em hora
+              ou a uma atualização manual.
+            </p>
+          </div>
+          <div class="history-detail-period">
+            <span>Registros</span>
+            <strong>${fmtInt(snapshots.length)}</strong>
+          </div>
+        </div>
+        ${renderTabelaHistoricoDetalhe(snapshots)}
+      </section>
+
+      ${documento ? `
+        <section class="history-detail-section">
+          <div class="history-detail-section-head">
+            <div>
+              <h4>Valores e composição mais recentes</h4>
+              <p>
+                Documento completo mais recente salvo para este bolão,
+                mesmo que esteja fora do período filtrado.
+              </p>
+            </div>
+            <div class="history-detail-period">
+              <span>Documento completo</span>
+              <strong>${escapeHtml(fmtDataHora(documento.ultima_coleta_em))}</strong>
+            </div>
+          </div>
+
+          <div class="history-detail-values">
+            ${historicoDetalheValue('Cota sem tarifa', fmtBRL(documento.vr_cota_sem_tarifa))}
+            ${historicoDetalheValue('Cota com tarifa', fmtBRL(documento.vr_cota_com_tarifa))}
+            ${historicoDetalheValue('Tarifa da cota', fmtBRL(documento.vr_tarifa_servico_cota))}
+            ${historicoDetalheValue('Última cota', fmtBRL(documento.vr_ultima_cota_com_tarifa))}
+            ${historicoDetalheValue('Total sem tarifa', fmtBRL(documento.vr_total_bolao_sem_tarifa))}
+            ${historicoDetalheValue('Total com tarifa', fmtBRL(documento.vr_total_bolao_com_tarifa))}
+            ${historicoDetalheValue('Tarifa total', fmtBRL(documento.vr_tarifa_bolao))}
+            ${historicoDetalheValue('Quantidade de apostas', fmtInt(documento.qtd_apostas))}
+          </div>
+        </section>
+
+        <section class="history-detail-section">
+          <div class="history-detail-section-head">
+            <div>
+              <h4>Jogos do bolão</h4>
+              <p>
+                As dezenas completas são preservadas no documento mais recente;
+                não são repetidas em todos os snapshots para economizar espaço.
+              </p>
+            </div>
+          </div>
+          ${renderApostasHistoricoDetalhe(apostas)}
+        </section>
+      ` : ''}
+    `;
+  }
+
+  function historicoDetalheStat(label, value, delta, classe) {
+    const deltaNumero = Number(delta || 0);
+    const deltaClasse =
+      deltaNumero > 0 ? 'positive' :
+      deltaNumero < 0 ? 'negative' :
+      '';
+
+    return `
+      <div class="history-detail-current ${classe}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${fmtInt(value)}</strong>
+        <span class="history-detail-delta ${deltaClasse}">
+          Δ ${deltaNumero > 0 ? '+' : ''}${fmtInt(deltaNumero)}
+        </span>
+      </div>
+    `;
+  }
+
+  function historicoComparacaoCard(label, value) {
+    return `
+      <div class="history-detail-comparison-card">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `;
+  }
+
+  function historicoDetalheValue(label, value) {
+    return `
+      <div class="history-detail-value">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `;
+  }
+
+  function diferencaDetalhe(ultimo, primeiro, campo) {
+    return int(ultimo?.[campo]) - int(primeiro?.[campo]);
+  }
+
+  function calcularConferenciaHistoricoDetalhe(detalhe) {
+    const total = int(detalhe?.qtd_cota_total);
+    const soma =
+      int(detalhe?.qtd_cota_disponivel) +
+      int(detalhe?.qtd_cota_vendidas) +
+      int(detalhe?.qtd_cota_baixadas_impressas) +
+      int(detalhe?.qtd_cota_reservada) +
+      int(detalhe?.qtd_cota_baixadas) +
+      int(detalhe?.qtd_cota_fisica);
+
+    return {
+      total,
+      soma,
+      ok: total === soma
+    };
+  }
+
+  function renderTabelaHistoricoDetalhe(snapshots) {
+    if (!snapshots.length) {
+      return `
+        <div class="empty">
+          Não existem snapshots detalhados dentro do período selecionado.
+        </div>
+      `;
+    }
+
+    return `
+      <div class="history-detail-table-wrap">
+        <table class="history-detail-table">
+          <thead>
+            <tr>
+              <th>Coletado em</th>
+              <th>Disponíveis</th>
+              <th>Vendidas</th>
+              <th>Impressas</th>
+              <th>Reservadas</th>
+              <th>Baixadas</th>
+              <th>Físicas</th>
+              <th>Total</th>
+              <th>Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${snapshots.map((snapshot) => `
+              <tr>
+                <td>${escapeHtml(fmtDataHora(snapshot.coletado_em))}</td>
+                <td>${fmtInt(snapshot.qtd_cota_disponivel)}</td>
+                <td>${fmtInt(snapshot.qtd_cota_vendidas)}</td>
+                <td>${fmtInt(snapshot.qtd_cota_baixadas_impressas)}</td>
+                <td>${fmtInt(snapshot.qtd_cota_reservada)}</td>
+                <td>${fmtInt(snapshot.qtd_cota_baixadas)}</td>
+                <td>${fmtInt(snapshot.qtd_cota_fisica)}</td>
+                <td>${fmtInt(snapshot.qtd_cota_total)}</td>
+                <td>
+                  <span class="history-detail-origin ${snapshot.origem_coleta === 'MANUAL' ? 'manual' : ''}">
+                    ${snapshot.origem_coleta === 'MANUAL' ? 'Manual' : 'Automático'}
+                  </span>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function obterPayloadHistoricoDetalhe(documento) {
+    const bruto = documento?.payload_detalhe;
+    if (!bruto || typeof bruto !== 'object') return {};
+
+    const payload = bruto.payload;
+    return payload && typeof payload === 'object' ? payload : bruto;
+  }
+
+  function renderApostasHistoricoDetalhe(apostas) {
+    if (!apostas.length) {
+      return `
+        <div class="empty">
+          O documento completo não contém apostas para exibição.
+        </div>
+      `;
+    }
+
+    return `
+      <div class="history-detail-bets">
+        ${apostas.map((aposta, index) => renderApostaHistoricoDetalhe(aposta, index)).join('')}
+      </div>
+    `;
+  }
+
+  function renderApostaHistoricoDetalhe(aposta, index) {
+    const dezenas = arrayHistoricoDetalhe(
+      aposta?.dezenas ||
+      aposta?.numeros ||
+      aposta?.numerosApostados
+    );
+
+    const trevos = arrayHistoricoDetalhe(
+      aposta?.trevos ||
+      aposta?.numerosTrevos
+    );
+
+    const marcadores = [];
+    if (aposta?.indicadorSurpresinha === true) marcadores.push('Surpresinha');
+    if (aposta?.timeCoracao) marcadores.push(`Time: ${aposta.timeCoracao}`);
+    if (aposta?.mesSorte) marcadores.push(`Mês: ${aposta.mesSorte}`);
+
+    return `
+      <article class="history-detail-bet">
+        <div class="history-detail-bet-head">
+          <strong>Jogo ${index + 1}</strong>
+          <span>${escapeHtml(marcadores.join(' · ') || 'Aposta registrada')}</span>
+        </div>
+        <div class="history-detail-number-list">
+          ${dezenas.map((numero) => `
+            <span class="history-detail-number">${escapeHtml(formatarNumeroHistoricoDetalhe(numero))}</span>
+          `).join('')}
+          ${trevos.map((numero) => `
+            <span class="history-detail-number trevo" title="Trevo">${escapeHtml(formatarNumeroHistoricoDetalhe(numero))}</span>
+          `).join('')}
+        </div>
+        ${marcadores.length
+          ? `<div class="history-detail-note">${escapeHtml(marcadores.join(' · '))}</div>`
+          : ''
+        }
+      </article>
+    `;
+  }
+
+  function arrayHistoricoDetalhe(value) {
+    if (!Array.isArray(value)) return [];
+    return value.filter((item) =>
+      item !== null &&
+      item !== undefined &&
+      item !== ''
+    );
+  }
+
+  function formatarNumeroHistoricoDetalhe(value) {
+    const numero = Number(value);
+    return Number.isFinite(numero)
+      ? String(numero).padStart(2, '0')
+      : String(value);
+  }
+
+  function definirStatusHistoricoDetalhe(texto, tipo = '') {
+    const element = $('historyDetailStatus');
+    if (!element) return;
+
+    element.textContent = texto || '';
+    element.className = `history-detail-status ${tipo}`.trim();
+  }
+
+  function definirCorpoHistoricoDetalheLoading() {
+    const body = $('historyDetailBody');
+    if (!body) return;
+
+    body.innerHTML = `
+      <div class="history-detail-loading">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <span>Carregando histórico detalhado...</span>
+      </div>
+    `;
+  }
+
+  function atualizarBotaoExportarHistoricoDetalhe(enabled) {
+    const button = $('btnExportarHistoricoDetalhe');
+    if (button) button.disabled = !enabled;
+  }
+
+  function exportarHistoricoDetalhe() {
+    const snapshots = state.detalheSnapshotsAtuais;
+    const item = state.detalheItemAtual;
+
+    if (!snapshots.length) {
+      definirStatusHistoricoDetalhe(
+        'Não existem snapshots detalhados para exportar.',
+        'warn'
+      );
+      return;
+    }
+
+    const rows = snapshots.map((snapshot) => ({
+      codigo_loterica: snapshot.codigo_loterica || item?.loja?.codigo || '',
+      nome_loteria: item?.loja?.nome || '',
+      modalidade: snapshot.modalidade || item?.modalidade || '',
+      concurso: snapshot.concurso || item?.concurso || '',
+      codigo_bolao_caixa: snapshot.codigo_bolao_caixa,
+      coletado_em: snapshot.coletado_em,
+      qtd_cota_total: snapshot.qtd_cota_total,
+      qtd_cota_digital: snapshot.qtd_cota_digital,
+      qtd_cota_disponivel: snapshot.qtd_cota_disponivel,
+      qtd_cota_vendidas: snapshot.qtd_cota_vendidas,
+      qtd_cota_baixadas_impressas: snapshot.qtd_cota_baixadas_impressas,
+      qtd_cota_reservada: snapshot.qtd_cota_reservada,
+      qtd_cota_baixadas: snapshot.qtd_cota_baixadas,
+      qtd_cota_fisica: snapshot.qtd_cota_fisica,
+      origem_coleta: snapshot.origem_coleta
+    }));
+
+    baixarCsv(
+      `historico-detalhado-${item?.modalidade || 'bolao'}-${item?.concurso || ''}.csv`,
+      rows
+    );
+  }
+
   function limparFiltros() {
     $('filtroLoja').value = '';
     $('filtroModalidade').value = '';
@@ -595,6 +1202,7 @@ const coords = pontos.map((ponto, index) => ({
     definirPeriodoPadrao();
     state.snapshots = [];
     state.series = [];
+    fecharHistoricoDetalhe();
     renderTudo();
     atualizarFiltroLojas();
     atualizarLive('Filtros limpos', 'Informe os critérios e faça uma nova busca.');
