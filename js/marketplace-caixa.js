@@ -20,6 +20,8 @@
     coletas: [],
     series: [],
     detalhes: new Map(),
+    monitoramentos: new Map(),
+    monitoramentosDisponiveis: true,
     detalheDisponivel: true,
     detalheAtual: null,
     detalheCodigoAtual: '',
@@ -57,6 +59,7 @@
 
     $('btnFecharDetalhe')?.addEventListener('click', fecharDetalhamento);
     $('btnAtualizarDetalhe')?.addEventListener('click', solicitarAtualizacaoDetalhe);
+    $('btnSalvarMonitoramento')?.addEventListener('click', salvarMonitoramentoDetalhe);
     $('modalDetalheBolao')?.addEventListener('click', (e) => {
       if (e.target?.id === 'modalDetalheBolao') fecharDetalhamento();
     });
@@ -128,11 +131,12 @@
       const periodo = Number($('filtroPeriodo')?.value || 6);
       const since = new Date(Date.now() - periodo * 60 * 60 * 1000).toISOString();
 
-      const [boloes, snapshots, coletas, detalhes] = await Promise.all([
+      const [boloes, snapshots, coletas, detalhes, monitoramentos] = await Promise.all([
         buscarBoloes(),
         buscarSnapshots(since),
         buscarColetas(),
-        buscarDetalhesResumoSeguro()
+        buscarDetalhesResumoSeguro(),
+        buscarMonitoramentosSeguro()
       ]);
 
       state.boloes = boloes;
@@ -140,6 +144,9 @@
       state.coletas = coletas;
       state.detalhes = new Map(
         detalhes.map(d => [String(d.codigo_bolao_caixa), d])
+      );
+      state.monitoramentos = new Map(
+        monitoramentos.map(m => [String(m.codigo_bolao_caixa), m])
       );
 
       montarFiltros();
@@ -204,6 +211,23 @@
     }
 
     state.detalheDisponivel = true;
+    return data || [];
+  }
+
+  async function buscarMonitoramentosSeguro() {
+    const { data, error } = await sb
+      .from('marketplace_caixa_detalhe_monitoramentos')
+      .select('codigo_bolao_caixa,intervalo_minutos,ativo,atualizado_em')
+      .eq('ativo', true)
+      .limit(5000);
+
+    if (error) {
+      state.monitoramentosDisponiveis = false;
+      console.warn('[Marketplace CAIXA] monitoramentos individuais ainda não disponíveis:', error);
+      return [];
+    }
+
+    state.monitoramentosDisponiveis = true;
     return data || [];
   }
 
@@ -555,10 +579,16 @@
       const c = calcularBolao(b);
       const pagina = paginaOrigemBolao(b);
       const detalhe = state.detalhes.get(String(b.codigo_bolao_caixa));
-      const detalheTexto = detalhe
+      const monitoramento = state.monitoramentos.get(String(b.codigo_bolao_caixa));
+      const detalheTextoBase = detalhe
         ? `${fmtInt(detalhe.qtd_cota_vendidas)} vendidas · ${fmtInt(detalhe.qtd_cota_baixadas_impressas)} impressas`
         : (state.detalheDisponivel ? 'Aguardando primeira coleta' : 'Detalhamento não instalado');
-      const detalheClasse = detalhe ? '' : 'pending';
+      const detalheTexto = monitoramento?.ativo
+        ? `★ ${fmtInt(monitoramento.intervalo_minutos)} min · ${detalheTextoBase}`
+        : detalheTextoBase;
+      const detalheClasse = monitoramento?.ativo
+        ? 'intensive'
+        : (detalhe ? '' : 'pending');
 
       return `
         <article class="bolao-card">
@@ -597,9 +627,13 @@
 
   function renderAcaoDetalheTimeline(b) {
     const detalhe = state.detalhes.get(String(b.codigo_bolao_caixa));
+    const monitoramento = state.monitoramentos.get(String(b.codigo_bolao_caixa));
+    const intensivo = monitoramento?.ativo
+      ? `<span class="intensive-mark">★ ${fmtInt(monitoramento.intervalo_minutos)} min</span> · `
+      : '';
     const resumo = detalhe
-      ? `<strong>${fmtInt(detalhe.qtd_cota_vendidas)}</strong> vendidas · <strong>${fmtInt(detalhe.qtd_cota_baixadas_impressas)}</strong> impressas`
-      : (state.detalheDisponivel ? 'Detalhe aguardando coleta' : 'Detalhamento não instalado');
+      ? `${intensivo}<strong>${fmtInt(detalhe.qtd_cota_vendidas)}</strong> vendidas · <strong>${fmtInt(detalhe.qtd_cota_baixadas_impressas)}</strong> impressas`
+      : `${intensivo}${state.detalheDisponivel ? 'Detalhe aguardando coleta' : 'Detalhamento não instalado'}`;
 
     return `
       <div class="timeline-detail-actions">
@@ -647,6 +681,7 @@
         : shortCode(codigo)
     );
 
+    atualizarControlesMonitoramento(codigo);
     definirStatusDetalhe('Consultando o último detalhamento salvo...', 'loading');
     setDetalheBodyLoading();
     await carregarDetalhamento(codigo);
@@ -761,7 +796,7 @@
           <div class="detail-updated">
             <span>Última atualização</span>
             <strong>${escapeHtml(fmtDataHora(detalhe.ultima_coleta_em))}</strong>
-            <em>${detalhe.origem_ultima_coleta === 'MANUAL' ? 'solicitação manual' : 'coleta automática'}</em>
+            <em>${escapeHtml(rotuloOrigemDetalhe(detalhe.origem_ultima_coleta))}</em>
           </div>
         </div>
 
@@ -922,7 +957,7 @@
                 <td>${fmtInt(s.qtd_cota_fisica)}</td>
                 <td>
                   <span class="detail-origin ${s.origem_coleta === 'MANUAL' ? 'manual' : ''}">
-                    ${s.origem_coleta === 'MANUAL' ? 'Manual' : 'Automático'}
+                    ${escapeHtml(rotuloOrigemDetalhe(s.origem_coleta, true))}
                   </span>
                 </td>
               </tr>
@@ -1007,6 +1042,112 @@
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replaceAll('_', ' ')
       .toLowerCase();
+  }
+
+  function atualizarControlesMonitoramento(codigoBolao) {
+    const codigo = String(codigoBolao || '').trim();
+    const monitoramento = state.monitoramentos.get(codigo);
+    const intervalo = monitoramento?.ativo
+      ? Number(monitoramento.intervalo_minutos || 60)
+      : 60;
+
+    const select = $('detalheIntervaloMonitoramento');
+    if (select) select.value = String(intervalo);
+
+    const status = $('detalheMonitoramentoStatus');
+    if (status) {
+      status.textContent = intervalo === 60
+        ? 'Padrão: a cada 60 minutos'
+        : `Intensivo: a cada ${intervalo} minuto(s)`;
+      status.className = intervalo === 60 ? '' : 'intensive';
+    }
+
+    const button = $('btnSalvarMonitoramento');
+    if (button) {
+      button.classList.toggle('active', intervalo !== 60);
+    }
+  }
+
+  async function salvarMonitoramentoDetalhe() {
+    const codigo = state.detalheCodigoAtual;
+    const select = $('detalheIntervaloMonitoramento');
+    const intervalo = Number(select?.value || 60);
+    const button = $('btnSalvarMonitoramento');
+
+    if (!codigo || !Number.isFinite(intervalo)) return;
+
+    if (button) {
+      button.disabled = true;
+      const span = button.querySelector('span');
+      if (span) span.textContent = 'Salvando...';
+    }
+
+    definirStatusDetalhe('Salvando a frequência deste bolão...', 'loading');
+
+    try {
+      const { data, error } = await sb.rpc(
+        'marketplace_caixa_configurar_monitoramento_detalhe',
+        {
+          p_codigo_bolao_caixa: codigo,
+          p_intervalo_minutos: intervalo
+        }
+      );
+
+      if (error) throw error;
+
+      if (intervalo === 60) {
+        state.monitoramentos.delete(codigo);
+      } else {
+        state.monitoramentos.set(codigo, {
+          codigo_bolao_caixa: codigo,
+          intervalo_minutos: intervalo,
+          ativo: true,
+          atualizado_em: new Date().toISOString()
+        });
+      }
+
+      atualizarControlesMonitoramento(codigo);
+      renderTimeline();
+      renderBoloes();
+
+      definirStatusDetalhe(
+        data?.mensagem ||
+        (intervalo === 60
+          ? 'Monitoramento normal restaurado: 60 minutos.'
+          : `Monitoramento intensivo ativado a cada ${intervalo} minuto(s).`),
+        'ok'
+      );
+    } catch (error) {
+      console.error('[Marketplace CAIXA] falha ao salvar monitoramento:', error);
+      definirStatusDetalhe(
+        error.message || 'Não foi possível salvar a frequência.',
+        'error'
+      );
+    } finally {
+      if (button) {
+        button.disabled = false;
+        const span = button.querySelector('span');
+        if (span) span.textContent = 'Salvar frequência';
+      }
+    }
+  }
+
+  function rotuloOrigemDetalhe(origem, curto = false) {
+    const value = String(origem || '').toUpperCase();
+
+    if (value === 'MANUAL') {
+      return curto ? 'Manual' : 'solicitação manual';
+    }
+
+    if (value === 'INTENSIVO') {
+      return curto ? 'Intensivo' : 'monitoramento intensivo';
+    }
+
+    if (value === 'FECHAMENTO_2044') {
+      return curto ? '20:44' : 'coleta pré-encerramento das 20:44';
+    }
+
+    return curto ? 'Automático' : 'coleta automática de 60 minutos';
   }
 
   async function solicitarAtualizacaoDetalhe() {
