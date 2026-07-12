@@ -195,6 +195,29 @@ DETALHE_LIMITE_POR_CICLO=30</pre>
         </button>
       </div>
 
+      <div class="detail-monitoring-toolbar">
+        <div class="detail-monitoring-copy">
+          <span>Frequência deste bolão</span>
+          <strong id="detalheMonitoramentoStatus">Padrão: a cada 60 minutos</strong>
+          <small>Todos os bolões ativos também recebem uma coleta adicional diária às 20:44.</small>
+        </div>
+        <div class="detail-monitoring-controls">
+          <select id="detalheIntervaloMonitoramento" class="detail-monitoring-select">
+            <option value="60">Padrão — 60 minutos</option>
+            <option value="1">Intensivo — 1 minuto</option>
+            <option value="3">Intensivo — 3 minutos</option>
+            <option value="5">Intensivo — 5 minutos</option>
+            <option value="10">Intensivo — 10 minutos</option>
+            <option value="15">Intensivo — 15 minutos</option>
+            <option value="30">Intensivo — 30 minutos</option>
+          </select>
+          <button id="btnSalvarMonitoramento" class="btn-soft detail-monitoring-save" type="button">
+            <i class="fas fa-star"></i>
+            <span>Salvar frequência</span>
+          </button>
+        </div>
+      </div>
+
       <div id="detalheBody" class="modal-body detail-body">
         <div class="detail-loading">
           <i class="fas fa-circle-notch fa-spin"></i>
