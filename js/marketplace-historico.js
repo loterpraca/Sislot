@@ -886,6 +886,17 @@ const coords = pontos.map((ponto, index) => ({
             `${dataFiltroInicio} → ${dataFiltroFim}`
           )}
         </div>
+
+        <div class="history-real-chart-panel">
+          <div class="history-real-chart-head">
+            <div>
+              <h5>Gráfico real das cotas</h5>
+              <p>Linhas em degraus para disponíveis, vendidas, impressas e baixadas reais.</p>
+            </div>
+            <div class="history-real-chart-period">${fmtInt(snapshots.length)} coleta(s)</div>
+          </div>
+          ${renderGraficoHistoricoDetalhe(snapshots)}
+        </div>
       </section>
 
       <section class="history-detail-section">
@@ -946,6 +957,154 @@ const coords = pontos.map((ponto, index) => ({
           ${renderApostasHistoricoDetalhe(apostas)}
         </section>
       ` : ''}
+    `;
+  }
+
+
+  function renderGraficoHistoricoDetalhe(snapshots) {
+    if (!snapshots.length) {
+      return `
+        <div class="empty">
+          Não existem snapshots detalhados suficientes para montar o gráfico.
+        </div>
+      `;
+    }
+
+    const seriesDefs = [
+      {
+        key: 'qtd_cota_disponivel',
+        label: 'Disponíveis',
+        cls: 'available',
+        colorVar: 'var(--accent)'
+      },
+      {
+        key: 'qtd_cota_vendidas',
+        label: 'Vendidas',
+        cls: 'sold',
+        colorVar: 'var(--blue)'
+      },
+      {
+        key: 'qtd_cota_baixadas_impressas',
+        label: 'Impressas',
+        cls: 'printed',
+        colorVar: 'var(--amber)'
+      },
+      {
+        key: 'qtd_cota_baixadas',
+        label: 'Baixadas',
+        cls: 'downloaded',
+        colorVar: 'var(--red)'
+      }
+    ];
+
+    const width = 920;
+    const height = 260;
+    const padLeft = 44;
+    const padRight = 16;
+    const padTop = 14;
+    const padBottom = 34;
+    const plotWidth = width - padLeft - padRight;
+    const plotHeight = height - padTop - padBottom;
+
+    const allValues = snapshots.flatMap((snapshot) =>
+      seriesDefs.map((serie) => int(snapshot?.[serie.key]))
+    );
+
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    const span = Math.max(max - min, 1);
+    const denom = Math.max(snapshots.length - 1, 1);
+
+    const yFor = (value) => {
+      return padTop + ((max - value) / span) * plotHeight;
+    };
+
+    const xFor = (index) => {
+      return padLeft + (index / denom) * plotWidth;
+    };
+
+    const yTicks = 5;
+    const gridLines = Array.from({ length: yTicks }, (_, index) => {
+      const ratio = yTicks === 1 ? 0 : index / (yTicks - 1);
+      const value = Math.round(max - ratio * span);
+      const y = padTop + ratio * plotHeight;
+      return `
+        <g>
+          <line x1="${padLeft}" y1="${y.toFixed(2)}" x2="${(width - padRight).toFixed(2)}" y2="${y.toFixed(2)}" class="history-real-grid"></line>
+          <text x="${padLeft - 8}" y="${(y + 3).toFixed(2)}" class="history-real-axis-text" text-anchor="end">${fmtInt(value)}</text>
+        </g>
+      `;
+    }).join('');
+
+    const tickIndexes = [...new Set([0, Math.floor((snapshots.length - 1) / 2), Math.max(snapshots.length - 1, 0)])]
+      .filter((index) => index >= 0 && index < snapshots.length);
+
+    const xTicks = tickIndexes.map((index) => {
+      const x = xFor(index);
+      const label = fmtDataCurta(snapshots[index]?.coletado_em);
+      return `
+        <g>
+          <line x1="${x.toFixed(2)}" y1="${padTop}" x2="${x.toFixed(2)}" y2="${(height - padBottom).toFixed(2)}" class="history-real-grid vertical"></line>
+          <text x="${x.toFixed(2)}" y="${(height - 10).toFixed(2)}" class="history-real-axis-text" text-anchor="middle">${escapeHtml(label)}</text>
+        </g>
+      `;
+    }).join('');
+
+    const seriesSvg = seriesDefs.map((serie) => {
+      const coords = snapshots.map((snapshot, index) => ({
+        x: xFor(index),
+        y: yFor(int(snapshot?.[serie.key])),
+        value: int(snapshot?.[serie.key]),
+        t: snapshot?.coletado_em
+      }));
+
+      let path = `M ${coords[0].x.toFixed(2)} ${coords[0].y.toFixed(2)}`;
+      for (let index = 1; index < coords.length; index += 1) {
+        path += ` H ${coords[index].x.toFixed(2)} V ${coords[index].y.toFixed(2)}`;
+      }
+
+      const last = coords[coords.length - 1];
+
+      return `
+        <g>
+          <path d="${path}" class="history-real-line ${serie.cls}"></path>
+          <circle cx="${last.x.toFixed(2)}" cy="${last.y.toFixed(2)}" r="3.8" class="history-real-dot ${serie.cls}">
+            <title>${escapeHtml(fmtDataHora(last.t))} · ${serie.label}: ${fmtInt(last.value)}</title>
+          </circle>
+        </g>
+      `;
+    }).join('');
+
+    const legend = seriesDefs.map((serie) => {
+      const primeiro = int(snapshots[0]?.[serie.key]);
+      const ultimo = int(snapshots[snapshots.length - 1]?.[serie.key]);
+      const delta = ultimo - primeiro;
+      const deltaClass = delta > 0 ? 'positive' : delta < 0 ? 'negative' : '';
+      return `
+        <div class="history-real-legend-item ${serie.cls}">
+          <span class="history-real-swatch ${serie.cls}"></span>
+          <div class="history-real-legend-text">
+            <strong>${serie.label}</strong>
+            <small>
+              atual ${fmtInt(ultimo)}
+              <span class="${deltaClass}">Δ ${delta > 0 ? '+' : ''}${fmtInt(delta)}</span>
+            </small>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="history-real-chart-wrap">
+        <div class="history-real-legend">${legend}</div>
+        <div class="history-real-chart-box">
+          <svg class="history-real-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Gráfico real das cotas do bolão">
+            ${gridLines}
+            ${xTicks}
+            ${seriesSvg}
+          </svg>
+        </div>
+      </div>
     `;
   }
 
@@ -1043,8 +1202,8 @@ const coords = pontos.map((ponto, index) => ({
                 <td>${fmtInt(snapshot.qtd_cota_fisica)}</td>
                 <td>${fmtInt(snapshot.qtd_cota_total)}</td>
                 <td>
-                  <span class="history-detail-origin ${snapshot.origem_coleta === 'MANUAL' ? 'manual' : ''}">
-                    ${snapshot.origem_coleta === 'MANUAL' ? 'Manual' : 'Automático'}
+                  <span class="history-detail-origin ${classeOrigemHistoricoDetalhe(snapshot.origem_coleta)}">
+                    ${escapeHtml(rotuloOrigemHistoricoDetalhe(snapshot.origem_coleta))}
                   </span>
                 </td>
               </tr>
@@ -1053,6 +1212,22 @@ const coords = pontos.map((ponto, index) => ({
         </table>
       </div>
     `;
+  }
+
+  function rotuloOrigemHistoricoDetalhe(origem) {
+    const value = String(origem || '').toUpperCase();
+    if (value === 'MANUAL') return 'Manual';
+    if (value === 'INTENSIVO') return 'Intensivo';
+    if (value === 'FECHAMENTO_2044') return 'Pré-encerramento 20:44';
+    return 'Automático 60 min';
+  }
+
+  function classeOrigemHistoricoDetalhe(origem) {
+    const value = String(origem || '').toUpperCase();
+    if (value === 'MANUAL') return 'manual';
+    if (value === 'INTENSIVO') return 'intensive';
+    if (value === 'FECHAMENTO_2044') return 'closing';
+    return '';
   }
 
   function obterPayloadHistoricoDetalhe(documento) {
