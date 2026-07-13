@@ -1,4 +1,19 @@
-const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
+(() => {
+'use strict';
+
+if (window.__SISLOT_VENDAS_WHATSAPP_CARREGADO__) {
+  return;
+}
+window.__SISLOT_VENDAS_WHATSAPP_CARREGADO__ = true;
+
+const sb = window.SISLOT_SB;
+
+if (!sb) {
+  throw new Error(
+    'Cliente Supabase global não inicializado. ' +
+    'Carregue sislot-security.js antes de vendas-whatsapp.js.'
+  );
+}
 const utils = window.SISLOT_UTILS || {};
 
 // ── CORES disponíveis para bolões ────────────────────────────────
@@ -72,46 +87,121 @@ function parseBRL(v){return parseFloat(String(v).replace(/[R$\s]/g,'').replace(/
 function iniciais(n){return(n||'?').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase()}
 function tel2wpp(t){return String(t).replace(/\D/g,'')}
 
-// ── Configuração visual das lojas ────────────────────────────────
-const LOJA_CONFIG = {
-  'boulevard':    { nome:'Boulevard',    logo:'./icons/boulevard.png',    theme:'boulevard',    logoPos:'50% 50%' },
-  'centro':       { nome:'Centro',       logo:'./icons/loterpraca.png',   theme:'centro',       logoPos:'50% 42%' },
-  'lotobel':      { nome:'Lotobel',      logo:'./icons/lotobel.png',      theme:'lotobel',      logoPos:'50% 50%' },
-  'santa-tereza': { nome:'Santa Tereza', logo:'./icons/santa-tereza.png', theme:'santa-tereza', logoPos:'50% 50%' },
-  'via-brasil':   { nome:'Via Brasil',   logo:'./icons/via-brasil.png',   theme:'via-brasil',   logoPos:'50% 50%' },
-};
-
+// ── Configuração visual dinâmica das lojas ───────────────────────
 function slugSeguro(slug){
-  return String(slug || 'centro').trim().toLowerCase();
+  const valor = String(slug || '').trim().toLowerCase();
+  return valor || 'loja';
 }
-function setStatusReg(msg,tipo='info'){const e=$('statusBarReg');e.textContent=msg;e.className='status-bar show '+tipo}
-function clearStatusReg(){$('statusBarReg').className='status-bar'}
-function aplicarTemaWhatsapp(slug){
-  const key = slugSeguro(slug);
-  const cfg = LOJA_CONFIG[key] || LOJA_CONFIG.centro;
 
-  document.body.setAttribute('data-loja', key);
+function normalizarLojaWhatsapp(loja, vinculo = null){
+  const id = Number(
+    loja?.loteria_id ??
+    loja?.id ??
+    0
+  );
+
+  const nome = String(
+    loja?.loteria_nome ??
+    loja?.nome ??
+    'Loja'
+  ).trim() || 'Loja';
+
+  const slug = slugSeguro(
+    loja?.loteria_slug ??
+    loja?.slug ??
+    nome
+  );
+
+  const codigo = String(
+    loja?.loteria_codigo ??
+    loja?.codigo ??
+    loja?.cod_loterico ??
+    ''
+  ).trim();
+
+  const logo =
+    loja?.logo_url ||
+    loja?.logo ||
+    loja?.logo_path ||
+    loja?.caminho_logo ||
+    `./icons/${slug}.png`;
+
+  const logoPos =
+    loja?.logo_pos ||
+    loja?.logo_position ||
+    loja?.logo_object_position ||
+    '50% 50%';
+
+  return {
+    ...loja,
+    loteria_id: id,
+    loteria_nome: nome,
+    loteria_slug: slug,
+    loteria_codigo: codigo,
+    principal: Boolean(vinculo?.principal ?? loja?.principal),
+    logo,
+    logoPos
+  };
+}
+
+function setStatusReg(msg, tipo = 'info'){
+  const e = $('statusBarReg');
+  if (!e) return;
+  e.textContent = msg;
+  e.className = 'status-bar show ' + tipo;
+}
+
+function clearStatusReg(){
+  const e = $('statusBarReg');
+  if (e) e.className = 'status-bar';
+}
+
+function aplicarTemaWhatsapp(loja){
+  const cfg = normalizarLojaWhatsapp(
+    typeof loja === 'object'
+      ? loja
+      : (
+          lojasPermitidas.find(
+            l => l.loteria_slug === slugSeguro(loja)
+          ) || {
+            nome: 'Loja',
+            slug: slugSeguro(loja)
+          }
+        )
+  );
+
+  document.body.setAttribute('data-loja', cfg.loteria_slug);
+  document.documentElement.setAttribute('data-loja', cfg.loteria_slug);
 
   const img = $('logoImg');
   if (img) {
+    img.onerror = () => {
+      if (img.dataset.fallbackAplicado === '1') return;
+      img.dataset.fallbackAplicado = '1';
+      img.src = './icons/centro.png';
+      img.style.objectPosition = '50% 50%';
+    };
+
+    img.dataset.fallbackAplicado = '0';
     img.src = cfg.logo;
-    img.style.objectPosition = cfg.logoPos || '50% 50%';
+    img.alt = cfg.loteria_nome;
+    img.style.objectPosition = cfg.logoPos;
   }
 
   const title = $('headerTitle');
-  if (title) title.textContent = cfg.nome;
+  if (title) title.textContent = cfg.loteria_nome;
 
   const sub = $('headerSub');
   if (sub) sub.textContent = 'Vendas WhatsApp';
 
   const nomeChip = $('wppLojaNome');
-  if (nomeChip) nomeChip.textContent = cfg.nome;
+  if (nomeChip) nomeChip.textContent = cfg.loteria_nome;
 }
 
 function atualizarLojaWhatsappUI(){
-  const slug = lojaWhatsappAtiva?.loteria_slug || lojaWhatsappAtiva?.slug || 'centro';
-  aplicarTemaWhatsapp(slug);
+  aplicarTemaWhatsapp(lojaWhatsappAtiva);
 }
+
 function sincronizarFiltroHistoricoComLojaAtiva(){
   const sel = $('filtLoja');
   if (!sel || !lojaWhatsappAtiva?.loteria_id) return;
@@ -139,7 +229,15 @@ async function trocarLojaWhatsappPorOffset(offset){
 async function trocarLojaWhatsapp(loja){
   if (!loja) return;
 
-  lojaWhatsappAtiva = loja;
+  const permitida = lojasPermitidas.find(
+    item => Number(item.loteria_id) === Number(loja.loteria_id || loja.id)
+  );
+
+  if (!permitida) {
+    throw new Error('Usuário sem acesso à loja selecionada.');
+  }
+
+  lojaWhatsappAtiva = permitida;
 
   atualizarLojaWhatsappUI();
   sincronizarFiltroHistoricoComLojaAtiva();
@@ -175,39 +273,53 @@ function siglaLoja(loja){
   return nome.slice(0, 3).toUpperCase() || '—';
 }
 async function carregarContextoLojas(){
-  const { data: todas } = await sb
+  const { data: todas, error: erroLojas } = await sb
     .from('loterias')
-    .select('id,nome,slug,codigo')
+    .select('*')
     .eq('ativo', true)
     .order('id');
 
-  lojasAtivas = todas || [];
+  if (erroLojas) {
+    throw new Error('Erro ao carregar lojas: ' + erroLojas.message);
+  }
 
-  const { data: vinculos } = await sb
+  lojasAtivas = (todas || []).map(loja =>
+    normalizarLojaWhatsapp(loja)
+  );
+
+  const { data: vinculos, error: erroVinculos } = await sb
     .from('usuarios_loterias')
     .select('loteria_id,principal,ativo')
     .eq('usuario_id', usuario.id)
     .eq('ativo', true);
 
-  const idsPermitidos = new Set((vinculos || []).map(v => Number(v.loteria_id)));
-
-  lojasPermitidas = lojasAtivas.map(l => ({
-  loteria_id: l.id,
-  loteria_nome: l.nome,
-  loteria_slug: l.slug,
-  loteria_codigo: l.codigo,
-  principal: l.slug === 'centro'
-}));
-
-  // Fallback para ADMIN/SOCIO se por algum motivo não vier vínculo.
-  if (!lojasPermitidas.length && ['ADMIN','SOCIO'].includes(String(usuario.perfil || '').toUpperCase())) {
-    lojasPermitidas = lojasAtivas.map(l => ({
-    loteria_id: l.id,
-    loteria_nome: l.nome,
-    loteria_slug: l.slug,
-    principal: l.slug === 'centro'
-  }));
+  if (erroVinculos) {
+    throw new Error(
+      'Erro ao carregar vínculos do usuário: ' +
+      erroVinculos.message
+    );
   }
+
+  const vinculosPorLoja = new Map(
+    (vinculos || []).map(v => [Number(v.loteria_id), v])
+  );
+
+  const idsPermitidos = new Set(vinculosPorLoja.keys());
+  const perfil = String(usuario?.perfil || '').trim().toUpperCase();
+
+  const basesPermitidas =
+    perfil === 'ADMIN'
+      ? lojasAtivas
+      : lojasAtivas.filter(
+          loja => idsPermitidos.has(Number(loja.loteria_id))
+        );
+
+  lojasPermitidas = basesPermitidas.map(loja =>
+    normalizarLojaWhatsapp(
+      loja,
+      vinculosPorLoja.get(Number(loja.loteria_id)) || null
+    )
+  );
 
   lojaWhatsappAtiva =
     lojasPermitidas.find(l => l.principal) ||
@@ -215,21 +327,25 @@ async function carregarContextoLojas(){
     null;
 
   if (!lojaWhatsappAtiva) {
-    throw new Error('Nenhuma loja disponível para este usuário.');
+    throw new Error(
+      'Nenhuma loja ativa está vinculada a este usuário.'
+    );
   }
 
   atualizarLojaWhatsappUI();
 
   const selHist = $('filtLoja');
   if (selHist) {
-    selHist.innerHTML = '<option value="">Todas as lojas</option>';
-    lojasAtivas.forEach(l => {
+    selHist.innerHTML = '<option value="">Todas as lojas permitidas</option>';
+
+    lojasPermitidas.forEach(loja => {
       const o = document.createElement('option');
-      o.value = l.id;
-      o.textContent = l.nome;
+      o.value = loja.loteria_id;
+      o.textContent = loja.loteria_nome;
       selHist.appendChild(o);
     });
   }
+
   sincronizarFiltroHistoricoComLojaAtiva();
 }
 // ── Relógio ───────────────────────────────────────────────────────
@@ -439,7 +555,7 @@ async function carregarVendas(){
   // Busca vendas da data (bolões vigentes com ao menos 1 venda)
  let query = sb.from('view_vendas_whatsapp')
   .select('*')
-  .lte('data_referencia', iso)
+  .eq('data_referencia', iso)
   .gte('dt_concurso', iso);
 
 if (lojaWhatsappAtiva?.loteria_id) {
@@ -1675,9 +1791,7 @@ async function carregarHistorico(){
     (lojaWhatsappAtiva?.loteria_id ? String(lojaWhatsappAtiva.loteria_id) : '');
 
   if (dataVenda) {
-    q = q
-      .gte('created_at', dataVenda)
-      .lte('created_at', dataVenda + 'T23:59:59');
+    q = q.eq('data_referencia', dataVenda);
   }
 
   if (modal) {
@@ -1982,3 +2096,31 @@ if (utils.bindAtalhosPorSecao) {
 }
   init();
 });
+
+
+Object.assign(window, {
+  switchTab,
+  setViewMode,
+  toggleGroup,
+  registrarVenda,
+  deletarVenda,
+  abrirPickerClientes,
+  filtrarClientes,
+  buscarClienteInput,
+  abrirModalCliente,
+  fecharModalCliente,
+  salvarCliente,
+  calcTotal,
+  carregarVendasMantendoAbertos,
+  togglePago,
+  toggleConf,
+  toggleSep,
+  abrirWpp,
+  enviarWpp,
+  togglePagoHist,
+  toggleConfHist,
+  toggleSepHist,
+  limparFiltros
+});
+
+})();
