@@ -1,4 +1,10 @@
+(() => {
 'use strict';
+
+if (window.CF?.__sislotAreaCliente) {
+    return;
+}
+
 
 /**
  * SISLOT — Módulo Área do Cliente (CF)
@@ -40,6 +46,16 @@ window.CF = (() => {
     let _pickerMap           = {};      // mapa id→item para onclicks seguros
     let _boloesDisponiveisCF = [];      // mapa dos boloes disponiveis
     const $ = id => document.getElementById(id);
+
+    function _loteriaAtivaId() {
+        const id = Number(_getLoteriaAtiva?.()?.id || 0);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            throw new Error('Loteria ativa não identificada.');
+        }
+
+        return id;
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     // HELPER ESTADO (usa ESTADO.tela1.clienteFechamento)
@@ -155,7 +171,7 @@ function _renderBuscaInicialMobile() {
                 ativo,
                 saldo_devedor
             `)
-            .eq('loteria_id', Number(_getLoteriaAtiva().id))
+            .eq('loteria_id', _loteriaAtivaId())
             .eq('ativo', true)
             .order('nome', { ascending: true });
 
@@ -640,7 +656,7 @@ function _mostrarOperacaoFiado() {
         }
 
         const { data, error } = await _sb.rpc('fn_boloes_disponiveis_loja', {
-            p_loteria_id: Number(_getLoteriaAtiva().id),
+            p_loteria_id: _loteriaAtivaId(),
             p_data_ref: dataRef
         });
 
@@ -1148,11 +1164,26 @@ function _mostrarOperacaoFiado() {
     function _updQtd(id, qtd) {
         const item = _carrinho.find(i => i.id === id);
         if (!item) return;
-        item.qtd        = qtd;
-        const valUnit   = Number(item.valorUnit || 0);
-        const sub       = $(`cf-sub-${id}`);
-        if (sub) sub.innerHTML = `Subtotal: <strong>${_fmtBRL(qtd * valUnit)}</strong>`;
+
+        const saldo = Math.max(0, Math.trunc(Number(item.saldo || 0)));
+        let quantidade = Math.max(1, Math.trunc(Number(qtd || 1)));
+
+        if (saldo > 0) {
+            quantidade = Math.min(quantidade, saldo);
+        }
+
+        item.qtd = quantidade;
+
+        const valUnit = Number(item.valorUnit || 0);
+        const sub = $(`cf-sub-${id}`);
+
+        if (sub) {
+            sub.innerHTML =
+                `Subtotal: <strong>${_fmtBRL(quantidade * valUnit)}</strong>`;
+        }
+
         _updTotalCarrinho();
+
         const btn = $('cf-btn-confirmar-debito');
         if (btn) btn.disabled = _calcTotal() <= 0;
     }
@@ -1177,6 +1208,26 @@ function _mostrarOperacaoFiado() {
     // ─────────────────────────────────────────────────────────────────────
     async function confirmarDebito() {
         if (!_clienteAtual || !_carrinho.length) return;
+
+        for (const item of _carrinho) {
+            if (item.tipo === 'CONTA') continue;
+
+            const qtd = Math.max(1, Math.trunc(Number(item.qtd || 1)));
+            const saldo = Math.max(0, Math.trunc(Number(item.saldo || 0)));
+
+            if (saldo <= 0) {
+                throw new Error(
+                    `${item.descricao || 'Item'} não possui saldo disponível.`
+                );
+            }
+
+            if (qtd > saldo) {
+                throw new Error(
+                    `${item.descricao || 'Item'}: quantidade ${qtd} maior que o saldo ${saldo}.`
+                );
+            }
+        }
+
         const total = _calcTotal();
         if (total <= 0) return;
 
@@ -1304,7 +1355,7 @@ function _mostrarOperacaoFiado() {
 
     try {
         const payload = {
-            loteria_id: Number(_getLoteriaAtiva().id),
+            loteria_id: _loteriaAtivaId(),
             nome,
             telefone:   ($('cf-novo-tel')?.value || '').trim() || null,
             documento:  ($('cf-novo-doc')?.value || '').trim() || null,
@@ -1341,28 +1392,6 @@ function _mostrarOperacaoFiado() {
             .reduce((a, l) => a + Number(l.valor || 0), 0);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // GRAVAR NO SUPABASE (chamado dentro de finalizar())
-    // ─────────────────────────────────────────────────────────────────────
-    function _mapTipoItem(item) {
-    const tipo = String(item.tipo || '').toUpperCase();
-    if (tipo === 'BOLAO') return 'BOLAO';
-    if (tipo === 'FEDERAL') return 'FEDERAL';
-    if (tipo === 'PRODUTO') {
-        if (item.raspadinha_id) return 'RASPADINHA';
-        if (item.telesena_item_id) return 'TELESENA';
-        return 'CONTA';
-    }
-    return 'CONTA';
-}
-
-function _mapReferenciaId(item) {
-    if (item.bolao_id) return String(item.bolao_id);
-    if (item.federal_id) return String(item.federal_id);
-    if (item.raspadinha_id) return String(item.raspadinha_id);
-    if (item.telesena_item_id) return String(item.telesena_item_id);
-    return null;
-}
 function adicionarFiadoSimples() {
     if (!_clienteAtual) {
         alert('Selecione um cliente.');
@@ -1414,104 +1443,18 @@ function adicionarFiadoSimples() {
 
     selecionarCliente(_clienteAtual);
 }
-async function gravarNoSupabase(fechId, t1) {
-  const lans = _getLancamentos();
-  if (!lans.length) return;
-
-  const funcionarioResponsavelId = Number(t1?.funcionario_id || _getUsuario()?.id || null);
-
-  if (!funcionarioResponsavelId) {
-    throw new Error('Funcionário responsável pelo fechamento não identificado.');
-  }
-
-  for (const l of lans) {
-    const valor = Number(l.valor || 0);
-
-    if (valor <= 0) continue;
-
-    const { data: extrato, error: errExtrato } = await _sb
-      .from(TB_EXTRATO)
-      .insert({
-        loteria_id: Number(_getLoteriaAtiva().id),
-        cliente_id: l.cliente_id,
-        fechamento_id: fechId,
-
-        // IMPORTANTE:
-        // funcionário responsável pela dívida, não necessariamente o usuário logado
-        usuario_id: funcionarioResponsavelId,
-
-        tipo_movimento: 'DEBITO',
-        forma_pagamento: 'NAO_APLICA',
-        status: 'CONFIRMADO',
-
-        valor_total: valor,
-
-        gera_credito_fechamento: true,
-        gera_abatimento_divida: false,
-        gera_pix_quitacao: false,
-
-        data_movimento: t1?.data_ref,
-        observacao: l.observacao || null
-      })
-      .select('id')
-      .single();
-
-    if (errExtrato) throw errExtrato;
-
-    l.extrato_id = extrato.id;
-
-    const itensRows = cfMontarItensRows({
-      extratoId: extrato.id,
-      dataRef: t1?.data_ref,
-      lancamentos: l.itens || []
-    });
-
-    if (itensRows.length) {
-      const { error: errItens } = await _sb
-        .from(TB_ITENS)
-        .insert(itensRows);
-
-      if (errItens) throw errItens;
-    }
-  }
-}
-    // ─────────────────────────────────────────────────────────────────────
-    // ESTORNAR DO FECHAMENTO (chamado antes de sobrescrever)
-    // ─────────────────────────────────────────────────────────────────────
-    async function estornarDoFechamento(fechId) {
-    const { data: extratos, error } = await _sb
-        .from(TB_EXTRATO)
-        .select('id')
-        .eq('fechamento_id', fechId);
-
-    if (error) throw error;
-
-    const ids = (extratos || []).map(e => e.id);
-    if (!ids.length) return;
-
-    const { error: errItens } = await _sb
-        .from(TB_ITENS)
-        .delete()
-        .in('extrato_id', ids);
-
-    if (errItens) throw errItens;
-
-    const { error: errExtrato } = await _sb
-        .from(TB_EXTRATO)
-        .delete()
-        .eq('fechamento_id', fechId);
-
-    if (errExtrato) throw errExtrato;
-}
     // ─────────────────────────────────────────────────────────────────────
     // CARREGAR FECHAMENTO EXISTENTE (modo edição)
     // ─────────────────────────────────────────────────────────────────────
    async function carregarFechamentoExistente({ fechamentoId }) {
     try {
+        const loteriaId = _loteriaAtivaId();
+
         const { data: extratos, error: errExtratos } = await _sb
             .from(TB_EXTRATO)
             .select('id, cliente_id, tipo_movimento, valor_total, observacao')
             .eq('fechamento_id', fechamentoId)
+            .eq('loteria_id', loteriaId)
             .order('created_at', { ascending: true });
 
         if (errExtratos) throw errExtratos;
@@ -1618,96 +1561,6 @@ async function gravarNoSupabase(fechId, t1) {
     l.valor = itens.reduce((acc, it) => acc + Number(it.valor || 0), 0);
     return l.valor;
 }
-function cfResolverTipoOrigem(item) {
-  const tipoBruto = String(item?.tipo_origem || item?.tipo || '')
-    .trim()
-    .toUpperCase();
-
-  if (tipoBruto === 'BOLAO') return 'BOLAO';
-  if (tipoBruto === 'FEDERAL') return 'FEDERAL';
-  if (tipoBruto === 'CONTA') return 'CONTA';
-
-  if (Number(item?.raspadinha_id || 0) > 0) return 'RASPADINHA';
-  if (Number(item?.telesena_item_id || 0) > 0) return 'TELESENA';
-
-  return tipoBruto;
-}
-
-function cfMontarItensRows({ extratoId, dataRef, lancamentos }) {
-  const itensRows = (lancamentos || []).map((item) => {
-    const tipoOrigem = cfResolverTipoOrigem(item);
-
-    const row = {
-      extrato_id: extratoId,
-      tipo_origem: tipoOrigem,
-
-      bolao_id: null,
-      federal_id: null,
-      raspadinha_id: null,
-      telesena_item_id: null,
-
-      data_venda: dataRef,
-      descricao: item.descricao || '',
-      modalidade: item.modalidade || null,
-      concurso: item.concurso || null,
-      produto: null,
-      qtd_jogos: item.qtdJogos ? Number(item.qtdJogos) : null,
-      qtd_dezenas: item.qtdDezenas ? Number(item.qtdDezenas) : null,
-      valor_unitario: Number(item.valorUnit ?? item.valor ?? 0),
-      qtd_vendida: Number(item.qtd || 1)
-    };
-
-    if (tipoOrigem === 'BOLAO') {
-      row.bolao_id = item.bolao_id ?? null;
-    } else if (tipoOrigem === 'FEDERAL') {
-      row.federal_id = item.federal_id ?? null;
-    } else if (tipoOrigem === 'RASPADINHA') {
-      row.raspadinha_id = item.raspadinha_id ?? null;
-      row.produto = 'RASPADINHA';
-    } else if (tipoOrigem === 'TELESENA') {
-      row.telesena_item_id = item.telesena_item_id ?? null;
-      row.produto = 'TELESENA';
-    } else if (tipoOrigem === 'CONTA') {
-      row.modalidade = null;
-      row.concurso = null;
-      row.produto = null;
-      row.qtd_jogos = null;
-      row.qtd_dezenas = null;
-    }
-
-    console.log('CF ITEM BRUTO', item);
-    console.log('CF ITEM ROW', row);
-
-    return row;
-  });
-
-  for (const row of itensRows) {
-    if (row.tipo_origem === 'BOLAO' && !row.bolao_id) {
-      throw new Error(`Item BOLAO sem bolao_id: ${row.descricao || row.modalidade || 'sem descrição'}`);
-    }
-
-    if (row.tipo_origem === 'FEDERAL' && !row.federal_id) {
-      throw new Error(`Item FEDERAL sem federal_id: ${row.descricao || row.modalidade || 'sem descrição'}`);
-    }
-
-    if (row.tipo_origem === 'RASPADINHA' && !row.raspadinha_id) {
-      throw new Error(`Item RASPADINHA sem raspadinha_id: ${row.descricao || 'sem descrição'}`);
-    }
-
-    if (row.tipo_origem === 'TELESENA' && !row.telesena_item_id) {
-      throw new Error(`Item TELESENA sem telesena_item_id: ${row.descricao || 'sem descrição'}`);
-    }
-
-    if (
-      row.tipo_origem === 'CONTA' &&
-      (row.bolao_id || row.federal_id || row.raspadinha_id || row.telesena_item_id)
-    ) {
-      throw new Error(`Item CONTA veio com ids preenchidos: ${row.descricao || 'sem descrição'}`);
-    }
-  }
-
-  return itensRows;
-}
 function _refreshSessaoUI() {
     _atualizarBadge();
     _renderResumoSessao();
@@ -1789,11 +1642,13 @@ function _rmItemLancado(lancId, itemIdx) {
 
         // integração com fechamento-caixa.js
         getTotalCredito,
-        gravarNoSupabase,
-        estornarDoFechamento,
         carregarFechamentoExistente,
         adicionarFiadoSimples,
         voltarDoCadastro,
+
+        // marca usada para impedir carregamento duplicado
+        __sislotAreaCliente: true,
     };
 
+})();
 })();
