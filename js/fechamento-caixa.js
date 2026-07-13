@@ -50,14 +50,6 @@ const startClock = utils.startClock || (() => {
 
 startClock();
 
-const LOJA_CONFIG = {
-    'boulevard':    { nome: 'Boulevard',    logo: './icons/boulevard.png',    theme: 'boulevard',    logoPos: '50% 50%' },
-    'centro':       { nome: 'Centro',       logo: './icons/loterpraca.png',   theme: 'centro',       logoPos: '50% 42%' },
-    'lotobel':      { nome: 'Lotobel',      logo: './icons/lotobel.png',      theme: 'lotobel',      logoPos: '50% 50%' },
-    'santa-tereza': { nome: 'Santa Tereza', logo: './icons/santa-tereza.png', theme: 'santa-tereza', logoPos: '50% 50%' },
-    'via-brasil':   { nome: 'Via Brasil',   logo: './icons/via-brasil.png',   theme: 'via-brasil',   logoPos: '50% 50%' },
-};
-
 let usuario = null;
 let loteriaAtiva = null;
 let todasLojas = [];
@@ -164,21 +156,113 @@ function hideStatusMsg(id) {
     el.className = 'status-chip';
 }
 
-function aplicarTemaLoja(slug) {
-    const cfg = LOJA_CONFIG[slug] || LOJA_CONFIG['centro'];
-    document.body.setAttribute('data-loja', slug || 'centro');
+function normalizarLojaContexto(loja) {
+    if (!loja) return null;
+
+    const slug = String(
+        loja.loteria_slug ??
+        loja.slug ??
+        ''
+    ).trim();
+
+    return {
+        id: Number(loja.loteria_id ?? loja.id ?? 0),
+        nome: String(
+            loja.loteria_nome ??
+            loja.nome ??
+            slug ??
+            'Loja'
+        ).trim() || 'Loja',
+        slug,
+        codigo:
+            loja.loteria_codigo ??
+            loja.codigo ??
+            '',
+        cod_loterico:
+            loja.cod_loterico ??
+            loja.loteria_cod_loterico ??
+            '',
+        principal: !!loja.principal,
+        papelNaLoja:
+            loja.papel_na_loja ??
+            loja.papelNaLoja ??
+            '',
+        logo:
+            loja.logo_url ??
+            loja.loteria_logo_url ??
+            loja.logo_path ??
+            loja.loteria_logo_path ??
+            '',
+        logoPos:
+            loja.logo_posicao ??
+            loja.loteria_logo_posicao ??
+            loja.logoPos ??
+            '50% 50%',
+        tema:
+            loja.tema ??
+            loja.loteria_tema ??
+            slug ??
+            'centro',
+        iconeEmoji:
+            loja.icone_emoji ??
+            loja.loteria_icone_emoji ??
+            '📍',
+        iconeClasse:
+            loja.icone_classe ??
+            loja.loteria_icone_classe ??
+            'fas fa-store'
+    };
+}
+
+function getLogoLoja(loja) {
+    if (loja?.logo) return loja.logo;
+    if (loja?.slug) return `./icons/${loja.slug}.png`;
+    return './icons/centro.png';
+}
+
+function aplicarTemaLoja(loja) {
+    const atual = normalizarLojaContexto(loja) || {
+        nome: 'Centro',
+        slug: 'centro',
+        tema: 'centro',
+        logoPos: '50% 50%'
+    };
+
+    const tema = atual.tema || atual.slug || 'centro';
+    const slug = atual.slug || 'centro';
+
+    document.body.setAttribute('data-loja', tema);
+    document.documentElement.setAttribute('data-loja', tema);
 
     const img = $('logoImg');
     if (img) {
-        img.src = cfg.logo;
-        img.style.objectPosition = cfg.logoPos || '50% 50%';
+        img.onerror = null;
+        img.dataset.fallbackAplicado = '0';
+        img.src = getLogoLoja(atual);
+        img.alt = atual.nome || 'Loja';
+        img.style.objectPosition = atual.logoPos || '50% 50%';
+
+        img.onerror = () => {
+            if (img.dataset.fallbackAplicado === '1') return;
+            img.dataset.fallbackAplicado = '1';
+            img.onerror = null;
+            img.src = './icons/centro.png';
+        };
     }
 
     const title = $('headerTitle');
-    if (title) title.textContent = cfg.nome;
+    if (title) title.textContent = atual.nome || 'Loja';
 
     const sub = $('headerSub');
     if (sub) sub.textContent = 'Fechamento de Caixa';
+
+    const lojaTree = $('lojaTreeWrap');
+    if (lojaTree) {
+        lojaTree.title =
+            `${atual.nome || 'Loja'} — clique para trocar de loja`;
+    }
+
+    document.body.dataset.lojaSlug = slug;
 }
 
 function bindHeaderActions() {
@@ -271,32 +355,18 @@ async function init() {
 
         usuario = ctx.usuario;
 
-        todasLojas = (ctx.lojasPermitidas || []).map(l => ({
-            id: l.loteria_id,
-            nome: l.loteria_nome,
-            slug: l.loteria_slug,
-            codigo: l.loteria_codigo,
-            cod_loterico: l.cod_loterico || '',
-            principal: !!l.principal,
-            papelNaLoja: l.papel_na_loja || ''
-        }));
+        todasLojas = (ctx.lojasPermitidas || [])
+            .map(normalizarLojaContexto)
+            .filter(loja => loja?.id);
 
         if (!todasLojas.length) {
             alert('Nenhuma loteria vinculada a este usuário.');
             return;
         }
 
-        const inicial = ctx.lojaInicial
-            ? {
-                id: ctx.lojaInicial.loteria_id,
-                nome: ctx.lojaInicial.loteria_nome,
-                slug: ctx.lojaInicial.loteria_slug,
-                codigo: ctx.lojaInicial.loteria_codigo,
-                cod_loterico: ctx.lojaInicial.cod_loterico || '',
-                principal: !!ctx.lojaInicial.principal,
-                papelNaLoja: ctx.lojaInicial.papel_na_loja || ''
-            }
-            : todasLojas[0];
+        const inicial =
+            normalizarLojaContexto(ctx.lojaInicial) ||
+            todasLojas[0];
 
         await definirLoteriaAtiva(inicial);
 
@@ -355,7 +425,7 @@ async function init() {
 async function definirLoteriaAtiva(loja) {
     loteriaAtiva = loja;
     window.loteriaAtiva = loteriaAtiva;
-    aplicarTemaLoja(loja?.slug);
+    aplicarTemaLoja(loja);
     await carregarFuncionarios();
 }
 
