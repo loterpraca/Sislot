@@ -45,13 +45,68 @@ const startClock = utils.startClock || (() => { updateClock(); setInterval(updat
 
 startClock();
 
-const LOJAS = [
-    { slug: 'boulevard',    nome: 'Boulevard',    logo: './icons/boulevard.png'    },
-    { slug: 'centro',       nome: 'Centro',       logo: './icons/loterpraca.png'   },
-    { slug: 'lotobel',      nome: 'Lotobel',      logo: './icons/lotobel.png'      },
-    { slug: 'santa-tereza', nome: 'Santa Tereza', logo: './icons/santa-tereza.png' },
-    { slug: 'via-brasil',   nome: 'Via Brasil',   logo: './icons/via-brasil.png'   },
-];
+// Lojas carregadas dinamicamente da tabela public.loterias.
+// Para uma nova loja aparecer nesta tela, basta cadastrá-la como ativa no banco.
+let LOJAS = [];
+
+function obterLogoLoja(loja) {
+    const cadastrada = String(
+        loja?.logo_url ||
+        loja?.logo_path ||
+        ''
+    ).trim();
+
+    if (cadastrada) return cadastrada;
+
+    // Compatibilidade com os arquivos que já existem no GitHub.
+    if (loja?.slug === 'centro') {
+        return './icons/loterpraca.png';
+    }
+
+    return `./icons/${loja?.slug || 'loterpraca'}.png`;
+}
+
+function normalizarLoja(loja) {
+    return {
+        id: Number(loja?.id || 0),
+        slug: String(loja?.slug || '').trim(),
+        nome: String(loja?.nome || '').trim(),
+        logo: obterLogoLoja(loja),
+        logoPosicao: String(loja?.logo_posicao || '50% 50%')
+    };
+}
+
+async function carregarLojasAtivas() {
+    lojaIdPorSlug = {};
+    lojaSlugPorId = {};
+    lojaNomePorId = {};
+
+    const { data, error } = await sb
+        .from('loterias')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome', { ascending: true });
+
+    if (error) {
+        throw new Error(
+            'Erro ao carregar as lotéricas ativas: ' + error.message
+        );
+    }
+
+    LOJAS = (data || [])
+        .map(normalizarLoja)
+        .filter(loja => loja.id && loja.slug && loja.nome);
+
+    LOJAS.forEach(loja => {
+        lojaIdPorSlug[loja.slug] = loja.id;
+        lojaSlugPorId[loja.id] = loja.slug;
+        lojaNomePorId[loja.id] = loja.nome;
+    });
+
+    if (!LOJAS.length) {
+        throw new Error('Nenhuma lotérica ativa foi encontrada.');
+    }
+}
 
 let usuario = null;
 let lojaIdPorSlug = {};
@@ -452,7 +507,7 @@ function abrirPanel(b) {
         field.className = 'destino-field';
         field.innerHTML = `
             <div class="destino-label">
-                <img src="${loja.logo}" alt="${loja.nome}"/>
+                <img src="${loja.logo}" alt="${loja.nome}" style="object-position:${loja.logoPosicao}" onerror="this.onerror=null;this.src='./icons/loterpraca.png';"/>
                 ${loja.nome}${ehOrigem ? ' ★' : ''}
             </div>
             <div class="destino-input-wrap">
@@ -846,18 +901,12 @@ async function init() {
     if (!usr) { location.href = './login.html'; return; }
     usuario = usr;
 
-    const { data: lojas } = await sb
-        .from('loterias')
-        .select('id, nome, slug')
-        .eq('ativo', true)
-        .order('nome');
-
-    if (lojas) {
-        lojas.forEach(l => {
-            lojaIdPorSlug[l.slug] = l.id;
-            lojaSlugPorId[l.id]   = l.slug;
-            lojaNomePorId[l.id]   = l.nome;
-        });
+    try {
+        await carregarLojasAtivas();
+    } catch (e) {
+        console.error(e);
+        alert(e.message || 'Erro ao carregar as lotéricas.');
+        return;
     }
 
     bind();
