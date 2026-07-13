@@ -216,6 +216,51 @@ function bindStepClicks() {
     }
 }
 
+/**
+ * Atalhos de teclado por modalidade na etapa Bolões.
+ * Reutiliza SISLOT_UTILS.bindAtalhosPorSecao, sem duplicar listeners.
+ *
+ * M = Mega-Sena
+ * Q = Quina
+ * L = Lotofácil
+ * D = Dupla Sena
+ * S = Super Sete
+ * I = Dia de Sorte
+ * + ou N = +Milionária
+ * T = Timemania
+ */
+function bindAtalhosBoloesFechamento() {
+    if (typeof utils.bindAtalhosPorSecao !== 'function') {
+        console.warn(
+            'Atalhos de bolões não ativados: ' +
+            'SISLOT_UTILS.bindAtalhosPorSecao não está disponível.'
+        );
+        return;
+    }
+
+    utils.bindAtalhosPorSecao({
+        namespace: 'fechamento-caixa-boloes',
+        listaId: 'boloes-wrap',
+        labelSelector: '.mod-nome',
+        blocoSelector: '.mod-group',
+        offsetTopo: 118,
+        classeDestaque: 'atalho-destaque',
+
+        // Só reage enquanto a etapa Bolões estiver aberta.
+        ativoQuando: () => stepAtual === 3,
+
+        onNaoEncontrou: () => {
+            if (typeof utils.showToast === 'function') {
+                utils.showToast(
+                    'Nenhum bolão dessa modalidade está disponível.',
+                    'warning',
+                    2200
+                );
+            }
+        }
+    });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -283,6 +328,7 @@ async function init() {
         bindHeaderActions();
         bindStepClicks();
         garantirBotaoAtualizarBoloes();
+        bindAtalhosBoloesFechamento();
 
         getCFOrThrow().init({
             sb,
