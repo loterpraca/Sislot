@@ -823,9 +823,12 @@ function montarTela3DoFechamento(fech) {
             modalidade: b.modalidade,
             concurso: b.concurso,
             valorCota: b.valor_cota,
+            qtdJogos: Number(b.qtd_jogos || b.qtdJogos || 0),
+            qtdDezenas: Number(b.qtd_dezenas || b.qtdDezenas || 0),
             qtdVendida: b.qtd_vendida,
             subtotal: b.subtotal || b.total || 0,
             origem: b.origem || null,
+            origemCodLoterico: b.origem_cod_loterico || b.origemCodLoterico || null,
             tipo: b.tipo || null
         };
         if (b.tipo === 'EXTERNO' || b.origem) externos.push(item);
@@ -974,9 +977,14 @@ function coletarTela3() {
         .filter(b => b.tipo === tipo)
         .map(({ data, idx }) => ({
             bolao_id: data.bolao_id,
+            tipo: data.tipo || tipo,
             modalidade: data.modalidade,
             concurso: data.concurso,
+            qtdJogos: Number(data.qtdJogos || 0),
+            qtdDezenas: Number(data.qtdDezenas || 0),
             valorCota: Number(data.valorCota || 0),
+            origem: data.origem || (tipo === 'INTERNO' ? loteriaAtiva?.nome || '' : ''),
+            origemCodLoterico: data.origemCodLoterico || (tipo === 'INTERNO' ? loteriaAtiva?.cod_loterico || '' : ''),
             qtdVendida: parseInt($(`qtd-${idx}`)?.value) || 0,
             subtotal: (parseInt($(`qtd-${idx}`)?.value) || 0) * Number(data.valorCota || 0)
         }));
@@ -1312,48 +1320,103 @@ function garantirBotaoAtualizarBoloes() {
     const wrap = $('boloes-wrap');
     if (!wrap || $('btn-atualizar-boloes')) return;
 
-    const barra = document.createElement('div');
-    barra.id = 'barra-atualizar-boloes';
-    barra.style.cssText = [
-        'display:flex',
-        'align-items:center',
-        'justify-content:flex-end',
-        'gap:10px',
-        'margin:0 0 14px 0',
-        'flex-wrap:wrap'
-    ].join(';');
+    const normalizarTitulo = texto => String(texto || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    const status = document.createElement('span');
-    status.id = 'status-atualizar-boloes';
-    status.style.cssText = 'font-size:11px;color:var(--muted)';
-    status.textContent = 'Use Atualizar após cadastrar ou movimentar um novo bolão.';
+    const raizEtapa = wrap.closest('.step-content') || wrap.parentElement || document;
+    const seletoresTitulo = [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        '.section-title', '.card-title', '.panel-title',
+        '.titulo', '.title', '.bloco-label'
+    ].join(',');
+
+    const titulo = [...raizEtapa.querySelectorAll(seletoresTitulo)].find(el =>
+        normalizarTitulo(el.textContent).includes('BOLOES VIGENTES')
+    );
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.id = 'btn-atualizar-boloes';
-    btn.textContent = '↻ Atualizar bolões';
+    btn.setAttribute('aria-label', 'Atualizar bolões vigentes');
+    btn.title = 'Atualizar bolões vigentes';
+    btn.innerHTML = `
+        <span class="btn-atualizar-boloes-icone" aria-hidden="true">↻</span>
+        <span>Atualizar</span>`;
     btn.style.cssText = [
+        'display:inline-flex',
+        'align-items:center',
+        'justify-content:center',
+        'gap:6px',
+        'flex:0 0 auto',
         'border:1px solid rgba(0,200,150,.35)',
         'background:rgba(0,200,150,.08)',
         'color:var(--accent)',
-        'border-radius:10px',
-        'padding:9px 14px',
+        'border-radius:9px',
+        'padding:7px 11px',
+        'font-size:12px',
+        'line-height:1',
         'font-weight:700',
         'cursor:pointer'
     ].join(';');
     btn.addEventListener('click', atualizarBoloesPreservandoRascunho);
 
-    barra.appendChild(status);
-    barra.appendChild(btn);
-    wrap.parentNode?.insertBefore(barra, wrap);
+    // Mantém o botão na mesma linha do título "Bolões Vigentes".
+    if (titulo?.parentNode) {
+        const linha = document.createElement('div');
+        linha.id = 'cabecalho-boloes-vigentes';
+        linha.style.cssText = [
+            'display:flex',
+            'align-items:center',
+            'justify-content:space-between',
+            'gap:12px',
+            'width:100%'
+        ].join(';');
+
+        titulo.parentNode.insertBefore(linha, titulo);
+        linha.appendChild(titulo);
+        linha.appendChild(btn);
+    } else {
+        // Fallback para estruturas antigas do HTML.
+        const linha = document.createElement('div');
+        linha.id = 'cabecalho-boloes-vigentes';
+        linha.style.cssText = [
+            'display:flex',
+            'align-items:center',
+            'justify-content:flex-end',
+            'margin:0 0 10px 0'
+        ].join(';');
+        linha.appendChild(btn);
+        wrap.parentNode?.insertBefore(linha, wrap);
+    }
+
+    if (!$('estilo-btn-atualizar-boloes')) {
+        const style = document.createElement('style');
+        style.id = 'estilo-btn-atualizar-boloes';
+        style.textContent = `
+            #btn-atualizar-boloes:disabled {
+                cursor:wait;
+                opacity:.65;
+            }
+            #btn-atualizar-boloes.is-loading .btn-atualizar-boloes-icone {
+                display:inline-block;
+                animation:sislot-girar-atualizacao .75s linear infinite;
+            }
+            @keyframes sislot-girar-atualizacao {
+                to { transform:rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 async function atualizarBoloesPreservandoRascunho() {
     if (atualizandoBoloes) return;
 
     const btn = $('btn-atualizar-boloes');
-    const status = $('status-atualizar-boloes');
-    const textoOriginal = btn?.textContent || '↻ Atualizar bolões';
 
     try {
         atualizandoBoloes = true;
@@ -1367,9 +1430,8 @@ async function atualizarBoloesPreservandoRascunho() {
 
         if (btn) {
             btn.disabled = true;
-            btn.textContent = 'Atualizando...';
+            btn.classList.add('is-loading');
         }
-        if (status) status.textContent = 'Consultando a base novamente...';
 
         await carregarBoloes();
 
@@ -1377,33 +1439,24 @@ async function atualizarBoloesPreservandoRascunho() {
             !chavesAntes.has(chaveBolaoItem({ tipo, bolao_id: data.bolao_id }))
         ).length;
 
-        const horario = new Date().toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-
-        if (status) {
-            status.textContent = novos > 0
-                ? `${novos} novo(s) bolão(ões) carregado(s) às ${horario}. Preenchimento mantido.`
-                : `Base atualizada às ${horario}. Preenchimento mantido.`;
+        // Mostra apenas uma confirmação transitória quando realmente entrou algo novo.
+        // Não deixa mensagem permanente ocupando a tela.
+        if (novos > 0) {
+            toast(
+                novos === 1
+                    ? '1 novo bolão carregado. Preenchimento mantido.'
+                    : `${novos} novos bolões carregados. Preenchimento mantido.`,
+                true
+            );
         }
-
-        toast(
-            novos > 0
-                ? `${novos} novo(s) bolão(ões) carregado(s).`
-                : 'Bolões atualizados. Nenhum novo cadastro encontrado.',
-            true
-        );
     } catch (e) {
         console.error('Erro ao atualizar bolões:', e);
-        if (status) status.textContent = 'Não foi possível atualizar os bolões.';
         toast(e.message || 'Erro ao atualizar bolões.', false);
     } finally {
         atualizandoBoloes = false;
         if (btn) {
             btn.disabled = false;
-            btn.textContent = textoOriginal;
+            btn.classList.remove('is-loading');
         }
     }
 }
@@ -1993,6 +2046,111 @@ function getBoloesVendidosTela3(t3 = ESTADO.tela3) {
     ];
 }
 
+function textoBaseErro(error) {
+    if (!error) return 'Erro desconhecido.';
+    if (typeof error === 'string') return error;
+
+    const partes = [error.message, error.details, error.hint]
+        .map(v => String(v || '').trim())
+        .filter(Boolean)
+        .filter((v, i, arr) => arr.indexOf(v) === i);
+
+    if (error.code) partes.push(`Código: ${error.code}`);
+    return partes.join('\n') || String(error);
+}
+
+function origemBolaoParaErro(b = {}) {
+    const tipo = String(b.tipo || '').toUpperCase();
+    const nome = String(b.origem || '').trim()
+        || (tipo === 'INTERNO' ? String(loteriaAtiva?.nome || '').trim() : '');
+    const codigo = String(
+        b.origemCodLoterico
+        || b.origem_cod_loterico
+        || (tipo === 'INTERNO' ? loteriaAtiva?.cod_loterico || '' : '')
+    ).trim();
+
+    return [nome || 'Origem não informada', codigo].filter(Boolean).join(' · ');
+}
+
+function descreverBolaoParaErro(b = {}) {
+    const id = Number(b.bolao_id || 0);
+    const tipo = String(b.tipo || '').toUpperCase() || 'NÃO INFORMADO';
+    const modalidade = String(b.modalidade || 'Modalidade não informada');
+    const concurso = b.concurso || 'não informado';
+    const jogos = Number(b.qtdJogos ?? b.qtd_jogos ?? 0);
+    const dezenas = Number(b.qtdDezenas ?? b.qtd_dezenas ?? 0);
+    const valorCota = Number(b.valorCota ?? b.valor_cota ?? 0);
+    const qtdVendida = Number(b.qtdVendida ?? b.qtd_vendida ?? 0);
+
+    return [
+        `Bolão #${id || 'não informado'} — ${tipo}`,
+        `Origem: ${origemBolaoParaErro(b)}`,
+        `Modalidade: ${modalidade} · Concurso: ${concurso}`,
+        `Composição: ${jogos || '—'} jogo(s) · ${dezenas || '—'} dezena(s)`,
+        `Valor da cota: ${fmtBRL(valorCota)} · Venda informada: ${qtdVendida}`
+    ].join('\n');
+}
+
+function obterBoloesParaDiagnostico(t3 = ESTADO.tela3) {
+    const mapa = new Map();
+
+    allBoloes.forEach(({ tipo, data }) => {
+        const item = { ...data, tipo: data?.tipo || tipo };
+        mapa.set(chaveBolaoItem(item), item);
+    });
+
+    [
+        ...((t3?.internos || []).map(b => ({ ...b, tipo: 'INTERNO' }))),
+        ...((t3?.externos || []).map(b => ({ ...b, tipo: 'EXTERNO' })))
+    ].forEach(item => {
+        const chave = chaveBolaoItem(item);
+        mapa.set(chave, { ...(mapa.get(chave) || {}), ...item });
+    });
+
+    return [...mapa.values()];
+}
+
+function encontrarBoloesNoErro(error, t3 = ESTADO.tela3) {
+    const texto = textoBaseErro(error);
+    const candidatos = obterBoloesParaDiagnostico(t3);
+    const encontrados = candidatos.filter(b => {
+        const id = Number(b.bolao_id || 0);
+        if (!id) return false;
+        return new RegExp(`(^|\\D)${id}(\\D|$)`).test(texto);
+    });
+
+    if (encontrados.length) return encontrados;
+
+    const vendidos = getBoloesVendidosTela3(t3);
+    if (/bol[aã]o/i.test(texto) && vendidos.length === 1) {
+        const unico = vendidos[0];
+        const completo = candidatos.find(b => chaveBolaoItem(b) === chaveBolaoItem(unico));
+        return [{ ...(completo || {}), ...unico }];
+    }
+
+    return [];
+}
+
+function enriquecerErroBolao(error, t3 = ESTADO.tela3, bolaoForcado = null) {
+    const texto = textoBaseErro(error);
+    if (texto.includes('Identificação do bolão relacionado:')) return texto;
+
+    const relacionados = bolaoForcado
+        ? [{
+            ...(obterBoloesParaDiagnostico(t3).find(
+                b => chaveBolaoItem(b) === chaveBolaoItem(bolaoForcado)
+            ) || {}),
+            ...bolaoForcado
+        }]
+        : encontrarBoloesNoErro(error, t3);
+
+    if (!relacionados.length) return texto;
+
+    return `${texto}\n\nIdentificação do bolão relacionado:\n\n${relacionados
+        .map(descreverBolaoParaErro)
+        .join('\n\n')}`;
+}
+
 async function estornarBoloesDoFechamento(fechId) {
     if (!fechId) return 0;
     const { data, error } = await sb.rpc('estornar_vendas_bolao_fechamento', { p_fechamento_id: fechId });
@@ -2020,8 +2178,11 @@ async function salvarSnapshotBoloesDoFechamento(fechId, boloesVendidos) {
 
 async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     if (!boloesVendidos.length) return;
+    let bolaoEmProcessamento = null;
+
     try {
         for (const b of boloesVendidos) {
+            bolaoEmProcessamento = b;
             const { error } = await sb.rpc('registrar_venda_bolao', {
                 p_bolao_id: Number(b.bolao_id),
                 p_loteria_vendedora_id: Number(loteriaAtiva.id),
@@ -2035,7 +2196,7 @@ async function registrarVendasBoloesDoFechamento(fechId, t1, boloesVendidos) {
     } catch (e) {
         await estornarBoloesDoFechamento(fechId);
         await apagarSnapshotBoloesDoFechamento(fechId);
-        throw e;
+        throw new Error(enriquecerErroBolao(e, ESTADO.tela3, bolaoEmProcessamento));
     }
 }
 
@@ -2220,6 +2381,14 @@ function montarPayloadRPCFechamento({
 
     const boloes = getBoloesVendidosTela3(t3).map(b => ({
         bolao_id: Number(b.bolao_id),
+        tipo: b.tipo || null,
+        modalidade: b.modalidade || null,
+        concurso: b.concurso || null,
+        origem: b.origem || null,
+        origemCodLoterico: b.origemCodLoterico || null,
+        qtdJogos: Math.trunc(_cfNumero(b.qtdJogos)),
+        qtdDezenas: Math.trunc(_cfNumero(b.qtdDezenas)),
+        valorCota: _cfNumero(b.valorCota),
         qtdVendida: Math.trunc(_cfNumero(b.qtdVendida))
     }));
 
@@ -2360,7 +2529,7 @@ async function finalizar() {
     } catch (e) {
         console.error('Erro ao gravar fechamento transacional:', e);
 
-        const mensagem = e?.message || String(e);
+        const mensagem = enriquecerErroBolao(e, t3);
         toast('Erro ao gravar: ' + mensagem, false);
         alert('Erro ao gravar o fechamento:\n\n' + mensagem);
     } finally {
