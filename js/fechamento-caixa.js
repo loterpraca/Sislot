@@ -71,6 +71,47 @@ const ESTADO = {
     tela3: { internos: [], externos: [] },
 };
 
+// Quantidades que já estavam gravadas no banco quando um fechamento existente
+// foi aberto para edição. Este estado é imutável durante a edição e não deve ser
+// confundido com o rascunho atual digitado pelo usuário.
+const ORIGINAIS_EDICAO = {
+    produtos: new Map(),
+    federais: new Map(),
+    boloes: new Map()
+};
+
+function limparOriginaisEdicao() {
+    ORIGINAIS_EDICAO.produtos.clear();
+    ORIGINAIS_EDICAO.federais.clear();
+    ORIGINAIS_EDICAO.boloes.clear();
+}
+
+function capturarOriginaisEdicao() {
+    limparOriginaisEdicao();
+
+    (ESTADO.tela2?.produtos || []).forEach(item => {
+        ORIGINAIS_EDICAO.produtos.set(chaveProdutoItem(item), Number(item.qtd || 0));
+    });
+
+    (ESTADO.tela2?.federais || []).forEach(item => {
+        ORIGINAIS_EDICAO.federais.set(chaveFederalItem(item), Number(item.qtdVendida || 0));
+    });
+
+    (ESTADO.tela3?.internos || []).forEach(item => {
+        ORIGINAIS_EDICAO.boloes.set(
+            chaveBolaoItem({ ...item, tipo: 'INTERNO' }),
+            Number(item.qtdVendida || 0)
+        );
+    });
+
+    (ESTADO.tela3?.externos || []).forEach(item => {
+        ORIGINAIS_EDICAO.boloes.set(
+            chaveBolaoItem({ ...item, tipo: 'EXTERNO' }),
+            Number(item.qtdVendida || 0)
+        );
+    });
+}
+
 let lstInt = [];
 let lstExt = [];
 let allBoloes = [];
@@ -148,6 +189,12 @@ function bindHeaderActions() {
     $('btnSair')?.addEventListener('click', () => confirmarSair());
 }
 
+function salvarRascunhoEtapaAtual() {
+    if (stepAtual === 1) coletarTela1();
+    if (stepAtual === 2) coletarTela2();
+    if (stepAtual === 3) coletarTela3();
+}
+
 function bindStepClicks() {
     for (let i = 1; i <= 4; i++) {
         const el = $('s' + i);
@@ -158,7 +205,8 @@ function bindStepClicks() {
             if (i === stepAtual) return;
 
             if (i < stepAtual) {
-                if (i === 4) montarResumo();
+                // Antes de voltar, preserva o que está digitado na etapa atual.
+                salvarRascunhoEtapaAtual();
                 showStep(i);
                 return;
             }
@@ -234,6 +282,7 @@ async function init() {
 
         bindHeaderActions();
         bindStepClicks();
+        garantirBotaoAtualizarBoloes();
 
         getCFOrThrow().init({
             sb,
@@ -470,14 +519,27 @@ function chaveProdutoItem(item) {
 }
 
 function aplicarContextoEdicaoProdutos(lista) {
-    const produtosSalvos = ESTADO.tela2?.produtos || [];
-    const mapa = {};
-    produtosSalvos.forEach(p => { mapa[chaveProdutoItem(p)] = Number(p.qtd || 0); });
+    const produtosRascunho = ESTADO.tela2?.produtos || [];
+    const mapaRascunho = {};
+    produtosRascunho.forEach(p => {
+        mapaRascunho[chaveProdutoItem(p)] = Number(p.qtd || 0);
+    });
 
     return (lista || []).map(item => {
-        const qtdSalva = Number(mapa[chaveProdutoItem(item)] || 0);
+        const chave = chaveProdutoItem(item);
+        const qtdRascunho = Number(mapaRascunho[chave] || 0);
+        const qtdOriginal = fechamentoOriginalId
+            ? Number(ORIGINAIS_EDICAO.produtos.get(chave) || 0)
+            : 0;
         const saldoAtual = Number(item.saldo_atual || 0);
-        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
+
+        return {
+            ...item,
+            qtd_salva_edicao: qtdRascunho,
+            qtd_original_edicao: qtdOriginal,
+            saldo_editavel: saldoAtual + qtdOriginal,
+            em_edicao: !!fechamentoOriginalId
+        };
     });
 }
 
@@ -830,6 +892,7 @@ async function buscarFechamentoExistente() {
         ESTADO.tela1 = montarTela1DoFechamento(fech);
         ESTADO.tela2 = montarTela2DoFechamento(fech, federaisCarregados);
         ESTADO.tela3 = montarTela3DoFechamento(fech);
+        capturarOriginaisEdicao();
 
         preencherTela1(fech);
         await getCFOrThrow().carregarFechamentoExistente({ fechamentoId: fech.id });
@@ -930,14 +993,27 @@ function chaveFederalItem(item) {
 }
 
 function aplicarContextoEdicaoFederais(lista) {
-    const salvos = ESTADO.tela2?.federais || [];
-    const mapa = {};
-    salvos.forEach(f => { mapa[chaveFederalItem(f)] = Number(f.qtdVendida || 0); });
+    const rascunhos = ESTADO.tela2?.federais || [];
+    const mapaRascunho = {};
+    rascunhos.forEach(f => {
+        mapaRascunho[chaveFederalItem(f)] = Number(f.qtdVendida || 0);
+    });
 
     return (lista || []).map(item => {
-        const qtdSalva = Number(mapa[chaveFederalItem(item)] || 0);
+        const chave = chaveFederalItem(item);
+        const qtdRascunho = Number(mapaRascunho[chave] || 0);
+        const qtdOriginal = fechamentoOriginalId
+            ? Number(ORIGINAIS_EDICAO.federais.get(chave) || 0)
+            : 0;
         const saldoAtual = Number(item.saldo_atual || 0);
-        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
+
+        return {
+            ...item,
+            qtd_salva_edicao: qtdRascunho,
+            qtd_original_edicao: qtdOriginal,
+            saldo_editavel: saldoAtual + qtdOriginal,
+            em_edicao: !!fechamentoOriginalId
+        };
     });
 }
 
@@ -1175,17 +1251,32 @@ function setB3(s) {
 function chaveBolaoItem(item) { return `${String(item.tipo || '').toUpperCase()}|${Number(item.bolao_id || 0)}`; }
 
 function aplicarContextoEdicaoBoloes(lista) {
-    const salvos = [
+    const rascunhos = [
         ...(ESTADO.tela3?.internos || []).map(b => ({ ...b, tipo: 'INTERNO' })),
         ...(ESTADO.tela3?.externos || []).map(b => ({ ...b, tipo: 'EXTERNO' }))
     ];
-    const mapa = {};
-    salvos.forEach(b => { mapa[chaveBolaoItem(b)] = Number(b.qtdVendida || 0); });
+    const mapaRascunho = {};
+    rascunhos.forEach(b => {
+        mapaRascunho[chaveBolaoItem(b)] = Number(b.qtdVendida || 0);
+    });
 
     return (lista || []).map(item => {
-        const qtdSalva = Number(mapa[chaveBolaoItem(item)] || 0);
+        const chave = chaveBolaoItem(item);
+        const qtdRascunho = Number(mapaRascunho[chave] || 0);
+        const qtdOriginal = fechamentoOriginalId
+            ? Number(ORIGINAIS_EDICAO.boloes.get(chave) || 0)
+            : 0;
         const saldoAtual = Number(item.saldo_atual || 0);
-        return { ...item, qtd_salva_edicao: qtdSalva, saldo_editavel: saldoAtual + qtdSalva, em_edicao: !!fechamentoOriginalId };
+
+        return {
+            ...item,
+            qtd_salva_edicao: qtdRascunho,
+            qtd_original_edicao: qtdOriginal,
+            // Só devolve ao saldo a quantidade que já estava persistida no banco.
+            // O rascunho atual nunca aumenta o estoque disponível.
+            saldo_editavel: saldoAtual + qtdOriginal,
+            em_edicao: !!fechamentoOriginalId
+        };
     });
 }
 
@@ -1214,6 +1305,108 @@ function boloesVisiveis() {
 }
 
 function getSaldoBolao(item) { return Number(item?.saldo_editavel ?? item?.saldo_atual ?? 0); }
+
+let atualizandoBoloes = false;
+
+function garantirBotaoAtualizarBoloes() {
+    const wrap = $('boloes-wrap');
+    if (!wrap || $('btn-atualizar-boloes')) return;
+
+    const barra = document.createElement('div');
+    barra.id = 'barra-atualizar-boloes';
+    barra.style.cssText = [
+        'display:flex',
+        'align-items:center',
+        'justify-content:flex-end',
+        'gap:10px',
+        'margin:0 0 14px 0',
+        'flex-wrap:wrap'
+    ].join(';');
+
+    const status = document.createElement('span');
+    status.id = 'status-atualizar-boloes';
+    status.style.cssText = 'font-size:11px;color:var(--muted)';
+    status.textContent = 'Use Atualizar após cadastrar ou movimentar um novo bolão.';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'btn-atualizar-boloes';
+    btn.textContent = '↻ Atualizar bolões';
+    btn.style.cssText = [
+        'border:1px solid rgba(0,200,150,.35)',
+        'background:rgba(0,200,150,.08)',
+        'color:var(--accent)',
+        'border-radius:10px',
+        'padding:9px 14px',
+        'font-weight:700',
+        'cursor:pointer'
+    ].join(';');
+    btn.addEventListener('click', atualizarBoloesPreservandoRascunho);
+
+    barra.appendChild(status);
+    barra.appendChild(btn);
+    wrap.parentNode?.insertBefore(barra, wrap);
+}
+
+async function atualizarBoloesPreservandoRascunho() {
+    if (atualizandoBoloes) return;
+
+    const btn = $('btn-atualizar-boloes');
+    const status = $('status-atualizar-boloes');
+    const textoOriginal = btn?.textContent || '↻ Atualizar bolões';
+
+    try {
+        atualizandoBoloes = true;
+
+        // Guarda as quantidades digitadas antes de reconstruir a lista.
+        if (allBoloes.length) coletarTela3();
+
+        const chavesAntes = new Set(
+            allBoloes.map(({ tipo, data }) => chaveBolaoItem({ tipo, bolao_id: data.bolao_id }))
+        );
+
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Atualizando...';
+        }
+        if (status) status.textContent = 'Consultando a base novamente...';
+
+        await carregarBoloes();
+
+        const novos = allBoloes.filter(({ tipo, data }) =>
+            !chavesAntes.has(chaveBolaoItem({ tipo, bolao_id: data.bolao_id }))
+        ).length;
+
+        const horario = new Date().toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        if (status) {
+            status.textContent = novos > 0
+                ? `${novos} novo(s) bolão(ões) carregado(s) às ${horario}. Preenchimento mantido.`
+                : `Base atualizada às ${horario}. Preenchimento mantido.`;
+        }
+
+        toast(
+            novos > 0
+                ? `${novos} novo(s) bolão(ões) carregado(s).`
+                : 'Bolões atualizados. Nenhum novo cadastro encontrado.',
+            true
+        );
+    } catch (e) {
+        console.error('Erro ao atualizar bolões:', e);
+        if (status) status.textContent = 'Não foi possível atualizar os bolões.';
+        toast(e.message || 'Erro ao atualizar bolões.', false);
+    } finally {
+        atualizandoBoloes = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = textoOriginal;
+        }
+    }
+}
 
 async function carregarBoloes() {
     const dataRef = $('data-ref').value;
@@ -1550,14 +1743,25 @@ function atualizarListaVendas() {
 
 function restaurarBoloes() {
     const mapa = {};
-    [...(ESTADO.tela3.internos || []), ...(ESTADO.tela3.externos || [])].forEach(b => {
-        if (Number(b.qtdVendida || 0) > 0) mapa[Number(b.bolao_id)] = Number(b.qtdVendida || 0);
+
+    (ESTADO.tela3.internos || []).forEach(b => {
+        const chave = chaveBolaoItem({ ...b, tipo: 'INTERNO' });
+        mapa[chave] = Number(b.qtdVendida || 0);
     });
-    allBoloes.forEach(({ data, idx }) => {
-        const qtd = Number(mapa[Number(data.bolao_id)] || 0);
+
+    (ESTADO.tela3.externos || []).forEach(b => {
+        const chave = chaveBolaoItem({ ...b, tipo: 'EXTERNO' });
+        mapa[chave] = Number(b.qtdVendida || 0);
+    });
+
+    allBoloes.forEach(({ tipo, data, idx }) => {
+        const chave = chaveBolaoItem({ tipo, bolao_id: data.bolao_id });
+        const qtd = Number(mapa[chave] || 0);
         if (!qtd) return;
+
         const inp = $(`qtd-${idx}`);
         if (!inp) return;
+
         const max = getSaldoBolao(data);
         inp.value = Math.min(qtd, max) || '';
         onQtd(idx);
@@ -2221,6 +2425,7 @@ function resetEstado() {
     mostrarProdutosSemEstoque = false;
     fechamentoOriginalId = null;
     modoAtual = 'novo';
+    limparOriginaisEdicao();
 
     [
         'relatorio', 'deposito', 'troco-ini', 'troco-sob',
