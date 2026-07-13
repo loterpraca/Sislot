@@ -76,24 +76,50 @@ function normalizarLoja(loja) {
     };
 }
 
+const MOVIMENTACAO_LOJAS_VERSAO = '2026-07-13-2';
+
 async function carregarLojasAtivas() {
     lojaIdPorSlug = {};
     lojaSlugPorId = {};
     lojaNomePorId = {};
 
-    const { data, error } = await sb
-        .from('loterias')
-        .select('*')
-        .eq('ativo', true)
-        .order('nome', { ascending: true });
+    let listaBruta = [];
 
-    if (error) {
-        throw new Error(
-            'Erro ao carregar as lotéricas ativas: ' + error.message
-        );
+    // Usa primeiro a camada de segurança já compartilhada pelo SISLOT.
+    // Ela é a fonte padrão para listar todas as lojas ativas.
+    if (typeof window.SISLOT_SECURITY?.carregarTodasLojas === 'function') {
+        const lojasSeguranca = await window.SISLOT_SECURITY.carregarTodasLojas();
+
+        listaBruta = (lojasSeguranca || []).map(loja => ({
+            id: loja.loteria_id,
+            nome: loja.loteria_nome,
+            slug: loja.loteria_slug,
+            codigo: loja.loteria_codigo,
+            cod_loterico: loja.cod_loterico,
+            logo_url: loja.logo_url || null,
+            logo_path: loja.logo_path || null,
+            logo_posicao: loja.logo_posicao || null
+        }));
     }
 
-    LOJAS = (data || [])
+    // Fallback defensivo para versões antigas do sislot-security.js.
+    if (!listaBruta.length) {
+        const { data, error } = await sb
+            .from('loterias')
+            .select('*')
+            .eq('ativo', true)
+            .order('nome', { ascending: true });
+
+        if (error) {
+            throw new Error(
+                'Erro ao carregar as lotéricas ativas: ' + error.message
+            );
+        }
+
+        listaBruta = data || [];
+    }
+
+    LOJAS = listaBruta
         .map(normalizarLoja)
         .filter(loja => loja.id && loja.slug && loja.nome);
 
@@ -106,6 +132,22 @@ async function carregarLojasAtivas() {
     if (!LOJAS.length) {
         throw new Error('Nenhuma lotérica ativa foi encontrada.');
     }
+
+    // Diagnóstico acessível pelo console do navegador.
+    window.SISLOT_MOVIMENTACAO_DEBUG = {
+        versao: MOVIMENTACAO_LOJAS_VERSAO,
+        getLojas: () => LOJAS.map(loja => ({ ...loja }))
+    };
+
+    console.info(
+        `[SISLOT] Movimentação lojas dinâmicas ${MOVIMENTACAO_LOJAS_VERSAO}: ${LOJAS.length} loja(s) carregada(s).`
+    );
+    console.table(LOJAS.map(loja => ({
+        id: loja.id,
+        nome: loja.nome,
+        slug: loja.slug,
+        logo: loja.logo
+    })));
 }
 
 let usuario = null;
@@ -889,7 +931,7 @@ function bind() {
 // =====================================================
 
 async function init() {
-    console.log('movimentar.js - init rodando!');
+    console.log('bolao-movimentar.js - lojas dinâmicas v2026-07-13-2');
 
     updateClock();
     setInterval(updateClock, 1000);
