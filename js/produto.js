@@ -25,28 +25,123 @@ function calcularCusto(tipo, valorVenda) {
   return Number((Number(valorVenda || 0) * fator).toFixed(2));
 }
 
-// ── Lojas do sistema ─────────────────────────────────
-const LOJAS = [
-  { id: 1, nome: 'Centro',       slug: 'centro',       logo: './icons/loterpraca.png',   icon: 'fas fa-city'    },
-  { id: 2, nome: 'Boulevard',    slug: 'boulevard',    logo: './icons/boulevard.png',    icon: 'fas fa-building'},
-  { id: 3, nome: 'Lotobel',      slug: 'lotobel',      logo: './icons/lotobel.png',      icon: 'fas fa-landmark'},
-  { id: 4, nome: 'Santa Tereza', slug: 'santa-tereza', logo: './icons/santa-tereza.png', icon: 'fas fa-church'  },
-  { id: 5, nome: 'Via Brasil',   slug: 'via-brasil',   logo: './icons/via-brasil.png',   icon: 'fas fa-road'    },
-];
+// ── Lojas do sistema — carregadas dinamicamente ───────
+// Switch: somente lojas permitidas ao usuário.
+// Movimentação: todas as lojas ativas cadastradas no banco.
+function normalizarCaminhoLogo(caminho, slug) {
+  const valor = String(caminho || '').trim();
 
-const LOJA_CONFIG = {
-  'centro':       { nome: 'Centro',       logo: './icons/loterpraca.png'   },
-  'boulevard':    { nome: 'Boulevard',    logo: './icons/boulevard.png'    },
-  'lotobel':      { nome: 'Lotobel',      logo: './icons/lotobel.png'      },
-  'santa-tereza': { nome: 'Santa Tereza', logo: './icons/santa-tereza.png' },
-  'via-brasil':   { nome: 'Via Brasil',   logo: './icons/via-brasil.png'   },
-};
+  if (!valor) return `./icons/${slug}.png`;
+  if (/^(https?:|data:|blob:|\/|\.\/|\.\.\/)/i.test(valor)) return valor;
+  if (valor.startsWith('icons/')) return `./${valor}`;
+
+  return `./icons/${valor}`;
+}
+
+function normalizarLojaProduto(loja = {}) {
+  const id = Number(loja.id ?? loja.loteria_id ?? 0);
+  const slug = String(loja.slug ?? loja.loteria_slug ?? '').trim();
+  const nome = String(loja.nome ?? loja.loteria_nome ?? slug ?? '').trim();
+
+  return {
+    id,
+    nome: nome || 'Loja',
+    slug,
+    codigo: loja.codigo ?? loja.loteria_codigo ?? '',
+    codLoterico: loja.cod_loterico ?? loja.loteria_cod_loterico ?? '',
+    logo: normalizarCaminhoLogo(
+      loja.logo_url ?? loja.logo_path ?? loja.loteria_logo_url ?? '',
+      slug
+    ),
+    logoPosicao: loja.logo_posicao ?? loja.logo_pos ?? '50% 50%',
+    tema: loja.tema ?? slug ?? 'centro',
+    iconeEmoji: loja.icone_emoji ?? '📍',
+    iconeClasse: loja.icone_classe ?? 'fas fa-store',
+    ativo: loja.ativo !== false,
+    principal: Boolean(loja.principal),
+    papelNaLoja: loja.papel_na_loja ?? loja.papelNaLoja ?? ''
+  };
+}
+
+function mesclarLojaPermitida(lojaPermitida, lojasAtivas) {
+  const basica = normalizarLojaProduto(lojaPermitida);
+  const completa = (lojasAtivas || []).find(loja =>
+    Number(loja.id) === Number(basica.id) ||
+    (basica.slug && loja.slug === basica.slug)
+  );
+
+  return completa
+    ? { ...completa, principal: basica.principal, papelNaLoja: basica.papelNaLoja }
+    : basica;
+}
+
+async function carregarLojasProduto(ctx = null) {
+  let lojasAtivas = [];
+
+  if (sb) {
+    const { data, error } = await sb
+      .from('loterias')
+      .select('*')
+      .eq('ativo', true)
+      .order('nome', { ascending: true });
+
+    if (!error) {
+      lojasAtivas = (data || [])
+        .map(normalizarLojaProduto)
+        .filter(loja => loja.id && loja.slug);
+    } else {
+      console.warn('[SISLOT] Consulta direta de lojas falhou:', error.message);
+    }
+  }
+
+  if (!lojasAtivas.length && window.SISLOT_SECURITY?.carregarTodasLojas) {
+    try {
+      const lista = await window.SISLOT_SECURITY.carregarTodasLojas();
+      lojasAtivas = (lista || [])
+        .map(normalizarLojaProduto)
+        .filter(loja => loja.id && loja.slug);
+    } catch (e) {
+      console.warn('[SISLOT] Fallback carregarTodasLojas falhou:', e);
+    }
+  }
+
+  const permitidasBase = ctx?.lojasPermitidas || [];
+  let lojasPermitidas = permitidasBase
+    .map(loja => mesclarLojaPermitida(loja, lojasAtivas))
+    .filter(loja => loja.id && loja.slug);
+
+  // Sem segurança conectada, permite operar com todas as lojas ativas.
+  if (!window.SISLOT_SECURITY && !lojasPermitidas.length) {
+    lojasPermitidas = [...lojasAtivas];
+  }
+
+  state.lojasAtivas = lojasAtivas;
+  state.lojasPermitidas = lojasPermitidas;
+
+  const inicialBase = normalizarLojaProduto(ctx?.lojaInicial || {});
+  state.lojaAtiva = lojasPermitidas.find(loja =>
+    Number(loja.id) === Number(inicialBase.id) ||
+    (inicialBase.slug && loja.slug === inicialBase.slug)
+  ) || lojasPermitidas.find(loja => loja.principal) || lojasPermitidas[0] || null;
+
+  if (!state.lojaAtiva) {
+    throw new Error('Nenhuma loja ativa e permitida para este usuário.');
+  }
+
+  window.SISLOT_PRODUTO_DEBUG = {
+    getLojaAtiva: () => ({ ...state.lojaAtiva }),
+    getLojasPermitidas: () => state.lojasPermitidas.map(loja => ({ ...loja })),
+    getLojasAtivas: () => state.lojasAtivas.map(loja => ({ ...loja }))
+  };
+}
 
 // ── Estado global ────────────────────────────────────
 const state = {
   screen:       'cadastro',
   abaCadastro:  null,
-  lojaAtiva:    LOJAS[0],
+  lojaAtiva:    null,
+  lojasPermitidas: [],
+  lojasAtivas:    [],
   tipoFiltro:   'todos',
   panelItem:    null,
   tipoMov:      'ENTRADA',
@@ -64,21 +159,20 @@ document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   try {
+    let ctx = null;
+
     if (window.SISLOT_SECURITY) {
-      const ctx = await window.SISLOT_SECURITY.protegerPagina?.('produto');
-      if (ctx) {
-        state.usuario     = ctx.usuario;
-        state.roleUsuario = ctx.usuario?.perfil || ctx.usuario?.role || 'OPERADOR';
-        const principal   = ctx.lojaInicial || null;
-        if (principal) {
-          const loja = LOJAS.find(l => l.slug === principal.loteria_slug);
-          if (loja) state.lojaAtiva = loja;
-        }
-      }
+      ctx = await window.SISLOT_SECURITY.protegerPagina?.('produto');
+      if (!ctx) return;
+
+      state.usuario     = ctx.usuario;
+      state.roleUsuario = ctx.usuario?.perfil || ctx.usuario?.role || 'OPERADOR';
     }
 
+    await carregarLojasProduto(ctx);
+
     bind();
-    aplicarTema(state.lojaAtiva.slug);
+    aplicarTema(state.lojaAtiva);
     renderScreenTabs();
     await carregarDashboard();
     renderCards();
@@ -95,27 +189,40 @@ async function init() {
 // ══════════════════════════════════════════════════════
 // TEMA POR LOJA
 // ══════════════════════════════════════════════════════
-function aplicarTema(slug) {
-  document.body.dataset.loja = slug;
-  document.documentElement.dataset.loja = slug;
+function aplicarTema(loja = state.lojaAtiva) {
+  if (!loja) return;
 
-  const cfg = LOJA_CONFIG[slug] || LOJA_CONFIG['centro'];
+  const slug = loja.slug || 'centro';
+  const nomeLoja = loja.nome || 'SISLOT';
+  const tema = loja.tema || slug;
+
+  document.body.dataset.loja = slug;
+  document.body.dataset.theme = tema;
+  document.documentElement.dataset.loja = slug;
+  document.documentElement.dataset.theme = tema;
 
   const logo = $('lojaLogo');
-  if (logo) { logo.src = cfg.logo || ''; logo.alt = cfg.nome; }
+  if (logo) {
+    logo.onerror = () => {
+      logo.onerror = null;
+      logo.src = './icons/centro.png';
+    };
+    logo.src = loja.logo || `./icons/${slug}.png`;
+    logo.alt = nomeLoja;
+    logo.style.objectPosition = loja.logoPosicao || '50% 50%';
+  }
 
   const nome = $('headerNome');
-  if (nome) nome.textContent = cfg.nome;
+  if (nome) nome.textContent = nomeLoja;
 
   const estNome = $('estoqueLojaNome');
-  if (estNome) estNome.textContent = cfg.nome;
+  if (estNome) estNome.textContent = nomeLoja;
 
   const movOrigem = $('movOrigem');
-  if (movOrigem) movOrigem.value = state.lojaAtiva.id;
+  if (movOrigem) movOrigem.value = String(loja.id);
 
-  // Dica de usabilidade na árvore
   const lojaTree = $('lojaTreeWrap');
-  if (lojaTree) lojaTree.title = `${cfg.nome} — clique para trocar de loja`;
+  if (lojaTree) lojaTree.title = `${nomeLoja} — clique para trocar de loja`;
 }
 
 // ══════════════════════════════════════════════════════
@@ -126,11 +233,20 @@ function aplicarTema(slug) {
 async function alternarLoja() {
   if (state.carregando) return;
 
-  const idxAtual  = LOJAS.findIndex(l => l.id === state.lojaAtiva.id);
-  state.lojaAtiva = LOJAS[(idxAtual + 1) % LOJAS.length];
+  const lojas = state.lojasPermitidas || [];
+  if (!lojas.length) return;
 
-  aplicarTema(state.lojaAtiva.slug);
-  mostrarToastLoja(state.lojaAtiva.nome);
+  const idxAtual = lojas.findIndex(loja =>
+    Number(loja.id) === Number(state.lojaAtiva?.id)
+  );
+  const proximoIndice = idxAtual >= 0
+    ? (idxAtual + 1) % lojas.length
+    : 0;
+
+  state.lojaAtiva = lojas[proximoIndice];
+
+  aplicarTema(state.lojaAtiva);
+  mostrarToastLoja(state.lojaAtiva);
 
   await carregarDashboard();
   renderCards();
@@ -139,7 +255,9 @@ async function alternarLoja() {
   renderMestra();
 }
 
-function mostrarToastLoja(nome) {
+function mostrarToastLoja(loja) {
+  const nome = loja?.nome || 'Loja';
+  const iconeClasse = loja?.iconeClasse || 'fas fa-store';
   let toast = $('toastLoja');
   if (!toast) {
     toast = document.createElement('div');
@@ -165,7 +283,7 @@ function mostrarToastLoja(nome) {
     document.body.appendChild(toast);
   }
 
-  toast.innerHTML = `<i class="fas fa-store" style="margin-right:8px;opacity:.7"></i>${nome}`;
+  toast.innerHTML = `<i class="${iconeClasse}" style="margin-right:8px;opacity:.7"></i>${nome}`;
   toast.style.opacity   = '1';
   toast.style.transform = 'translateX(-50%) translateY(0)';
 
@@ -631,13 +749,17 @@ function renderMovSelects() {
   destino.innerHTML = '';
   produto.innerHTML = '<option value="">Selecione…</option>';
 
-  LOJAS.forEach(l => {
-    origem.add(new Option(l.nome, l.id));
-    destino.add(new Option(l.nome, l.id));
+  const lojas = state.lojasAtivas || [];
+
+  lojas.forEach(loja => {
+    origem.add(new Option(loja.nome, loja.id));
+    destino.add(new Option(loja.nome, loja.id));
   });
 
-  origem.value  = String(state.lojaAtiva.id);
-  destino.value = String(LOJAS.find(l => l.id !== state.lojaAtiva.id)?.id || '');
+  origem.value = String(state.lojaAtiva.id);
+  destino.value = String(
+    lojas.find(loja => Number(loja.id) !== Number(state.lojaAtiva.id))?.id || ''
+  );
 
   state.dashboard.forEach(item => {
     const label = item.campanha_nome
@@ -653,8 +775,14 @@ function renderMovRouteVisual() {
   const origemId  = Number($('movOrigem')?.value);
   const destinoId = Number($('movDestino')?.value);
 
-  if ($('movNomeOrigem'))  $('movNomeOrigem').textContent  = LOJAS.find(l => l.id === origemId)?.nome  || '—';
-  if ($('movNomeDestino')) $('movNomeDestino').textContent = LOJAS.find(l => l.id === destinoId)?.nome || '—';
+  const lojas = state.lojasAtivas || [];
+
+  if ($('movNomeOrigem')) {
+    $('movNomeOrigem').textContent = lojas.find(loja => loja.id === origemId)?.nome || '—';
+  }
+  if ($('movNomeDestino')) {
+    $('movNomeDestino').textContent = lojas.find(loja => loja.id === destinoId)?.nome || '—';
+  }
 
   const qty  = Number($('movQtd')?.value || 0);
   const rQty = $('movRouteQty');
