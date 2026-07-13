@@ -1,6 +1,6 @@
 /**
  * SISLOT — Bolões (Cadastro + Movimentação)
- * Versão refatorada com utils
+ * Versão dinâmica: lojas, logos e ícones vindos do banco
  */
 
 const sb = supabase.createClient(
@@ -21,22 +21,176 @@ const setStatus = utils.setStatus || ((elOrId, msg, tipo, icone) => { const el =
 const setBtnLoading = utils.setBtnLoading || ((btnOrId, on) => { const btn = typeof btnOrId === 'string' ? $(btnOrId) : btnOrId; if (!btn) return; if (on) { btn.classList.add('btn-loading'); btn.disabled = true; } else { btn.classList.remove('btn-loading'); btn.disabled = false; } });
 const showModal = utils.showModal || (({ title, body, onConfirm, onCancel }) => { const result = confirm(`${title}\n\n${body}`); if (result && onConfirm) onConfirm(); if (!result && onCancel) onCancel(); });
 
-// ── Configuração visual das lojas ──────────────────────────
-const LOJA_CONFIG = {
-    'boulevard':    { nome: 'Boulevard',    logo: './icons/boulevard.png',    theme: 'boulevard',    logoPos: '50% 50%' },
-    'centro':       { nome: 'Centro',       logo: './icons/loterpraca.png',   theme: 'centro',       logoPos: '50% 42%' },
-    'lotobel':      { nome: 'Lotobel',      logo: './icons/lotobel.png',      theme: 'lotobel',      logoPos: '50% 50%' },
-    'santa-tereza': { nome: 'Santa Tereza', logo: './icons/santa-tereza.png', theme: 'santa-tereza', logoPos: '50% 50%' },
-    'via-brasil':   { nome: 'Via Brasil',   logo: './icons/via-brasil.png',   theme: 'via-brasil',   logoPos: '50% 50%' },
-};
+// ── Lojas dinâmicas ──────────────────────────────────────
+// Nenhuma loja é escrita manualmente neste arquivo.
+// Nome, slug, logo, tema, emoji e ícone vêm da tabela loterias.
 
-const LOJAS_MOV = [
-    { slug: 'boulevard',    id: 'deltaBoulevard',   icon: 'fas fa-building',  nome: 'Boulevard' },
-    { slug: 'centro',       id: 'deltaCentro',      icon: 'fas fa-city',      nome: 'Centro' },
-    { slug: 'lotobel',      id: 'deltaLotobel',     icon: 'fas fa-landmark',  nome: 'Lotobel' },
-    { slug: 'santa-tereza', id: 'deltaSantaTereza', icon: 'fas fa-church',    nome: 'Santa Tereza' },
-    { slug: 'via-brasil',   id: 'deltaViaBrasil',   icon: 'fas fa-road',      nome: 'Via Brasil' },
-];
+function normalizarLoja(loja = {}) {
+    const id = Number(loja.loteria_id ?? loja.id ?? 0);
+    const slug = String(loja.loteria_slug ?? loja.slug ?? '').trim();
+    const nome = String(loja.loteria_nome ?? loja.nome ?? slug ?? 'Loja').trim();
+
+    return {
+        ...loja,
+        loteria_id: id,
+        loteria_nome: nome,
+        loteria_slug: slug,
+        loteria_codigo: loja.loteria_codigo ?? loja.codigo ?? '',
+        cod_loterico: loja.cod_loterico ?? '',
+        logo_url: loja.logo_url ?? loja.loteria_logo_url ?? loja.logo_path ?? '',
+        logo_posicao: loja.logo_posicao ?? loja.logo_pos ?? '50% 50%',
+        tema: loja.tema ?? slug ?? '',
+        icone_emoji: loja.icone_emoji ?? '📍',
+        icone_classe: loja.icone_classe ?? 'fas fa-map-marker-alt',
+        ordem_exibicao: Number(loja.ordem_exibicao ?? 100)
+    };
+}
+
+function resolverLogoLoja(loja) {
+    const valor = String(loja?.logo_url || '').trim();
+    if (valor) {
+        if (/^(https?:)?\/\//i.test(valor) || valor.startsWith('.') || valor.startsWith('/')) {
+            return valor;
+        }
+        return `./${valor.replace(/^\/+/, '')}`;
+    }
+
+    const slug = String(loja?.loteria_slug || '').trim();
+    return slug ? `./icons/${slug}.png` : './icons/centro.png';
+}
+
+function getEmojiLoja(loja) {
+    return String(loja?.icone_emoji || '📍').trim() || '📍';
+}
+
+function getIconeClasseLoja(loja) {
+    const classe = String(loja?.icone_classe || 'fas fa-map-marker-alt')
+        .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+        .trim();
+
+    return classe || 'fas fa-map-marker-alt';
+}
+
+function escaparHtml(valor) {
+    return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function idCampoMov(loja) {
+    return `mov-dest-${Number(loja?.loteria_id || 0)}`;
+}
+
+function getCampoMov(loja) {
+    return $(idCampoMov(loja));
+}
+
+async function carregarLojasAtivasComIdentidade() {
+    const { data, error } = await sb
+        .from('loterias')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome', { ascending: true });
+
+    if (!error && Array.isArray(data)) {
+        return data
+            .map(normalizarLoja)
+            .filter(loja => loja.loteria_id && loja.loteria_slug);
+    }
+
+    console.warn('Falha ao carregar identidade completa das lojas. Usando fallback do módulo de segurança.', error);
+
+    const fallback = await window.SISLOT_SECURITY.carregarTodasLojas();
+    return (fallback || [])
+        .map(normalizarLoja)
+        .filter(loja => loja.loteria_id && loja.loteria_slug);
+}
+
+function mesclarIdentidadeLoja(loja, identidades) {
+    const base = normalizarLoja(loja);
+    const identidade = identidades.find(item =>
+        Number(item.loteria_id) === Number(base.loteria_id) ||
+        item.loteria_slug === base.loteria_slug
+    );
+
+    return normalizarLoja({
+        ...(identidade || {}),
+        ...base,
+        logo_url: identidade?.logo_url || base.logo_url,
+        logo_posicao: identidade?.logo_posicao || base.logo_posicao,
+        tema: identidade?.tema || base.tema,
+        icone_emoji: identidade?.icone_emoji || base.icone_emoji,
+        icone_classe: identidade?.icone_classe || base.icone_classe,
+        ordem_exibicao: identidade?.ordem_exibicao ?? base.ordem_exibicao
+    });
+}
+
+function capturarMapaCamposLegadosDoDOM() {
+    const mapa = {};
+
+    document.querySelectorAll('#movGrid .mov-item[data-slug]').forEach(field => {
+        const slug = String(field.dataset.slug || '').trim();
+        const input = field.querySelector('input[id]');
+        if (slug && input?.id) mapa[slug] = input.id;
+    });
+
+    return mapa;
+}
+
+function renderizarCamposMovimentacao() {
+    const grid = $('movGrid');
+    if (!grid) return;
+
+    grid.innerHTML = lojasMovimentacao.map(loja => {
+        const ehOrigem = Number(loja.loteria_id) === Number(loteriaAtiva?.loteria_id);
+        const nome = escaparHtml(loja.loteria_nome);
+        const slug = escaparHtml(loja.loteria_slug);
+        const classeIcone = escaparHtml(getIconeClasseLoja(loja));
+
+        return `
+            <div class="field mov-item ${ehOrigem ? 'mov-origem' : ''}"
+                 data-slug="${slug}"
+                 data-loteria-id="${loja.loteria_id}">
+                <label>
+                    <i class="${classeIcone}"></i>
+                    ${nome}${ehOrigem ? ' ★' : ''}
+                </label>
+                <input
+                    id="${idCampoMov(loja)}"
+                    data-loteria-id="${loja.loteria_id}"
+                    data-slug="${slug}"
+                    inputmode="numeric"
+                    placeholder="0"
+                    autocomplete="off"
+                    ${ehOrigem ? 'disabled' : ''}
+                />
+            </div>`;
+    }).join('');
+
+    lojasMovimentacao.forEach(loja => {
+        const input = getCampoMov(loja);
+        if (!input || input.disabled) return;
+        input.addEventListener('input', saveDraft);
+        input.addEventListener('change', saveDraft);
+    });
+}
+
+function coletarMapaDeltas() {
+    const mapa = {};
+
+    lojasMovimentacao.forEach(loja => {
+        const input = getCampoMov(loja);
+        if (!input || input.disabled) return;
+
+        const valor = parseInt(input.value, 10) || 0;
+        if (valor !== 0) mapa[String(loja.loteria_id)] = valor;
+    });
+
+    return mapa;
+}
 
 const MODS = [
     { key: 'Mega Sena',     icon: './icons/mega-sena.png'     },
@@ -58,7 +212,9 @@ const MODS = [
 let usuario = null;
 let loteriaAtiva = null;
 let todasLojas = [];
+let lojasMovimentacao = [];
 let lojaIdPorSlug = {};
+let mapaCamposMovLegado = {};
 let SHORTCUTS = {};
 let ESPECIAIS = {};
 // Impede abertura de mais de uma confirmação
@@ -67,7 +223,6 @@ let confirmacaoMovimentacaoAberta = false;
 let movimentacaoEmAndamento = false;
 
 const CAMPOS_FORM = ['modalidade', 'concurso', 'dataInicial', 'dataConcurso', 'qtdJogos', 'qtdDezenas', 'valorCota', 'cotas'];
-const CAMPOS_MOV  = ['deltaBoulevard', 'deltaCentro', 'deltaLotobel', 'deltaSantaTereza', 'deltaViaBrasil'];
 
 // ── Relógio ────────────────────────────────────────────────
 function updateClock() {
@@ -88,16 +243,24 @@ async function init() {
     if (!ctx) return;
 
     usuario = ctx.usuario;
-    todasLojas = ctx.lojasPermitidas || [];
-    loteriaAtiva = ctx.lojaInicial || null;
 
-    todasLojas.forEach(l => {
-        lojaIdPorSlug[l.loteria_slug] = l.loteria_id;
-    });
+    // Captura a estrutura antiga do HTML antes de substituí-la.
+    // Isso permite migrar rascunhos antigos sem manter um mapa fixo de lojas.
+    mapaCamposMovLegado = capturarMapaCamposLegadosDoDOM();
 
-    const todasAtivas = await window.SISLOT_SECURITY.carregarTodasLojas();
-    todasAtivas.forEach(l => {
-        lojaIdPorSlug[l.loteria_slug] = l.loteria_id;
+    const identidades = await carregarLojasAtivasComIdentidade();
+    lojasMovimentacao = identidades;
+
+    todasLojas = (ctx.lojasPermitidas || [])
+        .map(loja => mesclarIdentidadeLoja(loja, identidades));
+
+    loteriaAtiva = ctx.lojaInicial
+        ? mesclarIdentidadeLoja(ctx.lojaInicial, identidades)
+        : todasLojas[0] || null;
+
+    lojaIdPorSlug = {};
+    lojasMovimentacao.forEach(loja => {
+        lojaIdPorSlug[loja.loteria_slug] = loja.loteria_id;
     });
 
     if (!todasLojas.length || !loteriaAtiva) {
@@ -106,23 +269,31 @@ async function init() {
         return;
     }
 
-   await carregarModelos();
+    renderizarCamposMovimentacao();
+
+    await carregarModelos();
     await carregarEspeciais();
 
-    aplicarTema(loteriaAtiva.loteria_slug);
+    aplicarTema(loteriaAtiva);
     atualizarOrigemUI();
     atualizarCamposMov();
-   renderQuickbar();
-loadDraft();
+    renderQuickbar();
+    loadDraft();
 
-const modAtual = $('modalidade')?.value || '';
-if (modAtual) {
-    aplicarModeloEspecial(modAtual, false);
+    const modAtual = $('modalidade')?.value || '';
+    if (modAtual) {
+        aplicarModeloEspecial(modAtual, false);
+    }
+
+    applyFederalUI();
+    bind();
+
+    window.SISLOT_CADASTRO_DEBUG = {
+        getLojasPermitidas: () => [...todasLojas],
+        getLojasMovimentacao: () => [...lojasMovimentacao],
+        getLojaAtiva: () => loteriaAtiva
+    };
 }
-
-applyFederalUI();
-bind();
-   }
 
 async function buscarUltimoConcurso(modalidade) {
     if (!modalidade || !loteriaAtiva?.loteria_id) return null;
@@ -307,20 +478,28 @@ async function carregarModelos() {
 /************************************************************
  * TEMA / VISUAL
  ************************************************************/
-function aplicarTema(slug) {
-    const cfg = LOJA_CONFIG[slug] || LOJA_CONFIG['centro'];
+function aplicarTema(loja) {
+    if (!loja) return;
 
-    document.body.setAttribute('data-theme', cfg.theme);
+    const slug = loja.loteria_slug || 'centro';
+    const nome = loja.loteria_nome || 'SISLOT';
+    const tema = loja.tema || slug || 'centro';
+
+    document.body.setAttribute('data-theme', tema);
     document.body.setAttribute('data-loja', slug);
 
     const img = $('logoImg');
     if (img) {
-        img.src = cfg.logo;
-        img.style.objectPosition = cfg.logoPos;
+        img.onerror = () => {
+            img.onerror = null;
+            img.src = './icons/loterpraca.png';
+        };
+        img.src = resolverLogoLoja(loja);
+        img.style.objectPosition = loja.logo_posicao || '50% 50%';
     }
 
     const title = $('headerTitle');
-    if (title) title.textContent = cfg.nome;
+    if (title) title.textContent = nome;
 
     const sub = $('headerSub');
     if (sub) sub.textContent = 'Cadastro e movimentação';
@@ -335,31 +514,28 @@ function atualizarOrigemUI() {
 }
 
 function atualizarCamposMov() {
-    const mapaSlug = {
-        boulevard: 'deltaBoulevard',
-        centro: 'deltaCentro',
-        lotobel: 'deltaLotobel',
-        'santa-tereza': 'deltaSantaTereza',
-        'via-brasil': 'deltaViaBrasil',
-    };
-
-    Object.entries(mapaSlug).forEach(([slug, inputId]) => {
-        const el = $(inputId);
+    lojasMovimentacao.forEach(loja => {
+        const el = getCampoMov(loja);
         if (!el) return;
 
         const field = el.closest('.mov-item');
-        const ehOrigem = slug === loteriaAtiva?.loteria_slug;
+        const ehOrigem = Number(loja.loteria_id) === Number(loteriaAtiva?.loteria_id);
 
         el.disabled = ehOrigem;
         if (ehOrigem) el.value = '';
 
         if (field) {
             field.classList.toggle('mov-origem', ehOrigem);
+            const label = field.querySelector('label');
+            if (label) {
+                label.innerHTML = `<i class="${escaparHtml(getIconeClasseLoja(loja))}"></i> ${escaparHtml(loja.loteria_nome)}${ehOrigem ? ' ★' : ''}`;
+            }
         }
     });
 }
 
 /************************************************************
+ * TROCA DE LOJA/************************************************************
  * TROCA DE LOJA
  ************************************************************/
 function trocarLoja(slug) {
@@ -367,7 +543,7 @@ function trocarLoja(slug) {
     if (!loja) return;
 
     loteriaAtiva = loja;
-    aplicarTema(slug);
+    aplicarTema(loja);
     atualizarOrigemUI();
     atualizarCamposMov();
     renderChips(localStorage.getItem('sl_active_mod') || '');
@@ -553,10 +729,19 @@ function applyFederalUI() {
 function saveDraft() {
     const d = {};
     CAMPOS_FORM.forEach(id => d[id] = $(id)?.value ?? '');
-    CAMPOS_MOV.forEach(id => d[id] = $(id)?.value ?? '');
+
+    d._movimentacoes = {};
+    lojasMovimentacao.forEach(loja => {
+        const input = getCampoMov(loja);
+        if (input) d._movimentacoes[String(loja.loteria_id)] = input.value ?? '';
+    });
+
     d._mod = localStorage.getItem('sl_active_mod') || '';
     d._slug = loteriaAtiva?.loteria_slug || '';
-    try { localStorage.setItem('sl_draft', JSON.stringify(d)); } catch {}
+
+    try {
+        localStorage.setItem('sl_draft', JSON.stringify(d));
+    } catch {}
 }
 
 function loadDraft() {
@@ -581,38 +766,55 @@ function loadDraft() {
 
         atualizarCamposMov();
 
-        CAMPOS_MOV.forEach(id => {
-            const el = $(id);
-            if (el && d[id] !== undefined) el.value = d[id];
+        lojasMovimentacao.forEach(loja => {
+            const el = getCampoMov(loja);
+            if (!el || el.disabled) return;
+
+            const novoFormato = d._movimentacoes || {};
+            let valor = novoFormato[String(loja.loteria_id)];
+
+            if (valor === undefined) {
+                valor = novoFormato[loja.loteria_slug];
+            }
+
+            // Migração genérica: usa os IDs encontrados no HTML antigo,
+            // sem manter um mapa fixo de slugs no JavaScript.
+            if (valor === undefined) {
+                const idLegado = mapaCamposMovLegado[loja.loteria_slug];
+                if (idLegado && d[idLegado] !== undefined) valor = d[idLegado];
+            }
+
+            if (valor !== undefined) el.value = valor;
         });
-    } catch {}
+    } catch (erro) {
+        console.warn('Não foi possível restaurar o rascunho:', erro);
+    }
+}
+
+function limparCamposMovimentacao() {
+    lojasMovimentacao.forEach(loja => {
+        const el = getCampoMov(loja);
+        if (el && !el.disabled) el.value = '';
+    });
 }
 
 function limparFormCompletoMantendoModalidade(modKey) {
-    // Limpa formulário principal
     CAMPOS_FORM.forEach(id => {
         const el = $(id);
         if (el) el.value = '';
     });
 
-    // Limpa movimentação também
-    CAMPOS_MOV.forEach(id => {
-        const el = $(id);
-        if (el) el.value = '';
-    });
+    limparCamposMovimentacao();
 
-    // Mantém a modalidade nova selecionada
     const modalidadeEl = $('modalidade');
     if (modalidadeEl) modalidadeEl.value = modKey;
 
-    // Datas ficam vazias
     const dataInicialEl = $('dataInicial');
     if (dataInicialEl) dataInicialEl.value = '';
 
     const dataConcursoEl = $('dataConcurso');
     if (dataConcursoEl) dataConcursoEl.value = '';
 
-    // Atualiza estado visual e storage
     localStorage.removeItem('sl_draft');
 
     if (modKey) {
@@ -626,16 +828,14 @@ function limparFormCompletoMantendoModalidade(modKey) {
     applyFederalUI();
     saveDraft();
 }
+
 function limparFormSemLoja() {
     CAMPOS_FORM.forEach(id => {
         const el = $(id);
         if (el) el.value = '';
     });
 
-    CAMPOS_MOV.forEach(id => {
-        const el = $(id);
-        if (el) el.value = '';
-    });
+    limparCamposMovimentacao();
 
     localStorage.removeItem('sl_draft');
     localStorage.removeItem('sl_active_mod');
@@ -644,15 +844,14 @@ function limparFormSemLoja() {
     renderChips('');
     applyFederalUI();
 }
+
 function limparMov() {
-    CAMPOS_MOV.forEach(id => {
-        const el = $(id);
-        if (el) el.value = '';
-    });
+    limparCamposMovimentacao();
     saveDraft();
 }
 
 /************************************************************
+ * VALIDAÇÃO/************************************************************
  * VALIDAÇÃO
  ************************************************************/
 function validarBase(exigirCotas = true) {
@@ -989,28 +1188,12 @@ async function onMovimentar() {
                 'Preencha modalidade, concurso e valor da cota.'
             );
         }
-
-        const mapaDeltas = {
-            boulevard:
-                parseInt($('deltaBoulevard')?.value, 10) || 0,
-
-            centro:
-                parseInt($('deltaCentro')?.value, 10) || 0,
-
-            lotobel:
-                parseInt($('deltaLotobel')?.value, 10) || 0,
-
-            'santa-tereza':
-                parseInt($('deltaSantaTereza')?.value, 10) || 0,
-
-            'via-brasil':
-                parseInt($('deltaViaBrasil')?.value, 10) || 0,
-        };
+        const mapaDeltas = coletarMapaDeltas();
 
         const temDelta = Object.entries(mapaDeltas).some(
-            ([slug, valor]) =>
-                slug !== loteriaAtiva.loteria_slug &&
-                valor !== 0
+            ([destinoId, valor]) =>
+                Number(destinoId) !== Number(loteriaAtiva.loteria_id) &&
+                Number(valor) !== 0
         );
 
         if (!temDelta) {
@@ -1095,82 +1278,35 @@ async function onMovimentar() {
             '(Histórico [Mov] → Final)',
         ];
 
-        const slugsDestino = [
-            'boulevard',
-            'centro',
-            'lotobel',
-            'santa-tereza',
-            'via-brasil',
-        ];
+        lojasMovimentacao.forEach(loja => {
+            const destId = Number(loja.loteria_id);
+            const delta = Number(mapaDeltas[String(destId)] || 0);
+            const nome = loja.loteria_nome || loja.loteria_slug || `Loja ${destId}`;
+            const icone = getEmojiLoja(loja);
+            const hist = historicoDetalhePorId[destId] || [];
+            const saldo = Number(saldoPorId[destId] || 0);
+            const final = saldo + delta;
 
-        const icones = {
-            boulevard: '🏢',
-            centro: '🏙️',
-            lotobel: '🏛️',
-            'santa-tereza': '⛪',
-            'via-brasil': '🛣️',
-        };
-
-        slugsDestino.forEach(slug => {
-            const delta = Number(mapaDeltas[slug] || 0);
-            const destId = Number(lojaIdPorSlug[slug]);
-
-            const nome =
-                LOJA_CONFIG[slug]?.nome || slug;
-
-            const icone =
-                icones[slug] || '📍';
-
-            const hist =
-                historicoDetalhePorId[destId] || [];
-
-            const saldo =
-                Number(saldoPorId[destId] || 0);
-
-            const final =
-                saldo + delta;
-
-            if (
-                slug === loteriaAtiva.loteria_slug
-            ) {
+            if (destId === Number(loteriaAtiva.loteria_id)) {
                 return;
             }
 
-            if (
-                delta === 0 &&
-                hist.length === 0
-            ) {
-                linhas.push(
-                    `${icone} ${nome}: 0 (sem alteração)`
-                );
+            if (delta === 0 && hist.length === 0) {
+                linhas.push(`${icone} ${nome}: 0 (sem alteração)`);
                 return;
             }
 
             const histStr = hist.length
-                ? hist
-                    .map(v =>
-                        v < 0
-                            ? `[${v}]`
-                            : String(v)
-                    )
-                    .join(' + ')
+                ? hist.map(v => v < 0 ? `[${v}]` : String(v)).join(' + ')
                 : '0';
 
             if (delta === 0) {
-                linhas.push(
-                    `${icone} ${nome}: ${histStr} → ${saldo} (sem alteração)`
-                );
+                linhas.push(`${icone} ${nome}: ${histStr} → ${saldo} (sem alteração)`);
                 return;
             }
 
-            const deltaStr =
-                delta > 0
-                    ? `[+${delta}]`
-                    : `[${delta}]`;
-
-            linhas.push(
-                `${icone} ${nome}: ${histStr} ${deltaStr} → ${final}`
-            );
+            const deltaStr = delta > 0 ? `[+${delta}]` : `[${delta}]`;
+            linhas.push(`${icone} ${nome}: ${histStr} ${deltaStr} → ${final}`);
         });
 
         linhas.push(
@@ -1299,57 +1435,34 @@ async function doMovimentar(bolao, mapaDeltas) {
         }
 
         const inserts = [];
-
-        for (
-            const [slug, qtdRaw]
-            of Object.entries(mapaDeltas || {})
-        ) {
+        for (const [destinoIdRaw, qtdRaw] of Object.entries(mapaDeltas || {})) {
             const qtd = Number(qtdRaw || 0);
+            const destId = Number(destinoIdRaw || 0);
 
-            if (
-                qtd === 0 ||
-                slug === loteriaAtiva.loteria_slug
-            ) {
+            if (qtd === 0 || !destId) {
                 continue;
             }
 
-            const destId =
-                Number(lojaIdPorSlug[slug]);
-
-            if (!destId) {
-                throw new Error(
-                    `Loja destino não encontrada: ${slug}`
-                );
+            if (destId === Number(loteriaAtiva.loteria_id)) {
+                continue;
             }
 
-            if (
-                destId ===
-                Number(loteriaAtiva.loteria_id)
-            ) {
-                continue;
+            const lojaDestino = lojasMovimentacao.find(
+                loja => Number(loja.loteria_id) === destId
+            );
+
+            if (!lojaDestino) {
+                throw new Error(`Loja destino não encontrada: ${destId}`);
             }
 
             inserts.push({
-                bolao_id:
-                    bolao.id,
-
-                loteria_origem:
-                    loteriaAtiva.loteria_id,
-
-                loteria_destino:
-                    destId,
-
-                qtd_cotas:
-                    qtd,
-
-                valor_unitario:
-                    bolao.valor_cota,
-
-                status:
-                    'ATIVO',
-
-                criado_por:
-                    usuario.id,
+                bolao_id: bolao.id,
+                loteria_origem: loteriaAtiva.loteria_id,
+                loteria_destino: destId,
+                qtd_cotas: qtd,
+                valor_unitario: bolao.valor_cota,
+                status: 'ATIVO',
+                criado_por: usuario.id,
             });
         }
 
@@ -1435,7 +1548,7 @@ function bind() {
     saveDraft();
 });
 
-    [...CAMPOS_FORM, ...CAMPOS_MOV].forEach(id => {
+    CAMPOS_FORM.forEach(id => {
         const el = $(id);
         if (el) {
             el.addEventListener('input', saveDraft);
