@@ -991,7 +991,7 @@ async function init() {
   // Padrão novo: carrega todos os bolões permitidos ao usuário.
 // Os filtros só entram quando forem preenchidos.
 $('fDataRef').value = '';
-$('fStatus').value = '';
+$('fStatus').value = 'ATIVO';
 $('fLoja').value = '';
 
   ['fDataRef', 'fDtConcDe', 'fDtConcAte', 'fModal', 'fLoja', 'fStatus'].forEach(id => {
@@ -1020,7 +1020,7 @@ function limpar() {
   });
 
   $('fModal').selectedIndex = 0;
-  $('fStatus').value = '';
+  $('fStatus').value = 'ATIVO';
   $('fLoja').value = '';
 
   ordenacoes = [{ key: 'created_at', dir: 'desc' }];
