@@ -90,10 +90,11 @@ function aplicarPermissoesMenu(perfil) {
     setAdminWrapVisible(false);
     esconder('.card-config');
 
-    // garante que o Marketplace CAIXA apareça para perfis autorizados
+    // garante que os cards autorizados voltem ao estado visível
     showSelector('.card-marketplace-caixa');
+    showSelector('.card-controle-cotas');
 
-    if (p === 'GERENTE' || p === 'OPERADOR') {
+    if (p === 'GERENTE') {
         esconder('.card-cadastro');
         esconder('.card-movimentacao');
         esconder('.card-exibir');
@@ -106,18 +107,40 @@ function aplicarPermissoesMenu(perfil) {
         esconder('.card-config');
         esconder('.card-controle-fechamento');
         esconder('.card-pendencias');
+
+        // O gerente permanece com acesso ao fechamento e ao painel de cotas.
+        showSelector('.card-controle-cotas');
+        return;
+    }
+
+    if (p === 'OPERADOR') {
+        esconder('.card-cadastro');
+        esconder('.card-movimentacao');
+        esconder('.card-exibir');
+        esconder('.card-federal');
+        esconder('.card-produtos');
+        esconder('.card-whatsapp');
+        esconder('.card-marketplace');
+        esconder('.card-marketplace-caixa');
+        esconder('.card-caixa');
+        esconder('.card-config');
+        esconder('.card-controle-fechamento');
+        esconder('.card-controle-cotas');
+        esconder('.card-pendencias');
         return;
     }
 
     if (p === 'SOCIO') {
         esconder('.card-config');
         showSelector('.card-marketplace-caixa');
+        showSelector('.card-controle-cotas');
         return;
     }
 
     if (p === 'ADMIN') {
         showSelector('.card-config');
         showSelector('.card-marketplace-caixa');
+        showSelector('.card-controle-cotas');
         setAdminWrapVisible(true);
         return;
     }
