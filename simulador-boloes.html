@@ -272,7 +272,7 @@
 
     .preview-strip {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 8px;
       margin-top: 11px;
     }
@@ -294,6 +294,16 @@
       text-transform: uppercase;
     }
 
+    .preview-box.cota-highlight {
+      border-color: rgba(212, 175, 55, .42);
+      background: rgba(212, 175, 55, .08);
+    }
+
+    .preview-box.cota-highlight .preview-value {
+      color: var(--sim-gold-soft);
+      font-size: 15px;
+    }
+
     .preview-value,
     .kpi-value {
       margin-top: 5px;
@@ -312,7 +322,7 @@
 
     table {
       width: 100%;
-      min-width: 980px;
+      min-width: 1100px;
       border-collapse: collapse;
     }
 
@@ -628,7 +638,7 @@
             <div class="section-head">
               <div>
                 <div class="section-title" id="lojaTitulo">Selecione uma loja</div>
-                <div class="section-sub">Cada linha adicionada representa um bolão planejado.</div>
+                <div class="section-sub">Cada linha representa um bolão. O valor da cota muda automaticamente conforme o total de cotas.</div>
               </div>
             </div>
 
@@ -671,6 +681,7 @@
                 <div class="preview-box"><div class="preview-label">Apostas</div><div class="preview-value" id="prevApostas">—</div></div>
                 <div class="preview-box"><div class="preview-label">Valor-base</div><div class="preview-value" id="prevBase">—</div></div>
                 <div class="preview-box"><div class="preview-label">Venda +35%</div><div class="preview-value" id="prevVenda">—</div></div>
+                <div class="preview-box cota-highlight"><div class="preview-label">Valor da cota</div><div class="preview-value" id="prevValorCota">—</div></div>
                 <div class="preview-box"><div class="preview-label">Consumo franquia</div><div class="preview-value" id="prevFranquia">—</div></div>
               </div>
             </div>
@@ -697,6 +708,7 @@
                       <th class="num">Digitais</th>
                       <th class="num">Valor-base</th>
                       <th class="num">Venda</th>
+                      <th class="num">Cota venda</th>
                       <th class="num">Franquia</th>
                       <th></th>
                     </tr>
@@ -1304,9 +1316,10 @@
       const base = c ? jogos * c.valor_jogo_base : 0;
       const tarifa = c ? n(c.percentual_tarifa_servico, state.tarifa) : state.tarifa;
       const venda = base * (1 + tarifa / 100);
+      const valorCota = cotas > 0 ? venda / cotas : 0;
       const franquia = base * digitais / cotas;
       const apostas = c ? jogos * c.qtd_apostas : 0;
-      return { c, jogos, cotas, impressas, digitais, base, venda, franquia, apostas, tarifa };
+      return { c, jogos, cotas, impressas, digitais, base, venda, valorCota, franquia, apostas, tarifa };
     }
 
     function atualizarPreview() {
@@ -1315,6 +1328,7 @@
       $('prevApostas').textContent = x.c ? NUM.format(x.apostas) : '—';
       $('prevBase').textContent = x.c ? money(x.base) : '—';
       $('prevVenda').textContent = x.c ? money(x.venda) : '—';
+      $('prevValorCota').textContent = x.c ? money(x.valorCota) : '—';
       $('prevFranquia').textContent = x.c ? money(x.franquia) : '—';
     }
 
@@ -1377,18 +1391,50 @@
       $('itensSub').textContent = tem ? `${state.itens.length} bolão(ões) planejado(s). Edite os números diretamente na tabela.` : 'Nenhum item adicionado.';
 
       $('itensBody').innerHTML = state.itens.map((i) => `
-        <tr>
+        <tr data-item-row="${i.item_id}" data-valor-jogo-base="${n(i.valor_jogo_base)}" data-percentual-tarifa="${n(i.percentual_tarifa_servico, state.tarifa)}">
           <td><strong>${esc(i.descricao_configuracao)}</strong><br><span style="color:#6783aa">${esc(i.modalidade)}</span></td>
           <td class="num"><input class="cell-input" type="number" min="1" step="1" value="${int(i.qtd_jogos)}" data-id="${i.item_id}" data-field="qtd_jogos"></td>
           <td class="num"><input class="cell-input" type="number" min="1" step="1" value="${int(i.qtd_cotas_total)}" data-id="${i.item_id}" data-field="qtd_cotas_total"></td>
           <td class="num"><input class="cell-input" type="number" min="0" step="1" value="${int(i.qtd_cotas_impressas)}" data-id="${i.item_id}" data-field="qtd_cotas_impressas"></td>
-          <td class="num">${NUM.format(int(i.qtd_cotas_digitais))}</td>
-          <td class="num">${money(i.valor_base_total)}</td>
-          <td class="num">${money(i.valor_venda_total)}</td>
-          <td class="num">${money(i.consumo_franquia)}</td>
+          <td class="num" data-live="digitais">${NUM.format(int(i.qtd_cotas_digitais))}</td>
+          <td class="num" data-live="valor-base">${money(i.valor_base_total)}</td>
+          <td class="num" data-live="valor-venda">${money(i.valor_venda_total)}</td>
+          <td class="num" data-live="valor-cota" style="color:var(--sim-gold-soft);font-weight:700">${money(i.valor_venda_cota)}</td>
+          <td class="num" data-live="franquia">${money(i.consumo_franquia)}</td>
           <td><button class="btn btn-danger btn-sm" type="button" data-delete="${i.item_id}">Excluir</button></td>
         </tr>
       `).join('');
+    }
+
+    function atualizarLinhaLocal(input) {
+      const row = input.closest('[data-item-row]');
+      if (!row) return;
+
+      const jogosInput = row.querySelector('[data-field="qtd_jogos"]');
+      const totalInput = row.querySelector('[data-field="qtd_cotas_total"]');
+      const impressasInput = row.querySelector('[data-field="qtd_cotas_impressas"]');
+      const jogos = Math.max(1, int(jogosInput?.value, 1));
+      const total = Math.max(1, int(totalInput?.value, 1));
+      const impressas = Math.max(0, Math.min(total, int(impressasInput?.value, 0)));
+      const digitais = total - impressas;
+      const valorJogoBase = n(row.dataset.valorJogoBase);
+      const tarifa = n(row.dataset.percentualTarifa, state.tarifa);
+      const valorBaseTotal = jogos * valorJogoBase;
+      const valorVendaTotal = valorBaseTotal * (1 + tarifa / 100);
+      const valorCota = valorVendaTotal / total;
+      const consumoFranquia = valorBaseTotal * digitais / total;
+
+      const digitaisEl = row.querySelector('[data-live="digitais"]');
+      const baseEl = row.querySelector('[data-live="valor-base"]');
+      const vendaEl = row.querySelector('[data-live="valor-venda"]');
+      const cotaEl = row.querySelector('[data-live="valor-cota"]');
+      const franquiaEl = row.querySelector('[data-live="franquia"]');
+
+      if (digitaisEl) digitaisEl.textContent = NUM.format(digitais);
+      if (baseEl) baseEl.textContent = money(valorBaseTotal);
+      if (vendaEl) vendaEl.textContent = money(valorVendaTotal);
+      if (cotaEl) cotaEl.textContent = money(valorCota);
+      if (franquiaEl) franquiaEl.textContent = money(consumoFranquia);
     }
 
     async function atualizarItem(input) {
@@ -1515,6 +1561,9 @@
       $('configuracao').addEventListener('change', atualizarPreview);
       ['qtdJogos', 'qtdCotas', 'qtdImpressas'].forEach((id) => $(id).addEventListener('input', atualizarPreview));
       $('btnAdicionarItem').addEventListener('click', adicionarItem);
+      $('itensBody').addEventListener('input', (e) => {
+        if (e.target.matches('.cell-input')) atualizarLinhaLocal(e.target);
+      });
       $('itensBody').addEventListener('change', (e) => {
         if (e.target.matches('.cell-input')) atualizarItem(e.target);
       });
