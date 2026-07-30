@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planejamento de Bolões — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/hub.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./sislot-security.js"></script>
+
+  <style>
+    :root {
+      --sim-gold: #d4af37;
+      --sim-gold-soft: #f4d979;
+      --sim-green: #00c896;
+      --sim-blue: #38bdf8;
+      --sim-red: #fb7185;
+      --sim-panel: rgba(12, 24, 45, .92);
+      --sim-panel-2: rgba(7, 14, 28, .72);
+      --sim-border: rgba(105, 135, 180, .28);
+      --sim-text: #e9f1fd;
+      --sim-muted: #7d98c0;
+    }
+
+    * { box-sizing: border-box; }
+
+    .planner-main {
+      width: min(1440px, calc(100% - 28px));
+      max-width: 1440px;
+      padding-bottom: 60px;
+    }
+
+    .planner-hero { margin-bottom: 18px; }
+    .planner-hero .hero-title span { color: var(--sim-gold-soft); }
+
+    .planner-toolbar,
+    .planner-card {
+      border: 1px solid var(--sim-border);
+      border-radius: 15px;
+      background: linear-gradient(145deg, rgba(18, 33, 61, .96), rgba(8, 17, 33, .96));
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .17);
+    }
+
+    .planner-toolbar {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) minmax(210px, .7fr) minmax(180px, .55fr) auto;
+      gap: 12px;
+      align-items: end;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--sim-muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .input,
+    .select,
+    .textarea {
+      width: 100%;
+      border: 1px solid rgba(105, 135, 180, .38);
+      border-radius: 9px;
+      outline: none;
+      background: rgba(5, 12, 24, .7);
+      color: var(--sim-text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 13px;
+      transition: .16s ease;
+    }
+
+    .input,
+    .select { height: 40px; padding: 0 11px; }
+    .textarea { min-height: 70px; padding: 10px 11px; resize: vertical; }
+
+    .input:focus,
+    .select:focus,
+    .textarea:focus {
+      border-color: rgba(212, 175, 55, .75);
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, .08);
+    }
+
+    .btn {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 13px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      transition: transform .14s ease, filter .14s ease, opacity .14s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: .48; cursor: not-allowed; transform: none; }
+    .btn-gold { color: #121821; background: linear-gradient(135deg, var(--sim-gold-soft), var(--sim-gold)); }
+    .btn-green { color: #06241b; background: linear-gradient(135deg, #27e2b3, #00b989); }
+    .btn-ghost { color: #c8d8ed; border-color: rgba(105, 135, 180, .34); background: rgba(5, 12, 24, .45); }
+    .btn-danger { color: #fecdd3; border-color: rgba(251, 113, 133, .3); background: rgba(251, 113, 133, .08); }
+    .btn-sm { min-height: 32px; padding: 0 9px; font-size: 11px; }
+
+    .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .date-note {
+      margin-top: 6px;
+      color: #9bb0cf;
+      font-size: 11px;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 34px;
+      margin-bottom: 12px;
+      padding: 0 4px;
+      color: #718db8;
+      font-size: 11px;
+    }
+
+    .save-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #8fb3a8;
+    }
+
+    .save-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--sim-green);
+      box-shadow: 0 0 9px rgba(0, 200, 150, .6);
+    }
+
+    .tabs-block {
+      padding: 12px 14px 0;
+      border-bottom: 1px solid rgba(105, 135, 180, .18);
+      background: rgba(5, 12, 24, .26);
+    }
+
+    .tabs-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .tabs-label {
+      color: #819bc1;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding-bottom: 11px;
+      scrollbar-width: thin;
+    }
+
+    .tab {
+      position: relative;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 12px;
+      border: 1px solid rgba(105, 135, 180, .26);
+      border-radius: 9px;
+      background: rgba(7, 14, 28, .56);
+      color: #9bb0ce;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .tab:hover { border-color: rgba(212, 175, 55, .38); }
+    .tab.active {
+      border-color: rgba(212, 175, 55, .55);
+      background: rgba(212, 175, 55, .10);
+      color: var(--sim-gold-soft);
+    }
+
+    .tab-store.active {
+      border-color: rgba(56, 189, 248, .52);
+      background: rgba(56, 189, 248, .09);
+      color: #8ed8fa;
+    }
+
+    .workspace {
+      overflow: hidden;
+    }
+
+    .scenario-editor {
+      display: grid;
+      grid-template-columns: minmax(160px, .35fr) minmax(300px, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+      padding: 14px;
+      border-bottom: 1px solid rgba(105, 135, 180, .18);
+    }
+
+    .store-area {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .stack { display: grid; gap: 14px; }
+
+    .section {
+      border: 1px solid rgba(105, 135, 180, .22);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(5, 12, 24, .32);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 48px;
+      padding: 10px 13px;
+      border-bottom: 1px solid rgba(105, 135, 180, .17);
+      background: rgba(5, 12, 24, .28);
+    }
+
+    .section-title {
+      color: #dce8f8;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .section-sub {
+      margin-top: 2px;
+      color: #6e89b2;
+      font-size: 10px;
+    }
+
+    .section-body { padding: 13px; }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 1.45fr .6fr .6fr .6fr auto;
+      gap: 9px;
+      align-items: end;
+    }
+
+    .preview-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 11px;
+    }
+
+    .preview-box,
+    .kpi {
+      padding: 10px 11px;
+      border: 1px solid rgba(105, 135, 180, .2);
+      border-radius: 9px;
+      background: rgba(7, 14, 28, .45);
+    }
+
+    .preview-label,
+    .kpi-label {
+      color: #6f8ab3;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .preview-value,
+    .kpi-value {
+      margin-top: 5px;
+      color: #e5eefc;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid rgba(105, 135, 180, .2);
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+    }
+
+    th {
+      padding: 10px 9px;
+      text-align: left;
+      border-bottom: 1px solid rgba(105, 135, 180, .24);
+      background: rgba(5, 12, 24, .55);
+      color: #718cb4;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px;
+      border-bottom: 1px solid rgba(105, 135, 180, .13);
+      color: #c8d8ed;
+      font-size: 11px;
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: rgba(56, 189, 248, .02); }
+    .num { text-align: right; font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+
+    .cell-input {
+      width: 76px;
+      height: 31px;
+      padding: 0 7px;
+      border: 1px solid rgba(105, 135, 180, .3);
+      border-radius: 7px;
+      outline: none;
+      background: rgba(5, 12, 24, .6);
+      color: #e4eefc;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      text-align: right;
+    }
+
+    .empty {
+      min-height: 120px;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      color: #6f8ab3;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .empty strong { display: block; margin-bottom: 4px; color: #a8bbd8; }
+
+    .summary-card { position: sticky; top: 76px; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .kpi-value { font-size: 16px; }
+    .kpi.gold { border-color: rgba(212, 175, 55, .28); background: rgba(212, 175, 55, .05); }
+    .kpi.gold .kpi-value { color: var(--sim-gold-soft); }
+    .kpi.blue { border-color: rgba(56, 189, 248, .25); background: rgba(56, 189, 248, .04); }
+    .kpi.green { border-color: rgba(0, 200, 150, .25); background: rgba(0, 200, 150, .04); }
+
+    .franchise-box {
+      margin-top: 11px;
+      padding: 12px;
+      border: 1px solid rgba(212, 175, 55, .26);
+      border-radius: 10px;
+      background: rgba(212, 175, 55, .05);
+    }
+
+    .franchise-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 7px;
+      color: #91a7c7;
+      font-size: 11px;
+    }
+
+    .franchise-line strong {
+      color: #e6eefb;
+      font-family: 'IBM Plex Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .progress {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(105, 135, 180, .18);
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--sim-gold), var(--sim-gold-soft));
+      transition: width .25s ease;
+    }
+
+    .franchise-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 11px;
+    }
+
+    .mini-note {
+      margin-top: 8px;
+      color: #6e89b2;
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border-radius: 99px;
+      border: 1px solid rgba(0, 200, 150, .22);
+      background: rgba(0, 200, 150, .07);
+      color: #83e8cb;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .toast-wrap {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 9999;
+      width: min(360px, calc(100vw - 36px));
+      display: grid;
+      gap: 9px;
+    }
+
+    .toast {
+      padding: 12px 13px;
+      border: 1px solid rgba(105, 135, 180, .35);
+      border-radius: 10px;
+      background: rgba(8, 17, 33, .98);
+      color: #dbe7f7;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, .3);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .toast.ok { border-color: rgba(0, 200, 150, .35); }
+    .toast.error { border-color: rgba(251, 113, 133, .38); }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: none;
+      place-items: center;
+      background: rgba(4, 8, 16, .65);
+      backdrop-filter: blur(3px);
+    }
+
+    .loading.visible { display: grid; }
+
+    .loading-box {
+      min-width: 250px;
+      padding: 18px;
+      border: 1px solid rgba(212, 175, 55, .3);
+      border-radius: 13px;
+      background: #0b1728;
+      color: #dce7f7;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .spinner {
+      width: 26px;
+      height: 26px;
+      margin: 0 auto 11px;
+      border: 3px solid rgba(212, 175, 55, .16);
+      border-top-color: var(--sim-gold-soft);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 1180px) {
+      .planner-toolbar { grid-template-columns: 1fr 1fr; }
+      .store-area { grid-template-columns: 1fr; }
+      .summary-card { position: static; }
+      .quick-grid { grid-template-columns: repeat(3, 1fr); }
+      .preview-strip { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 760px) {
+      .planner-main { width: min(100% - 18px, 1440px); }
+      .planner-toolbar,
+      .scenario-editor,
+      .quick-grid { grid-template-columns: 1fr; }
+      .preview-strip,
+      .summary-grid,
+      .franchise-controls { grid-template-columns: 1fr 1fr; }
+      .toolbar-actions { width: 100%; }
+      .toolbar-actions .btn { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">SL</div>
+      <div>
+        <div class="brand-name">SISLOT</div>
+        <div class="brand-sub">Planejamento de Bolões</div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="clock" id="relogio">--:--:--</div>
+      <a href="./boloes.html" class="btn-nav">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        Hub de Bolões
+      </a>
+    </div>
+  </header>
+
+  <main class="main planner-main">
+    <div class="hero planner-hero">
+      <div class="hero-tag">
+        <div class="hero-tag-dot" style="background:#d4af37;box-shadow:0 0 10px rgba(212,175,55,.6)"></div>
+        Cenários por loja
+      </div>
+      <h1 class="hero-title">Planejamento de <span>Bolões</span></h1>
+      <p class="hero-sub">Crie cenários alternativos, defina os jogos de cada loja e acompanhe a franquia separadamente. Gerentes, sócios e administradores enxergam todas as simulações.</p>
+    </div>
+
+    <section class="planner-toolbar">
+      <div class="field">
+        <label for="planejamentoSelect">Simulação salva</label>
+        <select class="select" id="planejamentoSelect">
+          <option value="">Nova simulação...</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="planejamentoNome">Nome</label>
+        <input class="input" id="planejamentoNome" maxlength="120" placeholder="Ex.: Planejamento quinta-feira" />
+      </div>
+
+      <div class="field">
+        <label for="planejamentoData">Data da simulação</label>
+        <input class="input" id="planejamentoData" type="date" />
+        <div class="date-note" id="dataPorExtenso">—</div>
+      </div>
+
+      <div class="toolbar-actions">
+        <button class="btn btn-gold" id="btnCriar" type="button">Criar simulação</button>
+        <button class="btn btn-ghost" id="btnDuplicar" type="button" disabled>Duplicar +7 dias</button>
+        <button class="btn btn-ghost" id="btnNova" type="button">Limpar</button>
+      </div>
+    </section>
+
+    <div class="status-line">
+      <div id="contextoAtual">Crie ou abra uma simulação para começar.</div>
+      <div class="save-status"><span class="save-dot"></span><span id="saveStatus">Alterações salvas automaticamente</span></div>
+    </div>
+
+    <section class="planner-card workspace" id="workspace">
+      <div class="tabs-block">
+        <div class="tabs-head">
+          <div class="tabs-label">Cenários</div>
+          <button class="btn btn-ghost btn-sm" id="btnAdicionarCenario" type="button" disabled>+ Novo cenário</button>
+        </div>
+        <div class="tabs" id="cenarioTabs">
+          <div class="empty" style="min-height:42px;padding:0">Nenhum cenário aberto.</div>
+        </div>
+      </div>
+
+      <div class="scenario-editor" id="scenarioEditor">
+        <div class="field">
+          <label for="cenarioNome">Nome do cenário</label>
+          <input class="input" id="cenarioNome" placeholder="Cenário 1" disabled />
+        </div>
+        <div class="field">
+          <label for="cenarioDescricao">O que aconteceu neste cenário?</label>
+          <input class="input" id="cenarioDescricao" placeholder="Ex.: Mega-Sena e Quina acumularam" disabled />
+        </div>
+        <button class="btn btn-ghost" id="btnSalvarCenario" type="button" disabled>Salvar cenário</button>
+      </div>
+
+      <div class="tabs-block">
+        <div class="tabs-head">
+          <div class="tabs-label">Lojas — franquias independentes</div>
+          <span class="badge">Todas as lojas</span>
+        </div>
+        <div class="tabs" id="lojaTabs">
+          <div class="empty" style="min-height:42px;padding:0">Abra uma simulação.</div>
+        </div>
+      </div>
+
+      <div class="store-area">
+        <div class="stack">
+          <section class="section">
+            <div class="section-head">
+              <div>
+                <div class="section-title" id="lojaTitulo">Selecione uma loja</div>
+                <div class="section-sub">Cada linha adicionada representa um bolão planejado.</div>
+              </div>
+            </div>
+
+            <div class="section-body">
+              <div class="quick-grid">
+                <div class="field">
+                  <label for="modalidade">Modalidade</label>
+                  <select class="select" id="modalidade" disabled>
+                    <option value="">Selecione...</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="configuracao">Dezenas / configuração</label>
+                  <select class="select" id="configuracao" disabled>
+                    <option value="">Selecione a modalidade...</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="qtdJogos">Jogos</label>
+                  <input class="input" id="qtdJogos" type="number" min="1" step="1" value="1" disabled />
+                </div>
+
+                <div class="field">
+                  <label for="qtdCotas">Cotas</label>
+                  <input class="input" id="qtdCotas" type="number" min="1" step="1" value="100" disabled />
+                </div>
+
+                <div class="field">
+                  <label for="qtdImpressas">Imprimir</label>
+                  <input class="input" id="qtdImpressas" type="number" min="0" step="1" value="66" disabled />
+                </div>
+
+                <button class="btn btn-green" id="btnAdicionarItem" type="button" disabled>Adicionar</button>
+              </div>
+
+              <div class="preview-strip">
+                <div class="preview-box"><div class="preview-label">Digitais</div><div class="preview-value" id="prevDigitais">34</div></div>
+                <div class="preview-box"><div class="preview-label">Apostas</div><div class="preview-value" id="prevApostas">—</div></div>
+                <div class="preview-box"><div class="preview-label">Valor-base</div><div class="preview-value" id="prevBase">—</div></div>
+                <div class="preview-box"><div class="preview-label">Venda +35%</div><div class="preview-value" id="prevVenda">—</div></div>
+                <div class="preview-box"><div class="preview-label">Consumo franquia</div><div class="preview-value" id="prevFranquia">—</div></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-head">
+              <div>
+                <div class="section-title">Bolões planejados nesta loja</div>
+                <div class="section-sub" id="itensSub">Nenhum item adicionado.</div>
+              </div>
+            </div>
+
+            <div class="section-body">
+              <div class="table-wrap">
+                <div class="empty" id="itensEmpty"><div><strong>Nenhum bolão neste cenário.</strong>Escolha a configuração, informe jogos, cotas e impressão.</div></div>
+                <table id="itensTable" class="hidden">
+                  <thead>
+                    <tr>
+                      <th>Modalidade / configuração</th>
+                      <th class="num">Jogos</th>
+                      <th class="num">Cotas</th>
+                      <th class="num">Impressas</th>
+                      <th class="num">Digitais</th>
+                      <th class="num">Valor-base</th>
+                      <th class="num">Venda</th>
+                      <th class="num">Franquia</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="itensBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="section summary-card">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Resumo da loja</div>
+              <div class="section-sub" id="resumoCenarioTexto">Cenário e loja selecionados.</div>
+            </div>
+          </div>
+
+          <div class="section-body">
+            <div class="summary-grid">
+              <div class="kpi blue"><div class="kpi-label">Bolões</div><div class="kpi-value" id="sumItens">0</div></div>
+              <div class="kpi"><div class="kpi-label">Jogos</div><div class="kpi-value" id="sumJogos">0</div></div>
+              <div class="kpi"><div class="kpi-label">Apostas</div><div class="kpi-value" id="sumApostas">0</div></div>
+              <div class="kpi"><div class="kpi-label">Cotas digitais</div><div class="kpi-value" id="sumDigitais">0</div></div>
+              <div class="kpi"><div class="kpi-label">Valor-base</div><div class="kpi-value" id="sumBase">R$ 0,00</div></div>
+              <div class="kpi gold"><div class="kpi-label">Venda final</div><div class="kpi-value" id="sumVenda">R$ 0,00</div></div>
+            </div>
+
+            <div class="franchise-box">
+              <div class="franchise-line"><span>Meta mensal</span><strong id="frMeta">R$ 4.000,00</strong></div>
+              <div class="franchise-line"><span>Já consumido antes</span><strong id="frAnterior">R$ 0,00</strong></div>
+              <div class="franchise-line"><span>Neste cenário</span><strong id="frCenario">R$ 0,00</strong></div>
+              <div class="franchise-line"><span>Saldo restante</span><strong id="frSaldo">R$ 4.000,00</strong></div>
+              <div class="progress"><div class="progress-bar" id="frBar"></div></div>
+
+              <div class="franchise-controls">
+                <div class="field">
+                  <label for="franquiaAnteriorInput">Já utilizado</label>
+                  <input class="input" id="franquiaAnteriorInput" type="number" min="0" step="0.01" value="0" disabled />
+                </div>
+                <div class="field">
+                  <label for="franquiaMetaInput">Meta</label>
+                  <input class="input" id="franquiaMetaInput" type="number" min="0" step="0.01" value="4000" disabled />
+                </div>
+              </div>
+
+              <div class="mini-note">A franquia considera somente o valor-base das cotas digitais. A tarifa de 35% integra a venda, mas não entra na franquia.</div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer>SISLOT v2.0 · Simulador por Cenários · Sistema de Gestão de Lotéricas</footer>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+  <div class="loading" id="loading">
+    <div class="loading-box"><div class="spinner"></div><div id="loadingText">Carregando...</div></div>
+  </div>
+
+  <script>
+    'use strict';
+
+    let sb = null;
+    let securityContext = null;
+
+    const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    const NUM = new Intl.NumberFormat('pt-BR');
+
+    const state = {
+      usuarioId: null,
+      planejamentos: [],
+      planejamento: null,
+      cenarios: [],
+      cenarioId: null,
+      lojas: [],
+      lojaId: null,
+      cenarioLoja: null,
+      itens: [],
+      configuracoes: [],
+      porModalidade: new Map(),
+      modalidades: [],
+      tarifa: 35,
+      busy: false
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const n = (v, d = 0) => Number.isFinite(Number(v)) ? Number(v) : d;
+    const int = (v, d = 0) => Math.trunc(n(v, d));
+    const money = (v) => BRL.format(n(v));
+    const esc = (v) => String(v ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+
+    function isoHoje() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function primeiroDiaMes(iso) {
+      return `${String(iso).slice(0, 7)}-01`;
+    }
+
+    function adicionarDias(iso, dias) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const data = new Date(y, m - 1, d);
+      data.setDate(data.getDate() + dias);
+      return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+    }
+
+    function dataExtenso(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-').map(Number);
+      return new Intl.DateTimeFormat('pt-BR', {
+        weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric'
+      }).format(new Date(y, m - 1, d));
+    }
+
+    function nomePadrao(iso) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const semana = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' })
+        .format(new Date(y, m - 1, d));
+      return `Planejamento ${semana} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+    }
+
+    function tick() {
+      const d = new Date();
+      const p = (v) => String(v).padStart(2, '0');
+      $('relogio').textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    }
+
+    function toast(msg, type = 'ok') {
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.textContent = msg;
+      $('toastWrap').appendChild(el);
+      setTimeout(() => el.remove(), 4500);
+    }
+
+    function loading(show, text = 'Carregando...') {
+      $('loadingText').textContent = text;
+      $('loading').classList.toggle('visible', show);
+    }
+
+    function saveStatus(text) {
+      $('saveStatus').textContent = text;
+    }
+
+    function setBusy(value) {
+      state.busy = value;
+      $('btnCriar').disabled = value;
+      $('btnDuplicar').disabled = value || !state.planejamento;
+      $('btnAdicionarCenario').disabled = value || !state.planejamento;
+      $('btnSalvarCenario').disabled = value || !state.cenarioId;
+      $('btnAdicionarItem').disabled = value || !state.cenarioLoja;
+    }
+
+    async function iniciarSupabase() {
+      const cfg = window.SISLOT_CONFIG || {};
+      const url = cfg.url || cfg.supabaseUrl;
+      const key = cfg.anonKey || cfg.supabaseKey;
+      if (!url || !key) throw new Error('Configuração do Supabase não encontrada.');
+
+      sb = window.supabase.createClient(url, key);
+
+      if (window.SISLOT_SECURITY?.protegerPagina) {
+        securityContext = await window.SISLOT_SECURITY.protegerPagina(sb, {
+          perfisPermitidos: ['GERENTE', 'SOCIO', 'ADMIN']
+        });
+        state.usuarioId = int(securityContext?.usuario?.id, null);
+        return;
+      }
+
+      const { data: sessao, error: sessaoErro } = await sb.auth.getSession();
+      if (sessaoErro) throw sessaoErro;
+      if (!sessao?.session) {
+        location.href = './index.html';
+        throw new Error('Sessão não encontrada.');
+      }
+
+      const { data: usuario, error } = await sb
+        .from('usuarios')
+        .select('id,perfil,ativo')
+        .eq('auth_user_id', sessao.session.user.id)
+        .maybeSingle();
+
+      if (error || !usuario) throw new Error('Usuário do SISLOT não encontrado.');
+      if (!['GERENTE', 'SOCIO', 'ADMIN'].includes(String(usuario.perfil))) {
+        location.href = './boloes.html';
+        throw new Error('Acesso permitido somente para gerente ou superior.');
+      }
+      state.usuarioId = int(usuario.id, null);
+    }
+
+    async function carregarConfiguracoes() {
+      const { data, error } = await sb
+        .from('view_sim_configuracoes_valores')
+        .select('*')
+        .eq('ativo', true)
+        .eq('permite_bolao', true);
+
+      if (error) throw new Error(`Falha ao carregar configurações: ${error.message}`);
+
+      state.configuracoes = (data || []).map((r) => ({
+        ...r,
+        configuracao_id: int(r.configuracao_id),
+        qtd_apostas: n(r.qtd_apostas),
+        valor_jogo_base: n(r.valor_jogo_base ?? r.valor_jogo),
+        percentual_tarifa_servico: n(r.percentual_tarifa_servico, 35)
+      }));
+
+      state.porModalidade.clear();
+      for (const c of state.configuracoes) {
+        if (!state.porModalidade.has(c.modalidade)) state.porModalidade.set(c.modalidade, []);
+        state.porModalidade.get(c.modalidade).push(c);
+      }
+
+      state.modalidades = [...state.porModalidade.entries()]
+        .map(([codigo, configs]) => ({ codigo, nome: configs[0]?.modalidade_nome || codigo }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+      for (const configs of state.porModalidade.values()) {
+        configs.sort((a, b) => {
+          const da = n(a.qtd_dezenas ?? a.qtd_numeros_total);
+          const db = n(b.qtd_dezenas ?? b.qtd_numeros_total);
+          if (da !== db) return da - db;
+          if (n(a.qtd_trevos) !== n(b.qtd_trevos)) return n(a.qtd_trevos) - n(b.qtd_trevos);
+          if (n(a.qtd_triplos) !== n(b.qtd_triplos)) return n(a.qtd_triplos) - n(b.qtd_triplos);
+          return n(a.qtd_duplos) - n(b.qtd_duplos);
+        });
+      }
+
+      $('modalidade').innerHTML = '<option value="">Selecione...</option>' + state.modalidades
+        .map((m) => `<option value="${esc(m.codigo)}">${esc(m.nome)}</option>`)
+        .join('');
+    }
+
+    async function carregarLojas() {
+      const { data, error } = await sb.from('loterias').select('*').order('nome', { ascending: true });
+      if (error) throw new Error(`Falha ao carregar lojas: ${error.message}`);
+
+      state.lojas = (data || []).map((l) => ({
+        id: int(l.id),
+        nome: l.nome || l.nome_loteria || l.razao_social || `Loja ${l.id}`,
+        codigo: l.cod_loterico || l.codigo_loterico || l.codigo_marketplace || ''
+      })).filter((l) => l.id > 0);
+    }
+
+    async function carregarPlanejamentos() {
+      const { data, error } = await sb
+        .from('sim_planejamentos')
+        .select('*')
+        .eq('status', 'ATIVO')
+        .order('data_referencia', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(100);
+
+      if (error) throw new Error(`Falha ao carregar simulações: ${error.message}`);
+      state.planejamentos = data || [];
+
+      $('planejamentoSelect').innerHTML = '<option value="">Nova simulação...</option>' + state.planejamentos
+        .map((p) => `<option value="${p.id}">${esc(p.nome)} — ${esc(dataExtenso(p.data_referencia))}</option>`)
+        .join('');
+    }
+
+    function atualizarDataUI() {
+      const iso = $('planejamentoData').value || isoHoje();
+      $('dataPorExtenso').textContent = dataExtenso(iso);
+      if (!state.planejamento && !$('planejamentoNome').value.trim()) {
+        $('planejamentoNome').value = nomePadrao(iso);
+      }
+    }
+
+    function resetarUI() {
+      state.planejamento = null;
+      state.cenarios = [];
+      state.cenarioId = null;
+      state.lojaId = null;
+      state.cenarioLoja = null;
+      state.itens = [];
+
+      $('planejamentoSelect').value = '';
+      $('planejamentoData').value = isoHoje();
+      $('planejamentoNome').value = nomePadrao(isoHoje());
+      atualizarDataUI();
+      $('contextoAtual').textContent = 'Nova simulação ainda não salva.';
+      $('btnDuplicar').disabled = true;
+      $('btnAdicionarCenario').disabled = true;
+      $('cenarioTabs').innerHTML = '<div class="empty" style="min-height:42px;padding:0">Crie a simulação para abrir os cenários.</div>';
+      $('lojaTabs').innerHTML = '<div class="empty" style="min-height:42px;padding:0">Abra um cenário.</div>';
+      $('cenarioNome').value = '';
+      $('cenarioDescricao').value = '';
+      $('cenarioNome').disabled = true;
+      $('cenarioDescricao').disabled = true;
+      $('btnSalvarCenario').disabled = true;
+      habilitarFormularioItem(false);
+      renderItens();
+      renderResumo(null);
+    }
+
+    async function criarPlanejamento() {
+      const data = $('planejamentoData').value;
+      const nome = $('planejamentoNome').value.trim();
+      if (!data) return toast('Informe a data da simulação.', 'error');
+
+      setBusy(true);
+      loading(true, 'Criando simulação...');
+      try {
+        const { data: retorno, error } = await sb.rpc('fn_sim_criar_planejamento', {
+          p_nome: nome || nomePadrao(data),
+          p_data_referencia: data,
+          p_nome_cenario: 'Cenário 1',
+          p_descricao_cenario: ''
+        });
+        if (error) throw error;
+
+        await carregarPlanejamentos();
+        await abrirPlanejamento(int(retorno.planejamento_id));
+        toast('Simulação criada. Agora defina o cenário e os jogos de cada loja.');
+      } catch (e) {
+        toast(e.message || 'Não foi possível criar a simulação.', 'error');
+      } finally {
+        loading(false);
+        setBusy(false);
+      }
+    }
+
+    async function abrirPlanejamento(id) {
+      const plan = state.planejamentos.find((p) => int(p.id) === int(id));
+      if (!plan) return;
+
+      state.planejamento = plan;
+      $('planejamentoSelect').value = String(plan.id);
+      $('planejamentoNome').value = plan.nome;
+      $('planejamentoData').value = plan.data_referencia;
+      atualizarDataUI();
+      $('contextoAtual').textContent = `${plan.nome} · ${dataExtenso(plan.data_referencia)}`;
+      $('btnDuplicar').disabled = false;
+      $('btnAdicionarCenario').disabled = false;
+
+      await carregarCenarios();
+    }
+
+    async function salvarCabecalho() {
+      if (!state.planejamento) return;
+      const nome = $('planejamentoNome').value.trim();
+      const data = $('planejamentoData').value;
+      if (!nome || !data) return;
+
+      saveStatus('Salvando...');
+      const { error } = await sb
+        .from('sim_planejamentos')
+        .update({
+          nome,
+          data_referencia: data,
+          competencia: primeiroDiaMes(data),
+          atualizado_por: state.usuarioId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', state.planejamento.id);
+
+      if (error) {
+        saveStatus('Erro ao salvar');
+        return toast(error.message, 'error');
+      }
+
+      state.planejamento = { ...state.planejamento, nome, data_referencia: data, competencia: primeiroDiaMes(data) };
+      $('contextoAtual').textContent = `${nome} · ${dataExtenso(data)}`;
+      saveStatus('Alterações salvas automaticamente');
+      await carregarPlanejamentos();
+      $('planejamentoSelect').value = String(state.planejamento.id);
+    }
+
+    async function duplicarPlanejamento() {
+      if (!state.planejamento) return;
+      const novaData = adicionarDias(state.planejamento.data_referencia, 7);
+      if (!confirm(`Duplicar toda a simulação para ${dataExtenso(novaData)}?`)) return;
+
+      setBusy(true);
+      loading(true, 'Duplicando cenários e lojas...');
+      try {
+        const { data: novoId, error } = await sb.rpc('fn_sim_duplicar_planejamento', {
+          p_planejamento_id: state.planejamento.id,
+          p_nova_data: novaData
+        });
+        if (error) throw error;
+        await carregarPlanejamentos();
+        await abrirPlanejamento(int(novoId));
+        toast('Simulação duplicada. Ajuste apenas o que mudou.');
+      } catch (e) {
+        toast(e.message || 'Falha ao duplicar.', 'error');
+      } finally {
+        loading(false);
+        setBusy(false);
+      }
+    }
+
+    async function carregarCenarios() {
+      const { data, error } = await sb
+        .from('sim_planejamento_cenarios')
+        .select('*')
+        .eq('planejamento_id', state.planejamento.id)
+        .order('ordem', { ascending: true });
+
+      if (error) throw error;
+      state.cenarios = data || [];
+      renderCenarioTabs();
+
+      const manter = state.cenarios.some((c) => int(c.id) === int(state.cenarioId));
+      const proximo = manter ? state.cenarioId : state.cenarios[0]?.id;
+      if (proximo) await selecionarCenario(int(proximo));
+    }
+
+    function renderCenarioTabs() {
+      if (!state.cenarios.length) {
+        $('cenarioTabs').innerHTML = '<div class="empty" style="min-height:42px;padding:0">Nenhum cenário.</div>';
+        return;
+      }
+      $('cenarioTabs').innerHTML = state.cenarios.map((c) => (
+        `<button type="button" class="tab ${int(c.id) === int(state.cenarioId) ? 'active' : ''}" data-cenario="${c.id}" title="${esc(c.descricao)}">${esc(c.nome)}</button>`
+      )).join('');
+    }
+
+    async function selecionarCenario(id) {
+      state.cenarioId = id;
+      const c = state.cenarios.find((x) => int(x.id) === id);
+      $('cenarioNome').value = c?.nome || '';
+      $('cenarioDescricao').value = c?.descricao || '';
+      $('cenarioNome').disabled = false;
+      $('cenarioDescricao').disabled = false;
+      $('btnSalvarCenario').disabled = false;
+      renderCenarioTabs();
+      renderLojaTabs();
+
+      if (state.lojas.length) {
+        const manter = state.lojas.some((l) => l.id === state.lojaId);
+        await selecionarLoja(manter ? state.lojaId : state.lojas[0].id);
+      }
+    }
+
+    async function adicionarCenario() {
+      if (!state.planejamento) return;
+      const ordem = state.cenarios.length + 1;
+      const descricao = prompt('Descreva o cenário. Ex.: Mega-Sena e Quina acumularam', '');
+      if (descricao === null) return;
+      const nome = prompt('Nome da aba do cenário:', `Cenário ${ordem}`);
+      if (nome === null) return;
+
+      setBusy(true);
+      try {
+        const { data: id, error } = await sb.rpc('fn_sim_adicionar_cenario', {
+          p_planejamento_id: state.planejamento.id,
+          p_nome: nome,
+          p_descricao: descricao
+        });
+        if (error) throw error;
+        await carregarCenarios();
+        await selecionarCenario(int(id));
+        toast('Novo cenário criado.');
+      } catch (e) {
+        toast(e.message || 'Falha ao criar cenário.', 'error');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function salvarCenario() {
+      if (!state.cenarioId) return;
+      const nome = $('cenarioNome').value.trim();
+      const descricao = $('cenarioDescricao').value.trim();
+      if (!nome) return toast('Informe o nome do cenário.', 'error');
+
+      saveStatus('Salvando cenário...');
+      const { error } = await sb
+        .from('sim_planejamento_cenarios')
+        .update({ nome, descricao, updated_at: new Date().toISOString() })
+        .eq('id', state.cenarioId);
+
+      if (error) {
+        saveStatus('Erro ao salvar');
+        return toast(error.message, 'error');
+      }
+      const c = state.cenarios.find((x) => int(x.id) === state.cenarioId);
+      if (c) Object.assign(c, { nome, descricao });
+      renderCenarioTabs();
+      $('resumoCenarioTexto').textContent = `${nome}: ${descricao || 'sem descrição'}`;
+      saveStatus('Alterações salvas automaticamente');
+    }
+
+    function renderLojaTabs() {
+      if (!state.cenarioId) {
+        $('lojaTabs').innerHTML = '<div class="empty" style="min-height:42px;padding:0">Selecione um cenário.</div>';
+        return;
+      }
+      $('lojaTabs').innerHTML = state.lojas.map((l) => (
+        `<button type="button" class="tab tab-store ${l.id === state.lojaId ? 'active' : ''}" data-loja="${l.id}">${esc(l.nome)}</button>`
+      )).join('');
+    }
+
+    async function garantirCenarioLoja(loteriaId) {
+      const { data: id, error } = await sb.rpc('fn_sim_obter_ou_criar_cenario_loja', {
+        p_cenario_id: state.cenarioId,
+        p_loteria_id: loteriaId
+      });
+      if (error) throw error;
+      return int(id);
+    }
+
+    async function tentarCarregarFranquiaConfirmada(loteriaId) {
+      if (!state.planejamento) return 0;
+      try {
+        const { data, error } = await sb
+          .from('view_sim_boloes_resumo')
+          .select('valor_consumido_franquia')
+          .eq('loteria_id', loteriaId)
+          .eq('competencia', state.planejamento.competencia)
+          .eq('status', 'CONFIRMADO');
+        if (error) return 0;
+        return (data || []).reduce((s, r) => s + n(r.valor_consumido_franquia), 0);
+      } catch {
+        return 0;
+      }
+    }
+
+    async function selecionarLoja(id) {
+      if (!state.cenarioId) return;
+      state.lojaId = int(id);
+      renderLojaTabs();
+
+      loading(true, 'Abrindo loja...');
+      try {
+        const contextoId = await garantirCenarioLoja(state.lojaId);
+        let { data: contexto, error } = await sb
+          .from('sim_planejamento_cenario_lojas')
+          .select('*')
+          .eq('id', contextoId)
+          .single();
+        if (error) throw error;
+
+        if (n(contexto.franquia_consumida_antes) === 0) {
+          const confirmado = await tentarCarregarFranquiaConfirmada(state.lojaId);
+          if (confirmado > 0) {
+            const upd = await sb
+              .from('sim_planejamento_cenario_lojas')
+              .update({ franquia_consumida_antes: confirmado, updated_at: new Date().toISOString() })
+              .eq('id', contextoId)
+              .select('*')
+              .single();
+            if (!upd.error) contexto = upd.data;
+          }
+        }
+
+        state.cenarioLoja = contexto;
+        const loja = state.lojas.find((l) => l.id === state.lojaId);
+        $('lojaTitulo').textContent = loja ? `${loja.nome}${loja.codigo ? ` — ${loja.codigo}` : ''}` : 'Loja';
+        habilitarFormularioItem(true);
+        $('franquiaAnteriorInput').value = n(contexto.franquia_consumida_antes).toFixed(2);
+        $('franquiaMetaInput').value = n(contexto.meta_franquia, 4000).toFixed(2);
+        $('franquiaAnteriorInput').disabled = false;
+        $('franquiaMetaInput').disabled = false;
+
+        await carregarItens();
+      } catch (e) {
+        toast(e.message || 'Falha ao abrir a loja.', 'error');
+      } finally {
+        loading(false);
+      }
+    }
+
+    function habilitarFormularioItem(flag) {
+      ['modalidade', 'configuracao', 'qtdJogos', 'qtdCotas', 'qtdImpressas', 'btnAdicionarItem']
+        .forEach((id) => { $(id).disabled = !flag; });
+      if (!flag) $('configuracao').disabled = true;
+    }
+
+    function preencherConfiguracoes() {
+      const modalidade = $('modalidade').value;
+      const configs = state.porModalidade.get(modalidade) || [];
+      $('configuracao').disabled = !modalidade || !state.cenarioLoja;
+      $('configuracao').innerHTML = modalidade
+        ? '<option value="">Selecione...</option>' + configs.map((c) => `<option value="${c.configuracao_id}">${esc(c.descricao)}</option>`).join('')
+        : '<option value="">Selecione a modalidade...</option>';
+      atualizarPreview();
+    }
+
+    function configSelecionada() {
+      const id = int($('configuracao').value);
+      return state.configuracoes.find((c) => c.configuracao_id === id) || null;
+    }
+
+    function calculoForm() {
+      const c = configSelecionada();
+      const jogos = Math.max(1, int($('qtdJogos').value, 1));
+      const cotas = Math.max(1, int($('qtdCotas').value, 1));
+      const impressas = Math.max(0, Math.min(cotas, int($('qtdImpressas').value, 0)));
+      const digitais = cotas - impressas;
+      const base = c ? jogos * c.valor_jogo_base : 0;
+      const tarifa = c ? n(c.percentual_tarifa_servico, state.tarifa) : state.tarifa;
+      const venda = base * (1 + tarifa / 100);
+      const franquia = base * digitais / cotas;
+      const apostas = c ? jogos * c.qtd_apostas : 0;
+      return { c, jogos, cotas, impressas, digitais, base, venda, franquia, apostas, tarifa };
+    }
+
+    function atualizarPreview() {
+      const x = calculoForm();
+      $('prevDigitais').textContent = NUM.format(x.digitais);
+      $('prevApostas').textContent = x.c ? NUM.format(x.apostas) : '—';
+      $('prevBase').textContent = x.c ? money(x.base) : '—';
+      $('prevVenda').textContent = x.c ? money(x.venda) : '—';
+      $('prevFranquia').textContent = x.c ? money(x.franquia) : '—';
+    }
+
+    async function adicionarItem() {
+      if (!state.cenarioLoja) return;
+      const x = calculoForm();
+      if (!x.c) return toast('Selecione a configuração.', 'error');
+      if (x.jogos <= 0 || x.cotas <= 0) return toast('Jogos e cotas precisam ser maiores que zero.', 'error');
+      if (x.impressas > x.cotas) return toast('A impressão não pode superar o total de cotas.', 'error');
+
+      setBusy(true);
+      saveStatus('Salvando item...');
+      try {
+        const ordem = state.itens.length + 1;
+        const { error } = await sb.from('sim_planejamento_itens').insert({
+          cenario_loja_id: state.cenarioLoja.id,
+          configuracao_id: x.c.configuracao_id,
+          modalidade: x.c.modalidade,
+          descricao_configuracao: x.c.descricao,
+          qtd_jogos: x.jogos,
+          qtd_cotas_total: x.cotas,
+          qtd_cotas_impressas: x.impressas,
+          qtd_apostas_por_jogo: x.c.qtd_apostas,
+          valor_jogo_base: x.c.valor_jogo_base,
+          percentual_tarifa_servico: x.tarifa,
+          ordem
+        });
+        if (error) throw error;
+
+        $('qtdJogos').value = '1';
+        await carregarItens();
+        toast('Bolão adicionado ao cenário.');
+        saveStatus('Alterações salvas automaticamente');
+      } catch (e) {
+        saveStatus('Erro ao salvar');
+        toast(e.message || 'Falha ao adicionar item.', 'error');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function carregarItens() {
+      if (!state.cenarioLoja) return;
+      const { data, error } = await sb
+        .from('view_sim_planejamento_itens')
+        .select('*')
+        .eq('cenario_loja_id', state.cenarioLoja.id)
+        .order('ordem', { ascending: true })
+        .order('item_id', { ascending: true });
+      if (error) throw error;
+      state.itens = data || [];
+      renderItens();
+      await carregarResumo();
+    }
+
+    function renderItens() {
+      const tem = state.itens.length > 0;
+      $('itensEmpty').classList.toggle('hidden', tem);
+      $('itensTable').classList.toggle('hidden', !tem);
+      $('itensSub').textContent = tem ? `${state.itens.length} bolão(ões) planejado(s). Edite os números diretamente na tabela.` : 'Nenhum item adicionado.';
+
+      $('itensBody').innerHTML = state.itens.map((i) => `
+        <tr>
+          <td><strong>${esc(i.descricao_configuracao)}</strong><br><span style="color:#6783aa">${esc(i.modalidade)}</span></td>
+          <td class="num"><input class="cell-input" type="number" min="1" step="1" value="${int(i.qtd_jogos)}" data-id="${i.item_id}" data-field="qtd_jogos"></td>
+          <td class="num"><input class="cell-input" type="number" min="1" step="1" value="${int(i.qtd_cotas_total)}" data-id="${i.item_id}" data-field="qtd_cotas_total"></td>
+          <td class="num"><input class="cell-input" type="number" min="0" step="1" value="${int(i.qtd_cotas_impressas)}" data-id="${i.item_id}" data-field="qtd_cotas_impressas"></td>
+          <td class="num">${NUM.format(int(i.qtd_cotas_digitais))}</td>
+          <td class="num">${money(i.valor_base_total)}</td>
+          <td class="num">${money(i.valor_venda_total)}</td>
+          <td class="num">${money(i.consumo_franquia)}</td>
+          <td><button class="btn btn-danger btn-sm" type="button" data-delete="${i.item_id}">Excluir</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function atualizarItem(input) {
+      const id = int(input.dataset.id);
+      const field = input.dataset.field;
+      const item = state.itens.find((i) => int(i.item_id) === id);
+      if (!item || !['qtd_jogos', 'qtd_cotas_total', 'qtd_cotas_impressas'].includes(field)) return;
+
+      let value = int(input.value);
+      if (field === 'qtd_jogos' || field === 'qtd_cotas_total') value = Math.max(1, value);
+      if (field === 'qtd_cotas_impressas') value = Math.max(0, value);
+
+      const total = field === 'qtd_cotas_total' ? value : int(item.qtd_cotas_total);
+      const impressas = field === 'qtd_cotas_impressas' ? value : int(item.qtd_cotas_impressas);
+      if (impressas > total) {
+        input.value = field === 'qtd_cotas_impressas' ? total : impressas;
+        return toast('As cotas impressas não podem superar o total.', 'error');
+      }
+
+      saveStatus('Salvando alteração...');
+      const { error } = await sb
+        .from('sim_planejamento_itens')
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) {
+        saveStatus('Erro ao salvar');
+        return toast(error.message, 'error');
+      }
+      saveStatus('Alterações salvas automaticamente');
+      await carregarItens();
+    }
+
+    async function excluirItem(id) {
+      if (!confirm('Excluir este bolão do cenário?')) return;
+      const { error } = await sb.from('sim_planejamento_itens').delete().eq('id', id);
+      if (error) return toast(error.message, 'error');
+      await carregarItens();
+      toast('Bolão removido.');
+    }
+
+    async function carregarResumo() {
+      if (!state.cenarioLoja) return renderResumo(null);
+      const { data, error } = await sb
+        .from('view_sim_cenario_lojas_resumo')
+        .select('*')
+        .eq('cenario_loja_id', state.cenarioLoja.id)
+        .maybeSingle();
+      if (error) throw error;
+      renderResumo(data);
+    }
+
+    function renderResumo(r) {
+      const z = r || {};
+      $('sumItens').textContent = NUM.format(int(z.qtd_itens));
+      $('sumJogos').textContent = NUM.format(int(z.qtd_jogos));
+      $('sumApostas').textContent = NUM.format(int(z.qtd_apostas));
+      $('sumDigitais').textContent = NUM.format(int(z.qtd_cotas_digitais));
+      $('sumBase').textContent = money(z.valor_base_total);
+      $('sumVenda').textContent = money(z.valor_venda_total);
+      $('frMeta').textContent = money(z.meta_franquia ?? 4000);
+      $('frAnterior').textContent = money(z.franquia_consumida_antes);
+      $('frCenario').textContent = money(z.consumo_cenario);
+      $('frSaldo').textContent = money(z.saldo_franquia ?? 4000);
+      $('frBar').style.width = `${Math.max(0, Math.min(100, n(z.percentual_franquia)))}%`;
+
+      const c = state.cenarios.find((x) => int(x.id) === int(state.cenarioId));
+      const l = state.lojas.find((x) => x.id === state.lojaId);
+      $('resumoCenarioTexto').textContent = `${c?.nome || 'Cenário'} · ${l?.nome || 'Loja'}`;
+    }
+
+    async function salvarFranquia() {
+      if (!state.cenarioLoja) return;
+      const anterior = Math.max(0, n($('franquiaAnteriorInput').value));
+      const meta = Math.max(0, n($('franquiaMetaInput').value, 4000));
+      saveStatus('Salvando franquia...');
+      const { data, error } = await sb
+        .from('sim_planejamento_cenario_lojas')
+        .update({
+          franquia_consumida_antes: anterior,
+          meta_franquia: meta,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', state.cenarioLoja.id)
+        .select('*')
+        .single();
+      if (error) {
+        saveStatus('Erro ao salvar');
+        return toast(error.message, 'error');
+      }
+      state.cenarioLoja = data;
+      saveStatus('Alterações salvas automaticamente');
+      await carregarResumo();
+    }
+
+    function bindEvents() {
+      $('planejamentoData').addEventListener('change', () => {
+        atualizarDataUI();
+        if (state.planejamento) salvarCabecalho();
+      });
+      $('planejamentoNome').addEventListener('change', salvarCabecalho);
+      $('planejamentoSelect').addEventListener('change', async (e) => {
+        const id = int(e.target.value);
+        if (!id) return resetarUI();
+        loading(true, 'Abrindo simulação...');
+        try { await abrirPlanejamento(id); }
+        catch (err) { toast(err.message, 'error'); }
+        finally { loading(false); }
+      });
+      $('btnCriar').addEventListener('click', criarPlanejamento);
+      $('btnNova').addEventListener('click', resetarUI);
+      $('btnDuplicar').addEventListener('click', duplicarPlanejamento);
+      $('btnAdicionarCenario').addEventListener('click', adicionarCenario);
+      $('btnSalvarCenario').addEventListener('click', salvarCenario);
+      $('cenarioTabs').addEventListener('click', (e) => {
+        const el = e.target.closest('[data-cenario]');
+        if (el) selecionarCenario(int(el.dataset.cenario));
+      });
+      $('lojaTabs').addEventListener('click', (e) => {
+        const el = e.target.closest('[data-loja]');
+        if (el) selecionarLoja(int(el.dataset.loja));
+      });
+      $('modalidade').addEventListener('change', preencherConfiguracoes);
+      $('configuracao').addEventListener('change', atualizarPreview);
+      ['qtdJogos', 'qtdCotas', 'qtdImpressas'].forEach((id) => $(id).addEventListener('input', atualizarPreview));
+      $('btnAdicionarItem').addEventListener('click', adicionarItem);
+      $('itensBody').addEventListener('change', (e) => {
+        if (e.target.matches('.cell-input')) atualizarItem(e.target);
+      });
+      $('itensBody').addEventListener('click', (e) => {
+        const el = e.target.closest('[data-delete]');
+        if (el) excluirItem(int(el.dataset.delete));
+      });
+      $('franquiaAnteriorInput').addEventListener('change', salvarFranquia);
+      $('franquiaMetaInput').addEventListener('change', salvarFranquia);
+    }
+
+    async function init() {
+      tick();
+      setInterval(tick, 1000);
+      bindEvents();
+      resetarUI();
+      loading(true, 'Carregando simulador...');
+      try {
+        await iniciarSupabase();
+        await Promise.all([carregarConfiguracoes(), carregarLojas(), carregarPlanejamentos()]);
+        $('planejamentoSelect').value = '';
+      } catch (e) {
+        console.error(e);
+        toast(e.message || 'Falha ao iniciar o simulador.', 'error');
+      } finally {
+        loading(false);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
