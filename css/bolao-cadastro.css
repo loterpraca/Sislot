@@ -12,7 +12,8 @@
 [data-loja="lotobel"]     {--t1:#ef4444;--t2:#b91c1c;--t3:rgba(239,68,68,0.12); --t4:rgba(239,68,68,0.28); --t5:rgba(239,68,68,0.05)}
 [data-loja="santa-tereza"]{--t1:#a855f7;--t2:#7e22ce;--t3:rgba(168,85,247,0.12);--t4:rgba(168,85,247,0.28);--t5:rgba(168,85,247,0.05)}
 [data-loja="via-brasil"]  {--t1:#eab308;--t2:#a16207;--t3:rgba(234,179,8,0.12); --t4:rgba(234,179,8,0.28); --t5:rgba(234,179,8,0.05)}
-
+[data-loja="lotoprime"] {--t1: #7f8386;--t2: #575b5e;--t3: rgba(127, 131, 134, 0.12);--t4: rgba(127, 131, 134, 0.30);--t5: rgba(127, 131, 134, 0.07);
+}
 body{
   font-family:var(--sans);color:var(--text);background:var(--bg);min-height:100vh;display:flex;flex-direction:column;
   background-image:radial-gradient(ellipse 100% 50% at 50% -10%,var(--t3) 0%,transparent 65%),
