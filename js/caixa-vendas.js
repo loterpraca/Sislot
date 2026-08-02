@@ -1,4 +1,7 @@
-const sb = supabase.createClient(window.SISLOT_CONFIG.url, window.SISLOT_CONFIG.anonKey);
+const sb = window.SISLOT_SB || supabase.createClient(
+  window.SISLOT_CONFIG.url,
+  window.SISLOT_CONFIG.anonKey
+);
 
 const TZ_SISLOT = 'America/Sao_Paulo';
 
@@ -48,14 +51,9 @@ const MESES_PT = [
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'
 ];
 
-const LOJA_CONFIG = {
-  'boulevard':    { nome:'Boulevard',    logo:'./icons/boulevard.png',    theme:'boulevard',    logoPos:'50% 50%' },
-  'centro':       { nome:'Centro',       logo:'./icons/loterpraca.png',   theme:'centro',       logoPos:'50% 42%' },
-  'lotobel':      { nome:'Lotobel',      logo:'./icons/lotobel.png',      theme:'lotobel',      logoPos:'50% 50%' },
-  'santa-tereza': { nome:'Santa Tereza', logo:'./icons/santa-tereza.png', theme:'santa-tereza', logoPos:'50% 50%' },
-  'via-brasil':   { nome:'Via',          logo:'./icons/via-brasil.png',   theme:'via-brasil',   logoPos:'50% 50%' },
-  'via':          { nome:'Via',          logo:'./icons/via-brasil.png',   theme:'via-brasil',   logoPos:'50% 50%' },
-};
+// ── Lojas dinâmicas ───────────────────────────────────────────────
+// Nenhuma loja é escrita manualmente neste arquivo.
+// Nome, slug, logo, tema e ordem de exibição vêm da tabela public.loterias.
 
 // ── Helpers básicos ───────────────────────────────────────────────
 function $(id){
@@ -129,40 +127,147 @@ function slugSeguro(slug){
 }
 
 // ── Tema / loja ───────────────────────────────────────────────────
-function aplicarTemaCaixa(slug){
-  const key = slugSeguro(slug);
-  const cfg = LOJA_CONFIG[key] || LOJA_CONFIG.centro;
+function normalizarCaminhoLogoCaixa(caminho, slug){
+  const valor = String(caminho || '').trim();
+  const slugSeguroLoja = slugSeguro(slug);
 
-  document.body.setAttribute('data-loja', cfg.theme || key);
+  if (!valor) return `./icons/${slugSeguroLoja}.png`;
+
+  if (/^(https?:|data:|blob:|\/|\.\/|\.\.\/)/i.test(valor)) {
+    return valor;
+  }
+
+  if (valor.startsWith('icons/')) {
+    return `./${valor}`;
+  }
+
+  return `./icons/${valor}`;
+}
+
+function normalizarLojaCaixa(loja = {}){
+  const id = Number(loja.loteria_id ?? loja.id ?? 0);
+  const slug = String(
+    loja.loteria_slug ??
+    loja.slug ??
+    ''
+  ).trim().toLowerCase();
+
+  const nome = String(
+    loja.loteria_nome ??
+    loja.nome ??
+    slug ??
+    'Loja'
+  ).trim() || 'Loja';
+
+  const codigo = loja.loteria_codigo ?? loja.codigo ?? '';
+
+  return {
+    ...loja,
+    id,
+    nome,
+    slug,
+    codigo,
+    loteria_id: id,
+    loteria_nome: nome,
+    loteria_slug: slug,
+    loteria_codigo: codigo,
+    cod_loterico:
+      loja.cod_loterico ??
+      loja.loteria_cod_loterico ??
+      '',
+    codigo_marketplace:
+      loja.codigo_marketplace ??
+      loja.loteria_codigo_marketplace ??
+      null,
+    logo_url: normalizarCaminhoLogoCaixa(
+      loja.logo_url ??
+      loja.loteria_logo_url ??
+      loja.logo_path ??
+      loja.loteria_logo_path ??
+      '',
+      slug
+    ),
+    logo_posicao:
+      loja.logo_posicao ??
+      loja.loteria_logo_posicao ??
+      loja.logo_pos ??
+      loja.logoPos ??
+      '50% 50%',
+    tema:
+      loja.tema ??
+      loja.loteria_tema ??
+      slug,
+    icone_emoji:
+      loja.icone_emoji ??
+      loja.loteria_icone_emoji ??
+      '📍',
+    icone_classe:
+      loja.icone_classe ??
+      loja.loteria_icone_classe ??
+      'fas fa-store',
+    ordem_exibicao: Number(
+      loja.ordem_exibicao ??
+      loja.loteria_ordem_exibicao ??
+      100
+    ),
+    principal: Boolean(loja.principal)
+  };
+}
+
+function aplicarTemaCaixa(loja = lojaCaixaAtiva){
+  const atual = normalizarLojaCaixa(loja || {});
+  const slug = atual.loteria_slug || 'centro';
+  const nome = atual.loteria_nome || 'Loja';
+  const tema = atual.tema || slug;
+
+  document.body.setAttribute('data-loja', tema);
+  document.documentElement.setAttribute('data-loja', tema);
+  document.body.dataset.lojaSlug = slug;
 
   const img = $('logoImg');
   if (img) {
-    img.src = cfg.logo;
-    img.style.objectPosition = cfg.logoPos || '50% 50%';
+    img.onerror = null;
+    img.dataset.fallbackAplicado = '0';
+    img.src = atual.logo_url || `./icons/${slug}.png`;
+    img.alt = nome;
+    img.style.objectPosition = atual.logo_posicao || '50% 50%';
+
+    img.onerror = () => {
+      if (img.dataset.fallbackAplicado === '1') return;
+      img.dataset.fallbackAplicado = '1';
+      img.onerror = null;
+      img.src = './icons/centro.png';
+    };
   }
 
   const title = $('headerTitle');
-  if (title) title.textContent = cfg.nome;
+  if (title) title.textContent = nome;
 
   const sub = $('headerSub');
   if (sub) sub.textContent = 'Vendas no Caixa';
 
   const nomeChip = $('caixaLojaNome');
-  if (nomeChip) nomeChip.textContent = cfg.nome;
+  if (nomeChip) nomeChip.textContent = nome;
 
   const nomeFederal = $('federalLojaNome');
-  if (nomeFederal) nomeFederal.textContent = cfg.nome;
+  if (nomeFederal) nomeFederal.textContent = nome;
 
   const nomeProdutos = $('produtosLojaNome');
-  if (nomeProdutos) nomeProdutos.textContent = cfg.nome;
+  if (nomeProdutos) nomeProdutos.textContent = nome;
+
+  const lojaTree = $('lojaTreeWrap');
+  if (lojaTree) {
+    lojaTree.title = `${nome} — clique para trocar de loja`;
+  }
 }
+
 async function setDataOperacionalCaixa(novaData){
   dataCaixa = normalizaDataLocal(novaData);
   atualizarDatasCaixa();
 }
+
 function atualizarLojaCaixaUI(){
-  const slug = lojaCaixaAtiva?.loteria_slug || lojaCaixaAtiva?.slug || 'centro';
-  aplicarTemaCaixa(slug);
+  aplicarTemaCaixa(lojaCaixaAtiva);
 }
 
 function siglaLoja(loja){
@@ -209,22 +314,25 @@ async function trocarLojaCaixaPorOffset(offset){
 async function trocarLojaCaixa(loja){
   if (!loja) return;
 
-  lojaCaixaAtiva = loja;
+  lojaCaixaAtiva = normalizarLojaCaixa(loja);
   atualizarLojaCaixaUI();
   limparBolaoSelecionadoCaixa();
   federalSelecionadaCaixa = null;
   fecharPainelVendaFederal();
 
   await buscarBoloesCaixa();
-  if ($('tab-federal')?.classList.contains('active')) {
-  await buscarFederaisCaixa();
-}
-produtoSelecionadoCaixa = null;
-fecharPainelVendaProduto();
 
-if ($('tab-produtos')?.classList.contains('active')) {
-  await buscarProdutosCaixa();
-}
+  if ($('tab-federal')?.classList.contains('active')) {
+    await buscarFederaisCaixa();
+  }
+
+  produtoSelecionadoCaixa = null;
+  fecharPainelVendaProduto();
+
+  if ($('tab-produtos')?.classList.contains('active')) {
+    await buscarProdutosCaixa();
+  }
+
   if ($('tab-consolidado')?.classList.contains('active')) {
     await carregarResumoMensalCaixa();
     await carregarConsolidadoCaixa();
@@ -232,15 +340,37 @@ if ($('tab-produtos')?.classList.contains('active')) {
 }
 
 async function carregarContextoLojas(){
-  const { data: todas, error: erroLojas } = await sb
+  let todas = [];
+
+  const { data, error: erroLojas } = await sb
     .from('loterias')
-    .select('id,nome,slug,codigo')
+    .select('*')
     .eq('ativo', true)
-    .order('id');
+    .order('nome', { ascending: true });
 
-  if (erroLojas) throw erroLojas;
+  if (!erroLojas) {
+    todas = data || [];
+  } else if (typeof window.SISLOT_SECURITY?.carregarTodasLojas === 'function') {
+    console.warn(
+      '[SISLOT] Consulta direta de lojas falhou. Usando SISLOT_SECURITY.carregarTodasLojas().',
+      erroLojas
+    );
+    todas = await window.SISLOT_SECURITY.carregarTodasLojas();
+  } else {
+    throw erroLojas;
+  }
 
-  lojasAtivas = todas || [];
+  lojasAtivas = (todas || [])
+    .map(normalizarLojaCaixa)
+    .filter(loja =>
+      loja.loteria_id &&
+      loja.loteria_slug &&
+      loja.loteria_nome
+    )
+    .sort((a, b) =>
+      Number(a.ordem_exibicao || 100) - Number(b.ordem_exibicao || 100) ||
+      a.loteria_nome.localeCompare(b.loteria_nome, 'pt-BR')
+    );
 
   const { data: vinculos, error: erroVinculos } = await sb
     .from('usuarios_loterias')
@@ -250,34 +380,56 @@ async function carregarContextoLojas(){
 
   if (erroVinculos) throw erroVinculos;
 
-  const idsPermitidos = new Set((vinculos || []).map(v => Number(v.loteria_id)));
+  const vinculoPorLoja = new Map(
+    (vinculos || []).map(v => [Number(v.loteria_id), v])
+  );
 
-  lojasPermitidas = lojasAtivas
-    .filter(l => idsPermitidos.has(Number(l.id)))
-    .map(l => ({
-      loteria_id: l.id,
-      loteria_nome: l.nome,
-      loteria_slug: l.slug,
-      loteria_codigo: l.codigo,
-      principal: !!(vinculos || []).find(v => Number(v.loteria_id) === Number(l.id) && v.principal)
-    }));
+  const perfil = String(usuario.perfil || '').trim().toUpperCase();
+  const podeAcessarTodas = ['ADMIN', 'SOCIO'].includes(perfil);
 
-  // Fallback para ADMIN/SOCIO quando não houver vínculo explícito.
-  if (!lojasPermitidas.length && ['ADMIN','SOCIO'].includes(String(usuario.perfil || '').toUpperCase())) {
-    lojasPermitidas = lojasAtivas.map(l => ({
-      loteria_id: l.id,
-      loteria_nome: l.nome,
-      loteria_slug: l.slug,
-      loteria_codigo: l.codigo,
-      principal: l.slug === 'centro'
-    }));
-  }
+  // ADMIN e SÓCIO recebem todas as lojas ativas.
+  // GERENTE e OPERADOR continuam limitados aos vínculos em usuarios_loterias.
+  const basePermitidas = podeAcessarTodas
+    ? lojasAtivas
+    : lojasAtivas.filter(loja =>
+        vinculoPorLoja.has(Number(loja.loteria_id))
+      );
 
-  lojaCaixaAtiva = lojasPermitidas.find(l => l.principal) || lojasPermitidas[0] || null;
+  lojasPermitidas = basePermitidas.map(loja =>
+    normalizarLojaCaixa({
+      ...loja,
+      principal: Boolean(
+        vinculoPorLoja.get(Number(loja.loteria_id))?.principal
+      )
+    })
+  );
+
+  lojaCaixaAtiva =
+    lojasPermitidas.find(loja => loja.principal) ||
+    lojasPermitidas[0] ||
+    null;
 
   if (!lojaCaixaAtiva) {
-    throw new Error('Nenhuma loja disponível para este usuário.');
+    throw new Error('Nenhuma loja ativa e permitida para este usuário.');
   }
+
+  window.SISLOT_CAIXA_LOJAS_DEBUG = {
+    getLojaAtiva: () => ({ ...lojaCaixaAtiva }),
+    getLojasPermitidas: () => lojasPermitidas.map(loja => ({ ...loja })),
+    getLojasAtivas: () => lojasAtivas.map(loja => ({ ...loja }))
+  };
+
+  console.info(
+    `[SISLOT] Vendas no Caixa: ${lojasPermitidas.length} loja(s) disponível(is) para ${perfil}.`
+  );
+
+  console.table(lojasPermitidas.map(loja => ({
+    id: loja.loteria_id,
+    nome: loja.loteria_nome,
+    slug: loja.loteria_slug,
+    principal: loja.principal,
+    logo: loja.logo_url
+  })));
 
   atualizarLojaCaixaUI();
 }
