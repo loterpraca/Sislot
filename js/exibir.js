@@ -13,14 +13,9 @@ let usuario = null;
 let usuarios = [];
 let lojas = [];
 
-const slugsLojas = ['boulevard', 'centro', 'lotobel', 'santa-tereza', 'via-brasil'];
-const slugLabel = {
-  boulevard: 'BLD',
-  centro: 'CTR',
-  lotobel: 'LTB',
-  'santa-tereza': 'STZ',
-  'via-brasil': 'VIA'
-};
+// Colunas das lojas carregadas dinamicamente de public.loterias.
+// O campo codigo é a abreviação oficial exibida no cabeçalho.
+let lojasColunas = [];
 
 let filtroTimer = null;
 let boloesCache = [];
@@ -931,6 +926,119 @@ async function carregarLoteriasPermitidas(authUserId) {
   return data || [];
 }
 
+
+function normalizarLojaColuna(loja) {
+  const id = Number(loja?.id ?? loja?.loteria_id ?? 0);
+  const nome = String(
+    loja?.nome ??
+    loja?.loteria_nome ??
+    'Loja'
+  ).trim() || 'Loja';
+
+  const slug = String(
+    loja?.slug ??
+    loja?.loteria_slug ??
+    ''
+  ).trim().toLowerCase();
+
+  const codigo = String(
+    loja?.codigo ??
+    loja?.loteria_codigo ??
+    nome.slice(0, 3)
+  ).trim().toUpperCase();
+
+  return {
+    id,
+    nome,
+    slug,
+    codigo
+  };
+}
+
+function deduplicarLojasColunas(lista) {
+  const mapa = new Map();
+
+  (lista || []).forEach(item => {
+    const loja = normalizarLojaColuna(item);
+    if (!loja.id && !loja.slug) return;
+
+    const chave = loja.id
+      ? `id:${loja.id}`
+      : `slug:${loja.slug}`;
+
+    if (!mapa.has(chave)) {
+      mapa.set(chave, loja);
+      return;
+    }
+
+    const atual = mapa.get(chave);
+
+    mapa.set(chave, {
+      id: atual.id || loja.id,
+      nome: atual.nome !== 'Loja' ? atual.nome : loja.nome,
+      slug: atual.slug || loja.slug,
+      codigo:
+        atual.codigo && atual.codigo !== 'LOJ'
+          ? atual.codigo
+          : loja.codigo
+    });
+  });
+
+  return [...mapa.values()].sort((a, b) => {
+    if (a.id && b.id && a.id !== b.id) return a.id - b.id;
+    return String(a.nome || '').localeCompare(
+      String(b.nome || ''),
+      'pt-BR'
+    );
+  });
+}
+
+async function carregarLojasColunasExibir() {
+  const { data, error } = await sb
+    .from('loterias')
+    .select('id,nome,slug,codigo')
+    .eq('ativo', true)
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.warn(
+      'Não foi possível carregar todas as lojas diretamente de loterias:',
+      error.message
+    );
+    return [];
+  }
+
+  return deduplicarLojasColunas(data || []);
+}
+
+function sincronizarLojasColunasComOperacional(rows) {
+  const lojasOperacionais = (rows || []).map(row => ({
+    id: row.loteria_id,
+    nome: row.loja_nome,
+    slug: row.loja_slug,
+    codigo:
+      row.loja_codigo ??
+      row.loteria_codigo ??
+      ''
+  }));
+
+  lojasColunas = deduplicarLojasColunas([
+    ...lojasColunas,
+    ...lojasOperacionais
+  ]);
+}
+
+function chaveLojaOperacional(row) {
+  const slug = String(row?.loja_slug || '')
+    .trim()
+    .toLowerCase();
+
+  if (slug) return slug;
+
+  const id = Number(row?.loteria_id || 0);
+  return id ? `id:${id}` : '';
+}
+
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
 
@@ -963,13 +1071,32 @@ async function init() {
     location.href = './login.html';
   };
 
-  const [loteriasPermitidasResp, usuariosResp] = await Promise.all([
+  const [
+    loteriasPermitidasResp,
+    usuariosResp,
+    lojasColunasResp
+  ] = await Promise.all([
     carregarLoteriasPermitidas(session.user.id),
-    sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome')
+    sb
+      .from('usuarios')
+      .select('id,nome')
+      .eq('ativo', true)
+      .order('nome'),
+    carregarLojasColunasExibir()
   ]);
 
   const loteriasPermitidas = loteriasPermitidasResp || [];
   usuarios = usuariosResp.data || [];
+
+  lojasColunas = deduplicarLojasColunas([
+    ...(lojasColunasResp || []),
+    ...loteriasPermitidas.map(l => ({
+      id: l.loteria_id,
+      nome: l.loteria_nome,
+      slug: l.loteria_slug,
+      codigo: l.loteria_codigo
+    }))
+  ]);
 
   lojas = loteriasPermitidas.map(l => ({
     id: l.loteria_id,
@@ -1371,10 +1498,17 @@ try {
   return;
 }
 
+sincronizarLojasColunasComOperacional(lojasBolao);
+
 console.info('Exibir operacional — carga completa:', {
   boloes: boloes.length,
   vendas: vendas.length,
-  lojasBolao: lojasBolao.length
+  lojasBolao: lojasBolao.length,
+  lojasColunas: lojasColunas.map(loja => ({
+    id: loja.id,
+    codigo: loja.codigo,
+    slug: loja.slug
+  }))
 });
 
   const canalMap = {};
@@ -1399,13 +1533,34 @@ console.info('Exibir operacional — carga completa:', {
   });
 
   const lojaMap = {};
+
   (lojasBolao || []).forEach(r => {
-    if (!lojaMap[r.bolao_id]) lojaMap[r.bolao_id] = {};
-    lojaMap[r.bolao_id][r.loja_slug] = {
-      bruto: r.estoque_bruto_loja,
-      vend: r.qtd_vendida_loja,
-      bruto_venda: r.bruto_venda
+    if (!lojaMap[r.bolao_id]) {
+      lojaMap[r.bolao_id] = {};
+    }
+
+    const valor = {
+      bruto: Number(r.estoque_bruto_loja || 0),
+      vend: Number(r.qtd_vendida_loja || 0),
+      bruto_venda:
+        r.bruto_venda ||
+        fmtPair(
+          r.estoque_bruto_loja,
+          r.qtd_vendida_loja
+        )
     };
+
+    const chave = chaveLojaOperacional(r);
+
+    if (chave) {
+      lojaMap[r.bolao_id][chave] = valor;
+    }
+
+    const loteriaId = Number(r.loteria_id || 0);
+
+    if (loteriaId) {
+      lojaMap[r.bolao_id][`id:${loteriaId}`] = valor;
+    }
   });
 
   const funcIds = [...new Set((vendas || []).map(v => v.usuario_id).filter(Boolean))];
@@ -1423,7 +1578,7 @@ console.info('Exibir operacional — carga completa:', {
   wrap.className = 'table-wrap fade-in';
 
   const nFunc = funcIds.length;
-  const nSlug = slugsLojas.length;
+  const nSlug = lojasColunas.length;
 
   const grpRow = `<tr class="grp-row">
     <th colspan="10" class="grp-bolao sep-col">Bolão</th>
@@ -1440,9 +1595,14 @@ console.info('Exibir operacional — carga completa:', {
   </th>
 `).join('');
 
-const lojaCols = slugsLojas.map(s => `
-  <th class="col-loja">
-    ${slugLabel[s]}
+const lojaCols = lojasColunas.map(loja => `
+  <th
+    class="col-loja"
+    title="${loja.nome}"
+    data-loja-id="${loja.id || ''}"
+    data-loja-slug="${loja.slug}"
+  >
+    ${loja.codigo}
   </th>
 `).join('');
 
@@ -1567,15 +1727,22 @@ const classeEstoqueLiquido =
   </td>
 `).join('');
     
-    const lojaTds = slugsLojas.map(s => {
-  const cell = lm[s];
+    const lojaTds = lojasColunas.map(loja => {
+      const cell =
+        lm[loja.slug] ||
+        lm[`id:${loja.id}`];
 
-  return `
-    <td class="cyan col-loja cell-numero">
-      ${cell?.bruto_venda || fmtPair(null, null)}
-    </td>
-  `;
-}).join('');
+      return `
+        <td
+          class="cyan col-loja cell-numero"
+          title="${loja.nome}"
+          data-loja-id="${loja.id || ''}"
+          data-loja-slug="${loja.slug}"
+        >
+          ${cell?.bruto_venda || fmtPair(null, null)}
+        </td>
+      `;
+    }).join('');
     
 return `<tr>
   <td class="col-sel">
@@ -1686,20 +1853,43 @@ return `<tr>
 `;
   }).join('');
 
-  const totLojaTds = slugsLojas.map(s => {
-    const bruto = (lojasBolao || [])
-      .filter(r => r.loja_slug === s)
-      .reduce((sum, r) => sum + Number(r.estoque_bruto_loja || 0), 0);
+  const totLojaTds = lojasColunas.map(loja => {
+    const registrosLoja = (lojasBolao || []).filter(r => {
+      const mesmoId =
+        loja.id &&
+        Number(r.loteria_id || 0) === Number(loja.id);
 
-    const venda = (lojasBolao || [])
-      .filter(r => r.loja_slug === s)
-      .reduce((sum, r) => sum + Number(r.qtd_vendida_loja || 0), 0);
+      const mesmoSlug =
+        loja.slug &&
+        String(r.loja_slug || '')
+          .trim()
+          .toLowerCase() === loja.slug;
+
+      return mesmoId || mesmoSlug;
+    });
+
+    const bruto = registrosLoja.reduce(
+      (sum, r) =>
+        sum + Number(r.estoque_bruto_loja || 0),
+      0
+    );
+
+    const venda = registrosLoja.reduce(
+      (sum, r) =>
+        sum + Number(r.qtd_vendida_loja || 0),
+      0
+    );
 
     return `
-  <td class="cyan bold col-loja cell-numero">
-    ${fmtPair(bruto, venda)}
-  </td>
-`;
+      <td
+        class="cyan bold col-loja cell-numero"
+        title="${loja.nome}"
+        data-loja-id="${loja.id || ''}"
+        data-loja-slug="${loja.slug}"
+      >
+        ${fmtPair(bruto, venda)}
+      </td>
+    `;
   }).join('');
 
   const totEncFis = boloes.reduce((s, b) => s + Number(b.enc_fisico || 0), 0);
