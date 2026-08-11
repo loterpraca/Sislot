@@ -801,16 +801,52 @@ select:hover, input:hover { border-color: rgba(var(--accent-rgb), .3); }
 }
 
 
-/* ═══════════════════════════════════════════════════════════
-   CONTROLE DE VISIBILIDADE
-   Garante que elementos com atributo hidden nunca sejam
-   exibidos por regras de display do próprio componente.
-════════════════════════════════════════════════════════════ */
-[hidden] {
-  display: none !important;
+/* DATA DO PAGAMENTO — calendário nativo */
+.pay-grid {
+  grid-template-columns: minmax(160px, .9fr) minmax(210px, 1fr) minmax(170px, .82fr);
 }
 
-.modal-backdrop[hidden],
-.detail-content[hidden] {
-  display: none !important;
+.date-input {
+  position: relative;
+}
+
+.date-input > i {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.date-input input[type="date"] {
+  padding-left: 34px;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.date-input input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: .85;
+}
+
+@media (max-width: 1250px) {
+  .pay-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-date {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 680px) {
+  .pay-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field-date {
+    grid-column: auto;
+  }
 }
