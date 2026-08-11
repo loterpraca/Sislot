@@ -146,6 +146,15 @@
   }
 
   async function bootstrap() {
+    // Estado inicial seguro: a página SEMPRE nasce sem modal aberto.
+    const modalInicial = $('modalConfirmacao');
+    if (modalInicial) {
+      modalInicial.hidden = true;
+      modalInicial.setAttribute('aria-hidden', 'true');
+    }
+
+    document.body.style.overflow = '';
+
     iniciarRelogio();
 
     try {
@@ -631,12 +640,14 @@
     $('modalNovoSaldo').textContent = fmtBRL(Math.max(saldo - valor, 0));
 
     $('modalConfirmacao').hidden = false;
+    $('modalConfirmacao').setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     $('btnConfirmarModal').focus();
   }
 
   function fecharModal() {
     $('modalConfirmacao').hidden = true;
+    $('modalConfirmacao').setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
 
