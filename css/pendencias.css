@@ -850,3 +850,18 @@ select:hover, input:hover { border-color: rgba(var(--accent-rgb), .3); }
     grid-column: auto;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   VISIBILIDADE — REGRA DEFINITIVA
+   Author CSS precisa vencer .modal-backdrop { display:grid }.
+════════════════════════════════════════════════════════════ */
+[hidden] {
+  display: none !important;
+}
+
+.modal-backdrop[hidden],
+.detail-content[hidden],
+#modalConfirmacao[hidden] {
+  display: none !important;
+}
