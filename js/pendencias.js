@@ -39,6 +39,13 @@
     return `${get('year')}-${get('month')}-${get('day')}`;
   };
 
+
+  const fmtDataInput = (iso) => {
+    if (!iso) return '—';
+    const [y, m, d] = String(iso).split('-');
+    return y && m && d ? `${d}/${m}/${y}` : '—';
+  };
+
   const normalizar = (s) =>
     String(s || '')
       .normalize('NFD')
@@ -139,13 +146,6 @@
   }
 
   async function bootstrap() {
-    // Estado visual inicial seguro.
-    // Evita que o modal apareça durante o primeiro paint da página.
-    const modalInicial = $('modalConfirmacao');
-    if (modalInicial) modalInicial.hidden = true;
-
-    document.body.style.overflow = '';
-
     iniciarRelogio();
 
     try {
@@ -183,6 +183,13 @@
       montarSelectLojas(inicial);
       aplicarLoja(inicial);
       bindEventos();
+
+      const dataPagamento = $('dataPagamento');
+      if (dataPagamento) {
+        const hoje = hojeSP();
+        dataPagamento.value = hoje;
+        dataPagamento.max = hoje;
+      }
 
       await carregarDashboard();
     } catch (err) {
@@ -235,6 +242,21 @@
     $('valorPagamento').addEventListener('blur', () => {
       const v = numeroMoeda($('valorPagamento').value);
       $('valorPagamento').value = v > 0 ? valorInput(v) : '';
+      atualizarPreview();
+    });
+
+    $('dataPagamento').addEventListener('change', () => {
+      const hoje = hojeSP();
+
+      if (!$('dataPagamento').value) {
+        $('dataPagamento').value = hoje;
+      }
+
+      if ($('dataPagamento').value > hoje) {
+        $('dataPagamento').value = hoje;
+        toast('Data inválida', 'A data do pagamento não pode ser futura.', 'err');
+      }
+
       atualizarPreview();
     });
 
@@ -483,6 +505,14 @@
   function limparFormulario() {
     $('valorPagamento').value = '';
     $('observacao').value = '';
+
+    const dataPagamento = $('dataPagamento');
+    if (dataPagamento) {
+      const hoje = hojeSP();
+      dataPagamento.value = hoje;
+      dataPagamento.max = hoje;
+    }
+
     estado.forma = 'DINHEIRO';
     document.querySelectorAll('.seg').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.forma === 'DINHEIRO');
@@ -498,7 +528,17 @@
 
     $('novoSaldoPreview').textContent = fmtBRL(novo);
 
-    const valido = !!estado.cliente && valor > 0 && valor <= saldo && !estado.salvando;
+    const data = $('dataPagamento')?.value || '';
+    const hoje = hojeSP();
+
+    const valido =
+      !!estado.cliente &&
+      valor > 0 &&
+      valor <= saldo &&
+      !!data &&
+      data <= hoje &&
+      !estado.salvando;
+
     $('btnRegistrar').disabled = !valido;
   }
 
@@ -573,7 +613,20 @@
 
     $('modalCliente').textContent = estado.cliente.cliente_nome;
     $('modalFuncionario').textContent = estado.funcionario.funcionario_nome;
+    const dataPagamento = $('dataPagamento').value;
+
+    if (!dataPagamento) {
+      toast('Informe a data', 'Selecione a data em que o pagamento foi realizado.', 'err');
+      return;
+    }
+
+    if (dataPagamento > hojeSP()) {
+      toast('Data inválida', 'A data do pagamento não pode ser futura.', 'err');
+      return;
+    }
+
     $('modalForma').textContent = estado.forma;
+    $('modalData').textContent = fmtDataInput(dataPagamento);
     $('modalValor').textContent = fmtBRL(valor);
     $('modalNovoSaldo').textContent = fmtBRL(Math.max(saldo - valor, 0));
 
@@ -613,7 +666,7 @@
           p_valor: valor,
           p_forma_pagamento: estado.forma,
           p_observacao: $('observacao').value.trim() || null,
-          p_data_movimento: hojeSP(),
+          p_data_movimento: $('dataPagamento').value || hojeSP(),
           p_operacao_id: estado.operacaoId
         }
       );
