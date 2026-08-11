@@ -799,3 +799,18 @@ select:hover, input:hover { border-color: rgba(var(--accent-rgb), .3); }
   .resumo-strip > div:last-child { border-bottom:0; }
   .pay-grid { grid-template-columns:1fr; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   CONTROLE DE VISIBILIDADE
+   Garante que elementos com atributo hidden nunca sejam
+   exibidos por regras de display do próprio componente.
+════════════════════════════════════════════════════════════ */
+[hidden] {
+  display: none !important;
+}
+
+.modal-backdrop[hidden],
+.detail-content[hidden] {
+  display: none !important;
+}
