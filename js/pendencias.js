@@ -139,6 +139,13 @@
   }
 
   async function bootstrap() {
+    // Estado visual inicial seguro.
+    // Evita que o modal apareça durante o primeiro paint da página.
+    const modalInicial = $('modalConfirmacao');
+    if (modalInicial) modalInicial.hidden = true;
+
+    document.body.style.overflow = '';
+
     iniciarRelogio();
 
     try {
