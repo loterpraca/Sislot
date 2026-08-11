@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#00c896">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Pendências — SISLOT</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="./css/pendencias.css">
+</head>
+
+<body data-loja="centro">
+
+<header class="header">
+  <div class="header-inner">
+    <button type="button" class="loja-tree" id="lojaTreeWrap" title="Trocar loja">
+      <img src="./icons/centro.png" alt="Logo da loja" id="logoImg">
+    </button>
+
+    <div class="header-info">
+      <div class="header-nome" id="headerTitle">SISLOT</div>
+      <div class="header-sub">Pendências de Clientes</div>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <div id="relogio">--:--:--</div>
+
+    <button type="button" class="btn-menu" id="btnAtualizar" title="Atualizar dados">
+      <i class="fas fa-rotate"></i>
+      <span>Atualizar</span>
+    </button>
+
+    <button type="button" class="btn-menu" id="btnInicio">
+      <i class="fas fa-home"></i>
+      <span>Início</span>
+    </button>
+
+    <button type="button" class="btn-menu" id="btnSair">
+      <i class="fas fa-right-from-bracket"></i>
+      <span>Sair</span>
+    </button>
+  </div>
+</header>
+
+<main class="main">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow"><span></span> CONTROLE FINANCEIRO</div>
+      <h1>Pendências de <strong>Clientes</strong></h1>
+      <p>Selecione o funcionário, localize o cliente e registre o abatimento em poucos passos.</p>
+    </div>
+
+    <div class="access-chip">
+      <i class="fas fa-shield-halved"></i>
+      <span id="usuarioAcesso">ADMIN / SÓCIO</span>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <div class="field">
+      <label for="filtroLoja">Loja</label>
+      <select id="filtroLoja">
+        <option value="">Carregando...</option>
+      </select>
+    </div>
+
+    <div class="toolbar-note">
+      <i class="fas fa-circle-info"></i>
+      <span>Os saldos são separados por cliente e funcionário.</span>
+    </div>
+  </section>
+
+  <section class="kpi-grid">
+    <article class="kpi-card">
+      <div class="kpi-icon"><i class="fas fa-wallet"></i></div>
+      <div>
+        <div class="kpi-label">Total pendente</div>
+        <div class="kpi-value" id="kpiTotal">R$ 0,00</div>
+      </div>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-icon"><i class="fas fa-user-clock"></i></div>
+      <div>
+        <div class="kpi-label">Clientes pendentes</div>
+        <div class="kpi-value" id="kpiClientes">0</div>
+      </div>
+    </article>
+
+    <article class="kpi-card">
+      <div class="kpi-icon"><i class="fas fa-users"></i></div>
+      <div>
+        <div class="kpi-label">Funcionários com saldo</div>
+        <div class="kpi-value" id="kpiFuncionarios">0</div>
+      </div>
+    </article>
+  </section>
+
+  <section class="workspace">
+    <!-- FUNCIONÁRIOS -->
+    <aside class="panel panel-func">
+      <div class="panel-head">
+        <div>
+          <div class="panel-kicker">1º PASSO</div>
+          <h2>Funcionário</h2>
+        </div>
+        <span class="panel-count" id="funcCount">0</span>
+      </div>
+
+      <div class="panel-scroll" id="funcList">
+        <div class="state">
+          <span class="spinner"></span>
+          <strong>Carregando</strong>
+          <small>Buscando funcionários...</small>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CLIENTES -->
+    <section class="panel panel-clientes">
+      <div class="panel-head">
+        <div>
+          <div class="panel-kicker">2º PASSO</div>
+          <h2>Cliente</h2>
+        </div>
+        <span class="panel-count" id="clienteCount">0</span>
+      </div>
+
+      <div class="search-wrap">
+        <i class="fas fa-magnifying-glass"></i>
+        <input id="buscaCliente" type="search" autocomplete="off" placeholder="Buscar cliente..." disabled>
+        <kbd>/</kbd>
+      </div>
+
+      <div class="panel-scroll" id="clienteList">
+        <div class="state">
+          <i class="fas fa-arrow-left"></i>
+          <strong>Selecione um funcionário</strong>
+          <small>Os clientes com saldo aparecerão aqui.</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- DETALHE -->
+    <section class="panel panel-detalhe">
+      <div id="detalheVazio" class="detail-empty">
+        <div class="detail-empty-icon"><i class="fas fa-receipt"></i></div>
+        <strong>Selecione um cliente</strong>
+        <span>O saldo, o extrato e o lançamento do abatimento aparecerão aqui.</span>
+      </div>
+
+      <div id="detalheConteudo" class="detail-content" hidden>
+        <div class="cliente-hero">
+          <div>
+            <div class="panel-kicker">3º PASSO</div>
+            <h2 id="detClienteNome">—</h2>
+            <div class="cliente-meta">
+              <span id="detFuncionario">—</span>
+              <span class="dot">•</span>
+              <span id="detTelefone">Sem telefone</span>
+            </div>
+          </div>
+
+          <div class="saldo-box">
+            <span>Saldo pendente</span>
+            <strong id="detSaldo">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div class="resumo-strip">
+          <div>
+            <span>Total em débitos</span>
+            <strong id="detDebitos">R$ 0,00</strong>
+          </div>
+          <div>
+            <span>Já abatido</span>
+            <strong id="detPagamentos">R$ 0,00</strong>
+          </div>
+          <div>
+            <span>Último débito</span>
+            <strong id="detUltimoDebito">—</strong>
+          </div>
+        </div>
+
+        <div class="abatimento-card">
+          <div class="abatimento-head">
+            <div>
+              <div class="panel-kicker">ABATIMENTO</div>
+              <h3>Registrar pagamento</h3>
+            </div>
+            <button type="button" class="btn-quitar" id="btnQuitarTotal">
+              Quitar total
+            </button>
+          </div>
+
+          <div class="pay-grid">
+            <div class="field field-money">
+              <label for="valorPagamento">Valor recebido</label>
+              <div class="money-input">
+                <span>R$</span>
+                <input id="valorPagamento" inputmode="decimal" autocomplete="off" placeholder="0,00">
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Forma</label>
+              <div class="segmented">
+                <button type="button" class="seg active" data-forma="DINHEIRO">
+                  <i class="fas fa-money-bill-wave"></i>
+                  Dinheiro
+                </button>
+                <button type="button" class="seg" data-forma="PIX">
+                  <i class="fas fa-bolt"></i>
+                  PIX
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-pay">
+            <span>Novo saldo após abatimento</span>
+            <strong id="novoSaldoPreview">R$ 0,00</strong>
+          </div>
+
+          <div class="field">
+            <label for="observacao">Observação <small>opcional</small></label>
+            <input id="observacao" maxlength="180" placeholder="Ex.: pagamento parcial realizado na loja">
+          </div>
+
+          <button type="button" class="btn-confirmar" id="btnRegistrar">
+            <i class="fas fa-check"></i>
+            <span>Registrar abatimento</span>
+          </button>
+        </div>
+
+        <div class="extrato-card">
+          <div class="extrato-head">
+            <div>
+              <div class="panel-kicker">HISTÓRICO</div>
+              <h3>Extrato</h3>
+            </div>
+            <span id="extratoCount">0 movimentos</span>
+          </div>
+
+          <div id="extratoList" class="extrato-list"></div>
+        </div>
+      </div>
+    </section>
+  </section>
+</main>
+
+<!-- MODAL CONFIRMAÇÃO -->
+<div class="modal-backdrop" id="modalConfirmacao" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+    <button type="button" class="modal-close" id="btnFecharModal" aria-label="Fechar">
+      <i class="fas fa-xmark"></i>
+    </button>
+
+    <div class="modal-icon"><i class="fas fa-check"></i></div>
+    <div class="modal-kicker">CONFIRMAR ABATIMENTO</div>
+    <h2 id="modalTitulo">Confirmar pagamento?</h2>
+
+    <div class="modal-summary">
+      <div><span>Cliente</span><strong id="modalCliente">—</strong></div>
+      <div><span>Funcionário</span><strong id="modalFuncionario">—</strong></div>
+      <div><span>Forma</span><strong id="modalForma">—</strong></div>
+      <div class="modal-main-value"><span>Valor</span><strong id="modalValor">R$ 0,00</strong></div>
+      <div><span>Novo saldo</span><strong id="modalNovoSaldo">R$ 0,00</strong></div>
+    </div>
+
+    <div class="modal-alert">
+      <i class="fas fa-circle-exclamation"></i>
+      <span>O pagamento será gravado como quitado e abatido imediatamente da dívida.</span>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="btnCancelarModal">Cancelar</button>
+      <button type="button" class="btn-primary" id="btnConfirmarModal">
+        <i class="fas fa-check"></i>
+        Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./sislot-config.js"></script>
+<script src="./sislot-security.js"></script>
+<script src="./js/pendencias.js"></script>
+</body>
+</html>
