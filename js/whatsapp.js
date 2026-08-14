@@ -37,6 +37,8 @@ let bolaoSelReg    = null;
 let viewMode       = 'bolao';
 let coresBolao     = {};
 let selecionarClienteAposSalvar = false;
+let filaVendasBolao = [];
+let registrandoFilaVendas = false;
 
 const pickerState = {
   items: [],
@@ -228,6 +230,17 @@ async function trocarLojaWhatsappPorOffset(offset){
 
 async function trocarLojaWhatsapp(loja){
   if (!loja) return;
+
+  const novoId = Number(loja.loteria_id || loja.id || 0);
+  const atualId = Number(lojaWhatsappAtiva?.loteria_id || 0);
+
+  if (atualId && novoId && atualId !== novoId) {
+    const podeTrocar = await confirmarDescarteFila(
+      'Trocar loja',
+      'Há clientes adicionados ao bolão atual. Ao trocar de loja, essa lista ainda não registrada será descartada.'
+    );
+    if (!podeTrocar) return;
+  }
 
   const permitida = lojasPermitidas.find(
     item => Number(item.loteria_id) === Number(loja.loteria_id || loja.id)
@@ -423,7 +436,18 @@ async function init(){
   const lojaChip = $('wppLojaChip');
   if (lojaChip) lojaChip.onclick = () => trocarLojaWhatsappPorOffset(1);
   const btnLimparBolaoWpp = $('btnLimparBolaoWpp');
-  if (btnLimparBolaoWpp) btnLimparBolaoWpp.onclick = limparBolaoSelecionadoWpp;
+  if (btnLimparBolaoWpp) {
+    btnLimparBolaoWpp.onclick = async () => {
+      const podeLimpar = await confirmarDescarteFila(
+        'Limpar bolão',
+        'Há clientes adicionados e ainda não registrados. Deseja descartar a lista e limpar a seleção do bolão?'
+      );
+      if (podeLimpar) limparBolaoSelecionadoWpp();
+    };
+  }
+
+  const btnLimparFilaWpp = $('btnLimparFilaWpp');
+  if (btnLimparFilaWpp) btnLimparFilaWpp.onclick = limparFilaVendasBolaoConfirmar;
 
   const btnFecharVendaWpp = $('btnFecharVendaWpp');
   if (btnFecharVendaWpp) btnFecharVendaWpp.onclick = fecharPainelVendaWpp;
@@ -475,7 +499,13 @@ function alterarDataVendas(deltaDias){
   return carregarVendas();
 }
 
-function alterarDataRegistro(deltaDias){
+async function alterarDataRegistro(deltaDias){
+  const podeAlterar = await confirmarDescarteFila(
+    'Alterar data',
+    'Há clientes adicionados ao bolão atual. Ao alterar a data, essa lista ainda não registrada será descartada.'
+  );
+  if (!podeAlterar) return;
+
   const d = normalizaDataLocal(dataAtualReg);
   d.setDate(d.getDate() + deltaDias);
   dataAtualReg = d;
@@ -887,7 +917,9 @@ function abrirPainelVendaWpp(b){
   panel.classList.add('open');
   panel.setAttribute('aria-hidden', 'false');
   document.body.classList.add('wpp-sale-open');
+  renderFilaVendasBolao();
 }
+
 function fecharPainelVendaWpp(){
   const panel = $('wppSalePanel');
   if (!panel) return;
@@ -897,8 +929,11 @@ function fecharPainelVendaWpp(){
   document.body.classList.remove('wpp-sale-open');
 }
 
-function limparBolaoSelecionadoWpp(){
+function limparBolaoSelecionadoWpp(opcoes = {}){
+  const preservarStatus = Boolean(opcoes.preservarStatus);
+
   bolaoSelReg = null;
+  filaVendasBolao = [];
 
   document.querySelectorAll('.bolao-sel-card').forEach(c => {
     c.classList.remove('selected');
@@ -912,6 +947,13 @@ function limparBolaoSelecionadoWpp(){
     $('inputQtd').value = '1';
   }
 
+  if ($('chkPago')) {
+    $('chkPago').checked = false;
+  }
+
+  limparClienteVenda();
+  renderFilaVendasBolao();
+
   const panel = $('wppSelectedPanel');
   if (panel) {
     panel.style.display = 'none';
@@ -919,8 +961,247 @@ function limparBolaoSelecionadoWpp(){
 
   fecharPainelVendaWpp();
   calcTotal();
+
+  if (!preservarStatus) {
+    clearStatusReg();
+  }
+}
+
+async function confirmarDescarteFila(titulo, corpo){
+  if (!filaVendasBolao.length) return true;
+  return confirmar(titulo, corpo);
+}
+
+async function limparFilaVendasBolaoConfirmar(){
+  if (!filaVendasBolao.length) return;
+
+  const ok = await confirmar(
+    'Limpar lista',
+    `Remover ${filaVendasBolao.length} cliente(s) ainda não registrado(s) deste bolão?`
+  );
+
+  if (!ok) return;
+
+  filaVendasBolao = [];
+  renderFilaVendasBolao();
+  setStatusReg('Lista de clientes limpa. O bolão continua selecionado.', 'info');
+}
+
+function getQtdFilaVendas(){
+  return filaVendasBolao.reduce((s, item) => s + Number(item.qtd || 0), 0);
+}
+
+function getValorFilaVendas(){
+  const valorCota = Number(bolaoSelReg?.valor_cota || 0);
+  return getQtdFilaVendas() * valorCota;
+}
+
+function renderFilaVendasBolao(){
+  const panel = $('wppBatchPanel');
+  const list = $('wppBatchList');
+  const count = $('wppBatchCount');
+  const resumoQtd = $('wppBatchQtd');
+  const resumoTotal = $('wppBatchTotal');
+  const saldoApos = $('wppBatchSaldoApos');
+  const btnRegistrar = $('btnRegistrar');
+
+  if (!panel || !list) return;
+
+  const totalItens = filaVendasBolao.length;
+  const totalCotas = getQtdFilaVendas();
+  const saldoAtual = bolaoSelReg ? getSaldoContextoBolao(bolaoSelReg) : 0;
+  const saldoProjetado = Math.max(0, saldoAtual - totalCotas);
+
+  panel.classList.toggle('show', totalItens > 0);
+
+  if (count) {
+    count.textContent = `${totalItens} cliente${totalItens === 1 ? '' : 's'}`;
+  }
+
+  if (resumoQtd) {
+    resumoQtd.textContent = `${totalCotas} cota${totalCotas === 1 ? '' : 's'}`;
+  }
+
+  if (resumoTotal) {
+    resumoTotal.textContent = fmtBRL(getValorFilaVendas());
+  }
+
+  if (saldoApos) {
+    saldoApos.textContent = String(saldoProjetado);
+  }
+
+  if (btnRegistrar) {
+    btnRegistrar.disabled = registrandoFilaVendas || totalItens === 0;
+    btnRegistrar.innerHTML = registrandoFilaVendas
+      ? `<span class="spinner spinner-inline"></span> Registrando…`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Registrar ${totalItens || ''} venda${totalItens === 1 ? '' : 's'}`;
+  }
+
+  list.innerHTML = '';
+
+  filaVendasBolao.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'wpp-batch-row';
+
+    row.innerHTML = `
+      <div class="wpp-batch-avatar">${iniciais(item.cliente?.nome)}</div>
+
+      <div class="wpp-batch-client">
+        <strong>${item.cliente?.nome || 'Cliente'}</strong>
+        <span>${item.cliente?.apelido || item.cliente?.telefone || ''}</span>
+      </div>
+
+      <div class="wpp-batch-qty">
+        <button type="button" onclick="ajustarQtdFila(${Number(item.cliente.id)}, -1)" ${registrandoFilaVendas ? 'disabled' : ''}>−</button>
+        <strong>${Number(item.qtd || 0)}</strong>
+        <button type="button" onclick="ajustarQtdFila(${Number(item.cliente.id)}, 1)" ${registrandoFilaVendas ? 'disabled' : ''}>+</button>
+      </div>
+
+      <button
+        type="button"
+        class="wpp-batch-paid ${item.pago ? 'paid' : ''}"
+        onclick="togglePagoFila(${Number(item.cliente.id)})"
+        ${registrandoFilaVendas ? 'disabled' : ''}
+        title="Alternar situação de pagamento"
+      >
+        ${item.pago ? '✓ Pago' : '$ Pend.'}
+      </button>
+
+      <div class="wpp-batch-value">${fmtBRL(Number(item.qtd || 0) * Number(bolaoSelReg?.valor_cota || 0))}</div>
+
+      <button
+        type="button"
+        class="wpp-batch-remove"
+        onclick="removerVendaFila(${Number(item.cliente.id)})"
+        ${registrandoFilaVendas ? 'disabled' : ''}
+        title="Remover da lista"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+
+    list.appendChild(row);
+  });
+}
+
+function adicionarVendaFila(){
+  if (!bolaoSelReg) {
+    setStatusReg('Selecione um bolão.', 'err');
+    return false;
+  }
+
+  if (!clienteSel) {
+    setStatusReg('Selecione um cliente.', 'err');
+    return false;
+  }
+
+  const qtd = parseInt($('inputQtd')?.value, 10) || 0;
+  const val = parseBRL($('inputValor')?.value);
+  const pago = Boolean($('chkPago')?.checked);
+
+  if (qtd < 1) {
+    setStatusReg('Qtd deve ser ≥ 1.', 'err');
+    return false;
+  }
+
+  if (val <= 0) {
+    setStatusReg('Valor deve ser > 0.', 'err');
+    return false;
+  }
+
+  const saldoContexto = getSaldoContextoBolao(bolaoSelReg);
+  const qtdProjetada = getQtdFilaVendas() + qtd;
+
+  if (qtdProjetada > saldoContexto) {
+    setStatusReg(
+      `Saldo insuficiente no WhatsApp ${lojaWhatsappAtiva?.loteria_nome || ''}. Disponível: ${saldoContexto}; já separado na lista: ${getQtdFilaVendas()}.`,
+      'err'
+    );
+    return false;
+  }
+
+  const clienteAtual = clienteSel;
+  const existente = filaVendasBolao.find(
+    item => Number(item.cliente?.id) === Number(clienteAtual.id)
+  );
+
+  if (existente) {
+    existente.qtd = Number(existente.qtd || 0) + qtd;
+    // Se qualquer parte estiver pendente, a venda consolidada permanece pendente.
+    existente.pago = Boolean(existente.pago && pago);
+  } else {
+    filaVendasBolao.push({
+      cliente: clienteAtual,
+      qtd,
+      pago
+    });
+  }
+
+  limparClienteVenda();
+  $('inputQtd').value = '1';
+  $('chkPago').checked = false;
+  calcTotal();
+  renderFilaVendasBolao();
+
+  setStatusReg(
+    `✓ ${clienteAtual.nome} adicionado à lista. Total reservado neste bolão: ${getQtdFilaVendas()} cota(s).`,
+    'ok'
+  );
+
+  return true;
+}
+
+function removerVendaFila(clienteId){
+  if (registrandoFilaVendas) return;
+
+  filaVendasBolao = filaVendasBolao.filter(
+    item => Number(item.cliente?.id) !== Number(clienteId)
+  );
+
+  renderFilaVendasBolao();
+
+  if (!filaVendasBolao.length) {
+    setStatusReg('Lista vazia. O bolão continua selecionado.', 'info');
+  }
+}
+
+function ajustarQtdFila(clienteId, delta){
+  if (registrandoFilaVendas) return;
+
+  const item = filaVendasBolao.find(
+    x => Number(x.cliente?.id) === Number(clienteId)
+  );
+
+  if (!item) return;
+
+  const atual = Number(item.qtd || 0);
+  const proxima = Math.max(1, atual + Number(delta || 0));
+  const novoTotal = getQtdFilaVendas() - atual + proxima;
+  const saldoContexto = getSaldoContextoBolao(bolaoSelReg);
+
+  if (novoTotal > saldoContexto) {
+    setStatusReg(`Saldo máximo deste bolão no WhatsApp: ${saldoContexto} cota(s).`, 'err');
+    return;
+  }
+
+  item.qtd = proxima;
+  renderFilaVendasBolao();
   clearStatusReg();
 }
+
+function togglePagoFila(clienteId){
+  if (registrandoFilaVendas) return;
+
+  const item = filaVendasBolao.find(
+    x => Number(x.cliente?.id) === Number(clienteId)
+  );
+
+  if (!item) return;
+
+  item.pago = !item.pago;
+  renderFilaVendasBolao();
+}
+
 function getSaldoContextoBolao(b){
   const lojaId = Number(lojaWhatsappAtiva?.loteria_id || 0);
   const saldo = (b.saldos_lojas || []).find(s => Number(s.loteria_id) === lojaId);
@@ -1008,11 +1289,21 @@ function normalizarBoloesWpp(rows){
   return Object.values(mapa).filter(b => getSaldoContextoBolao(b) > 0);
 }
 
-async function buscarBoloesReg(){
+async function buscarBoloesReg(opcoes = {}){
   const lista = $('boloesRegLista');
   if (!lista) return;
 
-  limparBolaoSelecionadoWpp();
+  const manterSelecao = Boolean(opcoes.manterSelecao);
+  const manterScroll = Boolean(opcoes.manterScroll);
+  const preservarStatus = Boolean(opcoes.preservarStatus);
+  const bolaoIdSelecionado = manterSelecao
+    ? Number(opcoes.bolaoId || bolaoSelReg?.id || 0)
+    : 0;
+  const scrollAnterior = manterScroll ? window.scrollY : null;
+
+  if (!manterSelecao) {
+    limparBolaoSelecionadoWpp({ preservarStatus });
+  }
 
   lista.innerHTML = '<div class="state-box" style="padding:24px"><div class="spinner"></div></div>';
 
@@ -1049,58 +1340,123 @@ async function buscarBoloesReg(){
         <div class="state-title">Nenhum bolão com saldo</div>
         <div class="state-sub">Não há saldo disponível para o WhatsApp ${lojaWhatsappAtiva.loteria_nome} em ${fmtData(dataAtualReg)}.</div>
       </div>`;
+
+    if (manterSelecao) {
+      limparBolaoSelecionadoWpp({ preservarStatus: true });
+    }
+
+    if (manterScroll && scrollAnterior !== null) {
+      requestAnimationFrame(() => window.scrollTo({ top: scrollAnterior, left: 0, behavior: 'auto' }));
+    }
     return;
   }
 
-  renderBoloesReg(boloes);
+  renderBoloesReg(boloes, {
+    selecionarId: bolaoIdSelecionado,
+    preservarStatus
+  });
+
+  if (manterScroll && scrollAnterior !== null) {
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: scrollAnterior,
+        left: 0,
+        behavior: 'auto'
+      });
+    });
+  }
 }
 
-function renderBoloesReg(boloes){
+async function selecionarBolaoRegistro(b, card, opcoes = {}){
+  if (!b || !card) return false;
+
+  const atualId = Number(bolaoSelReg?.id || 0);
+  const novoId = Number(b.id || 0);
+  const mudouBolao = atualId && atualId !== novoId;
+
+  if (mudouBolao && filaVendasBolao.length && !opcoes.forcar) {
+    const ok = await confirmar(
+      'Trocar bolão',
+      `Há ${filaVendasBolao.length} cliente(s) ainda não registrado(s). Deseja descartar essa lista e selecionar outro bolão?`
+    );
+
+    if (!ok) return false;
+
+    filaVendasBolao = [];
+    renderFilaVendasBolao();
+  }
+
+  document.querySelectorAll('.bolao-sel-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+
+  bolaoSelReg = b;
+
+  $('inputValor').value = Number(b.valor_cota).toLocaleString('pt-BR', { minimumFractionDigits:2 });
+  $('inputQtd').value = '1';
+  $('chkPago').checked = false;
+
+  if (mudouBolao && !opcoes.preservarCliente) {
+    limparClienteVenda();
+  }
+
+  renderResumoBolaoSelecionado(b);
+  abrirPainelVendaWpp(b);
+  calcTotal();
+  renderFilaVendasBolao();
+
+  if (!opcoes.preservarStatus) {
+    clearStatusReg();
+  }
+
+  return true;
+}
+
+function renderBoloesReg(boloes, opcoes = {}){
   const wrap = document.createElement('div');
   wrap.className = 'bolao-cards-grid';
 
   let grupos = {};
-let gruposOrdenados = [];
+  let gruposOrdenados = [];
 
-if (utils.agruparOrdenarPorCampos) {
-  const ordenado = utils.agruparOrdenarPorCampos(boloes || [], {
-    campoGrupo: 'modalidade',
-    campoPreco: 'valor_cota',
-    campoConcurso: 'concurso',
-    campoOrigem: 'loteria_origem_nome'
-  });
+  if (utils.agruparOrdenarPorCampos) {
+    const ordenado = utils.agruparOrdenarPorCampos(boloes || [], {
+      campoGrupo: 'modalidade',
+      campoPreco: 'valor_cota',
+      campoConcurso: 'concurso',
+      campoOrigem: 'loteria_origem_nome'
+    });
 
-  grupos = ordenado.grupos;
-  gruposOrdenados = ordenado.gruposOrdenados;
-} else {
-  (boloes || []).forEach(b => {
-    if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
-    grupos[b.modalidade].push(b);
-  });
+    grupos = ordenado.grupos;
+    gruposOrdenados = ordenado.gruposOrdenados;
+  } else {
+    (boloes || []).forEach(b => {
+      if (!grupos[b.modalidade]) grupos[b.modalidade] = [];
+      grupos[b.modalidade].push(b);
+    });
 
-  gruposOrdenados = Object.keys(grupos).sort((a, b) =>
-    String(a || '').localeCompare(String(b || ''), 'pt-BR')
-  );
+    gruposOrdenados = Object.keys(grupos).sort((a, b) =>
+      String(a || '').localeCompare(String(b || ''), 'pt-BR')
+    );
+
+    gruposOrdenados.forEach(mod => {
+      grupos[mod].sort((a, b) => {
+        const precoA = Number(a.valor_cota || 0);
+        const precoB = Number(b.valor_cota || 0);
+
+        if (precoA !== precoB) return precoA - precoB;
+
+        const concursoA = Number(a.concurso || 0);
+        const concursoB = Number(b.concurso || 0);
+
+        if (concursoA !== concursoB) return concursoA - concursoB;
+
+        return String(a.loteria_origem_nome || '')
+          .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
+      });
+    });
+  }
 
   gruposOrdenados.forEach(mod => {
-    grupos[mod].sort((a, b) => {
-      const precoA = Number(a.valor_cota || 0);
-      const precoB = Number(b.valor_cota || 0);
-
-      if (precoA !== precoB) return precoA - precoB;
-
-      const concursoA = Number(a.concurso || 0);
-      const concursoB = Number(b.concurso || 0);
-
-      if (concursoA !== concursoB) return concursoA - concursoB;
-
-      return String(a.loteria_origem_nome || '')
-        .localeCompare(String(b.loteria_origem_nome || ''), 'pt-BR');
-    });
-  });
-}
-
-gruposOrdenados.forEach(mod => {
     const sep = document.createElement('div');
     sep.className = 'sec-sep';
     sep.style.margin = '8px 0 6px';
@@ -1108,70 +1464,72 @@ gruposOrdenados.forEach(mod => {
     wrap.appendChild(sep);
 
     (grupos[mod] || []).forEach(b => {
-        const saldoContexto = getSaldoContextoBolao(b);
+      const saldoContexto = getSaldoContextoBolao(b);
 
-        const saldoPills = (b.saldos_lojas || []).map(s => {
-          const saldo = Number(s.saldo_real || 0);
-          const ehContexto = Number(s.loteria_id) === Number(lojaWhatsappAtiva?.loteria_id);
-          
+      const saldoPills = (b.saldos_lojas || []).map(s => {
+        const saldo = Number(s.saldo_real || 0);
+        const ehContexto = Number(s.loteria_id) === Number(lojaWhatsappAtiva?.loteria_id);
 
-          return `
-            <span class="saldo-pill ${ehContexto ? 'contexto' : ''} ${saldo <= 0 ? 'zero' : ''}">
-              <span class="sp-loja">${siglaLoja(s)}</span>
-              <span class="sp-val">${saldo}</span>
-            </span>`;
-        }).join('');
+        return `
+          <span class="saldo-pill ${ehContexto ? 'contexto' : ''} ${saldo <= 0 ? 'zero' : ''}">
+            <span class="sp-loja">${siglaLoja(s)}</span>
+            <span class="sp-val">${saldo}</span>
+          </span>`;
+      }).join('');
 
-        const card = document.createElement('div');
-        card.className = 'bolao-sel-card';
-        card.dataset.id = b.id;
+      const card = document.createElement('div');
+      card.className = 'bolao-sel-card';
+      card.dataset.id = b.id;
 
-        card.innerHTML = `
-          <div class="bsc-main">
-            <div class="bsc-header">
-              <span class="bsc-modal">${b.modalidade}</span>
-              <span class="bsc-tag" style="color:var(--t1);background:var(--t3);border-color:var(--t4)">#${b.concurso}</span>
-              <span class="bsc-tag" style="color:#f5a623;background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2)">${b.loteria_origem_nome || '—'}</span>
-              
-            </div>
-
-            <div class="bsc-tags">
-              <span class="bsc-tag">${b.qtd_jogos} jogos</span>
-              <span class="bsc-tag">${b.qtd_dezenas} dez.</span>
-              <span class="bsc-tag">${b.qtd_cotas_total} cotas</span>
-              <span class="bsc-tag" style="color:#f5a623">${fmtBRL(b.valor_cota)}</span>
-            </div>
-
-            <div class="bsc-saldos">${saldoPills}</div>
+      card.innerHTML = `
+        <div class="bsc-main">
+          <div class="bsc-header">
+            <span class="bsc-modal">${b.modalidade}</span>
+            <span class="bsc-tag" style="color:var(--t1);background:var(--t3);border-color:var(--t4)">#${b.concurso}</span>
+            <span class="bsc-tag" style="color:#f5a623;background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.2)">${b.loteria_origem_nome || '—'}</span>
           </div>
 
-          <div class="bsc-ind">
-            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="2 6 5 9 10 3"/>
-            </svg>
-          </div>`;
+          <div class="bsc-tags">
+            <span class="bsc-tag">${b.qtd_jogos} jogos</span>
+            <span class="bsc-tag">${b.qtd_dezenas} dez.</span>
+            <span class="bsc-tag">${b.qtd_cotas_total} cotas</span>
+            <span class="bsc-tag" style="color:#f5a623">${fmtBRL(b.valor_cota)}</span>
+          </div>
 
-        card.onclick = () => {
-          document.querySelectorAll('.bolao-sel-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
+          <div class="bsc-saldos">${saldoPills}</div>
+        </div>
 
-          bolaoSelReg = b;
+        <div class="bsc-ind">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="2 6 5 9 10 3"/>
+          </svg>
+        </div>`;
 
-          $('inputValor').value = Number(b.valor_cota).toLocaleString('pt-BR', { minimumFractionDigits:2 });
-          $('inputQtd').value = '1';
+      card.onclick = () => selecionarBolaoRegistro(b, card);
 
-          renderResumoBolaoSelecionado(b);
-          abrirPainelVendaWpp(b);
-          calcTotal();
-          clearStatusReg();
-        };
-
-        wrap.appendChild(card);
-      });
+      wrap.appendChild(card);
+    });
   });
 
   $('boloesRegLista').innerHTML = '';
   $('boloesRegLista').appendChild(wrap);
+
+  const selecionarId = Number(opcoes.selecionarId || 0);
+
+  if (selecionarId) {
+    const b = (boloes || []).find(item => Number(item.id) === selecionarId);
+    const card = document.querySelector(`.bolao-sel-card[data-id="${selecionarId}"]`);
+
+    if (b && card) {
+      selecionarBolaoRegistro(b, card, {
+        forcar: true,
+        preservarCliente: true,
+        preservarStatus: Boolean(opcoes.preservarStatus)
+      });
+    } else {
+      limparBolaoSelecionadoWpp({ preservarStatus: true });
+    }
+  }
 }
 
 async function registrarVenda(){
@@ -1185,69 +1543,110 @@ async function registrarVenda(){
     return;
   }
 
-  if (!clienteSel) {
-    setStatusReg('Selecione um cliente.', 'err');
-    return;
+  // Se o operador preencheu um cliente e esqueceu de clicar em "Adicionar",
+  // ele entra automaticamente na fila antes do registro.
+  if (clienteSel) {
+    const adicionado = adicionarVendaFila();
+    if (!adicionado) return;
   }
 
-  const qtd = parseInt($('inputQtd').value) || 0;
-  const val = parseBRL($('inputValor').value);
-
-  if (qtd < 1) {
-    setStatusReg('Qtd deve ser ≥ 1.', 'err');
-    return;
-  }
-
-  if (val <= 0) {
-    setStatusReg('Valor deve ser > 0.', 'err');
+  if (!filaVendasBolao.length) {
+    setStatusReg('Adicione pelo menos um cliente à lista deste bolão.', 'err');
     return;
   }
 
   const saldoContexto = getSaldoContextoBolao(bolaoSelReg);
+  const totalCotas = getQtdFilaVendas();
 
-  if (saldoContexto < qtd) {
+  if (totalCotas > saldoContexto) {
     setStatusReg(
-      `Saldo insuficiente no WhatsApp ${lojaWhatsappAtiva.loteria_nome}. Disponível: ${saldoContexto}.`,
+      `Saldo insuficiente. A lista tem ${totalCotas} cota(s) e o saldo atual é ${saldoContexto}.`,
       'err'
     );
     return;
   }
 
-  const btn = $('btnRegistrar');
-  btn.disabled = true;
+  const bolaoId = Number(bolaoSelReg.id);
+  const scrollAnterior = window.scrollY;
+  const lote = filaVendasBolao.map(item => ({
+    cliente: item.cliente,
+    qtd: Number(item.qtd || 0),
+    pago: Boolean(item.pago)
+  }));
 
-  setStatusReg(`Registrando venda no WhatsApp ${lojaWhatsappAtiva.loteria_nome}…`, 'info');
+  registrandoFilaVendas = true;
+  renderFilaVendasBolao();
 
-  const { data, error } = await sb.rpc('rpc_registrar_venda_whatsapp', {
-    p_bolao_id: bolaoSelReg.id,
-    p_loteria_vendedora_id: lojaWhatsappAtiva.loteria_id,
-    p_cliente_id: clienteSel.id,
-    p_qtd_vendida: qtd,
-    p_data_referencia: isoDate(dataAtualReg),
-    p_pago: $('chkPago').checked,
-    p_obs: null
-  });
+  let concluidas = 0;
+  let saldoDepois = saldoContexto;
 
-  btn.disabled = false;
+  for (let i = 0; i < lote.length; i++) {
+    const item = lote[i];
 
-  if (error) {
-    setStatusReg(error.message, 'err');
-    return;
+    setStatusReg(
+      `Registrando ${i + 1}/${lote.length}: ${item.cliente.nome}…`,
+      'info'
+    );
+
+    const { data, error } = await sb.rpc('rpc_registrar_venda_whatsapp', {
+      p_bolao_id: bolaoId,
+      p_loteria_vendedora_id: lojaWhatsappAtiva.loteria_id,
+      p_cliente_id: item.cliente.id,
+      p_qtd_vendida: item.qtd,
+      p_data_referencia: isoDate(dataAtualReg),
+      p_pago: item.pago,
+      p_obs: null
+    });
+
+    if (error) {
+      // Mantém na fila somente a venda que falhou e as seguintes.
+      filaVendasBolao = lote.slice(i);
+      registrandoFilaVendas = false;
+      renderFilaVendasBolao();
+
+      await buscarBoloesReg({
+        manterSelecao: true,
+        manterScroll: true,
+        preservarStatus: true,
+        bolaoId
+      });
+
+      window.scrollTo({ top: scrollAnterior, left: 0, behavior: 'auto' });
+
+      setStatusReg(
+        `Falha ao registrar ${item.cliente.nome}: ${error.message}. ${concluidas} venda(s) anterior(es) já foram gravadas; as restantes continuam na lista.`,
+        'err'
+      );
+      return;
+    }
+
+    concluidas++;
+    saldoDepois = Number(data?.saldo_depois ?? saldoDepois);
   }
 
-  setStatusReg(
-    `✓ Venda registrada para ${clienteSel.nome}! Saldo restante: ${data?.saldo_depois ?? '—'}.`,
-    'ok'
-  );
-
- limparClienteVenda();
+  filaVendasBolao = [];
+  registrandoFilaVendas = false;
+  limparClienteVenda();
   $('inputQtd').value = '1';
   $('chkPago').checked = false;
-  fecharPainelVendaWpp();
   calcTotal();
+  renderFilaVendasBolao();
 
-  await buscarBoloesReg();
+  await buscarBoloesReg({
+    manterSelecao: true,
+    manterScroll: true,
+    preservarStatus: true,
+    bolaoId
+  });
+
   await carregarVendas();
+
+  window.scrollTo({ top: scrollAnterior, left: 0, behavior: 'auto' });
+
+  setStatusReg(
+    `✓ ${concluidas} venda(s) registradas de uma vez — ${totalCotas} cota(s). Saldo restante: ${saldoDepois}.`,
+    'ok'
+  );
 }
 
 async function deletarVenda(id){
@@ -2006,17 +2405,31 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('btnDtPrevReg').onclick = async () => { await alterarDataRegistro(-1); };
   $('btnDtNextReg').onclick = async () => { await alterarDataRegistro(1); };
   $('btnHojeReg').onclick = async () => {
+    const podeAlterar = await confirmarDescarteFila(
+      'Ir para hoje',
+      'Há clientes adicionados ao bolão atual. Ao mudar a data, essa lista ainda não registrada será descartada.'
+    );
+    if (!podeAlterar) return;
+
     dataAtualReg = hojeLocal();
     atualizarDates();
     await buscarBoloesReg();
   };
 
-  $('dateDisplay').onclick = () => {
+  const abrirCalendarioVendas = () => {
     atualizarDates();
     const picker = $('datePicker');
-    if (picker?.showPicker) picker.showPicker();
-    else picker?.click();
+    if (!picker) return;
+    try {
+      if (typeof picker.showPicker === 'function') picker.showPicker();
+      else picker.click();
+    } catch (_) {
+      picker.click();
+    }
   };
+
+  $('dateDisplay').onclick = abrirCalendarioVendas;
+  if ($('btnCalendario')) $('btnCalendario').onclick = abrirCalendarioVendas;
 
   $('datePicker').onchange = async () => {
     if (!$('datePicker').value) return;
@@ -2025,16 +2438,40 @@ document.addEventListener('DOMContentLoaded',()=>{
     await carregarVendas();
   };
 
-  $('dateDisplayReg').onclick = () => {
+  const abrirCalendarioRegistro = () => {
     atualizarDates();
     const picker = $('datePickerReg');
-    if (picker?.showPicker) picker.showPicker();
-    else picker?.click();
+    if (!picker) return;
+    try {
+      if (typeof picker.showPicker === 'function') picker.showPicker();
+      else picker.click();
+    } catch (_) {
+      picker.click();
+    }
   };
+
+  $('dateDisplayReg').onclick = abrirCalendarioRegistro;
+  if ($('btnCalendarioReg')) $('btnCalendarioReg').onclick = abrirCalendarioRegistro;
 
   $('datePickerReg').onchange = async () => {
     if (!$('datePickerReg').value) return;
-    dataAtualReg = dataFromISO($('datePickerReg').value);
+
+    const novaData = dataFromISO($('datePickerReg').value);
+    const mudou = isoDate(novaData) !== isoDate(dataAtualReg);
+
+    if (mudou) {
+      const podeAlterar = await confirmarDescarteFila(
+        'Alterar data',
+        'Há clientes adicionados ao bolão atual. Ao alterar a data, essa lista ainda não registrada será descartada.'
+      );
+
+      if (!podeAlterar) {
+        atualizarDates();
+        return;
+      }
+    }
+
+    dataAtualReg = novaData;
     atualizarDates();
     await buscarBoloesReg();
   };
@@ -2102,6 +2539,10 @@ Object.assign(window, {
   switchTab,
   setViewMode,
   toggleGroup,
+  adicionarVendaFila,
+  removerVendaFila,
+  ajustarQtdFila,
+  togglePagoFila,
   registrarVenda,
   deletarVenda,
   abrirPickerClientes,
