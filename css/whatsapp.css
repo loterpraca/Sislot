@@ -329,56 +329,18 @@
     .date-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
     .date-label{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3)}
     .date-stepper{display:flex;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
-    .date-picker-trigger{display:flex;align-items:center;position:relative}
     .btn-date{width:34px;height:34px;background:transparent;border:none;color:var(--text2);
       cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--tr)}
     .btn-date:hover{background:rgba(37,211,102,0.07);color:var(--green)}
     .btn-date svg{width:13px;height:13px}
-    .btn-calendar{
-      width:38px;
-      border-left:1px solid var(--border);
-      color:var(--t1);
-      background:var(--t5);
-    }
-    .btn-calendar i{font-size:13px}
-    .btn-calendar:hover{
-      background:var(--t3);
-      color:var(--t1);
-      box-shadow:inset 0 0 0 1px var(--t4);
-    }
     .date-display{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);
       padding:0 14px;border:0;border-left:1px solid var(--border);border-right:1px solid var(--border);
       height:34px;display:flex;align-items:center;white-space:nowrap;min-width:128px;justify-content:center;
       background:transparent;cursor:pointer;-webkit-appearance:none;appearance:none}
     .date-display:hover{background:rgba(37,211,102,0.07);color:var(--green)}
-    .date-picker-native{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      opacity:0;
-      cursor:pointer;
-      z-index:6;
-      border:0;
-      padding:0;
-      margin:0;
-      background:transparent;
-      color:transparent;
-      color-scheme:dark;
-    }
-    .date-picker-native::-webkit-calendar-picker-indicator{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      margin:0;
-      padding:0;
-      cursor:pointer;
-      opacity:0;
-    }
-    .date-picker-trigger:hover .date-display{background:rgba(37,211,102,0.07);color:var(--green)}
-    .date-picker-trigger:hover .btn-calendar{background:var(--t3);color:var(--t1)}
-    .date-picker-native:focus-visible + *{outline:none}
+    .date-picker-hidden{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;
+      border:0;padding:0;margin:0;background:transparent;color:transparent;-webkit-appearance:none;appearance:none}
+    .date-picker-hidden::-webkit-calendar-picker-indicator{opacity:0}
     .btn-hoje{background:transparent;border:1px solid rgba(37,211,102,0.2);border-radius:6px;
       padding:5px 11px;cursor:pointer;font-family:var(--mono);font-size:9px;font-weight:500;
       letter-spacing:.1em;text-transform:uppercase;color:var(--green);transition:var(--tr)}
@@ -2655,5 +2617,90 @@ body.app-picker-open{
   .wpp-batch-footer .btn-registrar{
     width:100%;
     justify-content:center;
+  }
+}
+
+/* =========================================================
+   CALENDÁRIO NATIVO — CORREÇÃO VISUAL
+   Mantém somente a data formatada visível e usa o input date
+   transparente sobre o ícone para abrir o seletor nativo.
+   ========================================================= */
+.date-picker-trigger{
+  position:relative;
+  display:flex;
+  align-items:stretch;
+  height:34px;
+}
+
+.date-picker-trigger .date-display{
+  border-left:1px solid var(--border);
+  border-right:0;
+  height:34px;
+  min-width:138px;
+  position:relative;
+  z-index:1;
+}
+
+.date-picker-trigger .btn-calendar{
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  border-left:1px solid var(--border);
+  border-right:1px solid var(--border);
+  pointer-events:none;
+  position:relative;
+  z-index:1;
+}
+
+.date-picker-trigger .btn-calendar i{
+  font-size:11px;
+}
+
+.date-picker-trigger .date-picker-native{
+  position:absolute !important;
+  top:0 !important;
+  right:0 !important;
+  left:auto !important;
+  width:34px !important;
+  height:34px !important;
+  min-width:34px !important;
+  max-width:34px !important;
+  padding:0 !important;
+  margin:0 !important;
+  border:0 !important;
+  opacity:0 !important;
+  z-index:10 !important;
+  cursor:pointer !important;
+  pointer-events:auto !important;
+  appearance:none !important;
+  -webkit-appearance:none !important;
+  background:transparent !important;
+  color:transparent !important;
+}
+
+.date-picker-trigger .date-picker-native::-webkit-datetime-edit,
+.date-picker-trigger .date-picker-native::-webkit-datetime-edit-fields-wrapper,
+.date-picker-trigger .date-picker-native::-webkit-datetime-edit-text,
+.date-picker-trigger .date-picker-native::-webkit-datetime-edit-month-field,
+.date-picker-trigger .date-picker-native::-webkit-datetime-edit-day-field,
+.date-picker-trigger .date-picker-native::-webkit-datetime-edit-year-field{
+  color:transparent !important;
+  background:transparent !important;
+}
+
+.date-picker-trigger .date-picker-native::-webkit-calendar-picker-indicator{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  margin:0;
+  padding:0;
+  opacity:0;
+  cursor:pointer;
+}
+
+@media(max-width:600px){
+  .date-picker-trigger .date-display{
+    min-width:112px;
   }
 }
