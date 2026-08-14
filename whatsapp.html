@@ -96,7 +96,10 @@
         <button class="btn-date" id="btnDtPrev">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <button type="button" class="date-display" id="dateDisplay">—</button>
+        <button type="button" class="date-display" id="dateDisplay" title="Abrir calendário">—</button>
+        <button type="button" class="btn-date btn-calendar" id="btnCalendario" title="Escolher data no calendário" aria-label="Escolher data no calendário">
+          <i class="fas fa-calendar-days"></i>
+        </button>
         <input type="date" id="datePicker" class="date-picker-hidden"/>
         <button class="btn-date" id="btnDtNext">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -145,7 +148,10 @@
           <button class="btn-date" id="btnDtPrevReg">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <button type="button" class="date-display" id="dateDisplayReg">—</button>
+          <button type="button" class="date-display" id="dateDisplayReg" title="Abrir calendário">—</button>
+          <button type="button" class="btn-date btn-calendar" id="btnCalendarioReg" title="Escolher data no calendário" aria-label="Escolher data no calendário">
+            <i class="fas fa-calendar-days"></i>
+          </button>
           <input type="date" id="datePickerReg" class="date-picker-hidden"/>
           <button class="btn-date" id="btnDtNextReg">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -153,6 +159,18 @@
         </div>
         <button class="btn-hoje" id="btnHojeReg">Hoje</button>
        </div>
+
+      <div class="atalhos-modalidade-hint" title="Atalhos disponíveis quando o cursor não estiver em um campo de digitação">
+        <span>Atalhos</span>
+        <kbd>M</kbd> Mega
+        <kbd>Q</kbd> Quina
+        <kbd>L</kbd> Lotofácil
+        <kbd>D</kbd> Dupla
+        <kbd>S</kbd> Super Sete
+        <kbd>I</kbd> Dia
+        <kbd>N</kbd> Milionária
+        <kbd>T</kbd> Timemania
+      </div>
 
       <div id="boloesRegLista">
         <div class="state-box"><div class="spinner"></div><div class="state-title">Buscando bolões…</div></div>
@@ -231,14 +249,46 @@
         </label>
       </div>
 
-      <button class="btn-registrar" id="btnRegistrar" onclick="registrarVenda()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Registrar
+      <button class="btn-adicionar-venda" id="btnAdicionarVenda" onclick="adicionarVendaFila()">
+        <i class="fas fa-plus"></i>
+        Adicionar
       </button>
     </div>
 
     <div class="wpp-sale-total">
-      Total: <span id="totalVenda">R$ 0,00</span>
+      Item atual: <span id="totalVenda">R$ 0,00</span>
+    </div>
+
+    <div class="wpp-batch-panel" id="wppBatchPanel">
+      <div class="wpp-batch-head">
+        <div>
+          <div class="wpp-batch-kicker">Lista deste bolão</div>
+          <div class="wpp-batch-title">
+            Clientes adicionados
+            <span id="wppBatchCount">0 clientes</span>
+          </div>
+        </div>
+
+        <button type="button" class="wpp-batch-clear" id="btnLimparFilaWpp">
+          <i class="fas fa-trash-alt"></i>
+          Limpar
+        </button>
+      </div>
+
+      <div class="wpp-batch-list" id="wppBatchList"></div>
+
+      <div class="wpp-batch-footer">
+        <div class="wpp-batch-summary">
+          <span><small>Cotas</small><strong id="wppBatchQtd">0 cotas</strong></span>
+          <span><small>Total</small><strong id="wppBatchTotal">R$ 0,00</strong></span>
+          <span><small>Saldo após</small><strong id="wppBatchSaldoApos">0</strong></span>
+        </div>
+
+        <button class="btn-registrar" id="btnRegistrar" onclick="registrarVenda()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Registrar vendas
+        </button>
+      </div>
     </div>
 
   </div>
@@ -418,7 +468,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="./sislot-config.js"></script>
-  <script src="./sislot-security.js"></script
+  <script src="./sislot-security.js"></script>
 <script src="./js/sislot-utils.js"></script>
   
 <script src="./js/whatsapp.js"></script>
