@@ -96,11 +96,13 @@
         <button class="btn-date" id="btnDtPrev">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <button type="button" class="date-display" id="dateDisplay" title="Abrir calendário">—</button>
-        <button type="button" class="btn-date btn-calendar" id="btnCalendario" title="Escolher data no calendário" aria-label="Escolher data no calendário">
-          <i class="fas fa-calendar-days"></i>
-        </button>
-        <input type="date" id="datePicker" class="date-picker-hidden"/>
+        <div class="date-picker-trigger" title="Escolher data no calendário">
+          <button type="button" class="date-display" id="dateDisplay" tabindex="-1">—</button>
+          <button type="button" class="btn-date btn-calendar" id="btnCalendario" tabindex="-1" aria-hidden="true">
+            <i class="fas fa-calendar-days"></i>
+          </button>
+          <input type="date" id="datePicker" class="date-picker-native" aria-label="Escolher data"/>
+        </div>
         <button class="btn-date" id="btnDtNext">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
@@ -148,11 +150,13 @@
           <button class="btn-date" id="btnDtPrevReg">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <button type="button" class="date-display" id="dateDisplayReg" title="Abrir calendário">—</button>
-          <button type="button" class="btn-date btn-calendar" id="btnCalendarioReg" title="Escolher data no calendário" aria-label="Escolher data no calendário">
-            <i class="fas fa-calendar-days"></i>
-          </button>
-          <input type="date" id="datePickerReg" class="date-picker-hidden"/>
+          <div class="date-picker-trigger" title="Escolher data no calendário">
+            <button type="button" class="date-display" id="dateDisplayReg" tabindex="-1">—</button>
+            <button type="button" class="btn-date btn-calendar" id="btnCalendarioReg" tabindex="-1" aria-hidden="true">
+              <i class="fas fa-calendar-days"></i>
+            </button>
+            <input type="date" id="datePickerReg" class="date-picker-native" aria-label="Escolher data de referência"/>
+          </div>
           <button class="btn-date" id="btnDtNextReg">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
