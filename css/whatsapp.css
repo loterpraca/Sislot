@@ -2704,3 +2704,170 @@ body.app-picker-open{
     min-width:112px;
   }
 }
+
+/* =========================================================
+   MOBILE — BARRA DE DATA / AGRUPAMENTO
+   Corrige compressão da data em telas estreitas sem alterar desktop.
+   ========================================================= */
+@media (max-width:600px){
+  /* A barra vira duas linhas previsíveis:
+     1ª: DATA | seletor | HOJE
+     2ª: AGRUPAR POR | Bolão / Cliente */
+  #tab-vendas .date-bar{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    column-gap:8px;
+    row-gap:10px;
+    width:100%;
+  }
+
+  #tab-vendas .date-label{
+    grid-column:1;
+    white-space:nowrap;
+  }
+
+  #tab-vendas .date-stepper{
+    grid-column:2;
+    width:100%;
+    min-width:0;
+    flex:none;
+  }
+
+  #tab-vendas .btn-hoje{
+    grid-column:3;
+    white-space:nowrap;
+  }
+
+  #tab-vendas .view-toggle{
+    grid-column:1 / -1;
+    width:100%;
+    margin-left:0;
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:7px;
+  }
+
+  #tab-vendas .toggle-btns{
+    flex:0 0 auto;
+  }
+
+  #tab-vendas .date-picker-trigger{
+    flex:1 1 auto;
+    min-width:0;
+  }
+
+  #tab-vendas .date-picker-trigger .date-display{
+    flex:1 1 auto;
+    width:auto;
+    min-width:0;
+    padding:0 5px;
+    font-size:10px;
+    white-space:nowrap;
+  }
+
+  #tab-vendas .date-picker-trigger .btn-calendar{
+    width:30px;
+    flex-basis:30px;
+  }
+
+  #tab-vendas .date-picker-trigger .date-picker-native{
+    width:30px !important;
+    min-width:30px !important;
+    max-width:30px !important;
+  }
+
+  #tab-vendas .btn-date{
+    width:30px;
+    flex:0 0 30px;
+  }
+
+  /* Registrar: mantém o seletor inteiro utilizável no celular. */
+  #tab-registrar .date-bar{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    gap:8px;
+    width:100%;
+  }
+
+  #tab-registrar .date-stepper{
+    width:100%;
+    min-width:0;
+    flex:none;
+  }
+
+  #tab-registrar .date-picker-trigger{
+    flex:1 1 auto;
+    min-width:0;
+  }
+
+  #tab-registrar .date-picker-trigger .date-display{
+    flex:1 1 auto;
+    width:auto;
+    min-width:0;
+    padding:0 5px;
+    font-size:10px;
+    white-space:nowrap;
+  }
+
+  #tab-registrar .date-picker-trigger .btn-calendar{
+    width:30px;
+    flex-basis:30px;
+  }
+
+  #tab-registrar .date-picker-trigger .date-picker-native{
+    width:30px !important;
+    min-width:30px !important;
+    max-width:30px !important;
+  }
+
+  #tab-registrar .btn-date{
+    width:30px;
+    flex:0 0 30px;
+  }
+
+  /* Um pouco mais compacto na lista de vendas, sem mudar desktop. */
+  .bolao-group-header{
+    padding:11px 10px;
+    gap:8px;
+  }
+
+  .bolao-titulo{
+    gap:5px;
+    row-gap:6px;
+  }
+
+  .bolao-tag{
+    font-size:9px;
+    padding:2px 6px;
+  }
+
+  .bolao-stats{
+    gap:7px 11px;
+    margin-top:7px;
+  }
+
+  .bolao-stat{
+    font-size:9px;
+  }
+}
+
+@media (max-width:380px){
+  #tab-vendas .date-bar,
+  #tab-registrar .date-bar{
+    grid-template-columns:auto minmax(0,1fr);
+  }
+
+  #tab-vendas .btn-hoje,
+  #tab-registrar .btn-hoje{
+    grid-column:1 / -1;
+    justify-self:start;
+  }
+
+  #tab-vendas .date-picker-trigger .date-display,
+  #tab-registrar .date-picker-trigger .date-display{
+    font-size:9px;
+  }
+}
