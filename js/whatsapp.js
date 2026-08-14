@@ -2416,20 +2416,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     await buscarBoloesReg();
   };
 
-  const abrirCalendarioVendas = () => {
+  $('dateDisplay').onclick = () => {
     atualizarDates();
     const picker = $('datePicker');
-    if (!picker) return;
-    try {
-      if (typeof picker.showPicker === 'function') picker.showPicker();
-      else picker.click();
-    } catch (_) {
-      picker.click();
-    }
+    if (picker?.showPicker) picker.showPicker();
+    else picker?.click();
   };
-
-  $('dateDisplay').onclick = abrirCalendarioVendas;
-  if ($('btnCalendario')) $('btnCalendario').onclick = abrirCalendarioVendas;
 
   $('datePicker').onchange = async () => {
     if (!$('datePicker').value) return;
@@ -2438,20 +2430,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     await carregarVendas();
   };
 
-  const abrirCalendarioRegistro = () => {
+  $('dateDisplayReg').onclick = () => {
     atualizarDates();
     const picker = $('datePickerReg');
-    if (!picker) return;
-    try {
-      if (typeof picker.showPicker === 'function') picker.showPicker();
-      else picker.click();
-    } catch (_) {
-      picker.click();
-    }
+    if (picker?.showPicker) picker.showPicker();
+    else picker?.click();
   };
-
-  $('dateDisplayReg').onclick = abrirCalendarioRegistro;
-  if ($('btnCalendarioReg')) $('btnCalendarioReg').onclick = abrirCalendarioRegistro;
 
   $('datePickerReg').onchange = async () => {
     if (!$('datePickerReg').value) return;
