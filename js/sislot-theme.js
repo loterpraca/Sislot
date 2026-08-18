@@ -13,7 +13,7 @@
 
   const LOJAS = {
     'boulevard':    { nome: 'Boulevard',    slug: 'boulevard',    cor: '#3b82f6', logo: './icons/boulevard.png' },
-    'centro':       { nome: 'Centro',       slug: 'centro',       cor: '#00c896', logo: './icons/loterpraca.png' },
+    'centro':       { nome: 'Centro',       slug: 'centro',       cor: '#00c896', logo: './icons/centro.png' },
     'lotobel':      { nome: 'Lotobel',      slug: 'lotobel',      cor: '#ef4444', logo: './icons/lotobel.png' },
     'santa-tereza': { nome: 'Santa Tereza', slug: 'santa-tereza', cor: '#a855f7', logo: './icons/santa-tereza.png' },
     'via-brasil':   { nome: 'Via Brasil',   slug: 'via-brasil',   cor: '#eab308', logo: './icons/via-brasil.png' },
