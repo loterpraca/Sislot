@@ -1,0 +1,824 @@
+/* ═══════════════════════════════════════════════════════════
+   SISLOT — Mestra Financeira
+   CSS exclusivo do módulo. Base e componentes ficam no DS v3.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --mestra-radius-xl: 24px;
+  --mestra-radius-lg: 18px;
+  --mestra-radius-md: 13px;
+  --mestra-shadow: 0 24px 70px rgba(0,0,0,.22);
+  --mestra-border: rgba(255,255,255,.075);
+  --mestra-muted: rgba(255,255,255,.54);
+  --mestra-soft: rgba(255,255,255,.035);
+}
+
+.mestra-main {
+  width: min(1540px, calc(100% - 34px));
+  margin: 0 auto;
+  padding-top: 28px;
+  padding-bottom: 52px;
+}
+
+.mestra-logo-btn { border: 0; cursor: pointer; }
+
+.mestra-logo-btn:focus-visible,
+.mestra-tab:focus-visible,
+.mestra-icon-btn:focus-visible,
+.mestra-search:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--t1) 72%, white 28%);
+  outline-offset: 3px;
+}
+
+/* HERO */
+.mestra-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 34px;
+  align-items: end;
+  min-height: 224px;
+  padding: 34px 38px;
+  border: 1px solid var(--mestra-border);
+  border-radius: var(--mestra-radius-xl);
+  background:
+    radial-gradient(circle at 82% 10%, color-mix(in srgb, var(--t1) 17%, transparent), transparent 35%),
+    radial-gradient(circle at 6% 100%, color-mix(in srgb, var(--t2) 12%, transparent), transparent 36%),
+    linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  box-shadow: var(--mestra-shadow);
+  isolation: isolate;
+}
+
+.mestra-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -80px -160px auto;
+  width: 380px;
+  height: 380px;
+  border: 1px solid color-mix(in srgb, var(--t1) 20%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 48px color-mix(in srgb, var(--t1) 3%, transparent),
+    0 0 0 96px color-mix(in srgb, var(--t1) 2%, transparent);
+  z-index: -1;
+}
+
+.mestra-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 16px;
+  color: var(--mestra-muted);
+  font: 600 11px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.mestra-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--t1);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--t1) 12%, transparent);
+}
+
+.mestra-hero h1 {
+  margin: 0;
+  color: rgba(255,255,255,.96);
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: .98;
+  letter-spacing: -.052em;
+  font-weight: 600;
+}
+
+.mestra-hero h1 span { color: color-mix(in srgb, var(--t1) 82%, white 18%); }
+
+.mestra-hero p {
+  max-width: 720px;
+  margin: 18px 0 0;
+  color: rgba(255,255,255,.58);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.mestra-hero-period {
+  min-width: 205px;
+  padding: 19px 20px;
+  border: 1px solid color-mix(in srgb, var(--t1) 24%, rgba(255,255,255,.06));
+  border-radius: 17px;
+  background: rgba(0,0,0,.18);
+  backdrop-filter: blur(12px);
+}
+
+.mestra-hero-period span,
+.mestra-hero-period small {
+  display: block;
+  color: var(--mestra-muted);
+  font: 500 10px/1.35 "IBM Plex Mono", monospace;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.mestra-hero-period strong {
+  display: block;
+  margin: 7px 0 6px;
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* TOOLBAR */
+.mestra-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: var(--mestra-radius-lg);
+}
+
+.mestra-period-nav { display: flex; align-items: end; gap: 7px; }
+.mestra-field { display: grid; gap: 6px; }
+
+.mestra-field > span {
+  color: var(--mestra-muted);
+  font: 500 10px/1 "IBM Plex Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.mestra-field--month .sl-input { width: 176px; min-height: 42px; }
+
+.mestra-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--mestra-border);
+  border-radius: 12px;
+  color: rgba(255,255,255,.72);
+  background: var(--mestra-soft);
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.mestra-icon-btn:hover {
+  color: white;
+  border-color: color-mix(in srgb, var(--t1) 38%, transparent);
+  background: color-mix(in srgb, var(--t1) 9%, var(--mestra-soft));
+  transform: translateY(-1px);
+}
+
+.mestra-icon-btn svg,
+.mestra-action-btn svg,
+.mestra-search svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mestra-toolbar-spacer { flex: 1; }
+.mestra-mobile-store { display: none; }
+.mestra-action-btn { min-height: 42px; }
+
+/* KPI */
+.mestra-kpi-grid {
+  display: grid;
+  grid-template-columns: 1.3fr repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mestra-kpi {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  padding: 20px 21px;
+  border: 1px solid var(--mestra-border);
+  border-radius: var(--mestra-radius-lg);
+  background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+}
+
+.mestra-kpi--hero {
+  border-color: color-mix(in srgb, var(--t1) 28%, var(--mestra-border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--t1) 11%, rgba(255,255,255,.03)), rgba(255,255,255,.018));
+}
+
+.mestra-kpi--hero::after {
+  content: "";
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  right: -24px;
+  top: -32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--t1) 10%, transparent);
+}
+
+.mestra-kpi-label {
+  position: relative;
+  z-index: 1;
+  color: var(--mestra-muted);
+  font: 500 10px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.mestra-kpi-value {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  margin-top: 9px;
+  color: rgba(255,255,255,.94);
+  font-size: clamp(21px, 2.1vw, 30px);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mestra-kpi--hero .mestra-kpi-value { color: color-mix(in srgb, var(--t1) 80%, white 20%); }
+.mestra-kpi-meta { margin-top: 7px; color: rgba(255,255,255,.38); font-size: 11px; }
+
+/* TABS */
+.mestra-tabs-wrap {
+  position: sticky;
+  z-index: 25;
+  top: 78px;
+  margin-top: 22px;
+  padding: 6px;
+  border: 1px solid var(--mestra-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--deep, #0a0c10) 88%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 36px rgba(0,0,0,.16);
+}
+
+.mestra-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+
+.mestra-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 11px;
+  color: rgba(255,255,255,.48);
+  background: transparent;
+  font: 500 12px/1 "IBM Plex Sans", sans-serif;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.mestra-tab:hover { color: rgba(255,255,255,.82); background: rgba(255,255,255,.035); }
+
+.mestra-tab.is-active {
+  color: white;
+  background: color-mix(in srgb, var(--t1) 14%, rgba(255,255,255,.035));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t1) 24%, transparent);
+}
+
+.mestra-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  color: rgba(255,255,255,.66);
+  background: rgba(255,255,255,.055);
+  font: 600 10px/1 "IBM Plex Mono", monospace;
+}
+
+.mestra-tab.is-active .mestra-tab-icon {
+  color: color-mix(in srgb, var(--t1) 70%, white 30%);
+  background: color-mix(in srgb, var(--t1) 14%, transparent);
+}
+
+/* SECTION */
+.mestra-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 22px;
+  margin: 28px 2px 14px;
+}
+
+.mestra-section-head h2 {
+  margin: 6px 0 3px;
+  color: rgba(255,255,255,.92);
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+
+.mestra-section-head p { margin: 0; color: rgba(255,255,255,.42); font-size: 12px; }
+
+.mestra-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(330px, 34vw);
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--mestra-border);
+  border-radius: 12px;
+  color: rgba(255,255,255,.4);
+  background: var(--mestra-soft);
+}
+
+.mestra-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: rgba(255,255,255,.9);
+  background: transparent;
+  font: 400 12px/1 "IBM Plex Sans", sans-serif;
+}
+
+.mestra-search input::placeholder { color: rgba(255,255,255,.3); }
+
+/* TABLE */
+.mestra-content { min-height: 300px; }
+
+.mestra-table-card {
+  overflow: hidden;
+  border: 1px solid var(--mestra-border);
+  border-radius: var(--mestra-radius-lg);
+  background: linear-gradient(145deg, rgba(255,255,255,.032), rgba(255,255,255,.014));
+}
+
+.mestra-table-scroll { overflow: auto; scrollbar-width: thin; }
+.mestra-table { width: 100%; min-width: 1120px; border-collapse: collapse; }
+
+.mestra-table th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  padding: 12px 13px;
+  border-bottom: 1px solid var(--mestra-border);
+  color: rgba(255,255,255,.42);
+  background: color-mix(in srgb, var(--deep, #0a0c10) 96%, white 4%);
+  font: 500 9px/1.25 "IBM Plex Mono", monospace;
+  letter-spacing: .07em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mestra-table td {
+  padding: 13px;
+  border-bottom: 1px solid rgba(255,255,255,.045);
+  color: rgba(255,255,255,.72);
+  font-size: 11.5px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.mestra-table tbody tr { transition: background .14s ease; }
+.mestra-table tbody tr:hover { background: color-mix(in srgb, var(--t1) 4.5%, transparent); }
+.mestra-table tbody tr:last-child td { border-bottom: 0; }
+
+.mestra-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.mestra-table .strong { color: rgba(255,255,255,.94); font-weight: 600; }
+.mestra-table .positive { color: #74dba7; font-weight: 600; }
+.mestra-table .negative { color: #ff8585; font-weight: 600; }
+.mestra-table .muted { color: rgba(255,255,255,.37); }
+
+.mestra-table-foot {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--mestra-border);
+  background: rgba(0,0,0,.14);
+}
+
+.mestra-total-cell { min-width: 0; padding: 15px 16px; border-right: 1px solid var(--mestra-border); }
+.mestra-total-cell:last-child { border-right: 0; }
+
+.mestra-total-label {
+  color: var(--mestra-muted);
+  font: 500 9px/1.1 "IBM Plex Mono", monospace;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.mestra-total-value {
+  overflow: hidden;
+  margin-top: 6px;
+  color: rgba(255,255,255,.9);
+  font-size: 17px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mestra-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 999px;
+  color: rgba(255,255,255,.67);
+  background: rgba(255,255,255,.035);
+  font: 500 9px/1 "IBM Plex Mono", monospace;
+  letter-spacing: .025em;
+}
+
+.mestra-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--badge-color, var(--t1));
+}
+
+/* RESULT */
+.mestra-result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.mestra-result-card,
+.mestra-manual-card {
+  padding: 20px;
+  border: 1px solid var(--mestra-border);
+  border-radius: var(--mestra-radius-lg);
+  background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.014));
+}
+
+.mestra-result-card h3,
+.mestra-manual-card h3 { margin: 0; color: rgba(255,255,255,.9); font-size: 15px; font-weight: 600; }
+
+.mestra-result-card p,
+.mestra-manual-card p { margin: 6px 0 0; color: rgba(255,255,255,.4); font-size: 11px; line-height: 1.55; }
+
+.mestra-composition { display: grid; gap: 12px; margin-top: 18px; }
+
+.mestra-comp-row {
+  display: grid;
+  grid-template-columns: 110px minmax(70px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.mestra-comp-label {
+  overflow: hidden;
+  color: rgba(255,255,255,.54);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mestra-comp-track { height: 6px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.05); }
+
+.mestra-comp-fill {
+  width: var(--pct, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--t1) 75%, white 5%), var(--t1));
+}
+
+.mestra-comp-value {
+  color: rgba(255,255,255,.78);
+  font: 500 10px/1 "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.mestra-manual-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.mestra-money-field { display: grid; gap: 7px; }
+.mestra-money-field > span { color: rgba(255,255,255,.46); font-size: 11px; }
+.mestra-money-input { position: relative; }
+
+.mestra-money-input::before {
+  content: "R$";
+  position: absolute;
+  z-index: 1;
+  left: 13px;
+  top: 50%;
+  color: rgba(255,255,255,.37);
+  font: 500 10px/1 "IBM Plex Mono", monospace;
+  transform: translateY(-50%);
+}
+
+.mestra-money-input input {
+  width: 100%;
+  min-height: 46px;
+  padding-left: 39px;
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.mestra-manual-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.mestra-result-table-wrap { grid-column: 1 / -1; }
+.mestra-result-table { min-width: 980px; }
+
+.mestra-network-total td {
+  color: white !important;
+  background: color-mix(in srgb, var(--t1) 8%, transparent);
+  font-weight: 600;
+}
+
+/* STATES */
+.mestra-empty,
+.mestra-error {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  padding: 34px;
+  border: 1px dashed rgba(255,255,255,.1);
+  border-radius: var(--mestra-radius-lg);
+  text-align: center;
+}
+
+.mestra-state-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 13px;
+  border: 1px solid var(--mestra-border);
+  border-radius: 15px;
+  color: rgba(255,255,255,.55);
+  background: var(--mestra-soft);
+  font: 600 16px/1 "IBM Plex Mono", monospace;
+}
+
+.mestra-state-title { color: rgba(255,255,255,.82); font-size: 14px; font-weight: 600; }
+
+.mestra-state-sub {
+  max-width: 520px;
+  margin-top: 7px;
+  color: rgba(255,255,255,.38);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.mestra-loading { display: grid; gap: 10px; }
+
+.mestra-skeleton {
+  height: 66px;
+  overflow: hidden;
+  border-radius: 14px;
+  background:
+    linear-gradient(100deg, rgba(255,255,255,.025) 30%, rgba(255,255,255,.07) 44%, rgba(255,255,255,.025) 58%) rgba(255,255,255,.025);
+  background-size: 250% 100%;
+  animation: mestraShimmer 1.3s linear infinite;
+}
+
+.mestra-skeleton--lg { height: 106px; }
+@keyframes mestraShimmer { to { background-position-x: -250%; } }
+
+/* TOAST */
+.mestra-toast {
+  position: fixed;
+  z-index: 90;
+  right: 20px;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(420px, calc(100vw - 30px));
+  padding: 12px 14px;
+  border: 1px solid var(--mestra-border);
+  border-radius: 13px;
+  color: rgba(255,255,255,.85);
+  background: color-mix(in srgb, var(--deep, #080a0e) 92%, transparent);
+  box-shadow: 0 18px 55px rgba(0,0,0,.35);
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: .2s ease;
+  backdrop-filter: blur(18px);
+}
+
+.mestra-toast.is-visible { opacity: 1; transform: translateY(0); }
+.mestra-toast-dot { width: 7px; height: 7px; border-radius: 99px; background: var(--t1); }
+.mestra-toast.is-error .mestra-toast-dot { background: #ff7474; }
+.mestra-footer { margin-top: 10px; }
+
+@media (max-width: 1050px) {
+  .mestra-kpi-grid { grid-template-columns: 1fr 1fr; }
+  .mestra-result-grid { grid-template-columns: 1fr; }
+  .mestra-result-table-wrap { grid-column: auto; }
+}
+
+@media (max-width: 720px) {
+  body { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+
+  .mestra-main {
+    width: min(100% - 20px, 100%);
+    padding-top: 14px;
+    padding-bottom: 30px;
+  }
+
+  .mestra-header-store,
+  .sl-header-clock { display: none !important; }
+
+  .sl-btn-header span { display: none; }
+
+  .mestra-hero {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    min-height: 0;
+    padding: 25px 22px;
+    border-radius: 20px;
+  }
+
+  .mestra-hero h1 { font-size: 37px; }
+  .mestra-hero p { margin-top: 14px; font-size: 13px; line-height: 1.6; }
+  .mestra-hero-period { min-width: 0; padding: 14px 15px; }
+
+  .mestra-toolbar { align-items: center; padding: 10px; }
+  .mestra-period-nav { flex: 1; align-items: center; }
+  .mestra-field > span { display: none; }
+  .mestra-field--month { flex: 1; }
+  .mestra-field--month .sl-input { width: 100%; }
+  .mestra-toolbar-spacer { display: none; }
+
+  .mestra-mobile-store {
+    display: grid;
+    gap: 4px;
+    flex: 0 0 min(36vw, 150px);
+  }
+
+  .mestra-mobile-store > span {
+    display: none;
+  }
+
+  .mestra-mobile-store .sl-input {
+    width: 100%;
+    min-height: 42px;
+    padding-inline: 9px;
+    font-size: 10px;
+  }
+
+  .mestra-action-btn {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .mestra-action-btn span { display: none; }
+
+  .mestra-kpi-grid { grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 10px; }
+  .mestra-kpi { padding: 15px; border-radius: 15px; }
+  .mestra-kpi-value { margin-top: 7px; font-size: 19px; }
+  .mestra-kpi-meta { font-size: 9px; }
+
+  .mestra-tabs-wrap {
+    position: fixed;
+    z-index: 70;
+    top: auto;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 8px;
+    margin: 0;
+    padding: 5px;
+    border-radius: 18px;
+    box-shadow: 0 18px 60px rgba(0,0,0,.55);
+  }
+
+  .mestra-tabs { gap: 2px; }
+
+  .mestra-tab {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    min-height: 54px;
+    padding: 4px 2px;
+    border-radius: 13px;
+    font-size: 9px;
+  }
+
+  .mestra-tab-icon { width: 25px; height: 25px; border-radius: 8px; }
+
+  .mestra-section-head { align-items: stretch; margin-top: 22px; }
+  .mestra-section-head h2 { font-size: 18px; }
+  .mestra-section-head p { max-width: 260px; }
+
+  .mestra-search {
+    width: 42px;
+    min-width: 42px;
+    padding: 0 11px;
+    overflow: hidden;
+    transition: width .18s ease;
+  }
+
+  .mestra-search:focus-within {
+    position: absolute;
+    z-index: 20;
+    right: 10px;
+    width: calc(100% - 20px);
+    background: color-mix(in srgb, var(--deep, #080a0e) 96%, transparent);
+  }
+
+  .mestra-search input { min-width: 230px; }
+
+  .mestra-table-card { overflow: visible; border: 0; background: transparent; }
+  .mestra-table-scroll { overflow: visible; }
+  .mestra-table { min-width: 0; border-collapse: separate; }
+  .mestra-table thead { display: none; }
+
+  .mestra-table,
+  .mestra-table tbody,
+  .mestra-table tr,
+  .mestra-table td { display: block; width: 100%; }
+
+  .mestra-table tbody { display: grid; gap: 10px; }
+
+  .mestra-table tbody tr {
+    padding: 6px 14px;
+    border: 1px solid var(--mestra-border);
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(255,255,255,.038), rgba(255,255,255,.015));
+  }
+
+  .mestra-table td {
+    display: grid;
+    grid-template-columns: minmax(108px, .85fr) minmax(0, 1.15fr);
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,.045);
+    font-size: 11px;
+    text-align: right !important;
+    white-space: normal;
+  }
+
+  .mestra-table td:last-child { border-bottom: 0; }
+
+  .mestra-table td::before {
+    content: attr(data-label);
+    color: rgba(255,255,255,.34);
+    font: 500 8.5px/1.25 "IBM Plex Mono", monospace;
+    letter-spacing: .055em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .mestra-table-foot {
+    grid-template-columns: 1fr 1fr;
+    margin-top: 10px;
+    border: 1px solid var(--mestra-border);
+    border-radius: 15px;
+    overflow: hidden;
+  }
+
+  .mestra-total-cell:nth-child(2) { border-right: 0; }
+  .mestra-total-cell:nth-child(-n+2) { border-bottom: 1px solid var(--mestra-border); }
+  .mestra-total-value { font-size: 14px; }
+
+  .mestra-result-grid { gap: 10px; }
+
+  .mestra-result-card,
+  .mestra-manual-card { padding: 16px; border-radius: 16px; }
+
+  .mestra-manual-fields { grid-template-columns: 1fr; }
+
+  .mestra-comp-row {
+    grid-template-columns: 86px minmax(50px, 1fr) auto;
+    gap: 8px;
+  }
+
+  .mestra-comp-label { font-size: 10px; }
+
+  .mestra-result-table .mestra-network-total {
+    border-color: color-mix(in srgb, var(--t1) 34%, var(--mestra-border));
+  }
+
+  .mestra-toast { right: 10px; bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .mestra-footer { display: none; }
+}
+
+@media (max-width: 400px) {
+  .mestra-main { width: calc(100% - 14px); }
+  .mestra-hero { padding: 21px 18px; }
+  .mestra-kpi-grid { grid-template-columns: 1fr; }
+  .mestra-kpi--hero { grid-column: 1 / -1; }
+
+  .mestra-tab span:last-child {
+    max-width: 62px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mestra-icon-btn,
+  .mestra-tab,
+  .mestra-toast,
+  .mestra-search { transition: none !important; }
+
+  .mestra-skeleton { animation: none; }
+}
