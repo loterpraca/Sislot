@@ -184,7 +184,25 @@
 }
 
 .mestra-toolbar-spacer { flex: 1; }
-.mestra-mobile-store { display: none; }
+
+.mestra-mobile-store {
+  display: grid;
+  gap: 6px;
+  min-width: 190px;
+}
+
+.mestra-mobile-store > span {
+  color: var(--mestra-muted);
+  font: 500 10px/1 "IBM Plex Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.mestra-mobile-store .sl-input {
+  width: 100%;
+  min-height: 42px;
+}
+
 .mestra-action-btn { min-height: 42px; }
 
 /* KPI */
