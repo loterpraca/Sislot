@@ -105,9 +105,18 @@ function aplicarFiltrosBase(q, opts = {}) {
 }
 
   if (usarFiltroPendencia) {
-    if (pendenciaFiltro === 'SIM') q = q.eq('pendencia_apuracao', true);
-    if (pendenciaFiltro === 'NAO') q = q.eq('pendencia_apuracao', false);
+  if (pendenciaFiltro === 'SIM') {
+    q = q.eq('pendencia_apuracao', true);
   }
+
+  if (pendenciaFiltro === 'NAO') {
+    q = q.eq('pendencia_apuracao', false);
+  }
+
+  if (pendenciaFiltro === 'MARKETPLACE_VAZIO') {
+    q = q.is('qtd_marketplace', null);
+  }
+}
 
   return q;
 }
