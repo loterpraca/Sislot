@@ -15,7 +15,7 @@
       boloes: {
         eyebrow: 'Bolões',
         title: 'Resultado dos bolões',
-        subtitle: 'Cada linha representa um bolão encerrado pela loja de origem, com venda, encalhe, prêmio e lucro. Concursos vigentes ficam fora do resultado.'
+        subtitle: 'Cada linha representa um bolão cuja data do concurso já passou. Concursos de hoje e futuros ficam fora do resultado.'
       },
       telesena: {
         eyebrow: 'Tele Sena',
@@ -118,11 +118,27 @@
   async function carregarLojas() {
     let lojas = [];
 
-    if (typeof window.SISLOT_SECURITY?.carregarTodasLojas === 'function') {
-      try {
-        lojas = await window.SISLOT_SECURITY.carregarTodasLojas();
-      } catch (erro) {
-        console.warn('[Mestra] carregarTodasLojas indisponível:', erro);
+    // Fonte principal da Mestra: tabela loterias.
+    // Isso garante que o ciclo da árvore tenha todas as lojas ativas,
+    // independentemente da forma como o contexto de segurança foi montado.
+    try {
+      const { data, error } = await sb
+        .from('loterias')
+        .select('id,nome,slug,ativo')
+        .eq('ativo', true)
+        .order('nome', { ascending: true });
+
+      if (error) throw error;
+      lojas = data || [];
+    } catch (erro) {
+      console.warn('[Mestra] Consulta direta de lojas falhou:', erro);
+
+      if (typeof window.SISLOT_SECURITY?.carregarTodasLojas === 'function') {
+        try {
+          lojas = await window.SISLOT_SECURITY.carregarTodasLojas();
+        } catch (erroFallback) {
+          console.warn('[Mestra] carregarTodasLojas também falhou:', erroFallback);
+        }
       }
     }
 
@@ -137,12 +153,44 @@
         loja.id > 0 &&
         loja.slug &&
         loja.slug !== 'todas'
-      )
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      );
+
+    // Mantém a ordem visual oficial do SISLOT quando disponível.
+    const ordemTema = Object.keys(window.SISLOT_THEME?.LOJAS || {})
+      .filter(slug => slug !== 'todas');
+
+    state.lojas.sort((a, b) => {
+      const ia = ordemTema.indexOf(a.slug);
+      const ib = ordemTema.indexOf(b.slug);
+
+      if (ia >= 0 || ib >= 0) {
+        if (ia < 0) return 1;
+        if (ib < 0) return -1;
+        if (ia !== ib) return ia - ib;
+      }
+
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
 
     if (!state.lojas.length) {
       throw new Error('Nenhuma loja ativa disponível para a Mestra.');
     }
+
+    window.SISLOT_MESTRA_DEBUG = {
+      versao: '1.0.3',
+      getEstado: () => ({ ...state }),
+      getLojas: () => state.lojas.map(loja => ({ ...loja })),
+      getLojaAtiva: () => ({
+        slug: state.lojaSlug,
+        id: state.lojaId,
+        nome: state.lojaId === 'ALL' ? 'Todas as lojas' : nomeLoja(state.lojaId)
+      })
+    };
+
+    console.info(
+      '[Mestra] Lojas carregadas:',
+      state.lojas.map(loja => `${loja.slug}#${loja.id}`).join(', ')
+    );
   }
 
   function normalizarLoja(loja) {
@@ -186,32 +234,66 @@
 
   function sincronizarLojaPorSlug(slug, { carregar = true } = {}) {
     const normalizado = String(slug || 'todas').trim();
-    const loja = normalizado === 'todas'
-      ? null
-      : state.lojas.find(l => l.slug === normalizado) || null;
+
+    let loja = null;
+
+    if (normalizado !== 'todas') {
+      loja =
+        state.lojas.find(l => l.slug === normalizado) ||
+        state.lojas.find(l => slugificar(l.nome) === normalizado) ||
+        null;
+    }
+
+    if (normalizado !== 'todas' && !loja) {
+      console.error(
+        `[Mestra] Tema "${normalizado}" não possui loteria_id resolvido.`,
+        state.lojas
+      );
+      setStatus(
+        `A loja "${normalizado}" mudou no tema, mas não foi encontrada na tabela loterias.`,
+        'err'
+      );
+      return false;
+    }
 
     state.lojaSlug = loja?.slug || 'todas';
     state.lojaId = loja ? String(loja.id) : 'ALL';
-
 
     $('heroEscopo').textContent = loja?.nome || 'Todas as lojas';
 
     state.filtro = '';
     if ($('buscaTabela')) $('buscaTabela').value = '';
+
     atualizarCabecalhos();
 
+    console.info(
+      '[Mestra] Loja financeira:',
+      state.lojaSlug,
+      state.lojaId
+    );
+
     if (bootReady && carregar) {
-      void carregarAbaAtual();
+      void carregarAbaAtual({ force: true });
     }
+
+    return true;
   }
 
 
   function getSequenciaLojas() {
-    return [
-      'todas',
-      ...state.lojas.map(loja => loja.slug)
-    ];
+    const temaSlugs = Object.keys(window.SISLOT_THEME?.LOJAS || {})
+      .filter(slug => slug !== 'todas');
+
+    const slugsResolvidos = new Set(state.lojas.map(loja => loja.slug));
+
+    const ordenadas = temaSlugs.filter(slug => slugsResolvidos.has(slug));
+    const extras = state.lojas
+      .map(loja => loja.slug)
+      .filter(slug => !ordenadas.includes(slug));
+
+    return ['todas', ...ordenadas, ...extras];
   }
+
 
   function trocarLojaPorOffset(offset = 1) {
     const sequencia = getSequenciaLojas();
@@ -247,7 +329,12 @@
     document.addEventListener('sislot:tema', async (e) => {
       const slug = e?.detail?.slug || 'todas';
 
-      sincronizarLojaPorSlug(slug, { carregar: false });
+      const sincronizou = sincronizarLojaPorSlug(
+        slug,
+        { carregar: false }
+      );
+
+      if (!sincronizou) return;
 
       // Durante o init do tema, o bootstrap ainda fará a primeira carga.
       if (!bootReady) return;
@@ -469,8 +556,7 @@
           resultado_final,status
         `)
         .gte('dt_concurso', range.inicio)
-        .lt('dt_concurso', range.proximo)
-        .eq('status', 'ENCERRADO')
+        .lt('dt_concurso', dataLimiteResultado(competencia))
         .order('dt_concurso', { ascending: true })
         .order('modalidade', { ascending: true })
         .range(from, to);
@@ -482,10 +568,14 @@
       return query;
     });
 
-    const ids = unicosNumericos(base.map(x => x.bolao_id));
+    const baseValida = base.filter(
+      b => String(b.status || '').trim().toUpperCase() !== 'CANCELADO'
+    );
+
+    const ids = unicosNumericos(baseValida.map(x => x.bolao_id));
     const metaMap = await buscarMetadadosBoloes(ids);
 
-    const rows = base.map(b => {
+    const rows = baseValida.map(b => {
       const meta = metaMap.get(Number(b.bolao_id)) || {};
       const encalhe = n(b.enc_geral_total);
       const premioCota = nullableNumber(meta.vlr_premio);
@@ -1025,7 +1115,7 @@
   function renderBoloes(dataset) {
     atualizarKpis({
       resultado: dataset.totals.resultado,
-      resultadoMeta: 'Somente concursos encerrados',
+      resultadoMeta: `Concursos anteriores a ${fmtData(hojeSaoPauloISO())}`,
       aLabel: 'Venda de cotas',
       a: dataset.totals.faturamento,
       aMeta: `${fmtInt(dataset.totals.volume)} cotas vendidas`,
@@ -1937,6 +2027,33 @@
       parts.find(p => p.type === 'month')?.value;
 
     return `${year}-${month}`;
+  }
+
+  function hojeSaoPauloISO() {
+    const parts = new Intl.DateTimeFormat(
+      'en-CA',
+      {
+        timeZone: CONFIG.timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }
+    ).formatToParts(new Date());
+
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function dataLimiteResultado(competencia) {
+    const range = intervaloMes(competencia);
+    const hoje = hojeSaoPauloISO();
+
+    // Regra financeira: entra somente dt_concurso < hoje.
+    // Em mês passado, usa o primeiro dia do mês seguinte como limite.
+    return hoje < range.proximo ? hoje : range.proximo;
   }
 
   function intervaloMes(competencia) {
