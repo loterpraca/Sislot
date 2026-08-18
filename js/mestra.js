@@ -177,19 +177,82 @@
     }
 
     window.SISLOT_MESTRA_DEBUG = {
-      versao: '1.0.3',
+      versao: '1.0.4',
       getEstado: () => ({ ...state }),
       getLojas: () => state.lojas.map(loja => ({ ...loja })),
       getLojaAtiva: () => ({
         slug: state.lojaSlug,
         id: state.lojaId,
         nome: state.lojaId === 'ALL' ? 'Todas as lojas' : nomeLoja(state.lojaId)
-      })
+      }),
+      trocarLoja: (slug) => {
+        const alvo = String(slug || '').trim();
+        const sequencia = getSequenciaLojas();
+
+        if (!sequencia.includes(alvo)) {
+          console.error('[Mestra] Slug inválido:', alvo, sequencia);
+          return false;
+        }
+
+        const ok = sincronizarLojaPorSlug(alvo, { carregar: false });
+        if (!ok) return false;
+
+        if (window.SISLOT_THEME?.aplicarTema) {
+          window.SISLOT_THEME.aplicarTema(alvo);
+        } else {
+          aplicarTemaVisualFallback(alvo);
+        }
+
+        invalidarCacheAtual();
+        void carregarAbaAtual({ force: true });
+        return true;
+      }
     };
+
+    registrarLojasNoTema();
 
     console.info(
       '[Mestra] Lojas carregadas:',
       state.lojas.map(loja => `${loja.slug}#${loja.id}`).join(', ')
+    );
+  }
+
+  function registrarLojasNoTema() {
+    const theme = window.SISLOT_THEME;
+    if (!theme?.LOJAS) return;
+
+    if (typeof theme.registrarLojas === 'function') {
+      theme.registrarLojas(
+        state.lojas.map(loja => ({
+          slug: loja.slug,
+          nome: loja.nome
+        }))
+      );
+    }
+
+    const coresPreferidas = {
+      'boulevard': '#3b82f6',
+      'centro': '#00c896',
+      'lotobel': '#ef4444',
+      'santa-tereza': '#a855f7',
+      'via-brasil': '#eab308',
+      'lotoprime': '#f59e0b'
+    };
+
+    state.lojas.forEach(loja => {
+      const atual = theme.LOJAS[loja.slug] || {};
+
+      theme.LOJAS[loja.slug] = {
+        ...atual,
+        nome: loja.nome,
+        slug: loja.slug,
+        cor: atual.cor || coresPreferidas[loja.slug] || '#64748b'
+      };
+    });
+
+    console.info(
+      '[Mestra] Lojas registradas no tema:',
+      Object.keys(theme.LOJAS).join(', ')
     );
   }
 
@@ -297,7 +360,7 @@
 
   function trocarLojaPorOffset(offset = 1) {
     const sequencia = getSequenciaLojas();
-    if (!sequencia.length) return;
+    if (sequencia.length < 2) return;
 
     let indice = sequencia.indexOf(state.lojaSlug);
     if (indice < 0) indice = 0;
@@ -307,20 +370,38 @@
 
     const slug = sequencia[proximo];
 
+    // 1. FINANCEIRO PRIMEIRO.
+    // Não depende do Theme Manager nem do evento sislot:tema.
+    const sincronizou = sincronizarLojaPorSlug(
+      slug,
+      { carregar: false }
+    );
+
+    if (!sincronizou) return;
+
+    // 2. Visual depois.
     if (window.SISLOT_THEME?.aplicarTema) {
-      // aplicarTema muda logo/cor/nome e dispara "sislot:tema".
-      window.SISLOT_THEME.aplicarTema(slug);
-      return;
+      try {
+        window.SISLOT_THEME.aplicarTema(slug);
+      } catch (erro) {
+        console.warn('[Mestra] Falha ao aplicar tema:', erro);
+        aplicarTemaVisualFallback(slug);
+      }
+    } else {
+      aplicarTemaVisualFallback(slug);
     }
 
-    // Fallback caso o Theme Manager não esteja disponível.
-    sincronizarLojaPorSlug(slug, { carregar: false });
-    aplicarTemaVisualFallback(slug);
-
+    // 3. Recalcula obrigatoriamente a loja escolhida.
     if (bootReady) {
       invalidarCacheAtual();
       void carregarAbaAtual({ force: true });
     }
+
+    console.info(
+      '[Mestra] Switch árvore:',
+      slug,
+      state.lojaId
+    );
   }
 
   function vincularEventos() {
@@ -329,18 +410,32 @@
     document.addEventListener('sislot:tema', async (e) => {
       const slug = e?.detail?.slug || 'todas';
 
+      // O clique da própria Mestra já atualizou o financeiro antes
+      // de chamar o tema. Não recalcula duas vezes.
+      if (slug === state.lojaSlug) {
+        $('heroEscopo').textContent =
+          state.lojaId === 'ALL'
+            ? 'Todas as lojas'
+            : nomeLoja(state.lojaId);
+        return;
+      }
+
+      // Mudança de loja originada por outro componente do SISLOT.
       const sincronizou = sincronizarLojaPorSlug(
         slug,
         { carregar: false }
       );
 
-      if (!sincronizou) return;
-
-      // Durante o init do tema, o bootstrap ainda fará a primeira carga.
-      if (!bootReady) return;
+      if (!sincronizou || !bootReady) return;
 
       invalidarCacheAtual();
       await carregarAbaAtual({ force: true });
+
+      console.info(
+        '[Mestra] Tema externo sincronizado:',
+        state.lojaSlug,
+        state.lojaId
+      );
     });
 
     // Mesmo comportamento dos módulos clássicos do SISLOT:
