@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d12" />
+  <title>SISLOT — Mestra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/sislot-base.css" />
+  <link rel="stylesheet" href="./css/sislot-components.css" />
+  <link rel="stylesheet" href="./css/mestra.css" />
+</head>
+<body data-loja="todas">
+  <header class="sl-header">
+    <div class="sl-header-inner">
+      <button class="sl-loja-logo mestra-logo-btn" id="btnLojaLogo" type="button" title="Selecionar loja" aria-label="Selecionar loja">
+        <img id="headerLogo" src="./icons/todas.png" alt="Loja" />
+      </button>
+      <div class="sl-header-info">
+        <div class="sl-header-nome" id="headerNome">Todas as lojas</div>
+        <div class="sl-header-sub">SISLOT · Mestra Financeira</div>
+      </div>
+      <div class="sl-loja-select mestra-header-store">
+        <select id="sl-loja-select" aria-label="Selecionar loja"></select>
+      </div>
+      <div class="sl-header-clock" id="relogio">--:--:--</div>
+      <a href="./menu.html" class="sl-btn-header" aria-label="Voltar ao menu principal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span>Menu</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="sl-main mestra-main">
+    <section class="mestra-hero" aria-labelledby="mestraTitle">
+      <div class="mestra-hero-copy">
+        <div class="mestra-eyebrow">
+          <span class="mestra-live-dot" aria-hidden="true"></span>
+          Inteligência financeira da operação
+        </div>
+        <h1 id="mestraTitle">Mestra <span>Financeira</span></h1>
+        <p>Receita, custo e resultado das operações em uma única visão. Rastreável por loja, competência e origem.</p>
+      </div>
+      <div class="mestra-hero-period" aria-label="Competência selecionada">
+        <span>Competência</span>
+        <strong id="heroCompetencia">—</strong>
+        <small id="heroEscopo">Todas as lojas</small>
+      </div>
+    </section>
+
+    <section class="mestra-toolbar sl-card" aria-label="Filtros da Mestra">
+      <div class="mestra-period-nav">
+        <button id="btnMesAnterior" class="mestra-icon-btn" type="button" aria-label="Mês anterior" title="Mês anterior">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <label class="mestra-field mestra-field--month">
+          <span>Competência</span>
+          <input id="competencia" class="sl-input" type="month" autocomplete="off" />
+        </label>
+        <button id="btnProximoMes" class="mestra-icon-btn" type="button" aria-label="Próximo mês" title="Próximo mês">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <label class="mestra-mobile-store">
+        <span>Loja</span>
+        <select id="mestra-mobile-loja" class="sl-input" aria-label="Selecionar loja no celular"></select>
+      </label>
+
+      <div class="mestra-toolbar-spacer"></div>
+
+      <button id="btnAtualizar" class="sl-btn sl-btn--primary mestra-action-btn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M4 18v-5h5"/><path d="M18.5 9A7 7 0 0 0 6 6.5L4 11"/><path d="M5.5 15A7 7 0 0 0 18 17.5l2-4.5"/></svg>
+        <span>Atualizar</span>
+      </button>
+      <button id="btnExportar" class="sl-btn mestra-action-btn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span>Exportar CSV</span>
+      </button>
+    </section>
+
+    <section class="mestra-kpi-grid" id="kpiGrid" aria-live="polite">
+      <article class="mestra-kpi mestra-kpi--hero">
+        <div class="mestra-kpi-label">Resultado</div>
+        <div class="mestra-kpi-value" id="kpiResultado">—</div>
+        <div class="mestra-kpi-meta" id="kpiResultadoMeta">Competência selecionada</div>
+      </article>
+      <article class="mestra-kpi">
+        <div class="mestra-kpi-label" id="kpiLabelA">Faturamento</div>
+        <div class="mestra-kpi-value" id="kpiA">—</div>
+        <div class="mestra-kpi-meta" id="kpiMetaA">—</div>
+      </article>
+      <article class="mestra-kpi">
+        <div class="mestra-kpi-label" id="kpiLabelB">Custo</div>
+        <div class="mestra-kpi-value" id="kpiB">—</div>
+        <div class="mestra-kpi-meta" id="kpiMetaB">—</div>
+      </article>
+      <article class="mestra-kpi">
+        <div class="mestra-kpi-label" id="kpiLabelC">Volume</div>
+        <div class="mestra-kpi-value" id="kpiC">—</div>
+        <div class="mestra-kpi-meta" id="kpiMetaC">—</div>
+      </article>
+    </section>
+
+    <div class="mestra-tabs-wrap">
+      <nav class="mestra-tabs" id="mestraTabs" role="tablist" aria-label="Áreas da Mestra">
+        <button class="mestra-tab is-active" type="button" role="tab" aria-selected="true" data-tab="boloes"><span class="mestra-tab-icon">B</span><span>Bolões</span></button>
+        <button class="mestra-tab" type="button" role="tab" aria-selected="false" data-tab="telesena"><span class="mestra-tab-icon">T</span><span>Tele Sena</span></button>
+        <button class="mestra-tab" type="button" role="tab" aria-selected="false" data-tab="raspadinha"><span class="mestra-tab-icon">R</span><span>Raspadinha</span></button>
+        <button class="mestra-tab" type="button" role="tab" aria-selected="false" data-tab="federal"><span class="mestra-tab-icon">F</span><span>Federal</span></button>
+        <button class="mestra-tab mestra-tab--result" type="button" role="tab" aria-selected="false" data-tab="resultado"><span class="mestra-tab-icon">Σ</span><span>Resultado</span></button>
+      </nav>
+    </div>
+
+    <section class="mestra-section-head">
+      <div>
+        <div class="sl-section-label" id="sectionEyebrow">Bolões</div>
+        <h2 id="sectionTitle">Resultado dos bolões</h2>
+        <p id="sectionSubtitle">Visão financeira por bolão de origem.</p>
+      </div>
+      <div class="mestra-section-tools">
+        <label class="mestra-search" id="searchWrap">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input id="buscaTabela" type="search" placeholder="Filtrar nesta aba…" autocomplete="off" />
+        </label>
+      </div>
+    </section>
+
+    <div id="status" class="sl-status-bar" role="status" aria-live="polite"></div>
+    <section id="mestraContent" class="mestra-content" aria-live="polite">
+      <div class="mestra-loading">
+        <div class="mestra-skeleton mestra-skeleton--lg"></div>
+        <div class="mestra-skeleton"></div>
+        <div class="mestra-skeleton"></div>
+        <div class="mestra-skeleton"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="mestra-toast" id="toast" role="status" aria-live="polite">
+    <span class="mestra-toast-dot"></span><span id="toastMsg"></span>
+  </div>
+
+  <footer class="sl-footer mestra-footer">SISLOT v3.0 · Mestra Financeira</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./sislot-security.js"></script>
+  <script src="./js/sislot-utils.js"></script>
+  <script src="./js/sislot-theme.js"></script>
+  <script src="./js/mestra.js"></script>
+</body>
+</html>
