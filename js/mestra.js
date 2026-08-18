@@ -177,7 +177,7 @@
     }
 
     window.SISLOT_MESTRA_DEBUG = {
-      versao: '1.0.4',
+      versao: '1.0.5',
       getEstado: () => ({ ...state }),
       getLojas: () => state.lojas.map(loja => ({ ...loja })),
       getLojaAtiva: () => ({
@@ -640,15 +640,19 @@
   } = {}) {
     const range = intervaloMes(competencia);
 
+    // Fonte financeira oficial da Mestra:
+    // view_boloes_exibicao_operacional.venda_contabil_total
+    // Venda contábil = movimentação líquida + venda na origem + Marketplace.
     const base = await fetchPaged((from, to) => {
       let query = sb
-        .from('view_resultado_bolao')
+        .from('view_boloes_exibicao_operacional')
         .select(`
-          bolao_id,loteria_id,loteria_origem,modalidade,concurso,dt_concurso,
-          valor_cota,qtd_cotas_total,custo_jogo,qtd_vendida_total,receita_total,
-          enc_origem_total,enc_destinos_total,enc_geral_total,
-          premio_origem_total,premio_destinos_total,premio_total,
-          resultado_final,status
+          bolao_id,origem_loteria_id,origem_nome,origem_slug,
+          dt_inicial,dt_concurso,modalidade,concurso,qtd_jogos,qtd_dezenas,
+          valor_cota,qtd_cotas_total,status,qtd_mov_saida_liquida,
+          estoque_bruto_origem,qtd_vendida_origem,qtd_vendida_destinos,
+          qtd_marketplace,enc_fisico,enc_virtual,venda_real_total,
+          venda_contabil_total,encalhe_total,estoque_liquido_total
         `)
         .gte('dt_concurso', range.inicio)
         .lt('dt_concurso', dataLimiteResultado(competencia))
@@ -657,7 +661,7 @@
         .range(from, to);
 
       if (lojaId !== 'ALL') {
-        query = query.eq('loteria_id', Number(lojaId));
+        query = query.eq('origem_loteria_id', Number(lojaId));
       }
 
       return query;
@@ -672,34 +676,47 @@
 
     const rows = baseValida.map(b => {
       const meta = metaMap.get(Number(b.bolao_id)) || {};
-      const encalhe = n(b.enc_geral_total);
+
+      const vendaContabil = n(b.venda_contabil_total);
+      const vendaReal = n(b.venda_real_total);
+      const movimentadas = n(b.qtd_mov_saida_liquida);
+      const marketplace = n(b.qtd_marketplace);
+      const encalhe = n(b.encalhe_total);
+      const valorCota = n(b.valor_cota);
+      const custo = n(meta.custo_jogo);
       const premioCota = nullableNumber(meta.vlr_premio);
       const premioRecebido = premioCota === null
-        ? n(b.premio_total)
+        ? 0
         : premioCota * encalhe;
 
-      const receita = n(b.receita_total);
-      const custo = n(b.custo_jogo);
-      const lucro = nullableNumber(b.resultado_final) ??
-        (receita + premioRecebido - custo);
+      const receita = vendaContabil * valorCota;
+      const receitaReal = vendaReal * valorCota;
+      const lucro = receita + premioRecebido - custo;
 
       return {
         id: b.bolao_id,
-        storeId: Number(b.loteria_id),
-        origem: b.loteria_origem || nomeLoja(b.loteria_id),
+        storeId: Number(b.origem_loteria_id),
+        origem: b.origem_nome || nomeLoja(b.origem_loteria_id),
         modalidade: formatModalidade(b.modalidade),
         concurso: b.concurso || '—',
         data: b.dt_concurso,
-        jogos: nullableNumber(meta.qtd_jogos),
-        dezenas: nullableNumber(meta.qtd_dezenas),
+        jogos: nullableNumber(b.qtd_jogos),
+        dezenas: nullableNumber(b.qtd_dezenas),
         cotas: n(b.qtd_cotas_total),
-        valorCota: n(b.valor_cota),
-        vendidas: n(b.qtd_vendida_total),
+        valorCota,
+        vendaContabil,
+        vendaReal,
+        movimentadas,
+        vendaOrigem: n(b.qtd_vendida_origem),
+        vendaDestinos: n(b.qtd_vendida_destinos),
+        marketplace,
         encalhe,
+        estoqueLiquido: n(b.estoque_liquido_total),
         custoJogo: custo,
         premioCota,
         premioRecebido,
         receita,
+        receitaReal,
         lucro,
         status: b.status || ''
       };
@@ -710,10 +727,14 @@
       rows,
       totals: {
         faturamento: soma(rows, 'receita'),
+        faturamentoReal: soma(rows, 'receitaReal'),
         custo: soma(rows, 'custoJogo'),
         premios: soma(rows, 'premioRecebido'),
         resultado: soma(rows, 'lucro'),
-        volume: soma(rows, 'vendidas'),
+        volume: soma(rows, 'vendaContabil'),
+        vendaReal: soma(rows, 'vendaReal'),
+        movimentadas: soma(rows, 'movimentadas'),
+        marketplace: soma(rows, 'marketplace'),
         registros: rows.length
       }
     };
@@ -725,7 +746,7 @@
     for (const bloco of chunkArray(ids, 200)) {
       const { data, error } = await sb
         .from('boloes')
-        .select('id,qtd_jogos,qtd_dezenas,vlr_premio')
+        .select('id,custo_jogo,vlr_premio')
         .in('id', bloco);
 
       if (error) {
@@ -1210,16 +1231,18 @@
   function renderBoloes(dataset) {
     atualizarKpis({
       resultado: dataset.totals.resultado,
-      resultadoMeta: `Concursos anteriores a ${fmtData(hojeSaoPauloISO())}`,
-      aLabel: 'Venda de cotas',
+      resultadoMeta: `Venda contábil · concursos anteriores a ${fmtData(hojeSaoPauloISO())}`,
+      aLabel: 'Faturamento contábil',
       a: dataset.totals.faturamento,
-      aMeta: `${fmtInt(dataset.totals.volume)} cotas vendidas`,
+      aMeta:
+        `${fmtInt(dataset.totals.volume)} cotas contábeis · ` +
+        `${fmtInt(dataset.totals.vendaReal)} venda real`,
       bLabel: 'Custo dos jogos',
       b: dataset.totals.custo,
       bMeta: `${fmtInt(dataset.totals.registros)} bolões`,
       cLabel: 'Prêmios recebidos',
       c: dataset.totals.premios,
-      cMeta: 'Prêmio por cota × encalhe'
+      cMeta: 'Prêmio/cota × encalhe da origem'
     });
 
     const rows = filtrarRows(dataset.rows, [
@@ -1229,13 +1252,16 @@
       'jogos',
       'dezenas',
       'cotas',
-      'vendidas'
+      'vendaContabil',
+      'vendaReal',
+      'movimentadas',
+      'marketplace'
     ]);
 
     if (!rows.length) {
       return renderEmpty(
         'Nenhum bolão encontrado',
-        'Não há bolões nessa competência com os filtros atuais.'
+        'Não há bolões finalizados nessa competência com os filtros atuais.'
       );
     }
 
@@ -1248,21 +1274,18 @@
         ${td('Dezenas', showNum(row.dezenas), 'num')}
         ${td('Cotas', fmtInt(row.cotas), 'num')}
         ${td('Valor cota', fmtBRL(row.valorCota), 'num')}
-        ${td('Vendidas', fmtInt(row.vendidas), 'num strong')}
-        ${td('Encalhe total', fmtInt(row.encalhe), 'num')}
+        ${td('Venda contábil', fmtInt(row.vendaContabil), 'num strong')}
+        ${td('Venda real', fmtInt(row.vendaReal), 'num')}
+        ${td('Movimentadas', fmtInt(row.movimentadas), 'num')}
+        ${td('Marketplace', fmtInt(row.marketplace), 'num')}
+        ${td('Encalhe origem', fmtInt(row.encalhe), 'num')}
         ${td('Preço jogo', fmtBRL(row.custoJogo), 'num')}
         ${td(
           'Prêmio/cota',
-          row.premioCota === null
-            ? '—'
-            : fmtBRL(row.premioCota),
+          row.premioCota === null ? '—' : fmtBRL(row.premioCota),
           'num'
         )}
-        ${td(
-          'Prêmio recebido',
-          fmtBRL(row.premioRecebido),
-          'num'
-        )}
+        ${td('Prêmio recebido', fmtBRL(row.premioRecebido), 'num')}
         ${td(
           'Lucro',
           fmtBRL(row.lucro),
@@ -1280,8 +1303,11 @@
         'Dezenas',
         'Cotas',
         'Valor cota',
-        'Vendidas',
-        'Encalhe total',
+        'Venda contábil',
+        'Venda real',
+        'Movimentadas',
+        'Marketplace',
+        'Encalhe origem',
         'Preço jogo',
         'Prêmio/cota',
         'Prêmio recebido',
@@ -1289,7 +1315,7 @@
       ],
       body,
       totals: [
-        ['Venda de cotas', fmtBRL(dataset.totals.faturamento)],
+        ['Faturamento contábil', fmtBRL(dataset.totals.faturamento)],
         ['Custo', fmtBRL(dataset.totals.custo)],
         ['Prêmios', fmtBRL(dataset.totals.premios)],
         ['Lucro', fmtBRL(dataset.totals.resultado)]
@@ -1918,8 +1944,14 @@
         Dezenas: row.dezenas ?? '',
         Cotas: row.cotas,
         Valor_Cota: row.valorCota,
-        Vendidas: row.vendidas,
-        Encalhe_Total: row.encalhe,
+        Venda_Contabil: row.vendaContabil,
+        Venda_Real: row.vendaReal,
+        Movimentadas: row.movimentadas,
+        Venda_Origem: row.vendaOrigem,
+        Marketplace: row.marketplace,
+        Encalhe_Origem: row.encalhe,
+        Faturamento_Contabil: row.receita,
+        Faturamento_Real: row.receitaReal,
         Preco_Jogo: row.custoJogo,
         Premio_Cota: row.premioCota ?? '',
         Premio_Recebido: row.premioRecebido,
