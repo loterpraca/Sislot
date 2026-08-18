@@ -805,3 +805,12 @@
 
   .mestra-skeleton { animation: none; }
 }
+
+
+/* LotoPrime — tema local de compatibilidade até entrar no DS global */
+body[data-loja="lotoprime"] {
+  --t1: #f59e0b;
+  --t2: #b45309;
+  --t3: rgba(245, 158, 11, .12);
+  --t4: rgba(245, 158, 11, .24);
+}
