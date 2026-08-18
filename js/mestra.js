@@ -192,7 +192,7 @@
     iniciarRelogioFallback();
   }
 
-  function aplicarTemaFallback(slug) {
+  function aplicarTemaVisualFallback(slug) {
     const loja = state.lojas.find(l => l.slug === slug) || null;
     document.body.dataset.loja = loja?.slug || 'todas';
 
@@ -207,7 +207,11 @@
     }
 
     $('headerNome').textContent = loja?.nome || 'Todas';
-    sincronizarLojaPorSlug(loja?.slug || 'todas');
+  }
+
+  function aplicarTemaFallback(slug) {
+    aplicarTemaVisualFallback(slug);
+    sincronizarLojaPorSlug(slug);
   }
 
   function sincronizarLojaPorSlug(slug, { carregar = true } = {}) {
@@ -242,21 +246,39 @@
 
   function vincularEventos() {
     document.addEventListener('sislot:tema', (e) => {
-      sincronizarLojaPorSlug(e?.detail?.slug || 'todas');
+      const slug = e?.detail?.slug || 'todas';
+
+      // Se a Mestra já aplicou esta loja pelo filtro próprio,
+      // o evento do tema serve só para acabamento visual.
+      if (slug === state.lojaSlug) return;
+
+      sincronizarLojaPorSlug(slug);
     });
 
-    $('mestra-mobile-loja')?.addEventListener('change', (e) => {
+    $('mestra-mobile-loja')?.addEventListener('change', async (e) => {
       const slug = e.target.value || 'todas';
+
+      // REGRA CRÍTICA:
+      // a loja é aplicada diretamente no estado financeiro da Mestra.
+      // O recálculo NÃO depende mais do sislot-theme.js emitir evento.
+      sincronizarLojaPorSlug(slug, { carregar: false });
+
       if (window.SISLOT_THEME?.aplicarTema) {
-        window.SISLOT_THEME.aplicarTema(slug);
+        try {
+          window.SISLOT_THEME.aplicarTema(slug);
+        } catch (erro) {
+          console.warn('[Mestra] Tema da loja não aplicado:', erro);
+        }
       } else {
-        aplicarTemaFallback(slug);
+        aplicarTemaVisualFallback(slug);
       }
+
+      invalidarCacheAtual();
+      await carregarAbaAtual({ force: true });
     });
 
     $('btnLojaLogo')?.addEventListener('click', () => {
-      const mobile = window.matchMedia('(max-width: 720px)').matches;
-      const select = mobile ? $('mestra-mobile-loja') : $('sl-loja-select');
+      const select = $('mestra-mobile-loja') || $('sl-loja-select');
       if (!select) return;
       select.focus();
       if (typeof select.showPicker === 'function') {
