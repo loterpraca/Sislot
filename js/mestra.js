@@ -15,7 +15,7 @@
       boloes: {
         eyebrow: 'Bolões',
         title: 'Resultado dos bolões',
-        subtitle: 'Cada linha representa um bolão pela loja de origem, com venda, encalhe, prêmio e lucro.'
+        subtitle: 'Cada linha representa um bolão encerrado pela loja de origem, com venda, encalhe, prêmio e lucro. Concursos vigentes ficam fora do resultado.'
       },
       telesena: {
         eyebrow: 'Tele Sena',
@@ -85,7 +85,6 @@
       });
 
       await carregarLojas();
-      preencherSeletorMobile();
 
       if (window.SISLOT_THEME?.init) {
         window.SISLOT_THEME.init('todas');
@@ -158,36 +157,7 @@
     return { id, nome, slug };
   }
 
-  function preencherSeletorMobile() {
-    const select = $('mestra-mobile-loja');
-    if (!select) return;
-
-    select.innerHTML = [
-      '<option value="todas">Todas as lojas</option>',
-      ...state.lojas.map(loja =>
-        `<option value="${escAttr(loja.slug)}">${esc(loja.nome)}</option>`
-      )
-    ].join('');
-
-    select.value = state.lojaSlug;
-  }
-
   function inicializarTemaFallback() {
-    const headerSelect = $('sl-loja-select');
-
-    if (headerSelect) {
-      headerSelect.innerHTML = [
-        '<option value="todas">Todas as lojas</option>',
-        ...state.lojas.map(loja =>
-          `<option value="${escAttr(loja.slug)}">${esc(loja.nome)}</option>`
-        )
-      ].join('');
-
-      headerSelect.addEventListener('change', (e) => {
-        aplicarTemaFallback(e.target.value || 'todas');
-      });
-    }
-
     aplicarTemaFallback('todas');
     iniciarRelogioFallback();
   }
@@ -223,15 +193,6 @@
     state.lojaSlug = loja?.slug || 'todas';
     state.lojaId = loja ? String(loja.id) : 'ALL';
 
-    const mobile = $('mestra-mobile-loja');
-    if (mobile && [...mobile.options].some(o => o.value === state.lojaSlug)) {
-      mobile.value = state.lojaSlug;
-    }
-
-    const header = $('sl-loja-select');
-    if (header && [...header.options].some(o => o.value === state.lojaSlug)) {
-      header.value = state.lojaSlug;
-    }
 
     $('heroEscopo').textContent = loja?.nome || 'Todas as lojas';
 
@@ -244,46 +205,61 @@
     }
   }
 
+
+  function getSequenciaLojas() {
+    return [
+      'todas',
+      ...state.lojas.map(loja => loja.slug)
+    ];
+  }
+
+  function trocarLojaPorOffset(offset = 1) {
+    const sequencia = getSequenciaLojas();
+    if (!sequencia.length) return;
+
+    let indice = sequencia.indexOf(state.lojaSlug);
+    if (indice < 0) indice = 0;
+
+    let proximo = (indice + offset) % sequencia.length;
+    if (proximo < 0) proximo += sequencia.length;
+
+    const slug = sequencia[proximo];
+
+    if (window.SISLOT_THEME?.aplicarTema) {
+      // aplicarTema muda logo/cor/nome e dispara "sislot:tema".
+      window.SISLOT_THEME.aplicarTema(slug);
+      return;
+    }
+
+    // Fallback caso o Theme Manager não esteja disponível.
+    sincronizarLojaPorSlug(slug, { carregar: false });
+    aplicarTemaVisualFallback(slug);
+
+    if (bootReady) {
+      invalidarCacheAtual();
+      void carregarAbaAtual({ force: true });
+    }
+  }
+
   function vincularEventos() {
-    document.addEventListener('sislot:tema', (e) => {
+    // O sislot-theme.js é a fonte única da loja ativa.
+    // Toda troca de tema precisa obrigatoriamente recalcular a Mestra.
+    document.addEventListener('sislot:tema', async (e) => {
       const slug = e?.detail?.slug || 'todas';
 
-      // Se a Mestra já aplicou esta loja pelo filtro próprio,
-      // o evento do tema serve só para acabamento visual.
-      if (slug === state.lojaSlug) return;
-
-      sincronizarLojaPorSlug(slug);
-    });
-
-    $('mestra-mobile-loja')?.addEventListener('change', async (e) => {
-      const slug = e.target.value || 'todas';
-
-      // REGRA CRÍTICA:
-      // a loja é aplicada diretamente no estado financeiro da Mestra.
-      // O recálculo NÃO depende mais do sislot-theme.js emitir evento.
       sincronizarLojaPorSlug(slug, { carregar: false });
 
-      if (window.SISLOT_THEME?.aplicarTema) {
-        try {
-          window.SISLOT_THEME.aplicarTema(slug);
-        } catch (erro) {
-          console.warn('[Mestra] Tema da loja não aplicado:', erro);
-        }
-      } else {
-        aplicarTemaVisualFallback(slug);
-      }
+      // Durante o init do tema, o bootstrap ainda fará a primeira carga.
+      if (!bootReady) return;
 
       invalidarCacheAtual();
       await carregarAbaAtual({ force: true });
     });
 
+    // Mesmo comportamento dos módulos clássicos do SISLOT:
+    // cada clique na árvore avança uma loja, troca o tema e os dados.
     $('btnLojaLogo')?.addEventListener('click', () => {
-      const select = $('mestra-mobile-loja') || $('sl-loja-select');
-      if (!select) return;
-      select.focus();
-      if (typeof select.showPicker === 'function') {
-        try { select.showPicker(); } catch (_) {}
-      }
+      trocarLojaPorOffset(1);
     });
 
     $('competencia')?.addEventListener('change', async (e) => {
@@ -494,6 +470,7 @@
         `)
         .gte('dt_concurso', range.inicio)
         .lt('dt_concurso', range.proximo)
+        .eq('status', 'ENCERRADO')
         .order('dt_concurso', { ascending: true })
         .order('modalidade', { ascending: true })
         .range(from, to);
@@ -1048,6 +1025,7 @@
   function renderBoloes(dataset) {
     atualizarKpis({
       resultado: dataset.totals.resultado,
+      resultadoMeta: 'Somente concursos encerrados',
       aLabel: 'Venda de cotas',
       a: dataset.totals.faturamento,
       aMeta: `${fmtInt(dataset.totals.volume)} cotas vendidas`,
