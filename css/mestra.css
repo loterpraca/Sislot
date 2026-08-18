@@ -185,23 +185,6 @@
 
 .mestra-toolbar-spacer { flex: 1; }
 
-.mestra-mobile-store {
-  display: grid;
-  gap: 6px;
-  min-width: 190px;
-}
-
-.mestra-mobile-store > span {
-  color: var(--mestra-muted);
-  font: 500 10px/1 "IBM Plex Mono", monospace;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.mestra-mobile-store .sl-input {
-  width: 100%;
-  min-height: 42px;
-}
 
 .mestra-action-btn { min-height: 42px; }
 
@@ -638,7 +621,6 @@
     padding-bottom: 30px;
   }
 
-  .mestra-header-store,
   .sl-header-clock { display: none !important; }
 
   .sl-btn-header span { display: none; }
@@ -661,23 +643,6 @@
   .mestra-field--month { flex: 1; }
   .mestra-field--month .sl-input { width: 100%; }
   .mestra-toolbar-spacer { display: none; }
-
-  .mestra-mobile-store {
-    display: grid;
-    gap: 4px;
-    flex: 0 0 min(36vw, 150px);
-  }
-
-  .mestra-mobile-store > span {
-    display: none;
-  }
-
-  .mestra-mobile-store .sl-input {
-    width: 100%;
-    min-height: 42px;
-    padding-inline: 9px;
-    font-size: 10px;
-  }
 
   .mestra-action-btn {
     width: 42px;
