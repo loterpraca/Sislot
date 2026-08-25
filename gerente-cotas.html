@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./css/sislot-base.css" />
   <link rel="stylesheet" href="./css/sislot-components.css" />
-  <link rel="stylesheet" href="./css/gerente-cotas.css?v=20260825-8" />
+  <link rel="stylesheet" href="./css/gerente-cotas.css?v=20260825-9" />
 </head>
 <body>
   <header class="gc-topbar">
@@ -78,11 +78,18 @@
         <select id="filtroLoja" aria-label="Selecionar loja"></select>
       </div>
 
+      <div class="gc-control-field">
+        <span class="gc-control-field__label">Modalidade</span>
+        <select id="filtroModalidade" aria-label="Filtrar modalidade">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
       <div class="gc-control-field gc-control-field--search">
         <span class="gc-control-field__label">Buscar</span>
         <div class="gc-searchbox">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input id="filtroBusca" type="search" placeholder="Modalidade, concurso ou origem" autocomplete="off" />
+          <input id="filtroBusca" type="search" placeholder="Concurso, origem ou bolão" autocomplete="off" />
         </div>
       </div>
 
@@ -102,29 +109,11 @@
       </button>
     </section>
 
-    <section class="gc-summary" aria-label="Resumo">
-      <article class="gc-summary-box">
-        <span>Bolões</span>
-        <strong id="kpiBoloes">0</strong>
-      </article>
-      <article class="gc-summary-box">
-        <span>Físicas na loja</span>
-        <strong id="kpiInicial">0</strong>
-      </article>
-      <article class="gc-summary-box">
-        <span>Vendidas</span>
-        <strong id="kpiVendidas">0</strong>
-      </article>
-      <article class="gc-summary-box gc-summary-box--saldo">
-        <span>Saldo físico</span>
-        <strong id="kpiSaldo">0</strong>
-      </article>
-      <div class="gc-summary-meta">
-        <span id="tituloCards">Cotas vigentes</span>
-        <small>Atualizado <strong id="ultimaAtualizacao">—</strong></small>
-        <span class="gc-alert-pill" id="alertaPill" hidden><strong id="kpiAlertas">0</strong> alerta(s)</span>
-      </div>
-    </section>
+
+    <div class="gc-listbar" aria-label="Resumo da listagem">
+      <span id="tituloCards">Cotas vigentes</span>
+      <span class="gc-listbar__updated">Atualizado <strong id="ultimaAtualizacao">—</strong></span>
+    </div>
 
     <section class="gc-content" aria-live="polite">
       <div class="gc-cards" id="cardsGrid"></div>
@@ -157,6 +146,6 @@
   <script src="./sislot-security.js"></script>
   <script src="./js/sislot-utils.js"></script>
   <script src="./js/sislot-theme.js"></script>
-  <script src="./js/gerente-cotas.js?v=20260825-8"></script>
+  <script src="./js/gerente-cotas.js?v=20260825-9"></script>
 </body>
 </html>
