@@ -86,6 +86,7 @@
     $('dataReferencia')?.addEventListener('change', (e) => { estado.dataReferencia = e.target.value || dataHojeSaoPaulo(); atualizarDados({ silencioso: true }); });
     $('filtroLoja')?.addEventListener('change', (e) => { estado.lojaId = e.target.value; atualizarCabecalhoLoja(); atualizarDados({ silencioso: true }); });
     $('filtroBusca')?.addEventListener('input', aplicarFiltrosLocais);
+    $('filtroModalidade')?.addEventListener('change', aplicarFiltrosLocais);
     $('filtroStatus')?.addEventListener('change', aplicarFiltrosLocais);
     $('btnLogout')?.addEventListener('click', async () => {
       try {
@@ -173,6 +174,7 @@
 
       if (error) throw error;
       estado.registros = (data || []).map(normalizarRegistro);
+      atualizarFiltroModalidades();
       atualizarUltimaAtualizacao();
       aplicarFiltrosLocais();
       if (!silencioso) toast('Atualizado', `${estado.registros.length} bolões consultados.`, 'success');
@@ -209,20 +211,46 @@
     };
   }
 
+  function atualizarFiltroModalidades() {
+    const select = $('filtroModalidade');
+    if (!select) return;
+
+    const atual = select.value || '';
+    const modalidades = [...new Set(
+      estado.registros
+        .map((row) => String(row.modalidade || '').trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+
+    select.innerHTML = '<option value="">Todas</option>';
+    modalidades.forEach((modalidade) => {
+      const option = document.createElement('option');
+      option.value = modalidade;
+      option.textContent = modalidade;
+      select.appendChild(option);
+    });
+
+    select.value = modalidades.includes(atual) ? atual : '';
+  }
+
   function aplicarFiltrosLocais() {
     const busca = normalizarTexto($('filtroBusca')?.value || '');
+    const modalidade = $('filtroModalidade')?.value || '';
     const status = $('filtroStatus')?.value || '';
+
     estado.registrosFiltrados = estado.registros.filter((row) => {
-      const combinaBusca = !busca || [row.origem_nome, row.modalidade, row.concurso, row.bolao_id, row.dt_concurso]
+      const combinaBusca = !busca || [row.origem_nome, row.concurso, row.bolao_id, row.dt_concurso]
         .some((valor) => normalizarTexto(valor).includes(busca));
-      return combinaBusca && (!status || row.status_saldo === status);
+      const combinaModalidade = !modalidade || row.modalidade === modalidade;
+      const combinaStatus = !status || row.status_saldo === status;
+      return combinaBusca && combinaModalidade && combinaStatus;
     });
+
     renderizarTudo();
   }
 
   function renderizarTudo() {
     renderizarCards();
-    renderizarResumo();
     atualizarTitulo();
     mostrarEstado(estado.registrosFiltrados.length ? 'dados' : 'vazio');
   }
@@ -309,38 +337,23 @@
       .join('');
   }
 
-  function renderizarResumo() {
-    const totais = estado.registrosFiltrados.reduce((acc, row) => {
-      acc.inicial += row.qtd_inicial_loja;
-      acc.vendidas += row.qtd_total_vendida;
-      acc.saldo += row.saldo_loja;
-      if (row.saldo_loja < 0) acc.alertas += 1;
-      return acc;
-    }, { inicial: 0, vendidas: 0, saldo: 0, alertas: 0 });
-
-    $('kpiBoloes').textContent = formatarInteiro(estado.registrosFiltrados.length);
-    $('kpiInicial').textContent = formatarInteiro(totais.inicial);
-    $('kpiVendidas').textContent = formatarInteiro(totais.vendidas);
-    $('kpiSaldo').textContent = formatarInteiro(totais.saldo);
-    $('kpiAlertas').textContent = formatarInteiro(totais.alertas);
-    const pill = $('alertaPill');
-    if (pill) pill.hidden = totais.alertas === 0;
-  }
-
   function atualizarTitulo() {
     const loja = estado.lojas.find((item) => item.id === String(estado.lojaId));
-    if ($('tituloCards')) $('tituloCards').textContent = `${loja?.nome || 'Loja'} · ${formatarDataBR(estado.dataReferencia)}`;
+    const total = estado.registrosFiltrados.length;
+    if ($('tituloCards')) {
+      $('tituloCards').textContent = `${loja?.nome || 'Loja'} · ${formatarDataBR(estado.dataReferencia)} · ${total} ${total === 1 ? 'bolão' : 'bolões'}`;
+    }
   }
 
   function temaOrigem(row) {
     const texto = normalizarTexto(`${row.origem_nome || ''}`);
-    if (texto.includes('boulevard') || row.origem_id === '2') return { nome:'Boulevard', cor:'#3b82f6', soft:'rgba(59,130,246,.10)' };
-    if (texto.includes('centro') || row.origem_id === '1') return { nome:'Centro', cor:'#00b3a4', soft:'rgba(0,179,164,.10)' };
-    if (texto.includes('lotobel') || row.origem_id === '3') return { nome:'Lotobel', cor:'#e11d48', soft:'rgba(225,29,72,.10)' };
-    if (texto.includes('santa') || row.origem_id === '4') return { nome:'Santa Tereza', cor:'#f59e0b', soft:'rgba(245,158,11,.10)' };
-    if (texto.includes('via brasil') || row.origem_id === '5') return { nome:'Via Brasil', cor:'#22c55e', soft:'rgba(34,197,94,.10)' };
-    if (texto.includes('lotoprime') || row.origem_id === '6') return { nome:'Lotoprime', cor:'#8b5cf6', soft:'rgba(139,92,246,.10)' };
-    return { nome:row.origem_nome || 'Origem', cor:'#45b7ff', soft:'rgba(69,183,255,.10)' };
+    if (texto.includes('boulevard') || row.origem_id === '2') return { nome:'Boulevard', cor:'#3b82f6' };
+    if (texto.includes('centro') || row.origem_id === '1') return { nome:'Centro', cor:'#22c55e' };
+    if (texto.includes('lotobel') || row.origem_id === '3') return { nome:'Lotobel', cor:'#ef4444' };
+    if (texto.includes('santa') || row.origem_id === '4') return { nome:'Santa Tereza', cor:'#a855f7' };
+    if (texto.includes('via brasil') || row.origem_id === '5') return { nome:'Via Brasil', cor:'#eab308' };
+    if (texto.includes('lotoprime') || row.origem_id === '6') return { nome:'Lotoprime', cor:'#7f8386' };
+    return { nome:row.origem_nome || 'Origem', cor:'#8ca6bf' };
   }
 
   function mostrarEstado(tipo) {
