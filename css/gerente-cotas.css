@@ -192,3 +192,85 @@ button{color:inherit}
 @media(max-width:460px){
   .gc-brand__text strong{font-size:14px}.gc-brand__icon{width:37px;height:37px}.gc-icon-action{width:37px;height:37px}.gc-controlbar{grid-template-columns:1fr}.gc-date-switch,.gc-control-field--search{grid-column:1}.gc-refresh-btn{grid-column:1}.gc-date-box{flex:1;min-width:0}.gc-physical-row{gap:5px}.gc-physical-mini{padding:7px}.gc-physical-mini span{font-size:7px}.gc-physical-mini strong{font-size:11px}.gc-bolao-card{padding:10px}.gc-card-title{font-size:15px}.gc-box{min-height:80px;padding:9px}.gc-box-value{font-size:26px}
 }
+
+
+/* =========================================================
+   CONTROLE DE COTAS — v6 COMPACTO / HORIZONTAL
+   ========================================================= */
+.gc-summary{margin:10px 0 12px;grid-template-columns:repeat(4,minmax(96px,132px)) 1fr;gap:8px}
+.gc-summary-box{min-height:58px;padding:9px 10px;border-radius:12px}
+.gc-summary-box strong{font-size:19px;margin-top:4px}
+.gc-summary-meta{font-size:9px;gap:10px}
+.gc-summary-meta>span:first-child{font-size:11px}
+
+.gc-cards{gap:14px}
+.gc-card-group{gap:7px}
+.gc-card-group__head{padding:0 1px}
+.gc-card-group__grid{display:grid;grid-template-columns:1fr;gap:8px}
+
+.gc-bolao-card--compact{
+  padding:10px 12px;
+  border-radius:13px;
+  border-color:rgba(255,255,255,.045);
+  background:rgba(9,24,41,.92);
+  box-shadow:0 8px 20px rgba(0,0,0,.14), inset 0 1px rgba(255,255,255,.02);
+}
+.gc-bolao-card--compact::before{width:2px;background:color-mix(in srgb,var(--store) 55%, transparent);box-shadow:none;opacity:.55}
+.gc-bolao-card--compact.is-danger{border-color:rgba(255,111,127,.18)}
+.gc-bolao-card--compact.is-empty{opacity:.84}
+
+.gc-card-headline{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.gc-card-titleline{min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gc-card-title{margin:0;font-size:16px;gap:7px;line-height:1.1}
+.gc-card-contest{font-size:12px;color:#d2e2f1}
+.gc-card-tags--compact{margin-top:6px;gap:5px}
+.gc-tag{min-height:18px;padding:2px 6px;font-size:7.5px;background:rgba(16,35,57,.58);color:#88a1bb;border-color:rgba(255,255,255,.05)}
+.gc-tag--store{color:var(--store);border-color:color-mix(in srgb,var(--store) 22%, rgba(255,255,255,.05));background:rgba(16,35,57,.64)}
+.gc-tag--origin,.gc-tag--received{color:#9db4ca;border-color:rgba(255,255,255,.06);background:rgba(16,35,57,.58)}
+
+.gc-card-meta--tight{margin-top:7px;gap:5px}
+.gc-meta-chip{padding:3px 7px;border-radius:999px;font-size:8px;background:rgba(21,42,66,.52)}
+
+.gc-main-metrics--compact{grid-template-columns:minmax(180px,1.35fr) minmax(95px,.82fr) minmax(105px,.9fr);gap:7px;margin-top:9px}
+.gc-box--compact{min-height:66px;padding:8px 10px;border-radius:11px;justify-content:flex-start}
+.gc-box--compact .gc-box-label{font-size:7.5px;letter-spacing:.09em}
+.gc-box--compact .gc-box-value{margin-top:5px;font-size:24px;line-height:1}
+.gc-box--primary.gc-box--compact .gc-box-value{font-size:28px}
+.gc-box-hint{display:none}
+.gc-box--primary{background:rgba(13,31,51,.92);border-color:rgba(255,255,255,.06)}
+.gc-box--saldo{background:linear-gradient(145deg,rgba(31,78,69,.28),rgba(13,31,51,.92))}
+.gc-box--saldo.is-danger{background:linear-gradient(145deg,rgba(91,31,43,.28),rgba(13,31,51,.92))}
+.gc-box--saldo.is-empty{background:rgba(13,31,51,.84)}
+
+.gc-inline-details{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.gc-detail-pill{display:inline-flex;align-items:center;gap:8px;min-height:24px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.05);background:rgba(17,35,56,.46);color:#9ab1c7}
+.gc-detail-pill small{display:block;font:600 7px/1 "IBM Plex Mono";text-transform:uppercase;letter-spacing:.09em;color:#738ca5}
+.gc-detail-pill strong{display:block;font:700 10px/1 "IBM Plex Mono";color:#d7e6f5;white-space:nowrap}
+.gc-detail-pill--single strong{font-size:11px}
+
+.gc-sales-row{margin-top:7px;padding-top:7px;gap:5px}
+.gc-sales-label{font-size:7px}
+.gc-sale-chip{padding:3px 6px;font-size:7px;gap:5px}
+.gc-sale-chip strong{font-size:9px}
+
+@media(max-width:1050px){
+  .gc-card-group__grid{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .gc-summary{grid-template-columns:1fr 1fr;gap:7px}
+  .gc-main-metrics--compact{grid-template-columns:1fr 1fr}
+  .gc-box--primary.gc-box--compact{grid-column:1/-1}
+}
+@media(max-width:460px){
+  .gc-bolao-card--compact{padding:9px 10px}
+  .gc-card-headline{gap:8px}
+  .gc-card-title{font-size:15px}
+  .gc-card-tags--compact{gap:4px}
+  .gc-tag{font-size:7px;padding:2px 5px}
+  .gc-main-metrics--compact{gap:6px}
+  .gc-box--compact{min-height:62px;padding:8px 9px}
+  .gc-box--compact .gc-box-value{font-size:22px}
+  .gc-box--primary.gc-box--compact .gc-box-value{font-size:26px}
+  .gc-inline-details{gap:5px}
+  .gc-detail-pill{padding:4px 7px}
+}
