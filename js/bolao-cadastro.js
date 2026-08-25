@@ -791,24 +791,8 @@ function garantirUiSugestaoColetada() {
                     <span id="scResumoSelecionados">0 selecionadas</span>
                 </div>
 
-                <div class="sc-table-wrap">
-                    <table class="sc-table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>Modalidade</th>
-                                <th>Concurso</th>
-                                <th>Jogos</th>
-                                <th>Dezenas</th>
-                                <th>Valor</th>
-                                <th>Códigos Caixa</th>
-                                <th>Cotas</th>
-                                <th>Período</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="scBody"></tbody>
-                    </table>
+                <div class="sc-list-wrap">
+                    <div class="sc-list" id="scBody"></div>
                     <div id="scEmpty" class="sc-empty" style="display:none"></div>
                 </div>
             </div>
@@ -919,20 +903,187 @@ function renderFreshnessSugestao() {
     `;
 }
 
+
+function scClasseModalidade(modalidade) {
+    return String(modalidade || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function scPlural(qtd, singular, plural) {
+    return `${Number(qtd || 0)} ${Number(qtd || 0) === 1 ? singular : plural}`;
+}
+
+function scChip(texto, classe = '') {
+    return `<span class="sc-meta-chip ${classe}">${escaparHtml(texto)}</span>`;
+}
+
+function scStatusCard(item) {
+    const suspeitaConcurso = item.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO';
+    const suspeitaCadastro = item.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO';
+
+    if (suspeitaConcurso) {
+        return `
+            <div class="sc-card-status err">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span>Provável concurso incorreto</span>
+                <span class="sc-card-status-detail">
+                    SISLOT #${escaparHtml(item.concurso_sislot_suspeito || '—')}
+                    → Marketplace #${escaparHtml(item.concurso || '—')}
+                </span>
+            </div>
+        `;
+    }
+
+    if (suspeitaCadastro) {
+        return `
+            <div class="sc-card-status warn">
+                <i class="fas fa-magnifying-glass"></i>
+                <span>Possível cadastro incorreto</span>
+                <span class="sc-card-status-detail">${escaparHtml(item.alerta_inteligencia || motivoBloqueioSugestao(item))}</span>
+            </div>
+        `;
+    }
+
+    if (item.selecionavel) {
+        return `
+            <div class="sc-card-status ok">
+                <i class="fas fa-circle-check"></i>
+                <span>Pronto para cadastrar e vincular</span>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="sc-card-status err">
+            <i class="fas fa-circle-exclamation"></i>
+            <span>${escaparHtml(motivoBloqueioSugestao(item))}</span>
+        </div>
+    `;
+}
+
+function scCriarCardSugestao(item) {
+    const selecionavel = !!item.selecionavel;
+    const suspeitaConcurso = item.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO';
+    const suspeitaCadastro = item.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO';
+    const revisar = suspeitaConcurso || suspeitaCadastro;
+
+    const card = document.createElement('article');
+    card.className = `sc-bolao-card${revisar ? ' sc-bolao-card-alert' : ''}${selecionavel ? ' sc-bolao-card-selectable' : ''}`;
+    card.dataset.assinatura = item.assinatura_sugestao || '';
+
+    if (item.alerta_inteligencia) {
+        card.title = item.alerta_inteligencia;
+    }
+
+    const modalidade = item.modalidade_sislot || item.modalidade_marketplace || '—';
+    const origem = item.loterica_nome || loteriaAtiva?.loteria_nome || '—';
+
+    const valorMarketplaceDifere =
+        item.valor_cota_modelo != null &&
+        Math.abs(Number(item.valor_cota_modelo) - Number(item.valor_cota_marketplace)) > 0.0001;
+
+    const periodoInicial = normalizarDataIsoCurta(item.dt_inicial_sugerida);
+    const periodoFinal = normalizarDataIsoCurta(item.dt_concurso_sugerida);
+
+    card.innerHTML = `
+        <div class="sc-bolao-main">
+            <div class="sc-bolao-top">
+                <div class="sc-bolao-ident">
+                    <strong class="sc-bolao-modalidade">${escaparHtml(modalidade)}</strong>
+
+                    <span class="sc-concurso-badge ${revisar ? 'alert' : ''}">
+                        #${escaparHtml(item.concurso)}
+                    </span>
+
+                    <span class="sc-origem-badge">${escaparHtml(origem)}</span>
+
+                    ${item.eh_especial ? '<span class="sc-special-badge">Especial</span>' : ''}
+                </div>
+
+                <label class="sc-card-check-wrap" title="${selecionavel ? 'Selecionar para cadastrar' : motivoBloqueioSugestao(item)}">
+                    <input
+                        type="checkbox"
+                        class="sc-check sc-card-check"
+                        data-assinatura="${escaparHtml(item.assinatura_sugestao)}"
+                        ${selecionavel ? '' : 'disabled'}
+                        aria-label="${selecionavel ? 'Selecionar sugestão' : 'Sugestão bloqueada para revisão'}"
+                    >
+                    <span class="sc-check-visual"></span>
+                </label>
+            </div>
+
+            <div class="sc-meta-row">
+                ${scChip(scPlural(item.qtd_jogos, 'jogo', 'jogos'))}
+                ${scChip(`${Number(item.qtd_dezenas || 0)} dez.`)}
+                ${scChip(`${Number(item.qtd_cotas_total || 0)} cotas`)}
+                ${scChip(`${fmtBRL(item.valor_cota_sugerido)}/cota`, 'price')}
+            </div>
+
+            <div class="sc-meta-row sc-meta-row-secondary">
+                ${scChip(scPlural(item.qtd_codigos_caixa, 'código Caixa', 'códigos Caixa'), 'secondary')}
+                ${periodoFinal ? scChip(`Sorteio ${fmtData(periodoFinal)}`, 'secondary') : ''}
+                ${
+                    periodoInicial && periodoFinal && periodoInicial !== periodoFinal
+                        ? scChip(`Início ${fmtData(periodoInicial)}`, 'secondary')
+                        : ''
+                }
+                ${
+                    valorMarketplaceDifere
+                        ? scChip(`MKP ${fmtBRL(item.valor_cota_marketplace)}`, 'secondary')
+                        : ''
+                }
+            </div>
+
+            ${
+                revisar
+                    ? `
+                        <div class="sc-compare-row">
+                            <span class="sc-compare-chip mkp">
+                                Marketplace <b>#${escaparHtml(item.concurso)}</b>
+                            </span>
+                            <i class="fas fa-arrows-left-right"></i>
+                            <span class="sc-compare-chip sislot">
+                                SISLOT <b>#${escaparHtml(item.concurso_sislot_suspeito || '—')}</b>
+                            </span>
+                        </div>
+                    `
+                    : ''
+            }
+
+            ${scStatusCard(item)}
+        </div>
+    `;
+
+    if (selecionavel) {
+        card.addEventListener('click', e => {
+            if (e.target.closest('input, label, button, a')) return;
+            const check = card.querySelector('.sc-card-check');
+            if (!check || check.disabled) return;
+            check.checked = !check.checked;
+            check.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
+    return card;
+}
+
 function renderSugestoesColetadas() {
     const body = $('scBody');
     const empty = $('scEmpty');
     if (!body || !empty) return;
 
     $('scLojaNome').textContent = loteriaAtiva?.loteria_nome || '—';
-
     body.innerHTML = '';
 
     if (!SUGESTOES_COLETADAS.length) {
         empty.style.display = 'block';
         empty.innerHTML = `
             <i class="fas fa-circle-check"></i><br>
-            Nenhum bolão corrente coletado aguardando cadastro nesta origem.
+            Nenhum bolão corrente coletado aguardando cadastro ou revisão nesta origem.
         `;
         $('scTabCount').textContent = '';
         atualizarResumoSelecaoSugestoes();
@@ -942,71 +1093,55 @@ function renderSugestoesColetadas() {
 
     empty.style.display = 'none';
 
+    const grupos = new Map();
+
     SUGESTOES_COLETADAS.forEach(item => {
-        const tr = document.createElement('tr');
-        const selecionavel = !!item.selecionavel;
-        const suspeitaConcurso = item.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO';
-        const suspeitaCadastro = item.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO';
-
-        if (suspeitaConcurso || suspeitaCadastro) {
-            tr.classList.add('sc-row-alert');
-            tr.title = item.alerta_inteligencia || motivoBloqueioSugestao(item);
-        }
-
-        tr.innerHTML = `
-            <td>
-                <input
-                    type="checkbox"
-                    class="sc-check"
-                    data-assinatura="${escaparHtml(item.assinatura_sugestao)}"
-                    ${selecionavel ? '' : 'disabled'}
-                >
-            </td>
-            <td>
-                <div class="sc-main">${escaparHtml(item.modalidade_sislot || item.modalidade_marketplace || '—')}</div>
-                ${item.eh_especial ? '<span class="sc-badge warn">Especial</span>' : ''}
-            </td>
-            <td>
-                ${
-                    suspeitaConcurso || suspeitaCadastro
-                        ? `
-                            <div class="sc-main sc-marketplace-contest">MKP #${escaparHtml(item.concurso)}</div>
-                            <div class="sc-muted sc-sislot-contest">SISLOT #${escaparHtml(item.concurso_sislot_suspeito || '—')}</div>
-                          `
-                        : `<div class="sc-main">#${escaparHtml(item.concurso)}</div>`
-                }
-            </td>
-            <td>${Number(item.qtd_jogos || 0)}</td>
-            <td>${Number(item.qtd_dezenas || 0)}</td>
-            <td>
-                <div class="sc-main">${fmtBRL(item.valor_cota_sugerido)}</div>
-                ${
-                    item.valor_cota_modelo &&
-                    Number(item.valor_cota_modelo) !== Number(item.valor_cota_marketplace)
-                        ? `<div class="sc-muted">Marketplace ${fmtBRL(item.valor_cota_marketplace)}</div>`
-                        : ''
-                }
-            </td>
-            <td>${Number(item.qtd_codigos_caixa || 0)}</td>
-            <td class="sc-main">${Number(item.qtd_cotas_total || 0)}</td>
-            <td>
-                <div>${fmtData(normalizarDataIsoCurta(item.dt_inicial_sugerida))}</div>
-                <div class="sc-muted">→ ${fmtData(normalizarDataIsoCurta(item.dt_concurso_sugerida))}</div>
-            </td>
-            <td>
-                ${
-                    selecionavel
-                        ? '<span class="sc-badge">Pronto para cadastrar</span>'
-                        : (suspeitaConcurso
-                            ? `<span class="sc-badge err"><i class="fas fa-triangle-exclamation"></i> Provável concurso incorreto</span>
-                               <div class="sc-muted sc-alert-detail">${escaparHtml(`SISLOT #${item.concurso_sislot_suspeito || '—'} → MKP #${item.concurso || '—'}`)}</div>`
-                            : `<span class="sc-badge err">${escaparHtml(motivoBloqueioSugestao(item))}</span>`)
-                }
-            </td>
-        `;
-
-        body.appendChild(tr);
+        const nome = item.modalidade_sislot || item.modalidade_marketplace || 'Outros';
+        if (!grupos.has(nome)) grupos.set(nome, []);
+        grupos.get(nome).push(item);
     });
+
+    [...grupos.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+        .forEach(([modalidade, itens]) => {
+            const section = document.createElement('section');
+            section.className = `sc-group sc-group-${scClasseModalidade(modalidade)}`;
+
+            const qtdDisponiveis = itens.filter(i => i.selecionavel).length;
+            const qtdRevisao = itens.filter(i =>
+                i.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO' ||
+                i.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO'
+            ).length;
+
+            section.innerHTML = `
+                <div class="sc-group-head">
+                    <span class="sc-group-name">${escaparHtml(modalidade)}</span>
+                    <span class="sc-group-line"></span>
+                    <span class="sc-group-count">${itens.length}</span>
+                    ${
+                        qtdRevisao
+                            ? `<span class="sc-group-review">${qtdRevisao} revisão</span>`
+                            : (qtdDisponiveis
+                                ? `<span class="sc-group-ready">${qtdDisponiveis} disponível${qtdDisponiveis > 1 ? 'is' : ''}</span>`
+                                : '')
+                    }
+                </div>
+
+                <div class="sc-group-cards"></div>
+            `;
+
+            const cards = section.querySelector('.sc-group-cards');
+
+            itens
+                .sort((a, b) =>
+                    String(a.concurso).localeCompare(String(b.concurso), 'pt-BR', { numeric: true }) ||
+                    Number(a.qtd_jogos || 0) - Number(b.qtd_jogos || 0) ||
+                    Number(a.qtd_dezenas || 0) - Number(b.qtd_dezenas || 0)
+                )
+                .forEach(item => cards.appendChild(scCriarCardSugestao(item)));
+
+            body.appendChild(section);
+        });
 
     const selecionaveis = SUGESTOES_COLETADAS.filter(i => i.selecionavel).length;
     const revisoes = SUGESTOES_COLETADAS.filter(i =>
