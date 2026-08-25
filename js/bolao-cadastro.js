@@ -829,17 +829,25 @@ function trocarAbaCadastro(aba) {
 
     const blocoCadastro = localizarBlocoCadastro();
     const panel = $('scPanel');
+    const movimentacaoCard = $('movimentacaoCard');
 
-    $('scTabCadastro')?.classList.toggle('active', abaCadastroAtiva === 'CADASTRO');
-    $('scTabSugestao')?.classList.toggle('active', abaCadastroAtiva === 'SUGESTAO');
+    const emCadastro = abaCadastroAtiva === 'CADASTRO';
+    const emSugestao = abaCadastroAtiva === 'SUGESTAO';
+
+    $('scTabCadastro')?.classList.toggle('active', emCadastro);
+    $('scTabSugestao')?.classList.toggle('active', emSugestao);
 
     if (blocoCadastro) {
-        blocoCadastro.style.display = abaCadastroAtiva === 'CADASTRO' ? '' : 'none';
+        blocoCadastro.style.display = emCadastro ? '' : 'none';
     }
 
-    panel?.classList.toggle('active', abaCadastroAtiva === 'SUGESTAO');
+    if (movimentacaoCard) {
+        movimentacaoCard.style.display = emCadastro ? '' : 'none';
+    }
 
-    if (abaCadastroAtiva === 'SUGESTAO') {
+    panel?.classList.toggle('active', emSugestao);
+
+    if (emSugestao) {
         carregarSugestoesColetadas();
     }
 }
