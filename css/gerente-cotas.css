@@ -386,3 +386,64 @@ button{color:inherit}
   .gc-position-chips>.gc-pos-chip{min-width:82px}
   .gc-position-chips>.gc-pos-chip--primary{min-width:88px}
 }
+
+
+/* =========================================================
+   v9 — FILTRO DE MODALIDADE + TEMA REAL + SEM KPI
+   ========================================================= */
+.gc-controlbar{
+  grid-template-columns:auto minmax(135px,.55fr) minmax(155px,.62fr) minmax(230px,1fr) minmax(140px,.54fr) auto!important;
+}
+
+.gc-listbar{
+  min-height:34px;
+  margin:8px 2px 10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  color:#718da7;
+  font-size:9px;
+}
+.gc-listbar>span:first-child{
+  color:#a8bdd1;
+  font:600 9px/1 "IBM Plex Mono";
+  letter-spacing:.02em;
+}
+.gc-listbar__updated{
+  white-space:nowrap;
+  font:500 8px/1 "IBM Plex Mono";
+}
+.gc-listbar__updated strong{color:#8fa8c0;font-weight:600}
+
+/* tema da loja somente no label da origem */
+.gc-store-label{
+  border-color:color-mix(in srgb,var(--store) 62%,transparent)!important;
+  background:color-mix(in srgb,var(--store) 9%,transparent)!important;
+  color:var(--store)!important;
+}
+.gc-bolao-card--dense{
+  border-color:rgba(118,157,195,.13)!important;
+  background:#0b2037!important;
+}
+.gc-bolao-card--dense::before{display:none!important}
+
+@media(max-width:1180px){
+  .gc-controlbar{
+    grid-template-columns:auto minmax(135px,.65fr) minmax(145px,.65fr) minmax(210px,1fr)!important;
+  }
+  .gc-control-field:has(#filtroStatus){grid-column:3}
+  .gc-refresh-btn{grid-column:4}
+}
+@media(max-width:760px){
+  .gc-controlbar{grid-template-columns:1fr 1fr!important}
+  .gc-date-switch{grid-column:1/-1!important}
+  .gc-control-field--search{grid-column:1/-1!important}
+  .gc-refresh-btn{grid-column:auto!important}
+  .gc-listbar{margin-top:7px;align-items:flex-start}
+}
+@media(max-width:460px){
+  .gc-controlbar{grid-template-columns:1fr!important}
+  .gc-date-switch,.gc-control-field,.gc-control-field--search,.gc-refresh-btn{grid-column:1!important}
+  .gc-listbar{flex-direction:column;gap:4px;margin:7px 2px 9px}
+}
