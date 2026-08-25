@@ -871,6 +871,14 @@ function garantirUiSugestaoColetada() {
         }
     });
 
+    $('scBody')?.addEventListener('click', e => {
+        const btn = e.target.closest('.sc-hide-suggestion[data-assinatura]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onOcultarSugestaoColetada(btn.dataset.assinatura, btn);
+    });
+
     $('veSelecionarTodos')?.addEventListener('change', e => {
         const marcar = !!e.target.checked;
         document.querySelectorAll('#veBody .ve-check[data-assinatura]:not(:disabled)')
@@ -1074,16 +1082,26 @@ function scCriarCardSugestao(item) {
                     ${item.eh_especial ? '<span class="sc-special-badge">Especial</span>' : ''}
                 </div>
 
-                <label class="sc-card-check-wrap" title="${selecionavel ? 'Selecionar para cadastrar' : motivoBloqueioSugestao(item)}">
-                    <input
-                        type="checkbox"
-                        class="sc-check sc-card-check"
+                <div class="sc-card-actions-right">
+                    <button
+                        type="button"
+                        class="sc-hide-suggestion"
                         data-assinatura="${escaparHtml(item.assinatura_sugestao)}"
-                        ${selecionavel ? '' : 'disabled'}
-                        aria-label="${selecionavel ? 'Selecionar sugestão' : 'Sugestão bloqueada para revisão'}"
-                    >
-                    <span class="sc-check-visual"></span>
-                </label>
+                        title="Ocultar esta sugestão"
+                        aria-label="Ocultar esta sugestão"
+                    ><i class="fas fa-eye-slash"></i><span>Ocultar</span></button>
+
+                    <label class="sc-card-check-wrap" title="${selecionavel ? 'Selecionar para cadastrar' : motivoBloqueioSugestao(item)}">
+                        <input
+                            type="checkbox"
+                            class="sc-check sc-card-check"
+                            data-assinatura="${escaparHtml(item.assinatura_sugestao)}"
+                            ${selecionavel ? '' : 'disabled'}
+                            aria-label="${selecionavel ? 'Selecionar sugestão' : 'Sugestão bloqueada para revisão'}"
+                        >
+                        <span class="sc-check-visual"></span>
+                    </label>
+                </div>
             </div>
 
             <div class="sc-meta-row">
@@ -1095,6 +1113,8 @@ function scCriarCardSugestao(item) {
 
             <div class="sc-meta-row sc-meta-row-secondary">
                 ${scChip(scPlural(item.qtd_codigos_caixa, 'código Caixa', 'códigos Caixa'), 'secondary')}
+                ${item.status_marketplace_grupo && item.status_marketplace_grupo !== 'ATIVO' ? scChip(item.status_marketplace_grupo === 'ENCERRADO' ? 'Marketplace encerrado' : 'Saiu do Marketplace', 'absent') : ''}
+                ${item.concurso_encerrado ? scChip(`Encerrado há ${Number(item.dias_apos_concurso || 0)} dia${Number(item.dias_apos_concurso || 0) === 1 ? '' : 's'} · até ${fmtData(normalizarDataIsoCurta(item.sugestao_expira_em))}`, 'expired') : ''}
                 ${periodoFinal ? scChip(`Sorteio ${fmtData(periodoFinal)}`, 'secondary') : ''}
                 ${
                     periodoInicial && periodoFinal && periodoInicial !== periodoFinal
@@ -1153,7 +1173,7 @@ function renderSugestoesColetadas() {
         empty.style.display = 'block';
         empty.innerHTML = `
             <i class="fas fa-circle-check"></i><br>
-            Nenhum bolão corrente coletado aguardando cadastro ou revisão nesta origem.
+            Nenhum bolão coletado aguardando cadastro ou revisão nesta origem.
         `;
         $('scTabCount').textContent = '';
         atualizarResumoSelecaoSugestoes();
@@ -1270,6 +1290,59 @@ async function carregarSugestoesColetadas(forcar = false) {
             btn.innerHTML = '<i class="fas fa-rotate"></i> Atualizar';
         }
     }
+}
+
+async function onOcultarSugestaoColetada(assinatura, btn) {
+    const item = SUGESTOES_COLETADAS.find(i => i.assinatura_sugestao === assinatura);
+    if (!item || !assinatura) return;
+
+    const modalidade = item.modalidade_sislot || item.modalidade_marketplace || 'Bolão';
+    const codigos = Number(item.qtd_codigos_caixa || 0);
+
+    showModal({
+        title: 'Ocultar sugestão',
+        body: [
+            `${modalidade} — Concurso ${item.concurso}`,
+            `${codigos} ${codigos === 1 ? 'código Caixa será ocultado' : 'códigos Caixa serão ocultados'} desta sugestão.`,
+            '',
+            'Se surgir um novo código Caixa compatível depois, ele poderá aparecer novamente.',
+            'Confirma a ocultação?'
+        ].join('\n'),
+        onConfirm: async () => {
+            const htmlAnterior = btn?.innerHTML;
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Ocultando</span>';
+                }
+
+                const { data, error } = await sb.rpc('fn_ocultar_sugestao_coletada', {
+                    p_assinatura: assinatura,
+                    p_motivo: 'Ocultado manualmente na Sugestão Coletada'
+                });
+
+                if (error) throw new Error(error.message);
+
+                const ocultados = Number(data?.ocultados || 0);
+                setStatus(
+                    'status',
+                    ocultados
+                        ? `Sugestão ocultada (${ocultados} ${ocultados === 1 ? 'código' : 'códigos'}).`
+                        : 'A sugestão já não estava mais disponível.',
+                    ocultados ? 'ok' : 'muted',
+                    ocultados ? 'circle-check' : 'circle-info'
+                );
+
+                await carregarSugestoesColetadas(true);
+            } catch (e) {
+                setStatus('status', e.message || 'Não foi possível ocultar a sugestão.', 'err', 'exclamation-circle');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = htmlAnterior || '<i class="fas fa-eye-slash"></i><span>Ocultar</span>';
+                }
+            }
+        }
+    });
 }
 
 function sugestoesSelecionadas() {
