@@ -1,81 +1,379 @@
-<!-- =======================================================
-     ABAS DO CADASTRO
-     Inserir depois da quickbar e antes do card "Dados do bolão".
-     No card atual de cadastro, acrescente id="cadastroCard".
-     ======================================================= -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SISLOT — Cadastro de Bolões</title>
 
-<div class="cadastro-tabs" id="scTabs">
-  <button type="button" class="cadastro-tab active" id="scTabCadastro">
-    <i class="fas fa-pen-to-square"></i>
-    Cadastro
-  </button>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="./css/cadastro.css">
+</head>
 
-  <button type="button" class="cadastro-tab" id="scTabSugestao">
-    <i class="fas fa-wand-magic-sparkles"></i>
-    Sugestão Coletada
-    <span class="cadastro-tab-count" id="scTabCount"></span>
-  </button>
-</div>
+<body data-loja="centro">
 
-<section class="sc-panel" id="scPanel">
-  <div class="sc-card">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
 
-    <div class="sc-head">
-      <div class="sc-head-main">
-        <div class="sc-title">
-          <i class="fas fa-wand-magic-sparkles"></i>
-          Sugestão Coletada — <span id="scLojaNome">—</span>
+      <button type="button" class="loja-tree" id="lojaTreeWrap" title="Trocar loja" aria-label="Trocar loja">
+        <img id="logoImg" src="./icons/centro.png" alt="Loja">
+      </button>
+
+      <div class="header-info">
+        <div class="header-nome" id="headerTitle">SISLOT</div>
+        <div class="header-sub" id="headerSub">Cadastro e movimentação</div>
+      </div>
+
+      <div id="relogio" style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap"></div>
+
+      <button type="button" class="btn-menu" id="btnInicio">
+        <i class="fas fa-house"></i>
+        <span>Início</span>
+      </button>
+
+      <button type="button" class="btn-menu" id="btnSair">
+        <i class="fas fa-right-from-bracket"></i>
+        <span>Sair</span>
+      </button>
+
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- MODALIDADES -->
+    <section class="quickbar" id="quickZone">
+      <div class="quickbar-grid" id="modGrid"></div>
+
+      <div class="quickchips" id="chipsWrap">
+        <div class="chips-row" id="chipsRow"></div>
+      </div>
+    </section>
+
+    <!-- ABAS -->
+    <div class="cadastro-tabs" id="scTabs">
+      <button type="button" class="cadastro-tab active" id="scTabCadastro">
+        <i class="fas fa-pen-to-square"></i>
+        Cadastro
+      </button>
+
+      <button type="button" class="cadastro-tab" id="scTabSugestao">
+        <i class="fas fa-wand-magic-sparkles"></i>
+        Sugestão Coletada
+        <span class="cadastro-tab-count" id="scTabCount"></span>
+      </button>
+    </div>
+
+    <!-- CADASTRO MANUAL -->
+    <section class="card" id="cadastroCard">
+
+      <div class="section-header">
+        <div class="section-icon">
+          <i class="fas fa-ticket"></i>
         </div>
 
-        <div class="sc-sub" id="scFreshness">
-          Consultando última coleta…
+        <div class="section-title">
+          Dados do bolão
+          <span class="origem-chip origem-chip-clickable" id="origemChip" title="Trocar loja">
+            <i class="fas fa-store"></i>
+            <span id="origemNome">—</span>
+          </span>
         </div>
       </div>
 
-      <div class="sc-actions">
-        <button type="button" class="sc-btn-refresh" id="scAtualizar">
-          <i class="fas fa-rotate"></i>
-          Atualizar
+      <div class="grid-2">
+        <div class="field">
+          <label>
+            <i class="fas fa-clover"></i>
+            Modalidade
+          </label>
+          <select id="modalidade">
+            <option value="">Selecione…</option>
+            <option>Mega Sena</option>
+            <option>Lotofácil</option>
+            <option>Quina</option>
+            <option>Dupla Sena</option>
+            <option>Dia de Sorte</option>
+            <option>Supersete</option>
+            <option>Milionária</option>
+            <option>Timemania</option>
+            <option>Loteca</option>
+            <option>Páscoa</option>
+            <option>São João</option>
+            <option>Independência</option>
+            <option>Virada</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label-row">
+            <span>
+              <i class="fas fa-hashtag"></i>
+              Concurso
+            </span>
+
+            <span class="day-stepper">
+              <button type="button" class="day-btn" id="btnConcursoPrev" title="Concurso anterior">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+
+              <button type="button" class="day-btn" id="btnConcursoNext" title="Próximo concurso">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </span>
+          </label>
+
+          <input id="concurso" inputmode="numeric" autocomplete="off" placeholder="Ex: 3049">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="label-row">
+            <span>
+              <i class="fas fa-calendar-day"></i>
+              Data inicial
+            </span>
+
+            <span class="day-stepper">
+              <button type="button" class="day-btn" id="btnDiPrev" title="Dia anterior">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+
+              <button type="button" class="day-btn" id="btnDiNext" title="Próximo dia">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </span>
+          </label>
+
+          <input id="dataInicial" type="date">
+        </div>
+
+        <div class="field">
+          <label class="label-row">
+            <span>
+              <i class="fas fa-calendar-check"></i>
+              Data concurso
+            </span>
+
+            <span class="day-stepper">
+              <button type="button" class="day-btn" id="btnDcPrev" title="Dia anterior">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+
+              <button type="button" class="day-btn" id="btnDcNext" title="Próximo dia">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </span>
+          </label>
+
+          <input id="dataConcurso" type="date">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>
+            <i class="fas fa-list-ol"></i>
+            Qtd jogos
+          </label>
+          <input id="qtdJogos" inputmode="numeric" autocomplete="off" placeholder="Ex: 10">
+        </div>
+
+        <div class="field">
+          <label>
+            <i class="fas fa-dice"></i>
+            Dezenas
+          </label>
+          <input id="qtdDezenas" inputmode="numeric" autocomplete="off" placeholder="Ex: 7">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label>
+            <i class="fas fa-money-bill-wave"></i>
+            Valor da cota
+          </label>
+          <input id="valorCota" inputmode="decimal" autocomplete="off" placeholder="Ex: 18,90">
+        </div>
+
+        <div class="field">
+          <label>
+            <i class="fas fa-users"></i>
+            Qtd cotas
+          </label>
+          <input id="cotas" inputmode="numeric" autocomplete="off" placeholder="Ex: 60">
+        </div>
+      </div>
+
+      <div class="actions-3">
+        <button type="button" class="btn-primary" id="btnCadastrar">
+          <i class="fas fa-check"></i>
+          Cadastrar
         </button>
 
-        <button type="button" class="sc-btn-primary" id="scCadastrarSelecionados" disabled>
-          <i class="fas fa-link"></i>
-          Cadastrar e vincular selecionados
+        <button type="button" class="btn-ghost" id="btnLimpar">
+          <i class="fas fa-eraser"></i>
+          Limpar
+        </button>
+
+        <button type="button" class="btn-danger" id="btnDeletar">
+          <i class="fas fa-trash"></i>
+          Deletar
         </button>
       </div>
+
+      <div class="status muted" id="status">
+        <i class="fas fa-info-circle"></i>
+        <span>Pronto.</span>
+      </div>
+    </section>
+
+    <!-- SUGESTÃO COLETADA -->
+    <section class="sc-panel" id="scPanel">
+      <div class="sc-card">
+
+        <div class="sc-head">
+          <div class="sc-head-main">
+            <div class="sc-title">
+              <i class="fas fa-wand-magic-sparkles"></i>
+              Sugestão Coletada — <span id="scLojaNome">—</span>
+            </div>
+
+            <div class="sc-sub" id="scFreshness">
+              Consultando última coleta…
+            </div>
+          </div>
+
+          <div class="sc-actions">
+            <button type="button" class="sc-btn-refresh" id="scAtualizar">
+              <i class="fas fa-rotate"></i>
+              Atualizar
+            </button>
+
+            <button type="button" class="sc-btn-primary" id="scCadastrarSelecionados" disabled>
+              <i class="fas fa-link"></i>
+              Cadastrar e vincular selecionados
+            </button>
+          </div>
+        </div>
+
+        <div class="sc-summary">
+          <label class="sc-select-all">
+            <input type="checkbox" class="sc-check" id="scSelecionarTodos">
+            Selecionar disponíveis
+          </label>
+
+          <span id="scResumo">0 sugestões</span>
+          <span id="scResumoSelecionados">0 selecionadas</span>
+        </div>
+
+        <div class="sc-table-wrap">
+          <table class="sc-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Modalidade</th>
+                <th>Concurso</th>
+                <th>Jogos</th>
+                <th>Dezenas</th>
+                <th>Valor</th>
+                <th>Códigos Caixa</th>
+                <th>Cotas</th>
+                <th>Período</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody id="scBody"></tbody>
+          </table>
+
+          <div class="sc-empty" id="scEmpty" style="display:none"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MOVIMENTAÇÃO -->
+    <section class="card">
+
+      <div class="section-header">
+        <div class="section-icon">
+          <i class="fas fa-right-left"></i>
+        </div>
+
+        <div class="section-title">
+          Movimentar
+
+          <span class="origem-chip origem-chip-clickable" id="movOrigemChip" title="Trocar loja">
+            <i class="fas fa-store"></i>
+            <span id="movOrigemNome">—</span>
+          </span>
+
+          <button type="button" class="btn-ghost btn-small" id="btnBuscar">
+            <i class="fas fa-search"></i>
+            Buscar
+          </button>
+        </div>
+      </div>
+
+      <!-- Os campos das lojas são gerados dinamicamente pelo JS -->
+      <div class="mov-grid" id="movGrid"></div>
+
+      <div class="actions">
+        <button type="button" class="btn-dark" id="btnMovimentar">
+          <i class="fas fa-arrows-left-right"></i>
+          Movimentar
+        </button>
+
+        <button type="button" class="btn-ghost" id="btnZerarMov">
+          <i class="fas fa-rotate-left"></i>
+          Limpar
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL COMPATÍVEL COM SISLOT_UTILS -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalBox">
+
+      <div class="modal-header">
+        <div class="modal-icon">
+          <i class="fas fa-question-circle"></i>
+        </div>
+        <div class="modal-title" id="modalTitle">Confirmação</div>
+      </div>
+
+      <div class="modal-body" id="modalBody"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="modalCancel">
+          <i class="fas fa-xmark"></i>
+          Cancelar
+        </button>
+
+        <button type="button" class="btn-primary" id="modalConfirm">
+          <i class="fas fa-check"></i>
+          Confirmar
+        </button>
+      </div>
+
     </div>
-
-    <div class="sc-summary">
-      <label class="sc-select-all">
-        <input type="checkbox" class="sc-check" id="scSelecionarTodos">
-        Selecionar disponíveis
-      </label>
-
-      <span id="scResumo">0 sugestões</span>
-      <span id="scResumoSelecionados">0 selecionadas</span>
-    </div>
-
-    <div class="sc-table-wrap">
-      <table class="sc-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Modalidade</th>
-            <th>Concurso</th>
-            <th>Jogos</th>
-            <th>Dezenas</th>
-            <th>Valor</th>
-            <th>Códigos Caixa</th>
-            <th>Cotas</th>
-            <th>Período</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="scBody"></tbody>
-      </table>
-
-      <div class="sc-empty" id="scEmpty" style="display:none"></div>
-    </div>
-
   </div>
-</section>
+
+  <!-- DEPENDÊNCIAS BASE DO SISLOT -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./sislot-security.js"></script>
+  <script src="./js/sislot-utils.js"></script>
+  <!-- CADASTRO + VALIDAÇÃO + SUGESTÃO COLETADA -->
+  <script src="./js/cadastro-boloes.js"></script>
+
+</body>
+</html>
