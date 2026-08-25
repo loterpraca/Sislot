@@ -1315,3 +1315,129 @@ button.loja-tree{
     font-size:7.5px;
   }
 }
+
+
+/* Sugestão Coletada é um fluxo separado da movimentação.
+   O JS controla a visibilidade do card #movimentacaoCard conforme a aba ativa. */
+#movimentacaoCard[hidden]{
+  display:none !important;
+}
+
+
+/* =========================================================
+   VINCULAR EXISTENTES — v8
+   ========================================================= */
+.ve-info-strip{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:9px 16px;
+  border-bottom:1px solid var(--border);
+  background:rgba(0,212,160,.035);
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:8.5px;
+  line-height:1.55;
+  letter-spacing:.035em;
+}
+.ve-info-strip i{color:var(--t1);margin-top:2px}
+
+.ve-id-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:18px;
+  padding:2px 7px;
+  border-radius:4px;
+  border:1px solid rgba(96,165,250,.24);
+  background:rgba(96,165,250,.07);
+  color:#93c5fd;
+  font-family:var(--mono);
+  font-size:8px;
+  font-weight:600;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.ve-match-box{
+  display:flex;
+  align-items:stretch;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:8px;
+  padding:8px 10px;
+  border:1px solid rgba(0,212,160,.16);
+  border-radius:7px;
+  background:rgba(0,212,160,.035);
+}
+.ve-match-side{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.ve-match-side-right{text-align:right;align-items:flex-end}
+.ve-match-label{
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:7.5px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.ve-match-side strong{
+  color:#9eead7;
+  font-family:var(--mono);
+  font-size:9px;
+  font-weight:600;
+}
+
+.ve-codes{
+  margin-top:8px;
+  border-top:1px dashed rgba(36,61,112,.5);
+  padding-top:7px;
+}
+.ve-codes summary{
+  width:max-content;
+  max-width:100%;
+  cursor:pointer;
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:8px;
+  user-select:none;
+}
+.ve-codes summary:hover{color:var(--t1)}
+.ve-codes-list{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin-top:7px;
+}
+.ve-code-line{
+  display:grid;
+  grid-template-columns:minmax(120px,1.6fr) auto auto minmax(120px,auto);
+  gap:8px;
+  align-items:center;
+  padding:5px 7px;
+  border:1px solid rgba(36,61,112,.45);
+  border-radius:5px;
+  background:rgba(7,13,26,.24);
+  color:var(--text3);
+  font-family:var(--mono);
+  font-size:7.5px;
+}
+.ve-code-id{color:#93c5fd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@media(max-width:700px){
+  .cadastro-tabs{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
+  .cadastro-tabs::-webkit-scrollbar{display:none}
+  .cadastro-tab{flex:0 0 auto;white-space:nowrap}
+  .ve-match-box{flex-direction:column}
+  .ve-match-side-right{text-align:left;align-items:flex-start}
+  .ve-code-line{grid-template-columns:minmax(0,1fr) auto auto}
+  .ve-code-line span:last-child{grid-column:1/-1;color:var(--text3)}
+}
+
+@media(max-width:430px){
+  .cadastro-tab{font-size:8px;padding:7px 9px;letter-spacing:.08em}
+  .ve-info-strip{padding:8px 10px}
+  .ve-match-box{padding:7px 8px}
+}
