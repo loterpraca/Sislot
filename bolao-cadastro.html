@@ -66,6 +66,12 @@
         Sugestão Coletada
         <span class="cadastro-tab-count" id="scTabCount"></span>
       </button>
+
+      <button type="button" class="cadastro-tab" id="veTabVincular">
+        <i class="fas fa-link"></i>
+        Vincular Existentes
+        <span class="cadastro-tab-count" id="veTabCount"></span>
+      </button>
     </div>
 
     <!-- CADASTRO MANUAL -->
@@ -276,6 +282,57 @@
         <div class="sc-list-wrap">
           <div class="sc-list" id="scBody"></div>
           <div class="sc-empty" id="scEmpty" style="display:none"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VINCULAR EXISTENTES -->
+    <section class="sc-panel" id="vePanel">
+      <div class="sc-card">
+
+        <div class="sc-head">
+          <div class="sc-head-main">
+            <div class="sc-title">
+              <i class="fas fa-link"></i>
+              Vincular Existentes — <span id="veLojaNome">—</span>
+            </div>
+
+            <div class="sc-sub" id="veFreshness">
+              Procurando códigos Caixa compatíveis…
+            </div>
+          </div>
+
+          <div class="sc-actions">
+            <button type="button" class="sc-btn-refresh" id="veAtualizar">
+              <i class="fas fa-rotate"></i>
+              Atualizar
+            </button>
+
+            <button type="button" class="sc-btn-primary" id="veVincularSelecionados" disabled>
+              <i class="fas fa-link"></i>
+              Vincular selecionados
+            </button>
+          </div>
+        </div>
+
+        <div class="sc-summary">
+          <label class="sc-select-all">
+            <input type="checkbox" class="sc-check" id="veSelecionarTodos">
+            Selecionar disponíveis
+          </label>
+
+          <span id="veResumo">0 correspondências</span>
+          <span id="veResumoSelecionados">0 selecionados</span>
+        </div>
+
+        <div class="ve-info-strip">
+          <i class="fas fa-circle-info"></i>
+          <span>Esta operação cria somente o vínculo com o Marketplace. Não altera cotas totais, Marketplace manual ou movimentações.</span>
+        </div>
+
+        <div class="sc-list-wrap">
+          <div class="sc-list" id="veBody"></div>
+          <div class="sc-empty" id="veEmpty" style="display:none"></div>
         </div>
       </div>
     </section>
