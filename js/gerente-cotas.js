@@ -260,61 +260,43 @@
     const tema = temaOrigem(row);
     const corMod = corModalidade(row.modalidade);
     const saldoClasse = row.saldo_loja < 0 ? 'is-danger' : row.saldo_loja === 0 ? 'is-empty' : 'is-ok';
-    const principalTitulo = row.eh_origem ? 'Ficaram na origem' : 'Recebidas';
+    const principalTitulo = row.eh_origem ? 'Físicas' : 'Recebidas';
     const principalValor = row.eh_origem ? row.qtd_inicial_loja : row.qtd_recebida_movimentacao;
-
-    const blocoDetalhes = row.eh_origem
-      ? `
-        <div class="gc-inline-details">
-          <span class="gc-detail-pill"><small>Imp. origem</small><strong>${formatarInteiro(row.qtd_fisicas_origem_coletadas)}</strong></span>
-          <span class="gc-detail-pill"><small>Baixadas imp.</small><strong>${formatarInteiro(row.qtd_impressas_coletadas)}</strong></span>
-          <span class="gc-detail-pill"><small>Movimentadas</small><strong>${formatarInteiro(row.qtd_movimentada_destinos)}</strong></span>
-        </div>`
-      : `
-        <div class="gc-inline-details">
-          <span class="gc-detail-pill gc-detail-pill--single"><small>Recebidas da origem</small><strong>${escapeHtml(row.origem_nome || '—')}</strong></span>
-        </div>`;
-
     const vendas = montarChipsVenda(row);
 
-    return `<article class="gc-bolao-card gc-bolao-card--compact ${saldoClasse}" style="--store:${tema.cor};--store-soft:${tema.soft};--mod:${corMod}">
-      <div class="gc-card-headline">
-        <div class="gc-card-titleline">
-          <h3 class="gc-card-title"><i class="gc-mod-dot"></i>${escapeHtml(row.modalidade || '—')}</h3>
-          <span class="gc-card-contest">#${escapeHtml(row.concurso || '—')}</span>
-        </div>
+    const posicao = `
+        <span class="gc-pos-chip gc-pos-chip--primary"><small>${principalTitulo}</small><strong>${formatarInteiro(principalValor)}</strong></span>`;
 
-        <div class="gc-card-tags gc-card-tags--compact">
-          <span class="gc-tag gc-tag--store">${escapeHtml(tema.nome)}</span>
-          <span class="gc-tag ${row.eh_origem ? 'gc-tag--origin' : 'gc-tag--received'}">${row.eh_origem ? 'Origem' : 'Recebido'}</span>
-          <span class="gc-tag">${formatarDataBR(row.dt_concurso)}</span>
-          <span class="gc-tag">Bolão #${formatarInteiro(row.bolao_id)}</span>
+    return `<article class="gc-bolao-card gc-bolao-card--dense ${saldoClasse}" style="--store:${tema.cor};--mod:${corMod}">
+      <div class="gc-dense-row gc-dense-row--top">
+        <div class="gc-dense-title">
+          <span class="gc-mod-dot"></span>
+          <strong>${escapeHtml(row.modalidade || '—')}</strong>
+          <span class="gc-contest-chip">#${escapeHtml(row.concurso || '—')}</span>
+          <span class="gc-store-label">${escapeHtml(tema.nome)}</span>
+          <span class="gc-type-label">${row.eh_origem ? 'Origem' : 'Recebido'}</span>
+        </div>
+        <div class="gc-dense-side">
+          <span>${formatarDataBR(row.dt_concurso)}</span>
+          <span>Bolão #${formatarInteiro(row.bolao_id)}</span>
         </div>
       </div>
 
-      <div class="gc-card-meta gc-card-meta--tight">
+      <div class="gc-dense-row gc-dense-row--meta">
         <span class="gc-meta-chip">${formatarInteiro(row.qtd_jogos)} jogo${row.qtd_jogos === 1 ? '' : 's'}</span>
         <span class="gc-meta-chip">${formatarInteiro(row.qtd_dezenas)} dez.</span>
         <span class="gc-meta-chip">${formatarMoeda(row.valor_cota)}/cota</span>
+        ${!row.eh_origem ? `<span class="gc-meta-chip gc-meta-chip--origin-text">Origem: ${escapeHtml(row.origem_nome || '—')}</span>` : ''}
       </div>
 
-      <div class="gc-main-metrics gc-main-metrics--compact">
-        <div class="gc-box gc-box--primary gc-box--compact">
-          <span class="gc-box-label">${principalTitulo}</span>
-          <strong class="gc-box-value">${formatarInteiro(principalValor)}</strong>
+      <div class="gc-dense-row gc-dense-row--position">
+        <div class="gc-position-chips">
+          ${posicao}
+          <span class="gc-pos-chip"><small>Vendidas</small><strong>${formatarInteiro(row.qtd_total_vendida)}</strong></span>
+          <span class="gc-pos-chip gc-pos-chip--saldo ${saldoClasse}"><small>Saldo</small><strong>${formatarInteiro(row.saldo_loja)}</strong></span>
         </div>
-        <div class="gc-box gc-box--compact">
-          <span class="gc-box-label">Vendidas</span>
-          <strong class="gc-box-value">${formatarInteiro(row.qtd_total_vendida)}</strong>
-        </div>
-        <div class="gc-box gc-box--saldo gc-box--compact ${saldoClasse}">
-          <span class="gc-box-label">Saldo físico</span>
-          <strong class="gc-box-value">${formatarInteiro(row.saldo_loja)}</strong>
-        </div>
+        ${vendas ? `<div class="gc-sales-inline"><span class="gc-sales-label">Vendas</span>${vendas}</div>` : ''}
       </div>
-
-      ${blocoDetalhes}
-      ${vendas ? `<div class="gc-sales-row"><span class="gc-sales-label">Vendas</span>${vendas}</div>` : ''}
     </article>`;
   }
 
