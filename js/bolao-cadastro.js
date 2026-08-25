@@ -217,6 +217,9 @@ let lojaIdPorSlug = {};
 let mapaCamposMovLegado = {};
 let SHORTCUTS = {};
 let ESPECIAIS = {};
+let SUGESTOES_COLETADAS = [];
+let abaCadastroAtiva = 'CADASTRO';
+let carregandoSugestoesColetadas = false;
 // Impede abertura de mais de uma confirmação
 let confirmacaoMovimentacaoAberta = false;
 // Impede mais de uma gravação simultânea
@@ -270,6 +273,7 @@ async function init() {
     }
 
     renderizarCamposMovimentacao();
+    garantirUiSugestaoColetada();
 
     await carregarModelos();
     await carregarEspeciais();
@@ -548,6 +552,10 @@ function trocarLoja(slug) {
     atualizarCamposMov();
     renderChips(localStorage.getItem('sl_active_mod') || '');
     saveDraft();
+
+    if (abaCadastroAtiva === 'SUGESTAO') {
+        carregarSugestoesColetadas(true);
+    }
 }
 
 function getIndiceLojaAtual() {
@@ -701,6 +709,472 @@ function aplicarShortcut(modKey, sc) {
     setStatus('status', 'Atalho aplicado: ' + sc.nome, 'ok', 'check-circle');
     saveDraft();
 }
+
+
+/************************************************************
+ * SUGESTÃO COLETADA
+ ************************************************************/
+
+function injetarCssSugestaoColetada() {
+    // A partir da v3, os estilos ficam em cadastro.css.
+}
+
+function localizarBlocoCadastro() {
+    const explicito = $('cadastroCard');
+    if (explicito) return explicito;
+
+    const campo = $('modalidade');
+    if (!campo) return null;
+
+    return campo.closest('.card, .panel, .box, section, form') ||
+           campo.parentElement?.parentElement ||
+           campo.parentElement;
+}
+
+function garantirUiSugestaoColetada() {
+    if (!$('modalidade')) return;
+
+    injetarCssSugestaoColetada();
+
+    const blocoCadastro = localizarBlocoCadastro();
+    if (!blocoCadastro?.parentElement) return;
+
+    blocoCadastro.dataset.scCadastroOriginal = '1';
+
+    // Preferência: HTML estático da v3.
+    // Fallback: cria apenas a estrutura caso o fragmento ainda não tenha sido inserido.
+    if (!$('scTabs') || !$('scPanel')) {
+        const tabs = document.createElement('div');
+        tabs.id = 'scTabs';
+        tabs.className = 'cadastro-tabs';
+        tabs.innerHTML = `
+            <button type="button" id="scTabCadastro" class="cadastro-tab active">
+                <i class="fas fa-pen-to-square"></i> Cadastro
+            </button>
+            <button type="button" id="scTabSugestao" class="cadastro-tab">
+                <i class="fas fa-wand-magic-sparkles"></i> Sugestão Coletada
+                <span class="cadastro-tab-count" id="scTabCount"></span>
+            </button>
+        `;
+
+        const panel = document.createElement('section');
+        panel.id = 'scPanel';
+        panel.className = 'sc-panel';
+        panel.innerHTML = `
+            <div class="sc-card">
+                <div class="sc-head">
+                    <div class="sc-head-main">
+                        <div class="sc-title">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                            Sugestão Coletada — <span id="scLojaNome">—</span>
+                        </div>
+                        <div class="sc-sub" id="scFreshness">
+                            Consultando última coleta…
+                        </div>
+                    </div>
+                    <div class="sc-actions">
+                        <button type="button" id="scAtualizar" class="sc-btn-refresh">
+                            <i class="fas fa-rotate"></i> Atualizar
+                        </button>
+                        <button type="button" id="scCadastrarSelecionados" class="sc-btn-primary" disabled>
+                            <i class="fas fa-link"></i> Cadastrar e vincular selecionados
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sc-summary">
+                    <label class="sc-select-all">
+                        <input type="checkbox" id="scSelecionarTodos" class="sc-check">
+                        Selecionar disponíveis
+                    </label>
+                    <span id="scResumo">0 sugestões</span>
+                    <span id="scResumoSelecionados">0 selecionadas</span>
+                </div>
+
+                <div class="sc-table-wrap">
+                    <table class="sc-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Modalidade</th>
+                                <th>Concurso</th>
+                                <th>Jogos</th>
+                                <th>Dezenas</th>
+                                <th>Valor</th>
+                                <th>Códigos Caixa</th>
+                                <th>Cotas</th>
+                                <th>Período</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scBody"></tbody>
+                    </table>
+                    <div id="scEmpty" class="sc-empty" style="display:none"></div>
+                </div>
+            </div>
+        `;
+
+        blocoCadastro.parentElement.insertBefore(tabs, blocoCadastro);
+        blocoCadastro.parentElement.insertBefore(panel, blocoCadastro.nextSibling);
+    }
+
+    if ($('scTabs')?.dataset.bound === '1') return;
+    if ($('scTabs')) $('scTabs').dataset.bound = '1';
+
+    $('scTabCadastro')?.addEventListener('click', () => trocarAbaCadastro('CADASTRO'));
+    $('scTabSugestao')?.addEventListener('click', () => trocarAbaCadastro('SUGESTAO'));
+    $('scAtualizar')?.addEventListener('click', () => carregarSugestoesColetadas(true));
+    $('scCadastrarSelecionados')?.addEventListener('click', onCadastrarSugestoesColetadas);
+
+    $('scSelecionarTodos')?.addEventListener('change', e => {
+        const marcar = !!e.target.checked;
+        document.querySelectorAll('#scBody .sc-check[data-assinatura]:not(:disabled)')
+            .forEach(el => el.checked = marcar);
+        atualizarResumoSelecaoSugestoes();
+    });
+
+    $('scBody')?.addEventListener('change', e => {
+        if (e.target.matches('.sc-check[data-assinatura]')) {
+            atualizarResumoSelecaoSugestoes();
+        }
+    });
+}
+
+function trocarAbaCadastro(aba) {
+    abaCadastroAtiva = aba === 'SUGESTAO' ? 'SUGESTAO' : 'CADASTRO';
+
+    const blocoCadastro = localizarBlocoCadastro();
+    const panel = $('scPanel');
+
+    $('scTabCadastro')?.classList.toggle('active', abaCadastroAtiva === 'CADASTRO');
+    $('scTabSugestao')?.classList.toggle('active', abaCadastroAtiva === 'SUGESTAO');
+
+    if (blocoCadastro) {
+        blocoCadastro.style.display = abaCadastroAtiva === 'CADASTRO' ? '' : 'none';
+    }
+
+    panel?.classList.toggle('active', abaCadastroAtiva === 'SUGESTAO');
+
+    if (abaCadastroAtiva === 'SUGESTAO') {
+        carregarSugestoesColetadas();
+    }
+}
+
+function normalizarDataIsoCurta(v) {
+    return v ? String(v).slice(0, 10) : '';
+}
+
+function idadeColetaMinutos(dataIso) {
+    if (!dataIso) return null;
+    const dt = new Date(dataIso);
+    if (Number.isNaN(dt.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - dt.getTime()) / 60000));
+}
+
+function motivoBloqueioSugestao(item) {
+    const mapa = {
+        ESPECIAL_NAO_CONFIGURADO: 'Especial sem calendário SISLOT',
+        DATA_ESPECIAL_DIVERGENTE_MARKETPLACE: 'Data especial divergente',
+        SEM_DATA_INICIAL_CALCULADA: 'Sem data inicial',
+        SEM_DATA_CONCURSO: 'Sem data do concurso',
+        MODALIDADE_NAO_MAPEADA: 'Modalidade não mapeada'
+    };
+
+    return mapa[item?.motivo_bloqueio] || item?.motivo_bloqueio || 'Revisar';
+}
+
+function renderFreshnessSugestao() {
+    const el = $('scFreshness');
+    if (!el) return;
+
+    const datas = SUGESTOES_COLETADAS
+        .map(item => item.ultima_coleta_em)
+        .filter(Boolean)
+        .sort();
+
+    const ultima = datas.length ? datas[datas.length - 1] : null;
+    const mins = idadeColetaMinutos(ultima);
+
+    if (mins === null) {
+        el.innerHTML = '<span class="sc-fresh err">Sem informação de coleta recente.</span>';
+        return;
+    }
+
+    const cls = mins <= 5 ? 'ok' : (mins <= 15 ? 'warn' : 'err');
+    const texto = mins === 0 ? 'agora' : `há ${mins} min`;
+
+    el.innerHTML = `
+        <span class="sc-fresh ${cls}">
+            Marketplace atualizado ${texto}
+        </span>
+        ${ultima ? ` · ${new Date(ultima).toLocaleString('pt-BR')}` : ''}
+    `;
+}
+
+function renderSugestoesColetadas() {
+    const body = $('scBody');
+    const empty = $('scEmpty');
+    if (!body || !empty) return;
+
+    $('scLojaNome').textContent = loteriaAtiva?.loteria_nome || '—';
+
+    body.innerHTML = '';
+
+    if (!SUGESTOES_COLETADAS.length) {
+        empty.style.display = 'block';
+        empty.innerHTML = `
+            <i class="fas fa-circle-check"></i><br>
+            Nenhum bolão corrente coletado aguardando cadastro nesta origem.
+        `;
+        $('scTabCount').textContent = '';
+        atualizarResumoSelecaoSugestoes();
+        renderFreshnessSugestao();
+        return;
+    }
+
+    empty.style.display = 'none';
+
+    SUGESTOES_COLETADAS.forEach(item => {
+        const tr = document.createElement('tr');
+        const selecionavel = !!item.selecionavel;
+
+        tr.innerHTML = `
+            <td>
+                <input
+                    type="checkbox"
+                    class="sc-check"
+                    data-assinatura="${escaparHtml(item.assinatura_sugestao)}"
+                    ${selecionavel ? '' : 'disabled'}
+                >
+            </td>
+            <td>
+                <div class="sc-main">${escaparHtml(item.modalidade_sislot || item.modalidade_marketplace || '—')}</div>
+                ${item.eh_especial ? '<span class="sc-badge warn">Especial</span>' : ''}
+            </td>
+            <td class="sc-main">${escaparHtml(item.concurso)}</td>
+            <td>${Number(item.qtd_jogos || 0)}</td>
+            <td>${Number(item.qtd_dezenas || 0)}</td>
+            <td>
+                <div class="sc-main">${fmtBRL(item.valor_cota_sugerido)}</div>
+                ${
+                    item.valor_cota_modelo &&
+                    Number(item.valor_cota_modelo) !== Number(item.valor_cota_marketplace)
+                        ? `<div class="sc-muted">Marketplace ${fmtBRL(item.valor_cota_marketplace)}</div>`
+                        : ''
+                }
+            </td>
+            <td>${Number(item.qtd_codigos_caixa || 0)}</td>
+            <td class="sc-main">${Number(item.qtd_cotas_total || 0)}</td>
+            <td>
+                <div>${fmtData(normalizarDataIsoCurta(item.dt_inicial_sugerida))}</div>
+                <div class="sc-muted">→ ${fmtData(normalizarDataIsoCurta(item.dt_concurso_sugerida))}</div>
+            </td>
+            <td>
+                ${
+                    selecionavel
+                        ? '<span class="sc-badge">Pronto para cadastrar</span>'
+                        : `<span class="sc-badge err">${escaparHtml(motivoBloqueioSugestao(item))}</span>`
+                }
+            </td>
+        `;
+
+        body.appendChild(tr);
+    });
+
+    const selecionaveis = SUGESTOES_COLETADAS.filter(i => i.selecionavel).length;
+    $('scTabCount').textContent = selecionaveis ? ` (${selecionaveis})` : '';
+
+    renderFreshnessSugestao();
+    atualizarResumoSelecaoSugestoes();
+}
+
+async function carregarSugestoesColetadas(forcar = false) {
+    if (carregandoSugestoesColetadas || !loteriaAtiva?.loteria_id) return;
+    if (!forcar && abaCadastroAtiva !== 'SUGESTAO') return;
+
+    carregandoSugestoesColetadas = true;
+
+    const btn = $('scAtualizar');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Atualizando';
+    }
+
+    const empty = $('scEmpty');
+    if (empty) {
+        empty.style.display = 'block';
+        empty.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando sugestões coletadas…';
+    }
+
+    try {
+        const { data, error } = await sb.rpc(
+            'fn_listar_sugestoes_coletadas',
+            { p_loteria_id: Number(loteriaAtiva.loteria_id) }
+        );
+
+        if (error) throw new Error(error.message);
+
+        SUGESTOES_COLETADAS = Array.isArray(data) ? data : [];
+        renderSugestoesColetadas();
+
+    } catch (e) {
+        SUGESTOES_COLETADAS = [];
+        if (empty) {
+            empty.style.display = 'block';
+            empty.textContent = e.message || 'Erro ao carregar Sugestão Coletada.';
+        }
+        setStatus('status', e.message || 'Erro ao carregar Sugestão Coletada.', 'err', 'exclamation-circle');
+
+    } finally {
+        carregandoSugestoesColetadas = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rotate"></i> Atualizar';
+        }
+    }
+}
+
+function sugestoesSelecionadas() {
+    const assinaturas = new Set(
+        [...document.querySelectorAll('#scBody .sc-check[data-assinatura]:checked')]
+            .map(el => el.dataset.assinatura)
+            .filter(Boolean)
+    );
+
+    return SUGESTOES_COLETADAS.filter(item =>
+        item.selecionavel &&
+        assinaturas.has(item.assinatura_sugestao)
+    );
+}
+
+function atualizarResumoSelecaoSugestoes() {
+    const total = SUGESTOES_COLETADAS.length;
+    const selecionaveis = SUGESTOES_COLETADAS.filter(i => i.selecionavel).length;
+    const selecionadas = sugestoesSelecionadas();
+    const cotas = selecionadas.reduce((s, i) => s + Number(i.qtd_cotas_total || 0), 0);
+    const codigos = selecionadas.reduce((s, i) => s + Number(i.qtd_codigos_caixa || 0), 0);
+
+    if ($('scResumo')) {
+        $('scResumo').textContent =
+            `${total} sugestões · ${selecionaveis} disponíveis`;
+    }
+
+    if ($('scResumoSelecionados')) {
+        $('scResumoSelecionados').textContent =
+            `${selecionadas.length} selecionadas · ${codigos} códigos · ${cotas} cotas`;
+    }
+
+    const btn = $('scCadastrarSelecionados');
+    if (btn) {
+        btn.disabled = selecionadas.length === 0;
+        btn.innerHTML = selecionadas.length
+            ? `<i class="fas fa-link"></i> Cadastrar e vincular ${selecionadas.length}`
+            : '<i class="fas fa-link"></i> Cadastrar e vincular selecionados';
+    }
+
+    const all = $('scSelecionarTodos');
+    if (all) {
+        const marcadas = document.querySelectorAll(
+            '#scBody .sc-check[data-assinatura]:checked'
+        ).length;
+        all.checked = selecionaveis > 0 && marcadas === selecionaveis;
+        all.indeterminate = marcadas > 0 && marcadas < selecionaveis;
+    }
+}
+
+async function onCadastrarSugestoesColetadas() {
+    const selecionadas = sugestoesSelecionadas();
+    if (!selecionadas.length) return;
+
+    const totalCotas = selecionadas.reduce((s, i) => s + Number(i.qtd_cotas_total || 0), 0);
+    const totalCodigos = selecionadas.reduce((s, i) => s + Number(i.qtd_codigos_caixa || 0), 0);
+
+    const linhas = [
+        '✨ SUGESTÃO COLETADA', '',
+        `📍 Origem: ${loteriaAtiva?.loteria_nome || '—'}`,
+        `📦 ${selecionadas.length} bolão(ões)`,
+        `🔗 ${totalCodigos} código(s) Caixa`,
+        `🎫 ${totalCotas} cotas`, '',
+        ...selecionadas.slice(0, 12).map(item =>
+            `• ${item.modalidade_sislot} ${item.concurso} · ` +
+            `${item.qtd_jogos}x${item.qtd_dezenas} · ` +
+            `${fmtBRL(item.valor_cota_sugerido)} · ${item.qtd_cotas_total} cotas`
+        ),
+        selecionadas.length > 12 ? `• … e mais ${selecionadas.length - 12}` : '',
+        '',
+        'Os bolões serão cadastrados, vinculados aos códigos Caixa e terão coleta detalhada solicitada.',
+        '',
+        'Confirma?'
+    ].filter(Boolean);
+
+    showModal({
+        title: 'Cadastrar Sugestões Coletadas',
+        body: linhas.join('\n'),
+        onConfirm: async () => {
+            const btn = $('scCadastrarSelecionados');
+
+            try {
+                setBtnLoading(btn, true);
+                setStatus(
+                    'status',
+                    'Cadastrando e vinculando sugestões…',
+                    'muted',
+                    'spinner fa-spin'
+                );
+
+                const { data, error } = await sb.rpc(
+                    'fn_cadastrar_sugestoes_coletadas',
+                    {
+                        p_assinaturas: selecionadas.map(i => i.assinatura_sugestao)
+                    }
+                );
+
+                if (error) throw new Error(error.message);
+
+                const criados = Number(data?.criados || 0);
+                const vinculos = Number(data?.vinculos_criados || 0);
+                const detalhes = Number(data?.detalhes_solicitados || 0);
+                const ignorados = Number(data?.ignorados || 0);
+                const erros = Array.isArray(data?.erros) ? data.erros : [];
+
+                if (erros.length) {
+                    const mensagem = erros
+                        .slice(0, 3)
+                        .map(e => e.erro)
+                        .join(' | ');
+
+                    setStatus(
+                        'status',
+                        `Concluído com ressalvas: ${criados} cadastrados, ${erros.length} erro(s). ${mensagem}`,
+                        'err',
+                        'triangle-exclamation'
+                    );
+                } else {
+                    setStatus(
+                        'status',
+                        `✓ ${criados} bolão(ões) cadastrados · ${vinculos} vínculos · ${detalhes} coletas detalhadas solicitadas${ignorados ? ` · ${ignorados} ignorados` : ''}`,
+                        'ok',
+                        'check-double'
+                    );
+                }
+
+                await carregarSugestoesColetadas(true);
+
+            } catch (e) {
+                setStatus(
+                    'status',
+                    e.message || 'Erro ao cadastrar sugestões coletadas.',
+                    'err',
+                    'exclamation-circle'
+                );
+            } finally {
+                setBtnLoading(btn, false);
+                atualizarResumoSelecaoSugestoes();
+            }
+        }
+    });
+}
+
 
 /************************************************************
  * FEDERAL
@@ -874,6 +1348,358 @@ function validarBase(exigirCotas = true) {
     return { modalidade, concurso, dataInicial, dataConcurso, qtdJogos, qtdDezenas, valorCota, cotas };
 }
 
+
+/************************************************************
+ * VALIDAÇÃO INTELIGENTE DE CONCURSO E DATAS
+ ************************************************************/
+
+function chaveModalidadeComparacao(valor) {
+    return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+}
+
+function dataISOAdicionarDias(valor, dias) {
+    if (!valor) return '';
+    const [ano, mes, dia] = String(valor).slice(0, 10).split('-').map(Number);
+    if (!ano || !mes || !dia) return '';
+
+    const dt = new Date(ano, mes - 1, dia, 12, 0, 0, 0);
+    dt.setDate(dt.getDate() + Number(dias || 0));
+
+    return [
+        dt.getFullYear(),
+        String(dt.getMonth() + 1).padStart(2, '0'),
+        String(dt.getDate()).padStart(2, '0')
+    ].join('-');
+}
+
+function proximoDiaOperacional(valor) {
+    let data = dataISOAdicionarDias(valor, 1);
+    if (!data) return '';
+
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const dt = new Date(ano, mes - 1, dia, 12, 0, 0, 0);
+
+    // Regra operacional observada no SISLOT: domingo pula para segunda.
+    if (dt.getDay() === 0) {
+        data = dataISOAdicionarDias(data, 1);
+    }
+
+    return data;
+}
+
+function modaDatas(registros, campo) {
+    const contagem = new Map();
+
+    (registros || []).forEach(item => {
+        const valor = item?.[campo];
+        if (!valor) return;
+        const data = String(valor).slice(0, 10);
+        contagem.set(data, (contagem.get(data) || 0) + 1);
+    });
+
+    const ordenadas = [...contagem.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+    if (!ordenadas.length) {
+        return { data: '', ocorrencias: 0, alternativas: [] };
+    }
+
+    return {
+        data: ordenadas[0][0],
+        ocorrencias: ordenadas[0][1],
+        alternativas: ordenadas.map(([data, ocorrencias]) => ({ data, ocorrencias }))
+    };
+}
+
+async function buscarDataConcursoMarketplace(modalidade, concurso) {
+    if (!modalidade || !concurso) {
+        return { data: '', fonte: '', alternativas: [] };
+    }
+
+    const { data, error } = await sb
+        .from('marketplace_caixa_boloes')
+        .select('modalidade, concurso, dt_sorteio, tipo_concurso')
+        .eq('concurso', String(concurso))
+        .not('dt_sorteio', 'is', null)
+        .limit(1000);
+
+    if (error) {
+        console.warn('Falha ao validar data no Marketplace:', error);
+        return { data: '', fonte: '', alternativas: [] };
+    }
+
+    const chave = chaveModalidadeComparacao(modalidade);
+    const compativeis = (data || []).filter(item =>
+        chaveModalidadeComparacao(item.modalidade) === chave
+    );
+
+    const moda = modaDatas(compativeis, 'dt_sorteio');
+
+    return {
+        data: moda.data,
+        fonte: moda.data ? 'MARKETPLACE' : '',
+        alternativas: moda.alternativas
+    };
+}
+
+async function buscarReferenciaSislotMesmoConcurso(modalidade, concurso) {
+    const { data, error } = await sb
+        .from('boloes')
+        .select('dt_inicial, dt_concurso, loteria_id')
+        .eq('modalidade', modalidade)
+        .eq('concurso', String(concurso))
+        .neq('status', 'CANCELADO')
+        .limit(1000);
+
+    if (error) {
+        console.warn('Falha ao consultar referência SISLOT:', error);
+        return {
+            dtInicial: '',
+            dtConcurso: '',
+            qtdRegistros: 0,
+            alternativasInicial: [],
+            alternativasConcurso: []
+        };
+    }
+
+    const modaInicial = modaDatas(data || [], 'dt_inicial');
+    const modaConcurso = modaDatas(data || [], 'dt_concurso');
+
+    return {
+        dtInicial: modaInicial.data,
+        dtConcurso: modaConcurso.data,
+        qtdRegistros: (data || []).length,
+        alternativasInicial: modaInicial.alternativas,
+        alternativasConcurso: modaConcurso.alternativas
+    };
+}
+
+async function buscarConcursoAnteriorMesmaModalidade(modalidade, dataConcursoAtual) {
+    if (!modalidade || !dataConcursoAtual) return null;
+
+    const { data, error } = await sb
+        .from('boloes')
+        .select('concurso, dt_concurso')
+        .eq('modalidade', modalidade)
+        .neq('status', 'CANCELADO')
+        .lt('dt_concurso', dataConcursoAtual)
+        .order('dt_concurso', { ascending: false })
+        .limit(200);
+
+    if (error) {
+        console.warn('Falha ao buscar concurso anterior:', error);
+        return null;
+    }
+
+    if (!data?.length) return null;
+
+    const dataMaisRecente = String(data[0].dt_concurso).slice(0, 10);
+    const grupo = data.filter(item =>
+        String(item.dt_concurso).slice(0, 10) === dataMaisRecente
+    );
+
+    const concursos = new Map();
+    grupo.forEach(item => {
+        const chave = String(item.concurso || '');
+        concursos.set(chave, (concursos.get(chave) || 0) + 1);
+    });
+
+    const concursoAnterior = [...concursos.entries()]
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || String(grupo[0].concurso || '');
+
+    return {
+        concurso: concursoAnterior,
+        dtConcurso: dataMaisRecente
+    };
+}
+
+async function buscarSobreposicoesPeriodo(modalidade, concurso, dataInicial, dataConcurso) {
+    if (!modalidade || !dataInicial || !dataConcurso) return [];
+
+    const { data, error } = await sb
+        .from('boloes')
+        .select('id, concurso, dt_inicial, dt_concurso, loteria_id')
+        .eq('modalidade', modalidade)
+        .neq('status', 'CANCELADO')
+        .neq('concurso', String(concurso))
+        .lte('dt_inicial', dataConcurso)
+        .gte('dt_concurso', dataInicial)
+        .limit(50);
+
+    if (error) {
+        console.warn('Falha ao verificar sobreposição de concursos:', error);
+        return [];
+    }
+
+    return data || [];
+}
+
+async function validarInteligenciaCadastro(b) {
+    const avisos = [];
+    const infos = [];
+
+    // 1) Concurso especial: a tabela de especiais é a autoridade.
+    const especial = ESPECIAIS[String(b.modalidade || '').trim()];
+
+    if (especial) {
+        if (String(b.concurso) !== String(especial.concurso)) {
+            avisos.push(
+                `Concurso informado ${b.concurso}; o especial ${b.modalidade} está padronizado como concurso ${especial.concurso}.`
+            );
+        }
+
+        if (b.dataInicial !== especial.dataInicial) {
+            avisos.push(
+                `Data inicial informada ${fmtData(b.dataInicial)}; o padrão do especial é ${fmtData(especial.dataInicial)}.`
+            );
+        }
+
+        if (b.dataConcurso !== especial.dataConcurso) {
+            avisos.push(
+                `Data do concurso informada ${fmtData(b.dataConcurso)}; o padrão do especial é ${fmtData(especial.dataConcurso)}.`
+            );
+        }
+
+        if (!avisos.length) {
+            infos.push('Concurso especial validado pelo calendário SISLOT.');
+        }
+
+        return {
+            tipo: 'ESPECIAL',
+            avisos,
+            infos,
+            dataConcursoEsperada: especial.dataConcurso || '',
+            dataInicialEsperada: especial.dataInicial || '',
+            fonteDataConcurso: 'ESPECIAIS_SISLOT'
+        };
+    }
+
+    // 2) Concurso regular: Marketplace é a primeira referência para o sorteio.
+    const refMarketplace = await buscarDataConcursoMarketplace(
+        b.modalidade,
+        b.concurso
+    );
+
+    // 3) Se o Marketplace ainda não tiver referência, usamos o consenso do SISLOT.
+    const refSislot = await buscarReferenciaSislotMesmoConcurso(
+        b.modalidade,
+        b.concurso
+    );
+
+    let dataConcursoEsperada = refMarketplace.data || refSislot.dtConcurso || '';
+    let fonteDataConcurso = refMarketplace.data
+        ? 'MARKETPLACE'
+        : (refSislot.dtConcurso ? 'SISLOT' : '');
+
+    if (dataConcursoEsperada) {
+        if (b.dataConcurso !== dataConcursoEsperada) {
+            avisos.push(
+                `Data do concurso informada ${fmtData(b.dataConcurso)}; referência ${fmtData(dataConcursoEsperada)} (${fonteDataConcurso}).`
+            );
+        } else {
+            infos.push(
+                `Data do concurso validada por ${fonteDataConcurso === 'MARKETPLACE' ? 'Marketplace' : 'cadastros SISLOT'}.`
+            );
+        }
+    } else {
+        infos.push('Ainda não há referência externa suficiente para validar a data do sorteio.');
+    }
+
+    // 4) A data inicial é o primeiro dia operacional posterior ao concurso anterior
+    // da mesma modalidade.
+    const baseDataAtual = dataConcursoEsperada || b.dataConcurso;
+    const anterior = await buscarConcursoAnteriorMesmaModalidade(
+        b.modalidade,
+        baseDataAtual
+    );
+
+    let dataInicialEsperada = '';
+
+    if (anterior?.dtConcurso) {
+        dataInicialEsperada = proximoDiaOperacional(anterior.dtConcurso);
+
+        if (b.dataInicial !== dataInicialEsperada) {
+            avisos.push(
+                `Data inicial informada ${fmtData(b.dataInicial)}; pelo concurso anterior ${anterior.concurso} (${fmtData(anterior.dtConcurso)}), o padrão esperado é ${fmtData(dataInicialEsperada)}.`
+            );
+        } else {
+            infos.push(
+                `Data inicial compatível com o encerramento do concurso ${anterior.concurso}.`
+            );
+        }
+    } else if (refSislot.dtInicial) {
+        dataInicialEsperada = refSislot.dtInicial;
+
+        if (b.dataInicial !== dataInicialEsperada) {
+            avisos.push(
+                `Data inicial informada ${fmtData(b.dataInicial)}; cadastros existentes deste concurso usam ${fmtData(dataInicialEsperada)}.`
+            );
+        }
+    }
+
+    // 5) Regras básicas de coerência.
+    if (b.dataInicial > b.dataConcurso) {
+        avisos.push('A data inicial não pode ser posterior à data do concurso.');
+    }
+
+    // 6) Não deve existir sobreposição entre concursos regulares da mesma modalidade.
+    const sobreposicoes = await buscarSobreposicoesPeriodo(
+        b.modalidade,
+        b.concurso,
+        b.dataInicial,
+        b.dataConcurso
+    );
+
+    if (sobreposicoes.length) {
+        const concursos = [...new Set(sobreposicoes.map(item => item.concurso))]
+            .slice(0, 5)
+            .join(', ');
+
+        avisos.push(
+            `O período informado se sobrepõe a outro concurso da mesma modalidade (${concursos}).`
+        );
+    }
+
+    return {
+        tipo: 'REGULAR',
+        avisos,
+        infos,
+        dataConcursoEsperada,
+        dataInicialEsperada,
+        fonteDataConcurso
+    };
+}
+
+function montarResumoValidacaoCadastro(resultado) {
+    const linhas = [];
+
+    if (resultado?.avisos?.length) {
+        linhas.push('⚠️ ATENÇÃO ANTES DE CADASTRAR', '');
+
+        resultado.avisos.forEach(aviso => {
+            linhas.push(`• ${aviso}`);
+        });
+
+        linhas.push(
+            '',
+            'Revise os dados. Se estiverem intencionalmente corretos, você ainda poderá confirmar o cadastro.'
+        );
+    } else {
+        linhas.push('✓ Validação de concurso e datas concluída.');
+
+        (resultado?.infos || []).forEach(info => {
+            linhas.push(`• ${info}`);
+        });
+    }
+
+    return linhas.join('\n');
+}
+
+
 /************************************************************
  * CADASTRAR
  ************************************************************/
@@ -885,32 +1711,93 @@ async function onCadastrar() {
         const b = validarBase(true);
         if (!loteriaAtiva) throw new Error('Nenhuma loja selecionada.');
 
-        const corpo = [
-            '🧾 CONFIRMAÇÃO DE CADASTRO', '',
-            `📍 Origem: ${loteriaAtiva.loteria_nome}`,
-            `🎯 ${b.modalidade} | Concurso: ${b.concurso}`,
-            `🗓️ ${fmtData(b.dataInicial)} → ${fmtData(b.dataConcurso)}`,
-            `🎮 ${b.qtdJogos} jogos de ${b.qtdDezenas} dezenas`,
-            `💰 Cota: ${fmtBRL(b.valorCota)} | ${b.cotas} cotas`,
-            'Confirma o cadastro?'
-        ].join('\n');
+        setBtnLoading(btn, true);
+        setStatus(
+            'status',
+            'Validando concurso e datas…',
+            'muted',
+            'spinner fa-spin'
+        );
 
-        showModal({
-            title: 'Confirmar cadastro',
-            body: corpo,
-            onConfirm: async () => {
-                setBtnLoading(btn, true);
-                setStatus('status', 'Salvando bolão…', 'muted', 'spinner fa-spin');
-                try {
-                    await doCadastrar(b);
-                } catch (e) {
-                    setStatus('status', e.message, 'err', 'exclamation-circle');
-                } finally {
-                    setBtnLoading(btn, false);
+        let validacao;
+        try {
+            validacao = await validarInteligenciaCadastro(b);
+        } finally {
+            setBtnLoading(btn, false);
+        }
+
+        const abrirConfirmacaoFinal = () => {
+            const corpo = [
+                '🧾 CONFIRMAÇÃO DE CADASTRO', '',
+                `📍 Origem: ${loteriaAtiva.loteria_nome}`,
+                `🎯 ${b.modalidade} | Concurso: ${b.concurso}`,
+                `🗓️ ${fmtData(b.dataInicial)} → ${fmtData(b.dataConcurso)}`,
+                `🎮 ${b.qtdJogos} jogos de ${b.qtdDezenas} dezenas`,
+                `💰 Cota: ${fmtBRL(b.valorCota)} | ${b.cotas} cotas`,
+                '',
+                validacao?.avisos?.length
+                    ? '⚠️ Cadastro possui alerta de validação.'
+                    : '✓ Concurso e datas validados.',
+                '',
+                'Confirma o cadastro?'
+            ].join('\n');
+
+            showModal({
+                title: 'Confirmar cadastro',
+                body: corpo,
+                onConfirm: async () => {
+                    setBtnLoading(btn, true);
+                    setStatus('status', 'Salvando bolão…', 'muted', 'spinner fa-spin');
+
+                    try {
+                        await doCadastrar(b);
+                    } catch (e) {
+                        setStatus('status', e.message, 'err', 'exclamation-circle');
+                    } finally {
+                        setBtnLoading(btn, false);
+                    }
                 }
-            }
-        });
+            });
+        };
+
+        if (validacao?.avisos?.length) {
+            setStatus(
+                'status',
+                `${validacao.avisos.length} alerta(s) encontrado(s). Revise antes de confirmar.`,
+                'err',
+                'triangle-exclamation'
+            );
+
+            showModal({
+                title: 'Revisão especial do cadastro',
+                body: montarResumoValidacaoCadastro(validacao),
+                onConfirm: abrirConfirmacaoFinal,
+                onCancel: () => {
+                    setStatus(
+                        'status',
+                        'Cadastro não confirmado. Revise os campos destacados pela validação.',
+                        'muted',
+                        'pen-to-square'
+                    );
+                }
+            });
+
+            return;
+        }
+
+        setStatus(
+            'status',
+            validacao?.tipo === 'ESPECIAL'
+                ? '✓ Concurso especial e datas validados.'
+                : '✓ Concurso e datas validados.',
+            'ok',
+            'calendar-check'
+        );
+
+        abrirConfirmacaoFinal();
+
     } catch (e) {
+        setBtnLoading(btn, false);
         setStatus('status', e.message, 'err', 'exclamation-circle');
     }
 }
@@ -920,7 +1807,7 @@ async function doCadastrar(b, somarCotas = false) {
 
     const { data: existe } = await sb
         .from('boloes')
-        .select('id, qtd_cotas_total')
+        .select('id, qtd_cotas_total, dt_inicial, dt_concurso')
         .eq('loteria_id', loteriaId)
         .eq('modalidade', b.modalidade)
         .eq('concurso', b.concurso)
@@ -929,6 +1816,21 @@ async function doCadastrar(b, somarCotas = false) {
         .eq('qtd_dezenas', b.qtdDezenas)
         .neq('status', 'CANCELADO')
         .maybeSingle();
+
+    if (
+        existe &&
+        (
+            String(existe.dt_inicial || '').slice(0, 10) !== String(b.dataInicial || '').slice(0, 10) ||
+            String(existe.dt_concurso || '').slice(0, 10) !== String(b.dataConcurso || '').slice(0, 10)
+        )
+    ) {
+        throw new Error(
+            `Existe um bolão com a mesma estrutura, mas com datas diferentes. ` +
+            `Cadastro existente: ${fmtData(existe.dt_inicial)} → ${fmtData(existe.dt_concurso)}. ` +
+            `Novo cadastro: ${fmtData(b.dataInicial)} → ${fmtData(b.dataConcurso)}. ` +
+            `Revise/corrija o cadastro existente antes de somar novas cotas.`
+        );
+    }
 
     if (existe && !somarCotas) {
         const corpo = [
