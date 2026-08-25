@@ -32,7 +32,6 @@
     lojas: [],
     registros: [],
     registrosFiltrados: [],
-    colunasVenda: [],
     carregando: false,
   };
 
@@ -289,122 +288,146 @@
       return combinaBusca && combinaStatus;
     });
 
-    estado.colunasVenda = descobrirColunasVenda(estado.registrosFiltrados);
     renderizarTudo();
   }
 
-  function descobrirColunasVenda(registros) {
-    const nomes = new Set();
-    registros.forEach((row) => {
-      Object.keys(row.vendas_por_responsavel || {}).forEach((nome) => nomes.add(nome));
+
+  function temaOrigem(row) {
+    const texto = normalizarTexto(`${row.origem_nome || ''} ${row.origem_id || ''}`);
+
+    if (texto.includes('boulevard') || row.origem_id === '2') return { slug: 'boulevard', nome: 'Boulevard', cor: '#3b82f6', brilho: 'rgba(59,130,246,.22)' };
+    if (texto.includes('centro') || row.origem_id === '1') return { slug: 'centro', nome: 'Centro', cor: '#00b3a4', brilho: 'rgba(0,179,164,.22)' };
+    if (texto.includes('lotobel') || row.origem_id === '3') return { slug: 'lotobel', nome: 'Lotobel', cor: '#e11d48', brilho: 'rgba(225,29,72,.22)' };
+    if (texto.includes('santa') || texto.includes('tereza') || row.origem_id === '4') return { slug: 'santa-tereza', nome: 'Santa Tereza', cor: '#f59e0b', brilho: 'rgba(245,158,11,.22)' };
+    if (texto.includes('via brasil') || texto.includes('viabrasil') || row.origem_id === '5') return { slug: 'via-brasil', nome: 'Via Brasil', cor: '#22c55e', brilho: 'rgba(34,197,94,.22)' };
+    if (texto.includes('lotoprime') || row.origem_id === '6') return { slug: 'lotoprime', nome: 'Lotoprime', cor: '#8b5cf6', brilho: 'rgba(139,92,246,.22)' };
+    return { slug: 'padrao', nome: row.origem_nome || 'Origem', cor: '#4cb8ff', brilho: 'rgba(76,184,255,.22)' };
+  }
+
+  function renderizarCards() {
+    const grid = $('cardsGrid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    if (!estado.registrosFiltrados.length) return;
+
+    const grupos = new Map();
+    estado.registrosFiltrados.forEach((row) => {
+      const chave = row.modalidade || 'Outros';
+      if (!grupos.has(chave)) grupos.set(chave, []);
+      grupos.get(chave).push(row);
     });
 
-    const canais = new Set(CONFIG.canaisFinais);
-    const funcionarios = [...nomes]
-      .filter((nome) => !canais.has(nome))
-      .sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
-
-    const colunasCanais = CONFIG.canaisFinais.filter((nome) => nomes.has(nome));
-    return [...funcionarios, ...colunasCanais];
-  }
-
-  function renderizarTudo() {
-    renderizarCabecalhoTabela();
-    renderizarLinhas();
-    renderizarKpis();
-    atualizarTituloTabela();
-
-    const total = estado.registrosFiltrados.length;
-    $('contadorLinhas').textContent = `${total} ${total === 1 ? 'bolão exibido' : 'bolões exibidos'}`;
-    mostrarEstado(total ? 'dados' : 'vazio');
-  }
-
-  function renderizarCabecalhoTabela() {
-    const fixasInicio = [
-      ['Origem', ''],
-      ['Data concurso', ''],
-      ['Modalidade', ''],
-      ['Concurso', 'gc-col-num'],
-      ['Jogos', 'gc-col-num'],
-      ['Dezenas', 'gc-col-num'],
-      ['Valor', 'gc-col-num'],
-      ['Qtd. inicial', 'gc-col-num'],
-    ];
-
-    const dinamicas = estado.colunasVenda.map((nome) => [abreviarNomeColuna(nome), 'gc-col-num']);
-    const fixasFim = [
-      ['Total vendido', 'gc-col-num'],
-      ['Saldo', 'gc-col-num'],
-    ];
-
-    const celulas = [...fixasInicio, ...dinamicas, ...fixasFim]
-      .map(([titulo, classe]) => `<th class="${classe}" title="${escapeHtml(titulo)}">${escapeHtml(titulo)}</th>`)
-      .join('');
-
-    $('tabelaHead').innerHTML = `<tr>${celulas}</tr>`;
-  }
-
-  function renderizarLinhas() {
-    const tbody = $('tabelaBody');
-
-    tbody.innerHTML = estado.registrosFiltrados.map((row) => {
-      const classeStatus = row.saldo_loja < 0
-        ? 'is-danger'
-        : row.saldo_loja === 0
-          ? 'is-empty'
-          : '';
-      const classeOrigem = row.eh_origem ? 'is-origin' : 'is-received';
-      const cor = corModalidade(row.modalidade);
-
-      const vendasDinamicas = estado.colunasVenda.map((nome) => {
-        const valor = numero(row.vendas_por_responsavel?.[nome]);
-        return `
-          <td class="gc-col-num" title="${escapeHtml(nome)}">
-            <span class="gc-sales-value ${valor ? 'has-sale' : 'no-sale'}">${valor || '—'}</span>
-          </td>
-        `;
-      }).join('');
-
-      const detalheInicial = row.eh_origem
-        ? `Físicas ${row.qtd_fisicas_origem_coletadas} · Impressas ${row.qtd_impressas_coletadas} · Saídas ${row.qtd_movimentada_destinos}`
-        : `Recebidas ${row.qtd_recebida_movimentacao}`;
-
-      return `
-        <tr class="${classeOrigem} ${classeStatus}" data-bolao-id="${row.bolao_id}">
-          <td>
-            <div class="gc-origin-cell">
-              <strong title="${escapeHtml(row.origem_nome || '—')}">${escapeHtml(row.origem_nome || '—')}</strong>
-              <span class="gc-badge ${row.eh_origem ? 'gc-badge--origin' : 'gc-badge--received'}">
-                ${row.eh_origem ? 'Origem' : 'Recebido'}
-              </span>
-            </div>
-          </td>
-          <td class="gc-number">${formatarDataBR(row.dt_concurso)}</td>
-          <td>
-            <span class="gc-modality" style="--modalidade-cor:${cor}">
-              <i class="gc-modality__dot"></i>
-              ${escapeHtml(row.modalidade || '—')}
-            </span>
-          </td>
-          <td class="gc-col-num gc-concurso">${escapeHtml(row.concurso || '—')}</td>
-          <td class="gc-col-num gc-number">${formatarInteiro(row.qtd_jogos)}</td>
-          <td class="gc-col-num gc-number">${formatarInteiro(row.qtd_dezenas)}</td>
-          <td class="gc-col-num gc-money">${formatarMoeda(row.valor_cota)}</td>
-          <td class="gc-col-num">
-            <span class="gc-number">${formatarInteiro(row.qtd_inicial_loja)}</span>
-            <small class="gc-details" title="${escapeHtml(detalheInicial)}">${escapeHtml(detalheInicial)}</small>
-          </td>
-          ${vendasDinamicas}
-          <td class="gc-col-num gc-number gc-total-value">${formatarInteiro(row.qtd_total_vendida)}</td>
-          <td class="gc-col-num">
-            <span class="gc-balance ${classeSaldo(row.saldo_loja)}">${formatarInteiro(row.saldo_loja)}</span>
-          </td>
-        </tr>
+    [...grupos.entries()].forEach(([modalidade, itens]) => {
+      const grupo = document.createElement('section');
+      grupo.className = 'gc-card-group';
+      grupo.innerHTML = `
+        <div class="gc-card-group__head">
+          <span class="gc-card-group__name">${escapeHtml(modalidade)}</span>
+          <span class="gc-card-group__line"></span>
+          <span class="gc-card-group__count">${formatarInteiro(itens.length)}</span>
+        </div>
+        <div class="gc-card-group__grid"></div>
       `;
-    }).join('');
+
+      const target = grupo.querySelector('.gc-card-group__grid');
+      itens.forEach((row) => target.insertAdjacentHTML('beforeend', renderizarCard(row)));
+      grid.appendChild(grupo);
+    });
+  }
+
+  function renderizarCard(row) {
+    const cor = corModalidade(row.modalidade);
+    const tema = temaOrigem(row);
+    const classeSaldo = row.saldo_loja < 0 ? 'is-danger' : row.saldo_loja === 0 ? 'is-empty' : 'is-ok';
+    const tituloQuantidade = row.eh_origem ? 'Ficaram na origem' : 'Recebidas';
+    const quantidadeDestaque = row.eh_origem ? row.qtd_inicial_loja : row.qtd_recebida_movimentacao;
+    const detalheOperacao = row.eh_origem
+      ? `Imp. origem ${formatarInteiro(row.qtd_fisicas_origem_coletadas)} · Baixadas imp. ${formatarInteiro(row.qtd_impressas_coletadas)} · Movimentadas ${formatarInteiro(row.qtd_movimentada_destinos)}`
+      : `Recebidas da origem ${escapeHtml(row.origem_nome || '—')}`;
+
+    const chipsVenda = montarChipsVenda(row);
+
+    return `
+      <article class="gc-bolao-card ${row.eh_origem ? 'is-origin' : 'is-received'} ${classeSaldo}" style="--gc-store:${tema.cor}; --gc-store-glow:${tema.brilho}; --gc-modalidade:${cor};">
+        <div class="gc-bolao-card__head">
+          <div class="gc-bolao-card__head-left">
+            <span class="gc-badge ${row.eh_origem ? 'gc-badge--origin' : 'gc-badge--received'}">${row.eh_origem ? 'Origem' : 'Recebido'}</span>
+            <span class="gc-store-chip gc-store-chip--${tema.slug}">${escapeHtml(tema.nome)}</span>
+            <span class="gc-date-chip">${formatarDataBR(row.dt_concurso)}</span>
+          </div>
+          <div class="gc-bolao-card__id">#${escapeHtml(row.concurso || '—')}</div>
+        </div>
+
+        <div class="gc-bolao-card__title-wrap">
+          <h3 class="gc-bolao-card__title">
+            <i class="gc-modality__dot"></i>
+            ${escapeHtml(row.modalidade || '—')}
+          </h3>
+          <div class="gc-bolao-card__meta">
+            <span class="gc-mini-chip">${formatarInteiro(row.qtd_jogos)} jogo${row.qtd_jogos === 1 ? '' : 's'}</span>
+            <span class="gc-mini-chip">${formatarInteiro(row.qtd_dezenas)} dez.</span>
+            <span class="gc-mini-chip gc-mini-chip--money">${formatarMoeda(row.valor_cota)}</span>
+          </div>
+        </div>
+
+        <div class="gc-metrics-grid">
+          <div class="gc-metric-tile gc-metric-tile--featured">
+            <span class="gc-metric-tile__label">${tituloQuantidade}</span>
+            <strong class="gc-metric-tile__value">${formatarInteiro(quantidadeDestaque)}</strong>
+            <small class="gc-metric-tile__hint">${row.eh_origem ? 'Qtd. física que ficou na loja' : 'Qtd. física recebida para venda'}</small>
+          </div>
+
+          <div class="gc-metric-tile gc-metric-tile--soft">
+            <span class="gc-metric-tile__label">Vendidas</span>
+            <strong class="gc-metric-tile__value">${formatarInteiro(row.qtd_total_vendida)}</strong>
+          </div>
+
+          <div class="gc-metric-tile gc-metric-tile--saldo ${classeSaldo}">
+            <span class="gc-metric-tile__label">Saldo físico</span>
+            <strong class="gc-metric-tile__value">${formatarInteiro(row.saldo_loja)}</strong>
+          </div>
+        </div>
+
+        <div class="gc-bolao-card__detail-row">
+          <div class="gc-bolao-card__detail-main">${detalheOperacao}</div>
+          <div class="gc-bolao-card__detail-side">Bolão #${formatarInteiro(row.bolao_id)}</div>
+        </div>
+
+        ${chipsVenda ? `
+          <div class="gc-sales-block">
+            <div class="gc-sales-block__label">Vendas registradas</div>
+            <div class="gc-sales-chips">${chipsVenda}</div>
+          </div>
+        ` : ''}
+      </article>
+    `;
+  }
+
+  function montarChipsVenda(row) {
+    const entradas = Object.entries(row.vendas_por_responsavel || {})
+      .map(([nome, valor]) => [nome, numero(valor)])
+      .filter(([, valor]) => valor > 0)
+      .sort((a, b) => {
+        const aFinal = CONFIG.canaisFinais.includes(a[0]) ? 1 : 0;
+        const bFinal = CONFIG.canaisFinais.includes(b[0]) ? 1 : 0;
+        if (aFinal !== bFinal) return aFinal - bFinal;
+        return a[0].localeCompare(b[0], 'pt-BR', { sensitivity: 'base' });
+      });
+
+    if (!entradas.length) return '';
+
+    return entradas.map(([nome, valor]) => `
+      <span class="gc-sales-chip" title="${escapeHtml(nome)}">
+        <span class="gc-sales-chip__name">${escapeHtml(abreviarNomeColuna(nome))}</span>
+        <strong class="gc-sales-chip__value">${formatarInteiro(valor)}</strong>
+      </span>
+    `).join('');
   }
 
   function renderizarKpis() {
+
     const totais = estado.registrosFiltrados.reduce((acc, row) => {
       acc.inicial += row.qtd_inicial_loja;
       acc.vendidas += row.qtd_total_vendida;
@@ -433,7 +456,7 @@
     };
 
     Object.values(mapa).forEach((id) => $(id)?.classList.add('gc-state--hidden'));
-    $('tabelaCotas').style.visibility = tipo === 'dados' ? 'visible' : 'hidden';
+    if ($('cardsGrid')) $('cardsGrid').style.visibility = tipo === 'dados' ? 'visible' : 'hidden';
 
     if (tipo !== 'dados' && mapa[tipo]) {
       $(mapa[tipo])?.classList.remove('gc-state--hidden');
