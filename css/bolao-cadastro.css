@@ -791,3 +791,29 @@ button:disabled{opacity:.4;cursor:not-allowed}
     gap:9px 12px;
   }
 }
+
+
+/* ── Inteligência: provável erro de cadastro ───────────────── */
+.sc-table tbody tr.sc-row-alert td{
+  background:rgba(255,79,79,.035);
+}
+.sc-table tbody tr.sc-row-alert:hover td{
+  background:rgba(255,79,79,.075);
+}
+.sc-table tbody tr.sc-row-alert td:first-child{
+  box-shadow:inset 3px 0 0 #ff4f4f;
+}
+.sc-marketplace-contest{
+  color:#6ee7c8;
+  white-space:nowrap;
+}
+.sc-sislot-contest{
+  color:#fca5a5;
+  font-weight:600;
+  white-space:nowrap;
+}
+.sc-alert-detail{
+  color:#fca5a5;
+  margin-top:5px;
+  line-height:1.35;
+}
