@@ -385,3 +385,372 @@ button { color: inherit; }
   .gc-toast-stack { right: 10px; left: 10px; bottom: 10px; }
   .gc-toast { width: 100%; min-width: 0; }
 }
+
+
+/* =========================================================
+   CONTROLE DE COTAS — PREMIUM CARDS v4
+   ========================================================= */
+.gc-cards-wrap {
+  position: relative;
+  min-height: 330px;
+  padding: 18px;
+}
+
+.gc-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.gc-card-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gc-card-group__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+}
+
+.gc-card-group__name {
+  color: #9bc9eb;
+  font: 600 10px/1 "IBM Plex Mono", monospace;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.gc-card-group__line {
+  height: 1px;
+  flex: 1;
+  min-width: 18px;
+  background: linear-gradient(90deg, rgba(108,146,186,.38), rgba(108,146,186,0));
+}
+
+.gc-card-group__count {
+  min-width: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--gc-line);
+  background: rgba(18, 39, 63, .66);
+  color: #cfe3f5;
+  font: 600 10px/1 "IBM Plex Mono", monospace;
+  text-align: center;
+}
+
+.gc-card-group__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.gc-bolao-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.06);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)),
+    linear-gradient(140deg, color-mix(in srgb, var(--gc-store, #4cb8ff) 8%, transparent), transparent 46%),
+    rgba(11, 25, 43, .86);
+  box-shadow: 0 20px 44px rgba(0,0,0,.18), inset 0 1px rgba(255,255,255,.04);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.gc-bolao-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--gc-store, #4cb8ff) 38%, rgba(255,255,255,.05));
+  box-shadow: 0 26px 50px rgba(0,0,0,.22), 0 0 0 1px color-mix(in srgb, var(--gc-store, #4cb8ff) 15%, transparent);
+}
+
+.gc-bolao-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--gc-store, #4cb8ff);
+  box-shadow: 0 0 18px var(--gc-store-glow, rgba(76,184,255,.22));
+}
+
+.gc-bolao-card.is-danger {
+  border-color: rgba(255,107,122,.22);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)),
+    linear-gradient(145deg, rgba(255,107,122,.08), transparent 46%),
+    rgba(11, 25, 43, .86);
+}
+
+.gc-bolao-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gc-bolao-card__head-left {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.gc-store-chip,
+.gc-date-chip,
+.gc-mini-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(18, 37, 58, .74);
+  color: #b9cee2;
+  font: 500 9px/1 "IBM Plex Mono", monospace;
+  white-space: nowrap;
+}
+
+.gc-store-chip {
+  color: var(--gc-store, #9bd6ff);
+  border-color: color-mix(in srgb, var(--gc-store, #4cb8ff) 30%, rgba(255,255,255,.06));
+  background: color-mix(in srgb, var(--gc-store, #4cb8ff) 10%, rgba(18,37,58,.78));
+}
+
+.gc-date-chip { color: #8ea9c4; }
+
+.gc-bolao-card__id {
+  flex: 0 0 auto;
+  color: #d9e8f6;
+  font: 700 13px/1 "IBM Plex Mono", monospace;
+  letter-spacing: -.02em;
+}
+
+.gc-bolao-card__title-wrap {
+  margin-top: 12px;
+}
+
+.gc-bolao-card__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: #eef6ff;
+  font-size: 18px;
+  letter-spacing: -.03em;
+}
+
+.gc-bolao-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.gc-mini-chip { color: #a8bfd7; }
+.gc-mini-chip--money { color: #d7e7f8; }
+.gc-modality__dot { background: var(--gc-modalidade, #6fa5d2); }
+
+.gc-metrics-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.gc-metric-tile {
+  min-width: 0;
+  min-height: 102px;
+  padding: 12px 12px 11px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(14, 31, 51, .90);
+  box-shadow: inset 0 1px rgba(255,255,255,.03);
+}
+
+.gc-metric-tile--featured {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--gc-store, #4cb8ff) 17%, rgba(14,31,51,.92)), rgba(14,31,51,.92)),
+    rgba(14,31,51,.92);
+  border-color: color-mix(in srgb, var(--gc-store, #4cb8ff) 24%, rgba(255,255,255,.06));
+}
+
+.gc-metric-tile--soft {
+  background: linear-gradient(145deg, rgba(44,63,90,.52), rgba(14,31,51,.92));
+}
+
+.gc-metric-tile--saldo.is-ok {
+  border-color: rgba(53,212,154,.20);
+  background: linear-gradient(145deg, rgba(31,78,69,.42), rgba(14,31,51,.92));
+}
+
+.gc-metric-tile--saldo.is-empty {
+  border-color: rgba(155,178,201,.14);
+  background: linear-gradient(145deg, rgba(48,63,83,.34), rgba(14,31,51,.92));
+}
+
+.gc-metric-tile--saldo.is-danger {
+  border-color: rgba(255,107,122,.24);
+  background: linear-gradient(145deg, rgba(90,30,42,.38), rgba(14,31,51,.92));
+}
+
+.gc-metric-tile__label {
+  color: #91a8be;
+  font: 600 9px/1.2 "IBM Plex Mono", monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.gc-metric-tile__value {
+  display: block;
+  margin-top: 6px;
+  color: #f3f8ff;
+  font: 700 30px/.95 "IBM Plex Mono", monospace;
+  letter-spacing: -.05em;
+}
+
+.gc-metric-tile__hint {
+  display: block;
+  margin-top: 8px;
+  color: #738eaa;
+  font: 500 10px/1.35 "IBM Plex Sans", sans-serif;
+}
+
+.gc-bolao-card__detail-row {
+  margin-top: 12px;
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid rgba(150,184,218,.10);
+}
+
+.gc-bolao-card__detail-main {
+  color: #9eb3c8;
+  font: 500 11px/1.45 "IBM Plex Mono", monospace;
+}
+
+.gc-bolao-card__detail-side {
+  flex: 0 0 auto;
+  color: #6f89a4;
+  font: 600 10px/1 "IBM Plex Mono", monospace;
+  white-space: nowrap;
+}
+
+.gc-sales-block {
+  margin-top: 11px;
+}
+
+.gc-sales-block__label {
+  margin-bottom: 7px;
+  color: #839db7;
+  font: 600 9px/1 "IBM Plex Mono", monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.gc-sales-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.gc-sales-chip {
+  min-height: 24px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,189,87,.18);
+  background: rgba(255,189,87,.08);
+  color: #ffe0a6;
+}
+
+.gc-sales-chip__name {
+  font: 500 9px/1 "IBM Plex Mono", monospace;
+}
+
+.gc-sales-chip__value {
+  font: 700 11px/1 "IBM Plex Mono", monospace;
+}
+
+/* tabela antiga desativada */
+.gc-table-wrap,
+.gc-table {
+  display: none !important;
+}
+
+@media (max-width: 1100px) {
+  .gc-card-group__grid {
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  }
+  .gc-metrics-grid {
+    grid-template-columns: 1.2fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .gc-cards-wrap {
+    padding: 14px;
+  }
+  .gc-card-group__grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .gc-bolao-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+  .gc-bolao-card__title {
+    font-size: 16px;
+  }
+  .gc-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .gc-metric-tile--featured {
+    grid-column: 1 / -1;
+    min-height: 96px;
+  }
+  .gc-bolao-card__detail-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .gc-bolao-card__detail-side {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 460px) {
+  .gc-cards-wrap {
+    padding: 10px;
+  }
+  .gc-bolao-card__head {
+    gap: 8px;
+  }
+  .gc-bolao-card__id {
+    font-size: 12px;
+  }
+  .gc-metrics-grid {
+    gap: 8px;
+  }
+  .gc-metric-tile {
+    min-height: 88px;
+    padding: 11px;
+    border-radius: 14px;
+  }
+  .gc-metric-tile__value {
+    font-size: 26px;
+  }
+  .gc-bolao-card__detail-main {
+    font-size: 10px;
+  }
+}
