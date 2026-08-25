@@ -872,6 +872,14 @@ function idadeColetaMinutos(dataIso) {
 }
 
 function motivoBloqueioSugestao(item) {
+    if (item?.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO') {
+        return `Provável concurso incorreto: SISLOT #${item.concurso_sislot_suspeito || '—'} → Marketplace #${item.concurso || '—'}`;
+    }
+
+    if (item?.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO') {
+        return `Revisar cadastro: SISLOT #${item.concurso_sislot_suspeito || '—'} → Marketplace #${item.concurso || '—'}`;
+    }
+
     const mapa = {
         ESPECIAL_NAO_CONFIGURADO: 'Especial sem calendário SISLOT',
         DATA_ESPECIAL_DIVERGENTE_MARKETPLACE: 'Data especial divergente',
@@ -937,6 +945,13 @@ function renderSugestoesColetadas() {
     SUGESTOES_COLETADAS.forEach(item => {
         const tr = document.createElement('tr');
         const selecionavel = !!item.selecionavel;
+        const suspeitaConcurso = item.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO';
+        const suspeitaCadastro = item.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO';
+
+        if (suspeitaConcurso || suspeitaCadastro) {
+            tr.classList.add('sc-row-alert');
+            tr.title = item.alerta_inteligencia || motivoBloqueioSugestao(item);
+        }
 
         tr.innerHTML = `
             <td>
@@ -951,7 +966,16 @@ function renderSugestoesColetadas() {
                 <div class="sc-main">${escaparHtml(item.modalidade_sislot || item.modalidade_marketplace || '—')}</div>
                 ${item.eh_especial ? '<span class="sc-badge warn">Especial</span>' : ''}
             </td>
-            <td class="sc-main">${escaparHtml(item.concurso)}</td>
+            <td>
+                ${
+                    suspeitaConcurso || suspeitaCadastro
+                        ? `
+                            <div class="sc-main sc-marketplace-contest">MKP #${escaparHtml(item.concurso)}</div>
+                            <div class="sc-muted sc-sislot-contest">SISLOT #${escaparHtml(item.concurso_sislot_suspeito || '—')}</div>
+                          `
+                        : `<div class="sc-main">#${escaparHtml(item.concurso)}</div>`
+                }
+            </td>
             <td>${Number(item.qtd_jogos || 0)}</td>
             <td>${Number(item.qtd_dezenas || 0)}</td>
             <td>
@@ -973,7 +997,10 @@ function renderSugestoesColetadas() {
                 ${
                     selecionavel
                         ? '<span class="sc-badge">Pronto para cadastrar</span>'
-                        : `<span class="sc-badge err">${escaparHtml(motivoBloqueioSugestao(item))}</span>`
+                        : (suspeitaConcurso
+                            ? `<span class="sc-badge err"><i class="fas fa-triangle-exclamation"></i> Provável concurso incorreto</span>
+                               <div class="sc-muted sc-alert-detail">${escaparHtml(`SISLOT #${item.concurso_sislot_suspeito || '—'} → MKP #${item.concurso || '—'}`)}</div>`
+                            : `<span class="sc-badge err">${escaparHtml(motivoBloqueioSugestao(item))}</span>`)
                 }
             </td>
         `;
@@ -982,7 +1009,13 @@ function renderSugestoesColetadas() {
     });
 
     const selecionaveis = SUGESTOES_COLETADAS.filter(i => i.selecionavel).length;
-    $('scTabCount').textContent = selecionaveis ? ` (${selecionaveis})` : '';
+    const revisoes = SUGESTOES_COLETADAS.filter(i =>
+        i.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO' ||
+        i.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO'
+    ).length;
+    const totalPendencias = selecionaveis + revisoes;
+
+    $('scTabCount').textContent = totalPendencias ? ` (${totalPendencias})` : '';
 
     renderFreshnessSugestao();
     atualizarResumoSelecaoSugestoes();
@@ -1050,13 +1083,17 @@ function sugestoesSelecionadas() {
 function atualizarResumoSelecaoSugestoes() {
     const total = SUGESTOES_COLETADAS.length;
     const selecionaveis = SUGESTOES_COLETADAS.filter(i => i.selecionavel).length;
+    const revisoes = SUGESTOES_COLETADAS.filter(i =>
+        i.tipo_sugestao === 'PROVAVEL_CONCURSO_INCORRETO' ||
+        i.tipo_sugestao === 'POSSIVEL_CADASTRO_INCORRETO'
+    ).length;
     const selecionadas = sugestoesSelecionadas();
     const cotas = selecionadas.reduce((s, i) => s + Number(i.qtd_cotas_total || 0), 0);
     const codigos = selecionadas.reduce((s, i) => s + Number(i.qtd_codigos_caixa || 0), 0);
 
     if ($('scResumo')) {
         $('scResumo').textContent =
-            `${total} sugestões · ${selecionaveis} disponíveis`;
+            `${total} ocorrências · ${selecionaveis} disponíveis · ${revisoes} para revisão`;
     }
 
     if ($('scResumoSelecionados')) {
