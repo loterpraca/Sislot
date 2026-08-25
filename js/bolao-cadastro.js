@@ -218,8 +218,10 @@ let mapaCamposMovLegado = {};
 let SHORTCUTS = {};
 let ESPECIAIS = {};
 let SUGESTOES_COLETADAS = [];
+let VINCULOS_EXISTENTES = [];
 let abaCadastroAtiva = 'CADASTRO';
 let carregandoSugestoesColetadas = false;
+let carregandoVinculosExistentes = false;
 // Impede abertura de mais de uma confirmação
 let confirmacaoMovimentacaoAberta = false;
 // Impede mais de uma gravação simultânea
@@ -555,6 +557,8 @@ function trocarLoja(slug) {
 
     if (abaCadastroAtiva === 'SUGESTAO') {
         carregarSugestoesColetadas(true);
+    } else if (abaCadastroAtiva === 'VINCULAR') {
+        carregarVinculosExistentes(true);
     }
 }
 
@@ -755,6 +759,10 @@ function garantirUiSugestaoColetada() {
                 <i class="fas fa-wand-magic-sparkles"></i> Sugestão Coletada
                 <span class="cadastro-tab-count" id="scTabCount"></span>
             </button>
+            <button type="button" id="veTabVincular" class="cadastro-tab">
+                <i class="fas fa-link"></i> Vincular Existentes
+                <span class="cadastro-tab-count" id="veTabCount"></span>
+            </button>
         `;
 
         const panel = document.createElement('section');
@@ -802,12 +810,52 @@ function garantirUiSugestaoColetada() {
         blocoCadastro.parentElement.insertBefore(panel, blocoCadastro.nextSibling);
     }
 
+    if (!$('veTabVincular') && $('scTabs')) {
+        const btnVe = document.createElement('button');
+        btnVe.type = 'button';
+        btnVe.id = 'veTabVincular';
+        btnVe.className = 'cadastro-tab';
+        btnVe.innerHTML = '<i class="fas fa-link"></i> Vincular Existentes <span class="cadastro-tab-count" id="veTabCount"></span>';
+        $('scTabs').appendChild(btnVe);
+    }
+
+    if (!$('vePanel')) {
+        const vePanel = document.createElement('section');
+        vePanel.id = 'vePanel';
+        vePanel.className = 'sc-panel';
+        vePanel.innerHTML = `
+            <div class="sc-card">
+                <div class="sc-head">
+                    <div class="sc-head-main">
+                        <div class="sc-title"><i class="fas fa-link"></i> Vincular Existentes — <span id="veLojaNome">—</span></div>
+                        <div class="sc-sub" id="veFreshness">Procurando códigos Caixa compatíveis…</div>
+                    </div>
+                    <div class="sc-actions">
+                        <button type="button" id="veAtualizar" class="sc-btn-refresh"><i class="fas fa-rotate"></i> Atualizar</button>
+                        <button type="button" id="veVincularSelecionados" class="sc-btn-primary" disabled><i class="fas fa-link"></i> Vincular selecionados</button>
+                    </div>
+                </div>
+                <div class="sc-summary">
+                    <label class="sc-select-all"><input type="checkbox" id="veSelecionarTodos" class="sc-check"> Selecionar disponíveis</label>
+                    <span id="veResumo">0 correspondências</span>
+                    <span id="veResumoSelecionados">0 selecionados</span>
+                </div>
+                <div class="ve-info-strip"><i class="fas fa-circle-info"></i><span>Esta operação cria somente o vínculo com o Marketplace. Não altera cotas totais, Marketplace manual ou movimentações.</span></div>
+                <div class="sc-list-wrap"><div class="sc-list" id="veBody"></div><div id="veEmpty" class="sc-empty" style="display:none"></div></div>
+            </div>`;
+        const scPanel = $('scPanel');
+        if (scPanel?.parentElement) scPanel.parentElement.insertBefore(vePanel, scPanel.nextSibling);
+    }
+
     if ($('scTabs')?.dataset.bound === '1') return;
     if ($('scTabs')) $('scTabs').dataset.bound = '1';
 
     $('scTabCadastro')?.addEventListener('click', () => trocarAbaCadastro('CADASTRO'));
     $('scTabSugestao')?.addEventListener('click', () => trocarAbaCadastro('SUGESTAO'));
+    $('veTabVincular')?.addEventListener('click', () => trocarAbaCadastro('VINCULAR'));
     $('scAtualizar')?.addEventListener('click', () => carregarSugestoesColetadas(true));
+    $('veAtualizar')?.addEventListener('click', () => carregarVinculosExistentes(true));
+    $('veVincularSelecionados')?.addEventListener('click', onVincularExistentesSelecionados);
     $('scCadastrarSelecionados')?.addEventListener('click', onCadastrarSugestoesColetadas);
 
     $('scSelecionarTodos')?.addEventListener('change', e => {
@@ -822,33 +870,47 @@ function garantirUiSugestaoColetada() {
             atualizarResumoSelecaoSugestoes();
         }
     });
+
+    $('veSelecionarTodos')?.addEventListener('change', e => {
+        const marcar = !!e.target.checked;
+        document.querySelectorAll('#veBody .ve-check[data-assinatura]:not(:disabled)')
+            .forEach(el => el.checked = marcar);
+        atualizarResumoSelecaoVinculos();
+    });
+
+    $('veBody')?.addEventListener('change', e => {
+        if (e.target.matches('.ve-check[data-assinatura]')) {
+            atualizarResumoSelecaoVinculos();
+        }
+    });
 }
 
 function trocarAbaCadastro(aba) {
-    abaCadastroAtiva = aba === 'SUGESTAO' ? 'SUGESTAO' : 'CADASTRO';
+    abaCadastroAtiva = ['SUGESTAO', 'VINCULAR'].includes(aba) ? aba : 'CADASTRO';
 
     const blocoCadastro = localizarBlocoCadastro();
-    const panel = $('scPanel');
+    const panelSugestao = $('scPanel');
+    const panelVincular = $('vePanel');
     const movimentacaoCard = $('movimentacaoCard');
 
     const emCadastro = abaCadastroAtiva === 'CADASTRO';
     const emSugestao = abaCadastroAtiva === 'SUGESTAO';
+    const emVincular = abaCadastroAtiva === 'VINCULAR';
 
     $('scTabCadastro')?.classList.toggle('active', emCadastro);
     $('scTabSugestao')?.classList.toggle('active', emSugestao);
+    $('veTabVincular')?.classList.toggle('active', emVincular);
 
-    if (blocoCadastro) {
-        blocoCadastro.style.display = emCadastro ? '' : 'none';
-    }
+    if (blocoCadastro) blocoCadastro.style.display = emCadastro ? '' : 'none';
+    if (movimentacaoCard) movimentacaoCard.style.display = emCadastro ? '' : 'none';
 
-    if (movimentacaoCard) {
-        movimentacaoCard.style.display = emCadastro ? '' : 'none';
-    }
-
-    panel?.classList.toggle('active', emSugestao);
+    panelSugestao?.classList.toggle('active', emSugestao);
+    panelVincular?.classList.toggle('active', emVincular);
 
     if (emSugestao) {
         carregarSugestoesColetadas();
+    } else if (emVincular) {
+        carregarVinculosExistentes();
     }
 }
 
@@ -1260,6 +1322,330 @@ function atualizarResumoSelecaoSugestoes() {
         all.checked = selecionaveis > 0 && marcadas === selecionaveis;
         all.indeterminate = marcadas > 0 && marcadas < selecionaveis;
     }
+}
+
+
+function veCodigoCurto(codigo) {
+    const s = String(codigo || '');
+    if (s.length <= 22) return s;
+    return `${s.slice(0, 10)}…${s.slice(-8)}`;
+}
+
+function veCriarCard(item) {
+    const selecionavel = !!item.selecionavel;
+    const temVinculoAnterior = Number(item.qtd_codigos_ja_vinculados || 0) > 0;
+    const card = document.createElement('article');
+    card.className = `sc-bolao-card${selecionavel ? ' sc-bolao-card-selectable' : ' sc-bolao-card-alert'}`;
+    card.dataset.assinatura = item.assinatura_vinculo || '';
+
+    const codigos = Array.isArray(item.codigos_caixa) ? item.codigos_caixa : [];
+    const valorMin = Number(item.valor_cota_marketplace_min || 0);
+    const valorMax = Number(item.valor_cota_marketplace_max || 0);
+    const valorMk = Math.abs(valorMax - valorMin) < 0.001
+        ? fmtBRL(valorMin)
+        : `${fmtBRL(valorMin)}–${fmtBRL(valorMax)}`;
+
+    const codigosHtml = codigos.map(c => `
+        <div class="ve-code-line">
+            <span class="ve-code-id" title="${escaparHtml(c.codigo_bolao_caixa || '')}">${escaparHtml(veCodigoCurto(c.codigo_bolao_caixa))}</span>
+            <span>${Number(c.qtd_cotas || 0)} cotas</span>
+            <span>${Number(c.qtd_disponiveis || 0)} disp.</span>
+            <span>${escaparHtml(c.ultima_coleta_sp || '')}</span>
+        </div>
+    `).join('');
+
+    card.innerHTML = `
+        <div class="sc-bolao-main">
+            <div class="sc-bolao-top">
+                <div class="sc-bolao-ident">
+                    <strong class="sc-bolao-modalidade">${escaparHtml(item.modalidade_sislot || '—')}</strong>
+                    <span class="sc-concurso-badge">#${escaparHtml(item.concurso || '—')}</span>
+                    <span class="sc-origem-badge">${escaparHtml(item.loterica_nome || loteriaAtiva?.loteria_nome || '—')}</span>
+                    <span class="ve-id-badge">SISLOT #${Number(item.bolao_id || 0)}</span>
+                </div>
+
+                <label class="sc-card-check-wrap" title="${selecionavel ? 'Selecionar para vincular' : escaparHtml(item.motivo_bloqueio || 'Revisar correspondência')}">
+                    <input
+                        type="checkbox"
+                        class="sc-check sc-card-check ve-check"
+                        data-assinatura="${escaparHtml(item.assinatura_vinculo || '')}"
+                        ${selecionavel ? '' : 'disabled'}
+                        aria-label="${selecionavel ? 'Selecionar vínculo' : 'Vínculo bloqueado'}"
+                    >
+                    <span class="sc-check-visual"></span>
+                </label>
+            </div>
+
+            <div class="sc-meta-row">
+                ${scChip(scPlural(item.qtd_jogos, 'jogo', 'jogos'))}
+                ${scChip(`${Number(item.qtd_dezenas || 0)} dez.`)}
+                ${scChip(`${Number(item.qtd_cotas_sislot || 0)} cotas SISLOT`, 'price')}
+                ${scChip(`${fmtBRL(item.valor_cota_sislot)}/cota`, 'price')}
+            </div>
+
+            <div class="ve-match-box">
+                <div class="ve-match-side">
+                    <span class="ve-match-label">Marketplace encontrou</span>
+                    <strong>${Number(item.qtd_codigos_novos || 0)} ${Number(item.qtd_codigos_novos || 0) === 1 ? 'código' : 'códigos'} · ${Number(item.qtd_cotas_codigos_novos || 0)} cotas</strong>
+                </div>
+                <div class="ve-match-side ve-match-side-right">
+                    <span class="ve-match-label">Valor Marketplace</span>
+                    <strong>${valorMk}</strong>
+                </div>
+            </div>
+
+            <div class="sc-meta-row sc-meta-row-secondary">
+                ${item.dt_concurso ? scChip(`Sorteio ${fmtData(normalizarDataIsoCurta(item.dt_concurso))}`, 'secondary') : ''}
+                ${item.ultima_coleta_sp ? scChip(`Coleta ${item.ultima_coleta_sp}`, 'secondary') : ''}
+                ${temVinculoAnterior ? scChip(`${Number(item.qtd_codigos_ja_vinculados)} já vinculado(s)`, 'secondary') : ''}
+            </div>
+
+            ${codigos.length ? `
+                <details class="ve-codes">
+                    <summary><i class="fas fa-barcode"></i> Ver códigos Caixa</summary>
+                    <div class="ve-codes-list">${codigosHtml}</div>
+                </details>
+            ` : ''}
+
+            <div class="sc-card-status ${selecionavel ? 'ok' : 'err'}">
+                <i class="fas ${selecionavel ? 'fa-link' : 'fa-triangle-exclamation'}"></i>
+                <span>${
+                    selecionavel
+                        ? (temVinculoAnterior ? 'Novos códigos compatíveis — somente vincular' : 'Correspondência encontrada — somente vincular')
+                        : escaparHtml(item.motivo_bloqueio || 'Correspondência precisa de revisão')
+                }</span>
+                ${selecionavel ? '<span class="sc-card-status-detail">O cadastro e as quantidades do bolão não serão alterados.</span>' : ''}
+            </div>
+        </div>
+    `;
+
+    if (selecionavel) {
+        card.addEventListener('click', e => {
+            if (e.target.closest('input, label, button, a, details, summary')) return;
+            const check = card.querySelector('.ve-check');
+            if (!check || check.disabled) return;
+            check.checked = !check.checked;
+            check.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
+    return card;
+}
+
+function renderVinculosExistentes() {
+    const body = $('veBody');
+    const empty = $('veEmpty');
+    if (!body || !empty) return;
+
+    if ($('veLojaNome')) $('veLojaNome').textContent = loteriaAtiva?.loteria_nome || '—';
+    body.innerHTML = '';
+
+    if (!VINCULOS_EXISTENTES.length) {
+        empty.style.display = 'block';
+        empty.innerHTML = '<i class="fas fa-circle-check"></i><br>Nenhum bolão vigente desta loja possui código Marketplace compatível aguardando vínculo.';
+        if ($('veTabCount')) $('veTabCount').textContent = '';
+        if ($('veFreshness')) $('veFreshness').textContent = 'Nenhuma correspondência pendente no momento.';
+        atualizarResumoSelecaoVinculos();
+        return;
+    }
+
+    empty.style.display = 'none';
+
+    const grupos = new Map();
+    VINCULOS_EXISTENTES.forEach(item => {
+        const nome = item.modalidade_sislot || 'Outros';
+        if (!grupos.has(nome)) grupos.set(nome, []);
+        grupos.get(nome).push(item);
+    });
+
+    [...grupos.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+        .forEach(([modalidade, itens]) => {
+            const section = document.createElement('section');
+            section.className = `sc-group sc-group-${scClasseModalidade(modalidade)}`;
+            const prontos = itens.filter(i => i.selecionavel).length;
+
+            section.innerHTML = `
+                <div class="sc-group-head">
+                    <span class="sc-group-name">${escaparHtml(modalidade)}</span>
+                    <span class="sc-group-line"></span>
+                    <span class="sc-group-count">${itens.length}</span>
+                    ${prontos ? `<span class="sc-group-ready">${prontos} para vincular</span>` : '<span class="sc-group-review">revisar</span>'}
+                </div>
+                <div class="sc-group-cards"></div>
+            `;
+
+            const cards = section.querySelector('.sc-group-cards');
+            itens
+                .sort((a, b) =>
+                    String(a.concurso).localeCompare(String(b.concurso), 'pt-BR', { numeric: true }) ||
+                    Number(a.qtd_jogos || 0) - Number(b.qtd_jogos || 0) ||
+                    Number(a.qtd_dezenas || 0) - Number(b.qtd_dezenas || 0)
+                )
+                .forEach(item => cards.appendChild(veCriarCard(item)));
+
+            body.appendChild(section);
+        });
+
+    const selecionaveis = VINCULOS_EXISTENTES.filter(i => i.selecionavel).length;
+    if ($('veTabCount')) $('veTabCount').textContent = selecionaveis ? ` (${selecionaveis})` : '';
+
+    const datas = VINCULOS_EXISTENTES
+        .map(i => i.ultima_coleta_em)
+        .filter(Boolean)
+        .map(v => new Date(v))
+        .filter(d => !Number.isNaN(d.getTime()));
+
+    if ($('veFreshness')) {
+        if (datas.length) {
+            const ultima = new Date(Math.max(...datas.map(d => d.getTime())));
+            $('veFreshness').innerHTML = `Marketplace consultado · última coleta ${ultima.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+        } else {
+            $('veFreshness').textContent = 'Correspondências encontradas no Marketplace.';
+        }
+    }
+
+    atualizarResumoSelecaoVinculos();
+}
+
+async function carregarVinculosExistentes(forcar = false) {
+    if (carregandoVinculosExistentes || !loteriaAtiva?.loteria_id) return;
+    if (!forcar && abaCadastroAtiva !== 'VINCULAR') return;
+
+    carregandoVinculosExistentes = true;
+    const btn = $('veAtualizar');
+    const empty = $('veEmpty');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Atualizando';
+    }
+    if (empty) {
+        empty.style.display = 'block';
+        empty.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procurando bolões já cadastrados e códigos compatíveis…';
+    }
+
+    try {
+        const { data, error } = await sb.rpc('fn_listar_vinculos_existentes', {
+            p_loteria_id: Number(loteriaAtiva.loteria_id)
+        });
+        if (error) throw new Error(error.message);
+
+        VINCULOS_EXISTENTES = Array.isArray(data) ? data : [];
+        renderVinculosExistentes();
+    } catch (e) {
+        VINCULOS_EXISTENTES = [];
+        if (empty) {
+            empty.style.display = 'block';
+            empty.textContent = e.message || 'Erro ao carregar vínculos existentes.';
+        }
+        setStatus('status', e.message || 'Erro ao carregar vínculos existentes.', 'err', 'exclamation-circle');
+    } finally {
+        carregandoVinculosExistentes = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rotate"></i> Atualizar';
+        }
+    }
+}
+
+function vinculosExistentesSelecionados() {
+    const assinaturas = new Set(
+        [...document.querySelectorAll('#veBody .ve-check[data-assinatura]:checked')]
+            .map(el => el.dataset.assinatura)
+            .filter(Boolean)
+    );
+
+    return VINCULOS_EXISTENTES.filter(item =>
+        item.selecionavel && assinaturas.has(item.assinatura_vinculo)
+    );
+}
+
+function atualizarResumoSelecaoVinculos() {
+    const total = VINCULOS_EXISTENTES.length;
+    const selecionaveis = VINCULOS_EXISTENTES.filter(i => i.selecionavel).length;
+    const selecionados = vinculosExistentesSelecionados();
+    const codigosTotal = VINCULOS_EXISTENTES.reduce((s, i) => s + Number(i.qtd_codigos_novos || 0), 0);
+    const codigosSelecionados = selecionados.reduce((s, i) => s + Number(i.qtd_codigos_novos || 0), 0);
+
+    if ($('veResumo')) {
+        $('veResumo').textContent = `${total} bolões · ${codigosTotal} códigos compatíveis · ${selecionaveis} disponíveis`;
+    }
+    if ($('veResumoSelecionados')) {
+        $('veResumoSelecionados').textContent = `${selecionados.length} selecionados · ${codigosSelecionados} códigos`;
+    }
+
+    const btn = $('veVincularSelecionados');
+    if (btn) {
+        btn.disabled = selecionados.length === 0;
+        btn.innerHTML = selecionados.length
+            ? `<i class="fas fa-link"></i> Vincular ${selecionados.length}`
+            : '<i class="fas fa-link"></i> Vincular selecionados';
+    }
+
+    const all = $('veSelecionarTodos');
+    if (all) {
+        const marcadas = document.querySelectorAll('#veBody .ve-check[data-assinatura]:checked').length;
+        all.checked = selecionaveis > 0 && marcadas === selecionaveis;
+        all.indeterminate = marcadas > 0 && marcadas < selecionaveis;
+    }
+}
+
+async function onVincularExistentesSelecionados() {
+    const selecionados = vinculosExistentesSelecionados();
+    if (!selecionados.length) return;
+
+    const totalCodigos = selecionados.reduce((s, i) => s + Number(i.qtd_codigos_novos || 0), 0);
+    const linhas = [
+        '🔗 VINCULAR EXISTENTES', '',
+        `📍 Loja: ${loteriaAtiva?.loteria_nome || '—'}`,
+        `🎫 ${selecionados.length} bolão(ões) SISLOT`,
+        `🔗 ${totalCodigos} código(s) Caixa`, '',
+        ...selecionados.slice(0, 12).map(item =>
+            `• SISLOT #${item.bolao_id} · ${item.modalidade_sislot} ${item.concurso} · ${item.qtd_jogos}x${item.qtd_dezenas} · ${fmtBRL(item.valor_cota_sislot)}`
+        ),
+        selecionados.length > 12 ? `• … e mais ${selecionados.length - 12}` : '', '',
+        'IMPORTANTE:',
+        '• Não altera a quantidade total de cotas.',
+        '• Não altera o Marketplace informado manualmente.',
+        '• Não cria movimentações.',
+        '• Apenas cria o vínculo e solicita a coleta detalhada.', '',
+        'Confirma?'
+    ].filter(Boolean);
+
+    showModal({
+        title: 'Vincular Bolões Existentes',
+        body: linhas.join('\n'),
+        onConfirm: async () => {
+            const btn = $('veVincularSelecionados');
+            try {
+                setBtnLoading(btn, true);
+                setStatus('status', 'Vinculando códigos Caixa aos bolões existentes…', 'muted', 'spinner fa-spin');
+
+                const { data, error } = await sb.rpc('fn_vincular_boloes_existentes', {
+                    p_assinaturas: selecionados.map(i => i.assinatura_vinculo)
+                });
+                if (error) throw new Error(error.message);
+
+                const criados = Number(data?.vinculos_criados || 0);
+                const reativados = Number(data?.vinculos_reativados || 0);
+                const detalhes = Number(data?.detalhes_solicitados || 0);
+                const ignorados = Number(data?.ignorados || 0);
+                const erros = Array.isArray(data?.erros) ? data.erros : [];
+
+                const msg = `Vínculos concluídos: ${criados} novos${reativados ? ` · ${reativados} reativados` : ''} · ${detalhes} coletas detalhadas solicitadas${ignorados ? ` · ${ignorados} ignorados` : ''}.`;
+                setStatus('status', erros.length ? `${msg} ${erros.slice(0, 2).map(e => e.erro).join(' | ')}` : msg, erros.length ? 'err' : 'ok', erros.length ? 'exclamation-circle' : 'check-circle');
+
+                await carregarVinculosExistentes(true);
+                if (abaCadastroAtiva === 'SUGESTAO') await carregarSugestoesColetadas(true);
+            } catch (e) {
+                setStatus('status', e.message || 'Erro ao vincular bolões existentes.', 'err', 'exclamation-circle');
+            } finally {
+                setBtnLoading(btn, false);
+                atualizarResumoSelecaoVinculos();
+            }
+        }
+    });
 }
 
 async function onCadastrarSugestoesColetadas() {
