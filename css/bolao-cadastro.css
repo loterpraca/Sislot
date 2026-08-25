@@ -817,3 +817,69 @@ button:disabled{opacity:.4;cursor:not-allowed}
   margin-top:5px;
   line-height:1.35;
 }
+
+/* ── ÁRVORE / IDENTIDADE DA LOJA — ajuste visual ─────────── */
+.loja-tree{
+  width:56px !important;
+  height:56px !important;
+  min-width:56px !important;
+  min-height:56px !important;
+  flex:0 0 56px !important;
+
+  padding:0 !important;
+  margin:0 !important;
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+
+  border-radius:50% !important;
+  border:1px solid var(--t4) !important;
+  background:rgba(255,255,255,.08) !important;
+
+  overflow:hidden !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.035),
+    0 0 16px var(--t3) !important;
+}
+
+.loja-tree img{
+  width:118% !important;
+  height:118% !important;
+  max-width:none !important;
+  max-height:none !important;
+
+  object-fit:cover !important;
+  object-position:center !important;
+
+  padding:0 !important;
+  margin:0 !important;
+  display:block !important;
+
+  transform:scale(1.08);
+  transform-origin:center;
+  image-rendering:auto;
+  filter:none !important;
+  opacity:1 !important;
+}
+
+.loja-tree:hover{
+  transform:translateY(-1px) scale(1.035);
+  border-color:var(--t1) !important;
+  box-shadow:
+    0 0 0 1px var(--t4),
+    0 0 20px var(--t3) !important;
+}
+
+/* evita que a regra global de button reduza a área útil */
+button.loja-tree{
+  padding:0 !important;
+  min-height:56px !important;
+  line-height:1 !important;
+}
+
+/* cabeçalho acompanha o novo tamanho sem ficar apertado */
+.header{
+  min-height:68px;
+  height:68px;
+}
