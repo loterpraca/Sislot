@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="./css/sislot-base.css" />
   <link rel="stylesheet" href="./css/sislot-components.css" />
-  <link rel="stylesheet" href="./css/gerente-cotas.css?v=20260714-1" />
+  <link rel="stylesheet" href="./css/gerente-cotas.css?v=20260825-4" />
 </head>
 <body>
   <div class="gc-bg-orb gc-bg-orb--one" aria-hidden="true"></div>
@@ -231,21 +231,18 @@
     <section class="gc-panel">
       <div class="gc-panel__head">
         <div>
-          <div class="gc-panel__eyebrow">Planilha de conferência</div>
+          <div class="gc-panel__eyebrow">Painel de conferência</div>
           <h2 id="tituloTabela">Cotas vigentes</h2>
         </div>
         <div class="gc-panel__legend">
           <span><i class="gc-legend-dot gc-legend-dot--origin"></i> Origem da loja</span>
           <span><i class="gc-legend-dot gc-legend-dot--received"></i> Recebido de outra loja</span>
-          <span><i class="gc-legend-dot gc-legend-dot--danger"></i> Conferir saldo</span>
+          <span><i class="gc-legend-dot gc-legend-dot--danger"></i> Saldo negativo</span>
         </div>
       </div>
 
-      <div class="gc-table-wrap" id="tableWrap">
-        <table class="gc-table" id="tabelaCotas">
-          <thead id="tabelaHead"></thead>
-          <tbody id="tabelaBody"></tbody>
-        </table>
+      <div class="gc-cards-wrap" id="cardsWrap">
+        <div class="gc-cards-grid" id="cardsGrid"></div>
 
         <div class="gc-state" id="estadoCarregando">
           <div class="gc-spinner" aria-hidden="true"></div>
@@ -281,7 +278,7 @@
       <div class="gc-panel__foot">
         <div id="contadorLinhas">0 bolões exibidos</div>
         <div class="gc-foot-note">
-          Vendas digitais do Marketplace não alteram este saldo físico.
+          Saldo físico = cotas que ficaram na loja − vendas registradas no SISLOT.
         </div>
       </div>
     </section>
@@ -294,6 +291,6 @@
   <script src="./sislot-security.js"></script>
   <script src="./js/sislot-utils.js"></script>
   <script src="./js/sislot-theme.js"></script>
-  <script src="./js/gerente-cotas.js?v=20260714-1"></script>
+  <script src="./js/gerente-cotas.js?v=20260825-4"></script>
 </body>
 </html>
