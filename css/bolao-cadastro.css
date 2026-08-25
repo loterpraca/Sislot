@@ -1441,3 +1441,47 @@ button.loja-tree{
   .ve-info-strip{padding:8px 10px}
   .ve-match-box{padding:7px 8px}
 }
+
+
+/* SUGESTÃO COLETADA — persistência / ocultação v9 */
+.sc-card-actions-right{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:0 0 auto;
+}
+.sc-hide-suggestion{
+  min-height:30px;
+  padding:0 9px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid rgba(148,163,184,.18);
+  border-radius:9px;
+  background:rgba(15,23,42,.48);
+  color:#94a3b8;
+  font:600 10px/1 "IBM Plex Sans",system-ui,sans-serif;
+  cursor:pointer;
+  transition:.16s ease;
+}
+.sc-hide-suggestion:hover{
+  border-color:rgba(248,113,113,.30);
+  background:rgba(127,29,29,.12);
+  color:#fca5a5;
+}
+.sc-hide-suggestion:disabled{opacity:.55;cursor:wait}
+.sc-chip.absent{
+  color:#fbbf24;
+  border-color:rgba(251,191,36,.22);
+  background:rgba(251,191,36,.08);
+}
+.sc-chip.expired{
+  color:#fca5a5;
+  border-color:rgba(248,113,113,.22);
+  background:rgba(248,113,113,.08);
+}
+@media(max-width:600px){
+  .sc-hide-suggestion span{display:none}
+  .sc-hide-suggestion{width:30px;padding:0;justify-content:center}
+  .sc-card-actions-right{gap:6px}
+}
