@@ -1,6 +1,9 @@
 /**
  * SISLOT - Segurança e Permissões
- * Versão: 1.0
+ * Versão: 1.1
+ *
+ * Ajuste: módulo gerente-cotas liberado para ADMIN, SOCIO e GERENTE.
+ * SOCIO e GERENTE veem apenas as lojas às quais estão vinculados.
  */
 
 (function () {
@@ -19,7 +22,6 @@
         );
 
     const sb = window.SISLOT_SB;
-    // Usa utils se disponível
     const utils = window.SISLOT_UTILS || {};
 
     function rotaInicioPorPerfil(perfil) {
@@ -145,13 +147,13 @@
                     return { ...l, principal: !!match?.principal };
                 });
             }
-            else if (mod === 'fechamento') {
+            else if (mod === 'fechamento' || mod === 'gerente-cotas') {
                 permitido = true;
                 lojasPermitidas = await carregarVinculos(usuario.id);
             }
         }
         else if (usuario.perfil === 'GERENTE') {
-            if (mod === 'fechamento') {
+            if (mod === 'fechamento' || mod === 'gerente-cotas') {
                 permitido = true;
                 lojasPermitidas = await carregarVinculos(usuario.id);
             }
