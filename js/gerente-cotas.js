@@ -48,9 +48,7 @@
     try {
       validarDependencias();
       supabase = obterClienteSupabase();
-      contexto = await window.SISLOT_SECURITY.protegerPagina(supabase, {
-        perfisPermitidos: CONFIG.perfisPermitidos,
-      });
+      contexto = await window.SISLOT_SECURITY.protegerPagina('gerente-cotas');
       if (!contexto) return;
       carregarLojasPermitidas();
       await atualizarDados({ silencioso: true });
@@ -61,6 +59,8 @@
   }
 
   function obterClienteSupabase() {
+    // Reutiliza o mesmo cliente Supabase criado pelo sislot-security.js.
+    if (window.SISLOT_SB) return window.SISLOT_SB;
     if (window.SISLOT_SUPABASE) return window.SISLOT_SUPABASE;
     if (window.sislotSupabase) return window.sislotSupabase;
     const client = window.supabase.createClient(
