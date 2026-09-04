@@ -616,20 +616,42 @@
 
   async function acompanharBolao(codigo, button) {
     if (!codigo) return;
+
     const current = state.monitoramentos.get(String(codigo));
-    const interval = current?.ativo ? Number(current.intervalo_minutos || 5) : 5;
+    const intervalo = current?.ativo ? Number(current.intervalo_minutos || 5) : 5;
+
     try {
       button.disabled = true;
       button.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Salvando';
-      const payload = { codigo_bolao_caixa: codigo, intervalo_minutos: interval, ativo: true, criado_por: state.session?.user?.id || null, atualizado_em: new Date().toISOString() };
-      const { error } = await sb.from('marketplace_caixa_detalhe_monitoramentos').upsert(payload, { onConflict: 'codigo_bolao_caixa' });
+
+      // IMPORTANTE: o Monitor Real não grava diretamente na tabela protegida.
+      // Ele usa esta RPC, que aplica a regra correta e já solicita a coleta inicial.
+      const { data, error } = await sb.rpc(
+        'marketplace_caixa_configurar_monitoramento_detalhe',
+        {
+          p_codigo_bolao_caixa: codigo,
+          p_intervalo_minutos: intervalo
+        }
+      );
+
       if (error) throw error;
-      try { await sb.rpc('marketplace_caixa_solicitar_detalhe', { p_codigo_bolao_caixa: codigo }); } catch (_) {}
-      state.monitoramentos.set(String(codigo), payload);
+
+      state.monitoramentos.set(String(codigo), {
+        codigo_bolao_caixa: codigo,
+        intervalo_minutos: Number(data?.intervalo_minutos || intervalo),
+        ativo: true,
+        atualizado_em: new Date().toISOString()
+      });
+
       renderStats();
       renderAchados();
-      showToast(`Bolão ${codigo} enviado para monitoramento a cada ${interval} minutos.`);
+
+      showToast(
+        data?.mensagem ||
+        `Bolão ${codigo} enviado para monitoramento a cada ${intervalo} minutos.`
+      );
     } catch (error) {
+      console.error('[Radar Marketplace] falha ao acompanhar bolão:', error);
       showAlert(humanDbError(error));
       button.disabled = false;
       button.innerHTML = '<i class="far fa-star"></i>Acompanhar';
@@ -663,5 +685,5 @@
   function metaBox(label, value) { return `<div class="radar-meta-box"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`; }
   function emptyHtml(icon, title, text) { return `<div class="radar-empty"><i class="fas ${icon}"></i><strong>${esc(title)}</strong><span>${esc(text)}</span></div>`; }
   function rotuloClassificacao(v) { return ({TESTE:'TESTE',PROMISSORA:'PROMISSORA',FAVORITA:'FAVORITA',DESCARTADA:'DESCARTADA'})[v] || v || 'TESTE'; }
-  function humanDbError(error) { const msg = error?.message || String(error || 'Erro desconhecido.'); if (/duplicate key|unique constraint/i.test(msg)) return 'Esse registro já existe no Radar.'; if (/row-level security|permission denied|42501/i.test(msg)) return 'O Supabase bloqueou esta operação pelas permissões/RLS. Confira as políticas das tabelas do Radar.'; return msg; }
+  function humanDbError(error) { const msg = error?.message || String(error || 'Erro desconhecido.'); if (/duplicate key|unique constraint/i.test(msg)) return 'Esse registro já existe no Radar.'; if (/row-level security|permission denied|42501/i.test(msg)) return 'O Supabase bloqueou esta operação pelas permissões/RLS. A ação tentou acessar uma tabela protegida diretamente; confira a operação indicada no console.'; return msg; }
 })();
