@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>SISLOT — Radar Marketplace</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link rel="stylesheet" href="./css/marketplace-caixa.css" />
+  <link rel="stylesheet" href="./css/marketplace-radar.css" />
+</head>
+<body data-loja="via-brasil" class="radar-page">
+  <header class="app-header radar-header">
+    <a class="header-brand" href="./marketplace.html" title="Voltar ao Marketplace">
+      <img src="./icons/loterpraca.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'">
+      <div class="brand-text">
+        <div class="brand-name">SISLOT</div>
+        <div class="brand-sub">Radar Marketplace</div>
+      </div>
+    </a>
+
+    <div class="loja-chip radar-chip" title="Inteligência competitiva">
+      <div class="loja-chip-dot radar-dot-header"></div>
+      <span class="loja-chip-nome">RADAR</span>
+      <span class="loja-chip-hint">descoberta</span>
+    </div>
+
+    <div class="header-filters radar-header-filters">
+      <div class="filter-group">
+        <label class="filter-label">Lotérica</label>
+        <select id="filtroRadarLoterica" class="filter-sel"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Modalidade</label>
+        <select id="filtroRadarModalidade" class="filter-sel"><option value="">Todas</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Perfil</label>
+        <select id="filtroRadarPerfil" class="filter-sel"><option value="">Todos</option></select>
+      </div>
+      <button id="btnAtualizarRadar" class="btn-atualizar radar-refresh" type="button" title="Atualizar Radar"><i class="fas fa-rotate"></i></button>
+    </div>
+
+    <div class="header-right">
+      <div class="periodo-info" id="radarStatusTitulo">Carregando Radar</div>
+      <div class="app-clock" id="relogio">--:--:--</div>
+      <a class="hdr-btn" href="./marketplace.html" title="Marketplace"><i class="fas fa-layer-group"></i></a>
+      <a class="hdr-btn" href="./menu.html" title="Menu"><i class="fas fa-home"></i></a>
+      <button class="hdr-btn hdr-btn-exit" id="btnLogout" type="button" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <main class="mp-main">
+      <section class="mp-topline">
+        <div class="mp-title-wrap">
+          <div class="mp-eyebrow radar-eyebrow">Inteligência competitiva</div>
+          <h1 class="mp-title">Radar de lotéricas e estruturas</h1>
+          <div class="mp-sub" id="radarStatusSub">Cadastre códigos lotéricos e deixe o SISLOT aprender onde aparecem os bolões que mais interessam.</div>
+        </div>
+        <div class="mp-actions">
+          <button id="btnNovaLoterica" class="btn-primary radar-primary" type="button"><i class="fas fa-plus"></i> Lotérica</button>
+          <button id="btnNovoPerfil" class="btn-soft" type="button"><i class="fas fa-sliders"></i> Perfil</button>
+        </div>
+      </section>
+
+      <section id="radarAviso" class="alert" hidden></section>
+
+      <section class="radar-add-strip">
+        <div class="radar-add-copy">
+          <span>Adicionar rapidamente</span>
+          <strong>Digite o código da lotérica</strong>
+          <p>O código entra como TESTE, prioridade 3 e varredura padrão de 180 minutos.</p>
+        </div>
+        <form id="formQuickAdd" class="radar-quick-form">
+          <div class="quick-input-wrap">
+            <i class="fas fa-satellite-dish"></i>
+            <input id="quickCodigoLoterica" type="text" inputmode="numeric" autocomplete="off" placeholder="Ex.: 626" maxlength="12" />
+          </div>
+          <button class="btn-primary radar-primary" type="submit"><i class="fas fa-plus"></i> Adicionar ao Radar</button>
+        </form>
+      </section>
+
+      <section class="stats-row radar-stats">
+        <article class="stat-card"><div class="stat-label">Lotéricas ativas</div><div class="stat-value" id="statRadarLotericas">—</div></article>
+        <article class="stat-card stat-card-blue"><div class="stat-label">Favoritas</div><div class="stat-value" id="statRadarFavoritas">—</div></article>
+        <article class="stat-card"><div class="stat-label">Perfis ativos</div><div class="stat-value" id="statRadarPerfis">—</div></article>
+        <article class="stat-card"><div class="stat-label">Bolões no Radar</div><div class="stat-value" id="statRadarBoloes">—</div></article>
+        <article class="stat-card stat-card-radar-hot"><div class="stat-label">Achados aderentes</div><div class="stat-value" id="statRadarAchados">—</div></article>
+        <article class="stat-card stat-card-gold"><div class="stat-label">Em monitoramento</div><div class="stat-value" id="statRadarMonitorados">—</div></article>
+      </section>
+
+      <nav class="tabs radar-tabs" aria-label="Áreas do Radar">
+        <button class="tab active" type="button" data-tab="lotericas"><i class="fas fa-location-dot"></i> Lotéricas</button>
+        <button class="tab" type="button" data-tab="perfis"><i class="fas fa-filter"></i> Perfis de interesse</button>
+        <button class="tab" type="button" data-tab="achados"><i class="fas fa-bullseye"></i> Achados <span id="tabAchadosCount" class="tab-count">0</span></button>
+      </nav>
+
+      <section class="tab-panel active" data-panel="lotericas">
+        <section class="panel radar-panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>Lotéricas mapeadas</h2>
+              <p>Classifique as fontes do Radar e ajuste a frequência de varredura de cada uma.</p>
+            </div>
+            <div class="radar-inline-filters">
+              <select id="filtroClassificacao" class="radar-mini-select">
+                <option value="">Todas as classificações</option>
+                <option value="TESTE">Teste</option>
+                <option value="PROMISSORA">Promissora</option>
+                <option value="FAVORITA">Favorita</option>
+                <option value="DESCARTADA">Descartada</option>
+              </select>
+              <label class="radar-switch-line"><input id="filtroSomenteAtivas" type="checkbox" checked> somente ativas</label>
+            </div>
+          </div>
+          <div id="radarLotericasGrid" class="radar-lotericas-grid"></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="perfis">
+        <section class="panel radar-panel">
+          <div class="panel-title compact">
+            <div>
+              <h2>Perfis de interesse</h2>
+              <p>Defina o que o Radar deve considerar parecido com os tipos de bolão que você procura.</p>
+            </div>
+            <button id="btnNovoPerfil2" class="btn-primary radar-primary" type="button"><i class="fas fa-plus"></i> Novo perfil</button>
+          </div>
+          <div id="radarPerfisGrid" class="radar-perfis-grid"></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="achados">
+        <section class="panel radar-panel">
+          <div class="panel-title compact radar-achados-head">
+            <div>
+              <h2>Achados do Radar</h2>
+              <p id="radarAchadosResumo">Bolões atuais das lotéricas cadastradas que combinam com os perfis ativos.</p>
+            </div>
+            <div class="radar-achados-tools">
+              <label class="radar-switch-line"><input id="mostrarTodosBoloes" type="checkbox"> mostrar todos</label>
+              <select id="ordenacaoAchados" class="radar-mini-select">
+                <option value="ADERENCIA">Maior aderência</option>
+                <option value="RECENTE">Mais recente</option>
+                <option value="PRECO_ASC">Menor cota</option>
+                <option value="PRECO_DESC">Maior cota</option>
+                <option value="DEZENAS_DESC">Mais dezenas</option>
+              </select>
+            </div>
+          </div>
+          <div id="radarAchadosGrid" class="radar-achados-grid"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="modalLoterica" hidden>
+    <div class="modal-card radar-modal-card" role="dialog" aria-modal="true" aria-labelledby="modalLotericaTitle">
+      <div class="modal-head radar-modal-head">
+        <div>
+          <div class="mp-eyebrow radar-eyebrow">Cadastro Radar</div>
+          <h3 id="modalLotericaTitle">Adicionar lotérica</h3>
+          <p>O código lotérico é a chave usada pelo coletor para a varredura.</p>
+        </div>
+        <button type="button" data-close-modal="modalLoterica" aria-label="Fechar">×</button>
+      </div>
+      <form id="formLoterica" class="radar-form">
+        <input id="lotericaId" type="hidden" />
+        <div class="radar-form-grid">
+          <label><span>Código lotérico *</span><input id="lotericaCodigo" type="text" inputmode="numeric" maxlength="12" required placeholder="626"></label>
+          <label><span>Apelido</span><input id="lotericaApelido" type="text" maxlength="80" placeholder="Ex.: Mega forte"></label>
+          <label><span>Classificação</span>
+            <select id="lotericaClassificacao">
+              <option value="TESTE">Teste</option>
+              <option value="PROMISSORA">Promissora</option>
+              <option value="FAVORITA">Favorita</option>
+              <option value="DESCARTADA">Descartada</option>
+            </select>
+          </label>
+          <label><span>Prioridade</span>
+            <select id="lotericaPrioridade">
+              <option value="1">1 — máxima</option><option value="2">2 — alta</option><option value="3" selected>3 — normal</option><option value="4">4 — baixa</option><option value="5">5 — mínima</option>
+            </select>
+          </label>
+          <label><span>Intervalo de varredura</span>
+            <select id="lotericaIntervalo">
+              <option value="30">30 min</option><option value="60">60 min</option><option value="120">120 min</option><option value="180" selected>180 min</option><option value="360">6 horas</option><option value="720">12 horas</option><option value="1440">24 horas</option>
+            </select>
+          </label>
+          <label class="radar-check-field"><span>Status</span><div><input id="lotericaAtivo" type="checkbox" checked><strong>Ativa no Radar</strong></div></label>
+          <label class="radar-form-wide"><span>Tags</span><input id="lotericaTags" type="text" maxlength="200" placeholder="mega, 12 dezenas, concorrente"></label>
+          <label class="radar-form-wide"><span>Observação</span><textarea id="lotericaObservacao" rows="3" maxlength="500" placeholder="O que chamou atenção nesta lotérica?"></textarea></label>
+        </div>
+        <div class="radar-form-actions"><button type="button" class="btn-soft" data-close-modal="modalLoterica">Cancelar</button><button id="btnSalvarLoterica" type="submit" class="btn-primary radar-primary"><i class="fas fa-floppy-disk"></i> Salvar</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modalPerfil" hidden>
+    <div class="modal-card radar-modal-card radar-profile-modal" role="dialog" aria-modal="true" aria-labelledby="modalPerfilTitle">
+      <div class="modal-head radar-modal-head">
+        <div>
+          <div class="mp-eyebrow radar-eyebrow">Critério do Radar</div>
+          <h3 id="modalPerfilTitle">Novo perfil de interesse</h3>
+          <p>Campos vazios não restringem a busca.</p>
+        </div>
+        <button type="button" data-close-modal="modalPerfil" aria-label="Fechar">×</button>
+      </div>
+      <form id="formPerfil" class="radar-form">
+        <input id="perfilId" type="hidden" />
+        <div class="radar-form-grid">
+          <label class="radar-form-wide"><span>Nome do perfil *</span><input id="perfilNome" type="text" maxlength="100" required placeholder="Mega — 10 a 12 dezenas"></label>
+          <label><span>Modalidade</span><select id="perfilModalidade"><option value="">Qualquer</option></select></label>
+          <label class="radar-check-field"><span>Status</span><div><input id="perfilAtivo" type="checkbox" checked><strong>Perfil ativo</strong></div></label>
+          <label><span>Dezenas mín.</span><input id="perfilNumerosMin" type="number" min="0" step="1" placeholder="10"></label>
+          <label><span>Dezenas máx.</span><input id="perfilNumerosMax" type="number" min="0" step="1" placeholder="12"></label>
+          <label><span>Jogos mín.</span><input id="perfilApostasMin" type="number" min="0" step="1" placeholder="1"></label>
+          <label><span>Jogos máx.</span><input id="perfilApostasMax" type="number" min="0" step="1" placeholder=""></label>
+          <label><span>Cota mínima</span><input id="perfilValorMin" type="number" min="0" step="0.01" placeholder="30,00"></label>
+          <label><span>Cota máxima</span><input id="perfilValorMax" type="number" min="0" step="0.01" placeholder="120,00"></label>
+          <label><span>Cotas mín.</span><input id="perfilCotasMin" type="number" min="0" step="1" placeholder=""></label>
+          <label><span>Cotas máx.</span><input id="perfilCotasMax" type="number" min="0" step="1" placeholder=""></label>
+          <label class="radar-form-wide"><span>Observação</span><textarea id="perfilObservacao" rows="3" maxlength="500" placeholder="Por que este perfil é interessante?"></textarea></label>
+        </div>
+        <div class="radar-form-actions"><button type="button" class="btn-soft" data-close-modal="modalPerfil">Cancelar</button><button id="btnSalvarPerfil" type="submit" class="btn-primary radar-primary"><i class="fas fa-floppy-disk"></i> Salvar perfil</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./sislot-config.js"></script>
+  <script src="./sislot-security.js"></script>
+  <script src="./js/marketplace-radar.js"></script>
+</body>
+</html>
