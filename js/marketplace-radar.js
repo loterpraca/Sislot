@@ -11,6 +11,7 @@
   const $ = (id) => document.getElementById(id);
   const fmtMoney = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const fmtInt = new Intl.NumberFormat('pt-BR');
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   const state = {
     session: null,
@@ -402,13 +403,65 @@
     if (state.lotericas.some(l => l.codigo_loterica === codigo)) return showAlert(`A lotérica ${codigo} já está cadastrada no Radar.`);
     try {
       setQuickLoading(true);
-      const { error } = await sb.from('marketplace_radar_lotericas').insert({ codigo_loterica: codigo, classificacao: 'TESTE', prioridade: 3, intervalo_minutos: 180, ativo: true, proxima_varredura_em: new Date().toISOString() });
+      const solicitadoEm = new Date().toISOString();
+      const { error } = await sb.from('marketplace_radar_lotericas').insert({
+        codigo_loterica: codigo,
+        classificacao: 'TESTE',
+        prioridade: 3,
+        intervalo_minutos: 180,
+        ativo: true,
+        proxima_varredura_em: solicitadoEm,
+        ultimo_status: 'PENDENTE',
+        ultimo_erro: null
+      });
       if (error) throw error;
       input.value = '';
       await carregarTudo(true);
-      showToast(`Lotérica ${codigo} adicionada ao Radar.`);
+      showToast(`Lotérica ${codigo} adicionada. Buscando agora...`);
+      void aguardarPrimeiraVarredura(codigo, solicitadoEm);
     } catch (error) { showAlert(humanDbError(error)); }
     finally { setQuickLoading(false); }
+  }
+
+  async function aguardarPrimeiraVarredura(codigo, solicitadoEm) {
+    const inicio = Date.parse(solicitadoEm || '') || Date.now();
+    const maxTentativas = 30;
+
+    for (let tentativa = 0; tentativa < maxTentativas; tentativa += 1) {
+      await wait(2000);
+
+      const { data, error } = await sb
+        .from('marketplace_radar_lotericas')
+        .select('codigo_loterica,ultima_varredura_em,ultimo_status,ultimo_erro,ultimo_total_boloes')
+        .eq('codigo_loterica', codigo)
+        .maybeSingle();
+
+      if (error || !data) continue;
+
+      const status = String(data.ultimo_status || '').toUpperCase();
+      const varreduraEm = Date.parse(data.ultima_varredura_em || '') || 0;
+      const finalizado = status && status !== 'PENDENTE' && (varreduraEm >= inicio - 1000 || status === 'ERRO' || status === 'COBERTA_MONITORAMENTO');
+
+      if (!finalizado) continue;
+
+      await carregarTudo(true);
+
+      if (status === 'ERRO') {
+        showAlert(`A primeira busca da lotérica ${codigo} falhou: ${data.ultimo_erro || 'erro não informado'}.`);
+        return;
+      }
+
+      const total = Number(data.ultimo_total_boloes);
+      if (Number.isFinite(total)) {
+        showToast(`Radar atualizado: ${codigo} · ${fmtInt.format(total)} bolão(ões) encontrado(s).`);
+      } else {
+        showToast(`Radar atualizado: primeira busca da lotérica ${codigo} concluída.`);
+      }
+      return;
+    }
+
+    await carregarTudo(true);
+    showToast(`A lotérica ${codigo} continua na fila do Radar. O coletor fará a busca assim que estiver livre.`);
   }
 
   function setQuickLoading(loading) {
@@ -458,6 +511,8 @@
         query = sb.from('marketplace_radar_lotericas').update(update).eq('id', id);
       } else {
         payload.proxima_varredura_em = new Date().toISOString();
+        payload.ultimo_status = 'PENDENTE';
+        payload.ultimo_erro = null;
         query = sb.from('marketplace_radar_lotericas').insert(payload);
       }
       const { error } = await query;
