@@ -13,7 +13,7 @@
     SUPER_7: '#e88950', MAIS_MILIONARIA: '#70b7ef', LOTOMANIA: '#ef8a3f'
   };
 
-  const state = { contexto: null, rows: [], filtered: [], lojaId: '', loading: false };
+  const state = { contexto: null, rows: [], filtered: [], lojaId: '', dataReferencia: '', loading: false };
   let sb = null;
 
   document.addEventListener('DOMContentLoaded', init);
@@ -21,6 +21,8 @@
   async function init() {
     bindUI();
     iniciarRelogio();
+    state.dataReferencia = hojeSaoPaulo();
+    if ($('dataReferencia')) $('dataReferencia').value = state.dataReferencia;
 
     if (!window.supabase || !CONFIG.url || !CONFIG.anonKey || !window.SISLOT_SECURITY) {
       mostrarErro('Configuração do SISLOT não encontrada.');
@@ -42,9 +44,12 @@
 
   function bindUI() {
     $('btnLogout')?.addEventListener('click', () => window.SISLOT_SECURITY?.sair?.());
-    $('btnAtualizar')?.addEventListener('click', () => carregar());
     $('filtroLoja')?.addEventListener('change', () => { state.lojaId = $('filtroLoja').value; aplicarFiltros(); });
-    $('filtroBusca')?.addEventListener('input', aplicarFiltros);
+    $('dataReferencia')?.addEventListener('change', () => {
+      state.dataReferencia = $('dataReferencia').value || hojeSaoPaulo();
+      $('dataReferencia').value = state.dataReferencia;
+      carregar();
+    });
     document.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-salvar-tfl]');
       if (btn) salvarCard(btn.dataset.salvarTfl, btn);
@@ -87,22 +92,19 @@
     state.lojaId = lojas.length === 1 ? String(lojas[0].loteria_id) : (inicial ? String(inicial) : '');
     select.value = state.lojaId;
     select.disabled = lojas.length <= 1;
-    const grupoLoja = $('grupoLoja');
-    if (grupoLoja) grupoLoja.hidden = lojas.length <= 1;
-    $('toolbarTfl')?.classList.toggle('tfl-toolbar--single', lojas.length <= 1);
     atualizarHeaderLoja();
   }
 
   async function carregar(silencioso = false) {
     if (state.loading || !sb) return;
     state.loading = true;
-    const btn = $('btnAtualizar');
-    if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
     if (!silencioso) mostrarEstado('carregando');
     ocultarErro();
 
     try {
-      const { data, error } = await sb.rpc('rpc_marketplace_tfl_listar_boloes');
+      const { data, error } = await sb.rpc('rpc_marketplace_tfl_listar_boloes_data', {
+        p_data_referencia: state.dataReferencia || hojeSaoPaulo()
+      });
       if (error) throw error;
       state.rows = (data || []).map(normalizarRow);
       aplicarFiltros();
@@ -112,7 +114,6 @@
       mostrarEstado('vazio');
     } finally {
       state.loading = false;
-      if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
     }
   }
 
@@ -135,12 +136,9 @@
   }
 
   function aplicarFiltros() {
-    const busca = normalizarTexto($('filtroBusca')?.value || '');
     state.filtered = state.rows.filter((row) => {
       if (state.lojaId && String(row.loteria_id) !== String(state.lojaId)) return false;
-      if (!busca) return true;
-      return [row.modalidade, row.concurso, row.loteria_nome, row.valor_cota]
-        .some((v) => normalizarTexto(v).includes(busca));
+      return true;
     });
 
     state.filtered.sort((a, b) => {
@@ -214,8 +212,8 @@
       <div class="tfl-meta-row">
         ${meta('Total', inteiro(row.qtd_cota_total))}
         ${meta('Digitais', inteiro(row.qtd_cota_digital))}
-        ${meta('Disponíveis', inteiro(row.qtd_cota_disponivel))}
-        ${meta('Físicas origem', inteiro(row.fisicas_origem), true)}
+        ${meta('Disp.', inteiro(row.qtd_cota_disponivel))}
+        ${meta('Fís. origem', inteiro(row.fisicas_origem), true)}
       </div>
 
       <div class="tfl-afericao-line">
@@ -292,7 +290,8 @@
     setText('statComAfericao', aferidos);
     setText('statSemAfericao', total - aferidos);
     setText('statAferidos', aferidos);
-    setText('statusResumo', total ? `${total} bolão(ões) organizados por modalidade e valor.` : 'Nenhum bolão no filtro atual.');
+    const dataRef = formatarDataReferencia(state.dataReferencia);
+    setText('statusResumo', total ? `${total} bolão(ões) · referência ${dataRef}.` : `Nenhum bolão em ${dataRef}.`);
   }
 
   function atualizarHeaderLoja() {
@@ -336,6 +335,15 @@
   function numeroOuNull(v) { if (v === null || v === undefined || v === '') return null; const n = Number(v); return Number.isFinite(n) ? n : null; }
   function lerInteiro(input) { const s = String(input?.value ?? '').trim(); if (!s) return null; const n = Number(s); return Number.isInteger(n) && n >= 0 ? n : null; }
   function setText(id, value) { const el = $(id); if (el) el.textContent = value ?? ''; }
+  function hojeSaoPaulo() {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const obj = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${obj.year}-${obj.month}-${obj.day}`;
+  }
+  function formatarDataReferencia(v) {
+    const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '—';
+  }
   function normalizarTexto(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
   function normalizarErro(error) {
     const msg = error?.message || String(error || 'Erro desconhecido.');
