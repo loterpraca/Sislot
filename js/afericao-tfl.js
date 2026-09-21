@@ -49,6 +49,10 @@
       const btn = event.target.closest('[data-salvar-tfl]');
       if (btn) salvarCard(btn.dataset.salvarTfl, btn);
     });
+    document.addEventListener('focusin', (event) => {
+      const input = event.target.closest?.('.tfl-input');
+      if (input) requestAnimationFrame(() => input.select());
+    });
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       const input = event.target.closest('.tfl-input');
@@ -83,6 +87,9 @@
     state.lojaId = lojas.length === 1 ? String(lojas[0].loteria_id) : (inicial ? String(inicial) : '');
     select.value = state.lojaId;
     select.disabled = lojas.length <= 1;
+    const grupoLoja = $('grupoLoja');
+    if (grupoLoja) grupoLoja.hidden = lojas.length <= 1;
+    $('toolbarTfl')?.classList.toggle('tfl-toolbar--single', lojas.length <= 1);
     atualizarHeaderLoja();
   }
 
@@ -190,49 +197,50 @@
     const id = row.marketplace_bolao_id;
     const cor = corModalidade(row.modalidade);
     const hasAfericao = !!row.ultima_afericao_id;
-    const ultimaData = hasAfericao ? fmtDate.format(new Date(row.ultima_afericao_em)) : 'Ainda não informado';
-    const quem = hasAfericao ? (row.ultima_afericao_por || 'Usuário SISLOT') : '—';
+    const ultimaData = hasAfericao ? fmtDate.format(new Date(row.ultima_afericao_em)) : '—';
+    const quem = hasAfericao ? (row.ultima_afericao_por || 'Usuário SISLOT') : '';
     const statusAbs = String(row.status_marketplace || '').toUpperCase() === 'AUSENTE';
 
     return `<article class="tfl-card" data-bolao-id="${id}" style="--mod:${cor}">
       <div class="tfl-card__head">
         <div class="tfl-card__title">
           <strong>${escapeHtml(rotuloModalidade(row.modalidade))}</strong>
-          <span class="tfl-contest">Concurso ${escapeHtml(row.concurso || '—')}</span>
-          <span class="tfl-status ${statusAbs ? 'is-absent' : ''}">${statusAbs ? 'AUSENTE' : 'ATIVO'}</span>
+          <span class="tfl-contest">#${escapeHtml(row.concurso || '—')}</span>
+          ${statusAbs ? '<span class="tfl-status is-absent">AUSENTE</span>' : ''}
         </div>
-        <div class="tfl-card__price"><span>Valor da cota</span><strong>${money(row.valor_cota)}</strong></div>
+        <div class="tfl-card__price"><strong>${money(row.valor_cota)}</strong><span>/cota</span></div>
       </div>
 
       <div class="tfl-meta-row">
         ${meta('Total', inteiro(row.qtd_cota_total))}
         ${meta('Digitais', inteiro(row.qtd_cota_digital))}
         ${meta('Disponíveis', inteiro(row.qtd_cota_disponivel))}
-        ${meta('Físicas Origem', inteiro(row.fisicas_origem), true)}
+        ${meta('Físicas origem', inteiro(row.fisicas_origem), true)}
       </div>
 
-      <div class="tfl-section-label">Última aferição oficial</div>
+      <div class="tfl-afericao-line">
+        <span class="tfl-section-label">Última aferição</span>
+        <span class="tfl-last-info">${hasAfericao ? `${escapeHtml(ultimaData)}${quem ? ` · ${escapeHtml(quem)}` : ''}` : '—'}</span>
+      </div>
       <div class="tfl-last-grid">
         <div class="tfl-last-box tfl-last-box--sold"><span>Vendidas</span><strong>${hasAfericao ? inteiro(row.qtd_vendidas_oficial) : '—'}</strong></div>
         <div class="tfl-last-box tfl-last-box--download"><span>Baixadas</span><strong>${hasAfericao ? inteiro(row.qtd_baixadas_oficial) : '—'}</strong></div>
         <div class="tfl-last-box tfl-last-box--print"><span>Impressas</span><strong>${hasAfericao ? inteiro(row.qtd_impressas_oficial) : '—'}</strong></div>
       </div>
-      <div class="tfl-last-info"><span><b>${escapeHtml(ultimaData)}</b></span><span>${hasAfericao ? `por ${escapeHtml(quem)}` : 'Nenhuma aferição registrada'}</span></div>
 
-      <div class="tfl-section-label">Nova aferição do terminal</div>
       <div class="tfl-entry">
         ${campo(id, 'vendidas', 'Vendidas', row.qtd_vendidas_oficial)}
         ${campo(id, 'baixadas', 'Baixadas', row.qtd_baixadas_oficial)}
         ${campo(id, 'impressas', 'Impressas', row.qtd_impressas_oficial)}
-        <button class="tfl-save" type="button" data-salvar-tfl="${id}">Salvar</button>
+        <button class="tfl-save" type="button" data-salvar-tfl="${id}">Salvar aferição</button>
       </div>
-      <div class="tfl-card__foot"><span>${escapeHtml(row.loteria_nome || '')}</span><span>Digite os totais atuais mostrados no TFL</span></div>
+      <div class="tfl-card__foot"><span>${escapeHtml(row.loteria_nome || '')}</span><span>Totais atuais do TFL</span></div>
     </article>`;
   }
 
   function campo(id, nome, label, anterior) {
-    const placeholder = anterior == null ? '0' : String(anterior);
-    return `<div class="tfl-input-wrap"><label for="tfl-${nome}-${id}">${label}</label><input class="tfl-input" id="tfl-${nome}-${id}" data-field="${nome}" type="number" inputmode="numeric" min="0" step="1" placeholder="${escapeHtml(placeholder)}" autocomplete="off" /></div>`;
+    const valor = anterior == null ? '' : String(anterior);
+    return `<div class="tfl-input-wrap"><label for="tfl-${nome}-${id}">${label}</label><input class="tfl-input" id="tfl-${nome}-${id}" data-field="${nome}" type="number" inputmode="numeric" pattern="[0-9]*" min="0" step="1" value="${escapeHtml(valor)}" placeholder="0" autocomplete="off" /></div>`;
   }
 
   async function salvarCard(id, button) {
