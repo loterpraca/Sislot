@@ -93,6 +93,7 @@ function aplicarPermissoesMenu(perfil) {
     // garante que os cards autorizados voltem ao estado visível
     showSelector('.card-marketplace-caixa');
     showSelector('.card-controle-cotas');
+    showSelector('.card-afericao-tfl');
 
     if (p === 'GERENTE') {
         esconder('.card-cadastro');
@@ -108,8 +109,9 @@ function aplicarPermissoesMenu(perfil) {
         esconder('.card-controle-fechamento');
         esconder('.card-pendencias');
 
-        // O gerente permanece com acesso ao fechamento e ao painel de cotas.
+        // O gerente permanece com acesso ao fechamento, controle de cotas e Aferição TFL.
         showSelector('.card-controle-cotas');
+        showSelector('.card-afericao-tfl');
         return;
     }
 
@@ -126,6 +128,7 @@ function aplicarPermissoesMenu(perfil) {
         esconder('.card-config');
         esconder('.card-controle-fechamento');
         esconder('.card-controle-cotas');
+        esconder('.card-afericao-tfl');
         esconder('.card-pendencias');
         return;
     }
@@ -134,6 +137,7 @@ function aplicarPermissoesMenu(perfil) {
         esconder('.card-config');
         showSelector('.card-marketplace-caixa');
         showSelector('.card-controle-cotas');
+        showSelector('.card-afericao-tfl');
         return;
     }
 
@@ -141,6 +145,7 @@ function aplicarPermissoesMenu(perfil) {
         showSelector('.card-config');
         showSelector('.card-marketplace-caixa');
         showSelector('.card-controle-cotas');
+        showSelector('.card-afericao-tfl');
         setAdminWrapVisible(true);
         return;
     }
