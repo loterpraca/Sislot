@@ -34,6 +34,7 @@ const LOJAS_FIXAS = [
     { id: 3, nome: 'Lotobel', icon: './icons/lotobel.png' },
     { id: 4, nome: 'Santa Tereza', icon: './icons/santa-tereza.png' },
     { id: 5, nome: 'Via Brasil', icon: './icons/via-brasil.png' },
+    { id: 6, nome: 'Lotoprime', icon: './icons/lotoprime.png' },
 ];
 
 let usuarioAtual = null;
@@ -276,6 +277,7 @@ function iconeLoja(nome) {
     if (n.includes('lotobel')) return './icons/lotobel.png';
     if (n.includes('santa tereza')) return './icons/santa-tereza.png';
     if (n.includes('via brasil')) return './icons/via-brasil.png';
+    if (n.includes('lotoprime')) return './icons/lotoprime.png';
 
     return './icons/loterpraca.png';
 }
