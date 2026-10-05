@@ -147,7 +147,7 @@
                     return { ...l, principal: !!match?.principal };
                 });
             }
-            else if (mod === 'fechamento' || mod === 'gerente-cotas' || mod === 'afericao-tfl') {
+            else if (mod === 'ponto' || mod === 'fechamento' || mod === 'gerente-cotas' || mod === 'afericao-tfl') {
                 permitido = true;
                 lojasPermitidas = await carregarVinculos(usuario.id);
             }
