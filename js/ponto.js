@@ -90,7 +90,7 @@ function renderImports(){
  return `<div class="linkrow"><strong>Código ${esc(code)}</strong><span>${esc(staff.find(s=>Number(s.id)===Number(mapping?.usuario_id))?.nome||'Não vinculado')}</span><button class="small secondary" data-map="${esc(device)}" data-code="${esc(code)}">Vincular / alterar vigência</button></div>`;}).join('');}).join('')||'<p>Importe o arquivo para identificar os códigos.</p>';
 }
 function link(device,code){modal('Vincular código '+code,`<p>Relógio: ${esc(device)}</p><label>Funcionário<select name="usuario" required><option value="">Selecione…</option>${staff.map(u=>`<option value="${u.id}">${esc(u.nome)}${u.ativo?'':' (inativo)'}</option>`).join('')}</select></label><label>Válido a partir de<input type="date" name="vigencia" value="${pending?.parsed.start||'2025-01-01'}" required></label>${reason}`,async v=>{
- if(events.some(e=>e.tipo==='BANCO'&&e.data_referencia>=v.vigencia&&!events.some(r=>r.estorno_de===e.id)))throw Error('Há dias enviados ao banco após essa vigência. Estorne os movimentos afetados antes de alterar o vínculo.');
+ // A validação por código, funcionário e vigência é feita atomicamente no banco.
  await save([base('VINCULO',v.vigencia,v.motivo,{usuario_id:Number(v.usuario),dados:{dispositivo:device,codigo:code}})]);
  });}
 function bankSend(){if(!loaded)throw Error('Busque os dados antes de enviar.');const selected=[...document.querySelectorAll('.diaCheck:checked')].map(x=>days.find(d=>d.date===x.value));if(!selected.length)throw Error('Selecione dias com diferença apurada.');
