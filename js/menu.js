@@ -87,6 +87,10 @@ function showSelector(seletor) {
 function aplicarPermissoesMenu(perfil) {
     const p = String(perfil || '').trim().toUpperCase();
 
+    // Ponto: gestão financeira restrita a ADMIN e SOCIO.
+    esconder('.card-ponto');
+    if (['ADMIN', 'SOCIO'].includes(p)) showSelector('.card-ponto');
+
     // estado base
     setAdminWrapVisible(false);
     esconder('.card-config');
