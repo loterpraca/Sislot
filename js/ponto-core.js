@@ -27,6 +27,15 @@
  if(!rule&&w!==0&&kind==='NORMAL')return {status:'SEM_JORNADA',worked:null,expected:0,delta:null,parts:[]};
  const target=expected.length===4?minutes(expected[1])-minutes(expected[0])+minutes(expected[3])-minutes(expected[2]):expected.length===2?minutes(expected[1])-minutes(expected[0]):0;
  if(['FERIADO','FOLGA','ABONO','FERIAS','AFASTAMENTO'].includes(kind)||w===0){return {status:times.length?'CONFERIR_DESCANSO':kind==='NORMAL'?'DOMINGO':kind,worked:times.length?null:0,expected:0,delta:times.length?null:0,parts:[]};}
+ if(kind==='COMPENSACAO_PARCIAL'){
+  if(!target)return {status:'SEM_JORNADA',worked:null,expected:target,delta:null,parts:[]};
+  if(![2,4].includes(times.length))return {status:'INCOMPLETO',worked:null,expected:target,delta:null,parts:[]};
+  const t=times.map(minutes);
+  if(t.some((x,i)=>i&&x<=t[i-1]))return {status:'ORDEM_INVALIDA',worked:null,expected:target,delta:null,parts:[]};
+  let worked=0;for(let i=0;i<t.length;i+=2)worked+=t[i+1]-t[i];
+  if(worked>=target)return {status:'CONFERIR_COMPENSACAO',worked,expected:target,delta:null,parts:[]};
+  return {status:'COMPENSACAO_PARCIAL',worked,expected:target,delta:worked-target,parts:[{label:'Compensação parcial (trabalho real menos jornada)',value:worked-target}]};
+ }
  if(kind==='COMPENSACAO'){return {status:times.length?'CONFERIR_COMPENSACAO':!target?'SEM_JORNADA':'COMPENSACAO',worked:0,expected:target,delta:times.length||!target?null:-target,parts:[{label:'Compensação',value:-target}]};}
  if(times.length!==expected.length||![2,4].includes(times.length))return {status:times.length?'INCOMPLETO':'SEM_BATIDAS',worked:null,expected:target,delta:null,parts:[]};
  const t=times.map(minutes);if(t.some((x,i)=>i&&x<=t[i-1]))return {status:'ORDEM_INVALIDA',worked:null,expected:target,delta:null,parts:[]};
